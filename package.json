@@ -1,0 +1,21 @@
+{
+  "name": "yiban-memory",
+  "version": "1.0.0",
+  "private": true,
+  "description": "忆伴 · 新生杯家庭记忆交互应用",
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0",
+    "build": "next build",
+    "start": "next start --hostname 0.0.0.0",
+    "test": "node --test tests/core.test.mjs",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "next": "16.4.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0"
+  }
+}

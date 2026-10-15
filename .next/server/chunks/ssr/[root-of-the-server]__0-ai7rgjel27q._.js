@@ -1,0 +1,3 @@
+module.exports=[[98421,a=>{var b=a.i(7997);a.s(["default",0,function({children:a}){return(0,b.jsx)("html",{lang:"zh-CN",children:(0,b.jsx)("body",{children:a})})},"metadata",0,{title:"忆伴 · 让每一份回忆，都有温度",description:"面向认知障碍家庭的数字记忆与陪伴工具 · 新生杯原型"}])},24951,(a,b,c)=>{b.exports=a.r(18622)},7997,(a,b,c)=>{b.exports=a.r(24951).vendored["react-rsc"].ReactJsxRuntime}],18622,(a,b,c)=>{b.exports=a.x("next/dist/compiled/next-server/app-page-turbo.runtime.prod.js",()=>require("next/dist/compiled/next-server/app-page-turbo.runtime.prod.js"))},46122,function(a){a.n(a.i(98421))}];
+
+//# sourceMappingURL=%5Broot-of-the-server%5D__0-ai7rgjel27q._.js.map
