@@ -103,7 +103,7 @@
         "transform": "lodash/{{member}}"
       }
     },
-    "outputFileTracingRoot": "C:\\Users\\25641\\Desktop\\忆伴",
+    "outputFileTracingRoot": "C:\\Users\\25641\\Desktop\\yiban",
     "enablePrerenderSourceMaps": true,
     "cacheComponents": false,
     "cacheLife": {
@@ -335,13 +335,13 @@
     "serverExternalPackages": [
       "node:sqlite"
     ],
-    "repoRoot": "C:\\Users\\25641\\Desktop\\忆伴",
+    "repoRoot": "C:\\Users\\25641\\Desktop\\yiban",
     "turbopack": {
-      "root": "C:\\Users\\25641\\Desktop\\忆伴"
+      "root": "C:\\Users\\25641\\Desktop\\yiban"
     },
     "distDirRoot": ".next"
   },
-  "appDir": "C:\\Users\\25641\\Desktop\\忆伴",
+  "appDir": "C:\\Users\\25641\\Desktop\\yiban",
   "relativeAppDir": "",
   "files": [
     ".next\\package.json",

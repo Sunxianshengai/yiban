@@ -1,6 +1,21 @@
 import {test,expect} from '@playwright/test';
 import fs from 'node:fs';
 
+test.beforeEach(async({page,request})=>{
+  const status=await (await request.get('/api/auth/status')).json();
+  if(status.needsSetup){
+    const setup=await request.post('/api/auth/setup',{data:{name:'小雨',email:'admin@yiban.test',password:'TestPassword123!'}});
+    expect(setup.status()).toBe(201);
+  }else{
+    const login=await request.post('/api/auth/login',{data:{email:'admin@yiban.test',password:'TestPassword123!'}});
+    expect(login.status()).toBe(200);
+  }
+  const cookies=(await request.storageState()).cookies;
+  await page.context().addCookies(cookies);
+  await page.goto('/');
+  await expect(page.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
+});
+
 test('upload, local organization, publishing, elder feedback and deletion work together',async({page,request})=>{
   const marker=`自动测试家庭记忆${Date.now()}`;
   let id;
