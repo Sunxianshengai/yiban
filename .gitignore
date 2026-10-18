@@ -18,3 +18,7 @@ data/
 test-results/
 playwright-report/
 artifacts/
+
+.vercel
+.env*
+!.env.example

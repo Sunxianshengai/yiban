@@ -1,6 +1,6 @@
 'use client';
 import {useState} from 'react';
-import {upload as uploadToBlob} from '@vercel/blob/client';
+import {uploadPresigned as uploadToBlob} from '@vercel/blob/client';
 import Icon from './Icon';
 import {Button,Field,Cover} from './UI';
 import {THEMES} from '../lib/core.mjs';
@@ -14,11 +14,13 @@ export default function MemoryForm({initial,onSave,onCancel,api,aiEnabled,remote
     setBusy('upload');
     try {
       let result;
+      if(!file.size||file.size>50*1024*1024)throw new Error('请选择 50 MB 以内的素材文件');
       if(remoteStorage) {
         const extension={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','audio/mpeg':'mp3','audio/wav':'wav','audio/x-wav':'wav','audio/mp4':'m4a','audio/ogg':'ogg','audio/webm':'webm','video/mp4':'mp4','video/webm':'webm'}[file.type];
         if(!extension)throw new Error('不支持的素材格式');
         const blob=await uploadToBlob(`yiban/${crypto.randomUUID()}.${extension}`,file,{access:'private',handleUploadUrl:'/api/upload/token',contentType:file.type,multipart:file.size>5*1024*1024});
-        result={url:`/api/media/${blob.pathname.split('/').pop()}`,type:file.type,name:file.name};
+        const completed=await api('/upload/complete',{method:'POST',body:JSON.stringify({pathname:blob.pathname})});
+        result={url:completed.url,type:file.type,name:file.name};
       } else {
         const data=new FormData();data.append('file',file);
         result=await api('/upload',{method:'POST',body:data});

@@ -48,10 +48,14 @@ npm.cmd run dev
 ## 部署到 Vercel
 
 1. 在 Vercel 项目的 Storage / Marketplace 中连接 Neon 数据库和 Blob 存储。
-2. 确认项目环境变量包含 `DATABASE_URL` 和 `BLOB_READ_WRITE_TOKEN`，并应用到比赛使用的 Production 环境。
+2. 确认项目环境变量包含 `DATABASE_URL`、`BLOB_STORE_ID` 和 `BLOB_WEBHOOK_PUBLIC_KEY`，并应用到比赛使用的 Production 环境。Blob 通过 Vercel 运行时 OIDC 身份授权，浏览器使用短期签名地址直传，上传后由服务端核实文件并登记。
 3. 重新部署。首次打开线上地址时创建管理员账号；线上数据库会自动初始化示例记忆。
 
 本机 SQLite 与 Vercel Neon 是两份独立数据，不会自动互相复制。Vercel 版本不使用函数本地磁盘保存内容；如果线上旧实例曾写入过文件系统，那些内容不属于可靠持久数据。
+
+数据库仅在实际请求时连接，构建过程不会初始化数据库。修改环境变量后需要重新部署。如果连接失败，页面会显示错误并提供“重新连接”，重试会重新检测登录和首次设置状态。
+
+`.vercelignore` 排除 `.next`、桌面安装包、测试截图、本地数据库和环境文件；Vercel 会从源码重新构建。Electron 安装包连接线上网址后，网页更新会在下次打开时生效。
 
 这是单家庭版本，所有受邀账号访问同一个家庭空间。账号用于区分登录和编辑权限，不提供多家庭隔离、邮件找回密码或公开注册。管理员密码请妥善保管。
 

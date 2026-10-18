@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import { handleUpload } from '@vercel/blob/client';
+import { handleUploadPresigned } from '@vercel/blob/client';
+import { head as headBlob, issueSignedToken } from '@vercel/blob';
 import { all,get,put,remove,log,snapshot,saveMedia,readMedia,deleteMedia,usesRemoteStorage } from '../../../lib/store.mjs';
 import { tidyMemory, searchMemories } from '../../../lib/core.mjs';
 import {organize,generateStory} from '../../../lib/ai.mjs';
@@ -17,6 +18,7 @@ const guard=async(request,role='viewer')=>{const user=await sessionFromRequest(r
 const ensureOrigin=request=>sameOrigin(request)?null:forbidden();
 const isManagedMedia=async file=>(await all('memories')).some(m=>['cover','audio','video'].some(key=>m[key]===`/api/media/${file}`));
 const allowed={ 'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp','audio/mpeg':'.mp3','audio/wav':'.wav','audio/x-wav':'.wav','audio/mp4':'.m4a','audio/ogg':'.ogg','audio/webm':'.webm','video/mp4':'.mp4','video/webm':'.webm' };
+const validBlobPath=pathname=>typeof pathname==='string'&&/^yiban\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.(jpg|png|webp|mp3|wav|m4a|ogg|webm|mp4)$/.test(pathname);
 
 export async function GET(request,{params}) {
   const {path:parts}=await params;
@@ -69,25 +71,41 @@ export async function POST(request,{params}) {
       if(!usesRemoteStorage)return json({error:'当前未启用 Vercel Blob'},404);
       const body=await request.json();
       let user=null;
-      if(body.type==='blob.generate-client-token') {
+      if(body.type==='blob.generate-presigned-url') {
         const auth=await guard(request,'editor');if(auth.error)return auth.error;
         user=auth.user;
       }
-      const result=await handleUpload({
+      const result=await handleUploadPresigned({
         request,
         body,
-        onBeforeGenerateToken:async pathname=>{
-          if(!user||!/^yiban\/[a-f0-9-]{36}\.(jpg|png|webp|mp3|wav|m4a|ogg|webm|mp4)$/.test(pathname))throw new Error('上传请求无效');
-          return {allowedContentTypes:Object.keys(allowed),maximumSizeInBytes:50*1024*1024,addRandomSuffix:false,tokenPayload:JSON.stringify({userId:user.id})};
+        getSignedToken:async pathname=>{
+          if(!user||!validBlobPath(pathname))throw new Error('上传请求无效');
+          const constraints={allowedContentTypes:Object.keys(allowed),maximumSizeInBytes:50*1024*1024};
+          const token=await issueSignedToken({...constraints,pathname,operations:['put'],validUntil:Date.now()+15*60*1000});
+          await put('uploads',{id:path.basename(pathname),userId:user.id,blobPath:pathname,blobUrl:null,createdAt:new Date().toISOString()});
+          return {token,urlOptions:{...constraints,addRandomSuffix:false,allowOverwrite:false,tokenPayload:JSON.stringify({userId:user.id})}};
         },
         onUploadCompleted:async({blob,tokenPayload})=>{
           const payload=JSON.parse(tokenPayload||'{}');
           const name=path.basename(blob.pathname);
-          if(!payload.userId||!/^yiban\/[a-f0-9-]{36}\.(jpg|png|webp|mp3|wav|m4a|ogg|webm|mp4)$/.test(blob.pathname))throw new Error('上传回执无效');
-          await put('uploads',{id:name,userId:payload.userId,blobUrl:blob.url,blobPath:blob.pathname,contentType:blob.contentType,createdAt:new Date().toISOString()});
+          if(!payload.userId||!validBlobPath(blob.pathname))throw new Error('上传回执无效');
+          const upload=await get('uploads',name);
+          if(upload?.userId===payload.userId)await put('uploads',{...upload,blobUrl:blob.url,contentType:blob.contentType});
         },
       });
       return json(result);
+    }
+    if(parts[0]==='upload'&&parts[1]==='complete') {
+      if(!usesRemoteStorage)return json({error:'当前未启用 Vercel Blob'},404);
+      const auth=await guard(request,'editor');if(auth.error)return auth.error;
+      const {pathname}=await request.json();
+      if(!validBlobPath(pathname))throw new Error('上传请求无效');
+      const name=path.basename(pathname),upload=await get('uploads',name);
+      if(upload?.userId!==auth.user.id)return forbidden();
+      // Verify storage before reporting success; the webhook may arrive later.
+      const blob=await headBlob(pathname);
+      await put('uploads',{...upload,blobUrl:blob.url,contentType:blob.contentType});
+      return json({url:`/api/media/${name}`});
     }
     if(parts[0]==='auth') {
       if(parts[1]==='setup') {

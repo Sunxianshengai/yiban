@@ -1,0 +1,15 @@
+.next
+node_modules
+release
+dist
+build
+data
+artifacts
+test-results
+playwright-report
+tests
+electron
+venv
+.vercel
+.env*
+*.log
