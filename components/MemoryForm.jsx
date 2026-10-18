@@ -1,17 +1,31 @@
 'use client';
 import {useState} from 'react';
+import {upload as uploadToBlob} from '@vercel/blob/client';
 import Icon from './Icon';
 import {Button,Field,Cover} from './UI';
 import {THEMES} from '../lib/core.mjs';
 
-export default function MemoryForm({initial,onSave,onCancel,api,aiEnabled,notify}) {
+export default function MemoryForm({initial,onSave,onCancel,api,aiEnabled,remoteStorage=false,notify}) {
   const [form,setForm]=useState(initial?{...initial,people:initial.people.join('、'),tags:initial.tags.join('、')}:{title:'',year:'',location:'',people:'',theme:'家人',tags:'',story:'',status:'draft',cover:null,audio:null,video:null});
   const [busy,setBusy]=useState('');const [consent,setConsent]=useState(Boolean(initial));const [note,setNote]=useState('');
   const change=(key,value)=>setForm(f=>({...f,[key]:value}));
   const upload=async(event)=>{
     const file=event.target.files?.[0];if(!file)return;
     setBusy('upload');
-    try {const data=new FormData();data.append('file',file);const result=await api('/upload',{method:'POST',body:data});const key=result.type.startsWith('image/')?'cover':result.type.startsWith('audio/')?'audio':'video';setForm(f=>({...f,[key]:result.url,...(key==='cover'?{assetType:'photo'}:{}),...(key==='audio'?{clearAudio:false}:{}),...(key==='video'?{clearVideo:false}:{}),title:f.title||file.name.replace(/\.[^.]+$/,'')}));notify('素材上传完成');}catch(e){notify(e.message,'error');}finally{setBusy('');event.target.value='';}
+    try {
+      let result;
+      if(remoteStorage) {
+        const extension={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','audio/mpeg':'mp3','audio/wav':'wav','audio/x-wav':'wav','audio/mp4':'m4a','audio/ogg':'ogg','audio/webm':'webm','video/mp4':'mp4','video/webm':'webm'}[file.type];
+        if(!extension)throw new Error('不支持的素材格式');
+        const blob=await uploadToBlob(`yiban/${crypto.randomUUID()}.${extension}`,file,{access:'private',handleUploadUrl:'/api/upload/token',contentType:file.type,multipart:file.size>5*1024*1024});
+        result={url:`/api/media/${blob.pathname.split('/').pop()}`,type:file.type,name:file.name};
+      } else {
+        const data=new FormData();data.append('file',file);
+        result=await api('/upload',{method:'POST',body:data});
+      }
+      const key=result.type.startsWith('image/')?'cover':result.type.startsWith('audio/')?'audio':'video';
+      setForm(f=>({...f,[key]:result.url,...(key==='cover'?{assetType:'photo'}:{}),...(key==='audio'?{clearAudio:false}:{}),...(key==='video'?{clearVideo:false}:{}),title:f.title||file.name.replace(/\.[^.]+$/,'')}));notify('素材上传完成');
+    }catch(e){notify(e.message,'error');}finally{setBusy('');event.target.value='';}
   };
   const organize=async()=>{
     setBusy('ai');try{const result=await api('/organize',{method:'POST',body:JSON.stringify({...form,people:form.people.split(/[,，、]/).filter(Boolean),tags:form.tags.split(/[,，、]/).filter(Boolean)})});setForm(f=>({...f,title:result.title||f.title,story:result.story||f.story,year:result.year||f.year,location:result.location||f.location,people:Array.isArray(result.people)?result.people.join('、'):f.people,tags:Array.isArray(result.tags)?result.tags.join('、'):f.tags,theme:THEMES.includes(result.theme)?result.theme:f.theme,status:'draft'}));setNote(result.note);notify(result.mode==='local'?'本地整理完成，请核对后发布':'AI 整理完成，请核对后发布');}catch(e){notify(e.message,'error');}finally{setBusy('');}
