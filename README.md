@@ -13,6 +13,16 @@ npm.cmd run dev
 
 首次运行需要联网安装依赖，命令为 `npm.cmd install`。本机已完成安装。关闭命令窗口后数据仍保留，下次启动即可继续使用。
 
+## Windows 桌面版
+
+桌面版使用 Electron 打开线上忆伴服务，账号、记忆和媒体仍保存在 Vercel、Neon 与 Blob 中，因此使用时需要联网。
+
+1. 将 `electron/desktop-config.json` 中的 `webUrl` 改为忆伴的 Vercel HTTPS 部署地址。
+2. 在忆伴项目目录运行 `npm.cmd run desktop:pack`。
+3. 安装程序会生成在 `release/` 目录。
+
+本机调试时，先运行 `npm.cmd run dev`，再另开终端运行 `npm.cmd run electron`。Electron 窗口默认连接 `http://localhost:3000`。
+
 ## 当前功能
 
 - 子女端：照片、录音和视频上传；记忆创建、编辑、确认发布、删除、收藏；时间轴、主题、人物和关键词搜索。

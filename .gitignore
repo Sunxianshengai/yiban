@@ -7,6 +7,7 @@ __pycache__/
 .env.local
 
 dist/
+release/
 build/
 *.log
 
