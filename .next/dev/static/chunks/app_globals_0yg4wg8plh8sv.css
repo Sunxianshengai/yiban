@@ -4468,6 +4468,62 @@ a {
   text-decoration: underline;
 }
 
+.settings-info:nth-child(2) > p:first-of-type {
+  display: none;
+}
+
+body:has(.main-content[data-role="viewer"]) .page-heading > .btn {
+  display: none !important;
+}
+
+body:has(.main-content[data-role="viewer"]) .favorite-button {
+  display: none !important;
+}
+
+body:has(.main-content[data-role="viewer"]) .create-album-card {
+  display: none !important;
+}
+
+body:has(.main-content[data-role="viewer"]) .calendar-section .btn {
+  display: none !important;
+}
+
+body:has(.main-content[data-role="viewer"]) .family-grid .family-remove {
+  display: none !important;
+}
+
+body:has(.main-content[data-role="viewer"]) .anniversary .icon-button {
+  display: none !important;
+}
+
+body:has(.main-content[data-role="viewer"]) .memory-detail .detail-action-row {
+  display: none !important;
+}
+
+body:has(.main-content[data-role="viewer"]) .comment-form {
+  display: none !important;
+}
+
+body:has(.main-content[data-role="viewer"]) .modal:has(.album-detail-memories) .ai-helper {
+  display: none !important;
+}
+
+body:has(.main-content[data-role="viewer"]) .story-actions {
+  display: none !important;
+}
+
+body:has(.main-content[data-role="viewer"]) .modal:has(.album-detail-memories) .modal-actions {
+  display: none !important;
+}
+
+body:has(.main-content[data-role="viewer"]) .settings-panel {
+  display: none !important;
+}
+
+body:has(.main-content[data-role="viewer"]) .settings-info .btn {
+  display: none !important;
+}
+
 @media (max-width: 760px) {
   .auth-screen {
     grid-template-columns: 1fr;
