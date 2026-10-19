@@ -4,8 +4,10 @@ import path from 'node:path';
 import { handleUploadPresigned } from '@vercel/blob/client';
 import { head as headBlob, issueSignedToken } from '@vercel/blob';
 import { all,get,put,remove,log,snapshot,saveMedia,readMedia,deleteMedia,usesRemoteStorage } from '../../../lib/store.mjs';
+import { fetchAudioBuffer } from '../../../lib/voice.mjs';
 import { tidyMemory, searchMemories } from '../../../lib/core.mjs';
 import {organize,generateStory} from '../../../lib/ai.mjs';
+import {voiceConfigured,enrollVoice,synthesizeVoice,cacheKey} from '../../../lib/voice.mjs';
 import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
 
 export const runtime='nodejs';
@@ -37,6 +39,9 @@ export async function GET(request,{params}) {
     if(parts[0]==='search') {
       const q=new URL(request.url).searchParams.get('q');
       return json({memories:searchMemories((await all('memories')).filter(m=>m.status==='confirmed'),q),mode:'keyword'});
+    }
+    if(parts[0]==='voice'&&parts[1]==='status') {
+      return json({configured:voiceConfigured(),provider:'cosyvoice'});
     }
     if(parts[0]==='media') {
       const file=parts[1]||'';
@@ -120,7 +125,15 @@ export async function POST(request,{params}) {
       }
       if(parts[1]==='register') {
         if(!await hasAdmin())throw new Error('请先创建管理员账号');
-        const body=await request.json();const user=await acceptInvite(body.code,body);
+        const body=await request.json();
+        const code=String(body.code||'').trim();
+        let user;
+        if(code) {
+          user=await acceptInvite(code,body);
+          if(user.role!=='admin') throw new Error('管理员注册需要管理员邀请码');
+        } else {
+          user=await createUser(body,'admin');
+        }
         return setSessionCookie(json({user},201),await createSession(user.id),request);
       }
       if(parts[1]==='logout') {
@@ -208,6 +221,43 @@ export async function POST(request,{params}) {
       const [month,day]=date.split('-').map(Number);const d=new Date(2024,month-1,day);
       if(d.getMonth()!==month-1||d.getDate()!==day) throw new Error('日期不合法');
       return json(await put('anniversaries',{id:randomUUID(),familyId:'family',title,date,memoryIds:[]}));
+    }
+    if(parts[0]==='voice'&&parts[1]==='enroll') {
+      if(!voiceConfigured())return json({error:'未配置声音合成服务，请联系管理员'},503);
+      const {memberId,audioUrl,consent}=body;
+      if(!memberId||!audioUrl) throw new Error('缺少成员或录音');
+      const member=await get('members',memberId);if(!member) throw new Error('成员不存在');
+      let source=audioUrl;
+      if(typeof audioUrl==='string'&&audioUrl.startsWith('/api/media/')) {
+        const name=audioUrl.split('/').pop();
+        const upload=await get('uploads',name);
+        if(!upload?.blobUrl) throw new Error('声音复刻需要 Vercel Blob 存储支持；请确认已连接 Blob 后重试。');
+        source=upload.blobUrl;
+      }
+      const result=await enrollVoice({memberId,audioUrl:source,consent});
+      const updated={...member,voiceId:result.voiceId,voiceStatus:'ready',voiceEnrolledAt:new Date().toISOString(),voiceConsent:Boolean(consent)};
+      await put('members',updated);
+      return json(updated,201);
+    }
+    if(parts[0]==='voice'&&parts[1]==='speak') {
+      if(!voiceConfigured())return json({error:'未配置声音合成服务，请联系管理员'},503);
+      const {memberId,text,options}=body;
+      if(!text||!text.trim()) throw new Error('合成文本为空');
+      let member=null;
+      if(memberId){member=await get('members',memberId);}
+      if(!member||!member.voiceId) return json({error:'该成员尚未复刻声音',voiceId:null},404);
+      const key=cacheKey(member.voiceId,text,options||{});
+      const cached=await get('voice_cache',key);
+      if(cached?.blobUrl) return json({audioUrl:cached.blobUrl,cached:true,voiceId:member.voiceId});
+      const {audioUrl,format}=await synthesizeVoice({voiceId:member.voiceId,text,options});
+      let finalUrl=audioUrl;
+      // 落盘到 Blob 再缓存：无论返回内联 base64 还是临时签名 url，都转成稳定的 Blob 地址，
+      // 避免重复计费与临时 url 失效。
+      const buffer=audioUrl.startsWith('data:')?Buffer.from(audioUrl.split(',')[1],'base64'):await fetchAudioBuffer(audioUrl);
+      const name=`voice-${key}.${format}`;
+      finalUrl=(await saveMedia(name,buffer,`audio/${format}`)).blobUrl||finalUrl;
+      await put('voice_cache',{id:key,memberId:member.id,voiceId:member.voiceId,text:text.slice(0,200),blobUrl:finalUrl,format,createdAt:new Date().toISOString()});
+      return json({audioUrl:finalUrl,cached:false,voiceId:member.voiceId});
     }
     return json({error:'接口不存在'},404);
   }catch(e){return bad(e);}
