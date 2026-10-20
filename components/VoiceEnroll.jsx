@@ -11,6 +11,7 @@ export default function VoiceEnroll({member,api,notify,close,refresh}) {
   const [mediaUrl,setMediaUrl]=useState(null); // /api/media/xxx
   const [busy,setBusy]=useState(false);
   const [consent,setConsent]=useState(false);
+  const [mediaName,setMediaName]=useState(null); // 已选录音文件名
   const mediaRef=useRef(null);
   const chunksRef=useRef([]);
   const recorderRef=useRef(null);
@@ -33,12 +34,14 @@ export default function VoiceEnroll({member,api,notify,close,refresh}) {
   };
   const stopRecording=()=>{recorderRef.current?.stop();setRecording(false);};
 
-  const uploadAndSet=async(blob)=>{
+  const uploadAndSet=async(blob,name)=>{
     setBusy(true);
     try{
-      const form=new FormData();form.append('file',blob,'voice.webm');
+      // 上传接口按扩展名决定存储类型；文件名跟随真实来源（现场录音为 webm，文件上传保留原扩展名）。
+      const safeName=name||'voice.webm';
+      const form=new FormData();form.append('file',blob,safeName);
       const result=await api('/upload',{method:'POST',body:form});
-      setMediaUrl(result.url);
+      setMediaUrl(result.url);setMediaName(safeName);
       notify('录音已保存，可以开始复刻');
     }catch(e){notify(e.message,'error');}
     finally{setBusy(false);}
@@ -46,7 +49,11 @@ export default function VoiceEnroll({member,api,notify,close,refresh}) {
 
   const onFile=async e=>{
     const file=e.target.files?.[0];if(!file)return;
-    await uploadAndSet(file);
+    // 浏览器对 file.type 可能为空，按扩展名兜底，确保 /upload 存为音频。
+    const ext=(file.name.split('.').pop()||'wav').toLowerCase();
+    const typed=(file.type&&file.type.startsWith('audio/'))?file:new File([file],`voice.${ext}`,{type:`audio/${ext==='mp3'?'mpeg':ext}`});
+    setMediaName(file.name);
+    await uploadAndSet(typed,file.name);
   };
 
   const enroll=async()=>{
@@ -75,8 +82,9 @@ export default function VoiceEnroll({member,api,notify,close,refresh}) {
         </button>
         <p>{recording?'正在录音，说完点击停止（建议 5–20 秒）':'点击开始录音，朗读一段熟悉的话'}</p>
       </div>}
-      {mode==='upload'&&<Field label="选择一段录音文件"><input type="file" accept="audio/*" onChange={onFile} disabled={busy}/></Field>}
-      {mediaUrl&&<p className="voice-ready"><Icon name="check"/> 已准备好待复刻的录音。</p>}
+      {mode==='upload'&&<Field label="选择一段录音文件（mp3 / wav / m4a 等，5–20 秒清晰朗读）"><input type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" onChange={onFile} disabled={busy}/></Field>}
+      {mode==='upload'&&!mediaUrl&&<p className="voice-hint"><Icon name="info"/> 也可直接现场录音：切换到「现场录音」即可。</p>}
+      {mediaUrl&&<p className="voice-ready"><Icon name="check"/> 已就绪：{mediaName||'待复刻的录音'}</p>}
       <label className="check-row consent-row">
         <input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/>
         <span>我同意用这段录音复刻 <strong>{member.name}</strong> 本人的声音，仅用于家庭陪伴回放。</span>

@@ -21,3 +21,55 @@
 body:has(.main-content[data-role="viewer"]) .page-heading>.btn,body:has(.main-content[data-role="viewer"]) .favorite-button,body:has(.main-content[data-role="viewer"]) .create-album-card,body:has(.main-content[data-role="viewer"]) .calendar-section .btn,body:has(.main-content[data-role="viewer"]) .family-grid .family-remove,body:has(.main-content[data-role="viewer"]) .anniversary .icon-button,body:has(.main-content[data-role="viewer"]) .memory-detail .detail-action-row,body:has(.main-content[data-role="viewer"]) .comment-form,body:has(.main-content[data-role="viewer"]) .modal:has(.album-detail-memories) .ai-helper,body:has(.main-content[data-role="viewer"]) .story-actions,body:has(.main-content[data-role="viewer"]) .modal:has(.album-detail-memories) .modal-actions,body:has(.main-content[data-role="viewer"]) .settings-panel,body:has(.main-content[data-role="viewer"]) .settings-info .btn{display:none!important}
 @media(max-width:760px){.auth-screen{grid-template-columns:1fr}.auth-intro{padding:25px 24px;min-height:150px}.auth-intro h1{font-size:31px;margin:7px 0 5px}.auth-intro p{font-size:14px}.auth-art,.auth-intro small{display:none}.auth-panel{padding:35px 24px}.auth-box h2{font-size:24px}.auth-box>p{margin-bottom:22px}.auth-note{margin-top:28px}}
 .voice-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;margin:6px 2px 0}.voice-enroll .voice-tabs{display:flex;gap:8px;margin-bottom:18px}.voice-enroll .voice-tabs button{flex:1;padding:10px;border:1px solid var(--border);background:#fff;border-radius:8px;font-size:12px;color:#8a987b}.voice-enroll .voice-tabs button.active{background:#e8f0df;color:#5f7d4e;border-color:#cfe0bd}.voice-enroll .voice-record{display:flex;flex-direction:column;align-items:center;gap:12px;padding:12px 0 4px}.voice-enroll .record-button{width:74px;height:74px;border-radius:50%;border:0;background:#e5ecdc;color:#5f7d4e;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s,background .15s}.voice-enroll .record-button:hover{transform:scale(1.05)}.voice-enroll .record-button.recording{background:#d98c85;color:#fff;animation:pulseRed 1.4s infinite}.voice-enroll .voice-record p{font-size:11px;color:#9aa890;text-align:center;line-height:1.8}.voice-enroll .voice-ready{display:flex;align-items:center;gap:6px;color:#5f7d4e;font-size:11px;margin:14px 0 0}.voice-enroll .consent-row{font-size:11px;color:#7d8b71;line-height:1.7;margin:16px 0 6px;align-items:flex-start;gap:9px}.voice-enroll .consent-row input{margin-top:2px}.voice-enroll .consent-row strong{color:#5f7d4e}@keyframes pulseRed{0%{box-shadow:0 0 0 0 #d98c8580}70%{box-shadow:0 0 0 14px #d98c8500}100%{box-shadow:0 0 0 0 #d98c8500}}
+
+/* ===== 温柔风格层：覆盖默认极简样式（更暖、更圆、更柔） ===== */
+:root{
+  --bg:#fbf6ef;--paper:#fffdf9;--ink:#4a4339;--muted:#a99e8f;
+  --green:#6e9a7e;--green-dark:#557a63;--border:#efe6d8;
+  --sage:#f1ece1;--peach:#fbeede;--lavender:#f1eef7;--gold:#fbf1d8;--blue:#eaf1f3;
+  --shadow:0 14px 40px #7a6a4e18;--radius:18px;--radius-sm:13px;
+  --serif:'Noto Serif SC','Songti SC','STKaiti','KaiTi',serif;
+}
+body{
+  background:
+    radial-gradient(1200px 620px at 86% -12%, #fbe8d8aa, transparent 60%),
+    radial-gradient(940px 520px at -6% 112%, #e6efe2aa, transparent 55%),
+    linear-gradient(180deg,#fdf8f1,#f8f1e8);
+  background-attachment:fixed;color:var(--ink);
+  font-family:'PingFang SC','Microsoft YaHei',system-ui,sans-serif;letter-spacing:.2px;
+}
+.sidebar{background:linear-gradient(180deg,#fffdf9,#fbf4ea);border-right:1px solid #f0e7d8}
+.brand-mark{background:linear-gradient(135deg,#eaf3e3,#fbeede);color:#6e9a7e;border-radius:16px}
+.family-switch{background:#fbf4ea;border-color:#efe3d2}
+.family-house{background:linear-gradient(135deg,#eaf3e3,#fbeede);color:#6e9a7e}
+.nav-item.active{background:#f3ece0;color:#557a63}
+.nav-item:hover{background:#f6efe4}
+.memory-card,.album-card,.family-card,.stat-card,.daily-card,.notice-card,.panel,.feedback-stat,.create-album-card,.wide-notice,.account-actions,.auth-note,.card{
+  border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);
+  background:var(--paper);transition:transform .25s ease, box-shadow .25s ease;}
+.memory-card:hover,.album-card:hover,.family-card:hover,.stat-card:hover,.daily-card:hover,.panel:hover{transform:translateY(-3px);box-shadow:0 18px 46px #7a6a4e22}
+.cover,.album-card .cover,.memory-card .cover{border-radius:var(--radius-sm)}
+input,select,textarea{border-radius:var(--radius-sm);border:1px solid #e8ddcc;background:#fffdf9;padding:12px 14px;box-shadow:inset 0 1px 2px #00000005}
+input:focus,select:focus,textarea:focus{border-color:var(--green);box-shadow:0 0 0 4px #6e9a7e1f}
+.btn{border-radius:999px;padding:12px 22px}
+.btn-primary{background:linear-gradient(135deg,#7fae8c,#6e9a7e);border:1px solid #6e9a7e;box-shadow:0 10px 24px #6e9a7e33;color:#fff}
+.btn-primary:hover{background:linear-gradient(135deg,#6e9a7e,#557a63);transform:translateY(-2px);box-shadow:0 14px 30px #557a6340}
+.btn-secondary{background:#fffdf9;border-color:#e7dccb;color:#557a63}
+.btn-secondary:hover{background:#fbf4ea}
+.modal{background:linear-gradient(180deg,#fffdf9,#fdf7ee);border-radius:24px;border:1px solid #efe5d6;box-shadow:0 24px 70px #5b4a2e25}
+.modal-backdrop{background:#3a2f2280;backdrop-filter:blur(8px)}
+.avatar{border-radius:50%}
+h1,h2,h3,.card-title,.section-title h2,.page-heading h1,.modal-heading h2{font-family:var(--serif);font-weight:600;letter-spacing:.5px}
+.hero-banner{background:linear-gradient(135deg,#fdf3e7,#eef4e9);border-radius:24px;border:1px solid #f0e6d6}
+.hero-copy h2{font-family:var(--serif);color:#5d7a64}
+.elder-app{background:linear-gradient(180deg,#fdf8f1,#f6efe2);--green:#6e9a7e;--green-dark:#557a63}
+.elder-menu-item{background:linear-gradient(160deg,#fffdf9,#fbf4ea);border-radius:20px;border:1px solid #efe5d6}
+.voice-badge{background:#f3ece0;color:#6e9a7e;border-radius:999px;padding:3px 9px}
+.eyebrow{color:#b3a692;letter-spacing:1.6px}
+.sage{background:#eef3e6;color:#6e9a7e}.peach{background:#fbeede;color:#c08a5e}.lavender{background:#f1eef7;color:#8d83a4}.gold{background:#fbf1d8;color:#b08a3e}.blue{background:#eaf1f3;color:#6f93a0}
+.auth-screen{background:linear-gradient(120deg,#fdf8f1,#f6efe2)}
+.auth-intro{background:linear-gradient(160deg,#eef4e9,#fbeede)}
+.auth-art{background:#fffdf9}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#e3d8c6;border-radius:999px}
+::-webkit-scrollbar-track{background:transparent}
