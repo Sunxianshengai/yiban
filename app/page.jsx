@@ -43,8 +43,9 @@ export default function Page() {
 
   // 全站字号缩放：由 applyFontScale() 直接写 <html> 的内联 font-size（见下方函数注释）。
   // 必须在所有 early return 之前，否则 Hooks 顺序会变。
-  // 同一时刻只允许一个写入者：设置页内由 Personalize 立即写入以保证点击→预览 0 延迟，
-  // 这里负责其它页面和刷新后的落地；applyFontScale 内部会比对，值没变就不碰 DOM。
+  // 这里是**唯一**的字号写入源：登录落地、刷新、切页、保存回填都走它。
+  // 设置页点击档位的那一下另有一次「立刻写」，两者写的是同一个值，不会打架；
+  // 千万不要在别处再加一个「监听本地预览值」的 effect —— 那会让旧值把新值覆盖回去。
   const activePrefs=state.account?.preferences||{ageGroup:'adult',fontScale:1,accent:'sage',highContrast:false};
   const activeScale=Number(activePrefs.fontScale)||1;
   useEffect(()=>{applyFontScale(activeScale);},[activeScale]);
@@ -148,14 +149,16 @@ function Personalize({state,save,notify}) {
   // 若放在 useEffect 里，顺序会变成「React 重渲染整页 → 提交 → 再改字号 → 再重排整页」，
   // 同一帧干两次全量布局。这里把写入推到下一帧：根字号从 14px 换到 21px，浏览器重新折行
   // 整页文字固定要 40~50ms，这一步本身省不掉，但可以不让它挡住按钮的 :active 反馈。
-  const previewScale=pending?pending.fontScale:saved.fontScale;
   const scaleRef=useRef(0);
   const pick=(key,value)=>{
     set(key,value);
     if(key==='fontScale'){scaleRef.current=value;requestAnimationFrame(()=>applyFontScale(scaleRef.current));}
   };
-  // 首次挂载 / 从别处进入设置页时补齐当前档位
-  useEffect(()=>{applyFontScale(previewScale);},[previewScale]);
+  // 注意：这里**不能**再监听 previewScale 去写字号。
+  // 曾经这里有一个 useEffect(()=>applyFontScale(previewScale),[previewScale])：
+  // 保存完成时「pending 清空 → 读回 saved」与「PATCH 响应回填 state.account」是两次渲染，
+  // 中间那一次 saved 还是旧字号，于是刚点的高度被旧值覆盖 —— 就是用户看到的「又跳回上一个字号」。
+  // 现在只保留 Page 里那一个写入源（监听 activePrefs.fontScale），它才是权威值。
   // 自动保存：停止操作 700ms 后落库。合并期间再点只重排计时器，不会叠加请求；
   // 卸载时只取消计时器、不清 pending，避免最后一次改动丢失。
   useEffect(()=>{
