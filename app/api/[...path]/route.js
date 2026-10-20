@@ -276,7 +276,7 @@ export async function PATCH(request,{params}) {
       const prefs=sanitizePreferences({...user.preferences,...body});
       const updated={...user,preferences:prefs};
       await put('users',updated);
-      return json({preferences:publicUser(updated).preferences});
+      return json({preferences:prefs});
     }
     const auth=await guard(request,'editor');if(auth.error)return auth.error;
     const body=await request.json();
