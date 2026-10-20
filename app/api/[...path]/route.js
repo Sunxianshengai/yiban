@@ -9,6 +9,7 @@ import { tidyMemory, searchMemories } from '../../../lib/core.mjs';
 import {organize,generateStory} from '../../../lib/ai.mjs';
 import {voiceConfigured,enrollVoice,synthesizeVoice,cacheKey} from '../../../lib/voice.mjs';
 import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
+import {AGE_GROUPS,ACCENTS,FONT_SCALES,sanitizePreferences} from '../../../lib/core.mjs';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -267,6 +268,16 @@ export async function PATCH(request,{params}) {
   const {path:parts}=await params;
   try {
     const originError=ensureOrigin(request);if(originError)return originError;
+    // 个性化偏好：任何已登录用户都能修改「自己」的偏好（不分角色）。
+    if(parts[0]==='auth'&&parts[1]==='preferences') {
+      const authSelf=await guard(request);if(authSelf.error)return authSelf.error;
+      const body=await request.json().catch(()=>({}));
+      const user=await get('users',authSelf.user.id);if(!user)return json({error:'账号不存在'},404);
+      const prefs=sanitizePreferences({...user.preferences,...body});
+      const updated={...user,preferences:prefs};
+      await put('users',updated);
+      return json({preferences:publicUser(updated).preferences});
+    }
     const auth=await guard(request,'editor');if(auth.error)return auth.error;
     const body=await request.json();
     if(parts[0]==='memories') {
