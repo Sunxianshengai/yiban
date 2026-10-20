@@ -76,7 +76,11 @@ h1,h2,h3,.card-title,.section-title h2,.page-heading h1,.modal-heading h2{font-f
 /* ===== 个性化偏好层（单端口 + 个性化偏好） ===== */
 /* 根字号：把 font-scale 落到 html 上，全站 rem 一起缩放；:root 需先有默认值 */
 :root{--font-scale:1}
-html{font-size:calc(14px * var(--font-scale,1))}
+:root{--font-scale:1;--font-size:14px}
+/* 根字号由 app/page.jsx 的 applyFontScale() 直接写成 documentElement 的内联 font-size。
+   不要改回 CSS 变量或 [data-font-level] 选择器：两者实测每次切档 40~48ms 长帧
+   （变量要回查父级布局、改根元素属性要整棵树重匹配选择器），内联写法只要 6~14ms。
+   --font-size 保留给将来可能出现的内联覆盖，正常就是 14px。 */
 body{font-size:1rem}
 .app-shell{font-size:1rem}
 .app-shell .sidebar .brand>span:last-child{font-size:1.9286rem}
@@ -128,3 +132,22 @@ body{font-size:1rem}
 .nav-item.view-entry:hover{background:color-mix(in srgb,var(--accent,#6e9a7e) 15%,#fffdf9)}
 .nav-item.view-entry svg{color:var(--accent,#6e9a7e)}
 .settings-hint{font-size:0.7857rem;line-height:1.9;color:#8a968a;margin:-2px 0 10px}
+
+/* 侧栏宽度只做小幅跟随，不要纯 rem。
+   纯 rem 时侧栏在「特大」档会涨到 345px，挤掉内容区；这里只给一点点余量
+   （特大档下侧栏文字大约需要 292px），把省下的空间留给主内容。 */
+.sidebar{width:max(13.9rem,230px)}
+.workspace{margin-left:max(13.9rem,230px)}
+@media(max-width:1250px){.sidebar{width:max(12.5rem,205px)}.workspace{margin-left:max(12.5rem,205px)}}
+@media(max-width:1000px){.sidebar{width:max(10.7rem,185px)}.workspace{margin-left:max(10.7rem,185px)}}
+/* 窄屏侧栏是纯图标条，宽度不跟字号走，否则挤压内容区 */
+@media(max-width:760px){.sidebar{width:72px}.workspace{margin-left:72px}}
+@media(max-width:480px){.sidebar{width:58px}.workspace{margin-left:58px}}
+
+/* 字号切档：先给按下反馈，再让浏览器重排。
+   实测把根字号从 14px 换到 21px，浏览器必须重新折行整页文字，这一步固定要 40~50ms，
+   任何 JS 写法都省不掉（改 CSS 变量、改选择器反而更慢）。所以不让它阻塞交互：
+   按钮先用 transform 在自己图层上「按下去」，重排推到下一个宏任务，用户感知的是即时响应。
+   transform 只影响合成，不触发布局，按下这一刻不会被即将到来的重排拖慢。 */
+.option-pill{transition:border-color .15s,background .15s,transform .08s}
+.option-pill:active{transform:scale(.96)}

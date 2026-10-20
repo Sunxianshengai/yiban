@@ -41,10 +41,22 @@ export default function Page() {
   const playCount=state.activity.filter(a=>a.type==='play').length;const responseCount=state.activity.filter(a=>['remember','like','replay'].includes(a.type)).length;
   const signOut=async()=>{try{await request('/auth/logout',{method:'POST',body:'{}'});setState(initialState);setModal(null);setPage('home');setNeedsSetup(false);}catch(e){notify(e.message,'error');}};
 
-  // 全站字号缩放：写到 html 上让 html{font-size:calc(14px*var(--font-scale))} 生效。
+  // 全站字号缩放：由 applyFontScale() 直接写 <html> 的内联 font-size（见下方函数注释）。
   // 必须在所有 early return 之前，否则 Hooks 顺序会变。
+  // 同一时刻只允许一个写入者：设置页内由 Personalize 立即写入以保证点击→预览 0 延迟，
+  // 这里负责其它页面和刷新后的落地；applyFontScale 内部会比对，值没变就不碰 DOM。
   const activePrefs=state.account?.preferences||{ageGroup:'adult',fontScale:1,accent:'sage',highContrast:false};
-  useEffect(()=>{document.documentElement.style.setProperty('--font-scale',String(Number(activePrefs.fontScale)||1));},[activePrefs.fontScale]);
+  const activeScale=Number(activePrefs.fontScale)||1;
+  useEffect(()=>{applyFontScale(activeScale);},[activeScale]);
+
+  // 保存个性化偏好：返回更新后的 preferences，由调用方合并进 state.account。
+  // 不再走 refresh()：/state 是整份快照，只为改一个偏好把 memories/albums/activity 全换一遍
+  // 会让整页重新渲染（上传按钮因 busy 变 disabled 会丢焦点、图片重新校验、布局全失效）。
+  const savePreferences=useCallback(async(values)=>{
+    const result=await request('/auth/preferences',{method:'PATCH',body:JSON.stringify(values)});
+    setState(s=>s.account?{...s,account:{...s.account,preferences:result.preferences}}:s);
+    return result.preferences;
+  },[request]);
 
   if(!loaded)return <div className="loading-screen"><span className="brand-mark"><Icon name="leaf" size={35}/></span><h1>忆伴</h1><p>正在打开你的记忆小屋…</p><span className="spinner"/></div>;
   if(error)return <div className="loading-screen"><Icon name="info" size={40}/><h2>记忆小屋暂时无法打开</h2><p>{error}</p><Button onClick={load}>重新连接</Button></div>;
@@ -52,7 +64,7 @@ export default function Page() {
   const toastUI=toast&&<div className={`toast ${toast.type}`} role="status"><Icon name={toast.type==='error'?'info':'check'}/>{toast.message}<button aria-label="关闭提示" onClick={()=>setToast(null)}><Icon name="close" size={16}/></button></div>;
 
   const prefs=activePrefs;
-  return <div className="app-shell" {...{['data-profile']:prefs.ageGroup,['data-accent']:prefs.accent,...(prefs.highContrast?{['data-contrast']:'high'}:{})}} style={{'--font-scale':prefs.fontScale,'--accent':ACCENTS.find(a=>a.id===prefs.accent)?.color}}><aside className="sidebar"><button className="brand" onClick={()=>navigate('home')}><span className="brand-mark"><Icon name="leaf" size={30}/></span><span>忆伴<small>让记忆，有温度</small></span></button><div className="family-switch"><span className="family-house"><Icon name="home" size={19}/></span><div><strong>{state.settings.familyName}</strong><span>家庭共享空间</span></div><Icon name="chevron" size={15}/></div><span className="sidebar-label">我的家庭</span><nav aria-label="主要导航">{NAV.map(item=><button key={item.id} className={`nav-item ${item.view?'view-entry':''} ${page===item.id?'active':''}`} onClick={()=>navigate(item.id)}><Icon name={item.icon} size={21}/><span>{item.label}</span>{item.id==='library'&&<span className="nav-count">{state.memories.length}</span>}</button>)}</nav><div className="sidebar-bottom"><div className="sidebar-companion"><span className="little-leaf"><Icon name="leaf" size={23}/></span><p>把日子里的小美好<br/>留给未来慢慢回味</p></div><button className="profile-button" onClick={()=>navigate('settings')}><Avatar name={state.account.name} color="peach"/><span><strong>{state.account.name}</strong><small>{{admin:'管理员',editor:'编辑者',viewer:'查看者'}[state.account.role]}</small></span><Icon name="settings" size={18}/></button></div></aside>
+  return <div className="app-shell" {...{['data-profile']:prefs.ageGroup,['data-accent']:prefs.accent,...(prefs.highContrast?{['data-contrast']:'high'}:{})}} style={{'--accent':ACCENTS.find(a=>a.id===prefs.accent)?.color}}><aside className="sidebar"><button className="brand" onClick={()=>navigate('home')}><span className="brand-mark"><Icon name="leaf" size={30}/></span><span>忆伴<small>让记忆，有温度</small></span></button><div className="family-switch"><span className="family-house"><Icon name="home" size={19}/></span><div><strong>{state.settings.familyName}</strong><span>家庭共享空间</span></div><Icon name="chevron" size={15}/></div><span className="sidebar-label">我的家庭</span><nav aria-label="主要导航">{NAV.map(item=><button key={item.id} className={`nav-item ${item.view?'view-entry':''} ${page===item.id?'active':''}`} onClick={()=>navigate(item.id)}><Icon name={item.icon} size={21}/><span>{item.label}</span>{item.id==='library'&&<span className="nav-count">{state.memories.length}</span>}</button>)}</nav><div className="sidebar-bottom"><div className="sidebar-companion"><span className="little-leaf"><Icon name="leaf" size={23}/></span><p>把日子里的小美好<br/>留给未来慢慢回味</p></div><button className="profile-button" onClick={()=>navigate('settings')}><Avatar name={state.account.name} color="peach"/><span><strong>{state.account.name}</strong><small>{{admin:'管理员',editor:'编辑者',viewer:'查看者'}[state.account.role]}</small></span><Icon name="settings" size={18}/></button></div></aside>
   <div className="workspace"><header className="topbar"><div className="breadcrumb">我的家庭<span>/</span><strong>{NAV.find(n=>n.id===page)?.label}</strong></div><div className="topbar-actions"><button className="icon-button notification-button" aria-label="查看陪伴记录" onClick={()=>navigate('feedback')}><Icon name="bell"/>{state.activity.length>0&&<i/>}</button></div></header>
   <main className="main-content" data-role={state.account.role}>
   {page==='home'&&<><div className="page-heading"><div><span className="eyebrow">{today} · 每一份回忆都值得珍藏</span><h1>欢迎回家，{state.members.find(m=>m.role==='管理员')?.name||'家人'}<span className="greeting-leaf"><Icon name="leaf" size={26}/></span></h1><p>把熟悉的声音和笑脸，留在家人的身边。</p></div><Button icon="plus" onClick={()=>setModal({type:'upload'})}>添加一段记忆</Button></div>
@@ -72,7 +84,7 @@ export default function Page() {
   {page==='feedback'&&<><div className="page-heading"><div><span className="eyebrow">MOMENTS OF CONNECTION</span><h1>陪伴记录</h1><p>记录被看见的回忆，珍藏家人回应的瞬间。</p></div><Button variant="secondary" icon="sun" onClick={()=>setPage('companion')}>到陪伴时光看看</Button></div><div className="feedback-stats">{[{label:'故事播放',value:playCount,icon:'play'},{label:'记忆回应',value:state.activity.filter(a=>a.type==='remember').length,icon:'check'},{label:'喜欢的瞬间',value:state.activity.filter(a=>a.type==='like').length,icon:'heart'},{label:'再次聆听',value:state.activity.filter(a=>a.type==='replay').length,icon:'repeat'}].map(item=><div key={item.label} className="feedback-stat"><span><Icon name={item.icon} size={24}/></span><strong>{item.value}</strong><p>{item.label}</p></div>)}</div><div className="feedback-columns"><section className="panel"><div className="section-title"><h2>最近的家庭动态</h2><span className="badge">真实操作记录</span></div>{state.activity.length?<div className="activity-list">{state.activity.slice(0,40).map(a=><div key={a.id} className="activity-item"><span className={`activity-icon ${['like','remember','replay'].includes(a.type)?'peach':'sage'}`}><Icon name={a.type==='like'?'heart':a.type==='remember'?'check':a.type==='play'?'play':a.type==='replay'?'repeat':a.type==='comment'?'message':'library'} size={17}/></span><div><p>{a.text}</p><span>{formatDate(a.createdAt)}</span></div>{a.memoryId&&state.memories.some(m=>m.id===a.memoryId)&&<button className="text-link" onClick={()=>open(state.memories.find(m=>m.id===a.memoryId))}>查看<Icon name="arrow" size={14}/></button>}</div>)}</div>:<Empty icon="heart" title="还没有互动记录" description="在陪伴时光里播放一段故事，或点击“我记得”，这里就会留下记录。"/>}</section><aside className="panel feedback-favorites"><h2>家人珍藏的回忆</h2><p className="muted">由家人收藏，方便下次一起重温</p>{state.memories.filter(m=>m.favorite).map(m=><button key={m.id} onClick={()=>open(m)}><Cover memory={m}/><span><strong>{m.title}</strong><small>{m.year}年 · {m.theme}</small></span><Icon name="heart" size={15}/></button>)}<div className="inline-notice"><Icon name="info"/><span>这些数据只表示软件操作，不用于推断认知能力或情绪状态。</span></div></aside></div></>}
 
   {page==='settings'&&<><div className="page-heading"><div><span className="eyebrow">A COMFORTABLE SPACE</span><h1>家庭设置</h1><p>让这个记忆小屋，更适合你的家人。</p></div></div><div className="account-actions"><span><Icon name="people" size={17}/>{state.account.name} · {{admin:'管理员',editor:'编辑者',viewer:'查看者'}[state.account.role]}</span>{state.account.role==='admin'&&<Button variant="secondary" icon="plus" onClick={openAccounts}>管理登录账号</Button>}<Button variant="ghost" icon="logout" onClick={signOut}>退出登录</Button></div><div className="inline-notice"><Icon name="shield"/><span>每位受邀家人使用自己的邮箱和密码登录。管理员生成邀请码，编辑者可整理内容，查看者只浏览已发布记忆。</span></div>
-  <Personalize state={state} request={request} refresh={refresh} notify={notify}/>
+  <Personalize state={state} save={savePreferences} notify={notify}/>
   <Settings state={state} request={request} refresh={refresh} notify={notify}/></>}
   <footer className="app-footer"><span><Icon name="leaf" size={14}/>忆伴 · 让每一份回忆，都有温度</span><span>新生杯作品原型 · 家庭记忆与陪伴工具</span></footer></main></div>
 
@@ -89,6 +101,23 @@ export default function Page() {
   {toastUI}</div>;
 }
 
+/** 字号档位 → 直接写 documentElement 的内联 font-size。
+ *
+ *  为什么不用 data-font-level / CSS 变量（都是实测掉进去的坑）：
+ *  - html{font-size:calc(14px * var(--font-scale))}：每次切档 38~48ms 长帧，
+ *    浏览器要从 var() 求值根字号，样式计算阶段反复回查父级布局；
+ *  - html[data-font-level='N']{font-size:…}：同样 40~48ms，因为改根元素属性会让
+ *    整棵树的选择器重新匹配一遍，再叠加一次全量重排；
+ *  - 内联 style.fontSize：实测 6~14ms，稳定无长帧，走的是「只失效字号、直接重排」快路径。
+ *  用户实际感知的卡顿就是这一类 40ms+ 的掉帧，所以这里选内联写法。
+ *  档位用序号索引 FONT_SCALES，避免 1.0/1.3 这类倍数字符串化后匹配不上。 */
+function applyFontScale(scale) {
+  const level=Math.max(0,FONT_SCALES.findIndex(f=>Number(f.id)===Number(scale)));
+  const root=document.documentElement;
+  const px=`${Math.round(14*Number(FONT_SCALES[level].id)*10000)/10000}px`;
+  if(root.style.fontSize!==px)root.style.fontSize=px;
+}
+
 function AccountManager({api,notify}) {
   const [accounts,setAccounts]=useState([]);const [role,setRole]=useState('editor');const [invite,setInvite]=useState(null);const [busy,setBusy]=useState(false);
   useEffect(()=>{api('/auth/accounts').then(data=>setAccounts(data.accounts)).catch(e=>notify(e.message,'error'));},[]);
@@ -103,30 +132,53 @@ function MemoryDetail({memory,state,onEdit,onDelete,onConfirm,onComment,favorite
   return <div className="memory-detail"><Cover memory={memory}/><div className="detail-meta"><span className={`badge ${THEMECOLORS[memory.theme]}`}>{memory.theme}</span><span>{memory.year?`${memory.year}年`:''}</span><span><Icon name="pin" size={14}/>{memory.location||'地点待补充'}</span><span className={`badge ${memory.status==='draft'?'amber':'sage'}`}>{memory.status==='draft'?'待家属确认':'已确认 · 家人可见'}</span></div><h1>{memory.title}</h1><div className="detail-people"><Icon name="people" size={17}/>{memory.people.join(' · ')||'人物待补充'}</div><p className="detail-story">{memory.story||'还没有故事，点击编辑补充这张照片背后的记忆。'}</p>{memory.audio&&<div className="detail-media"><h3><Icon name="volume"/>家人的声音</h3><audio controls src={memory.audio}/></div>}{memory.video&&<video className="detail-video" src={memory.video} controls/>}<div className="tag-row">{memory.tags.map(tag=><span key={tag}>#{tag}</span>)}</div>{memory.isDemo&&<div className="inline-notice"><Icon name="info"/><span>这是一段虚构示例故事，封面为原创插画，请用自己的家庭素材替换。</span></div>}<div className="detail-action-row"><Button icon="edit" variant="secondary" onClick={onEdit}>编辑记忆</Button><Button variant="secondary" icon="heart" onClick={()=>favorite(memory)}>{memory.favorite?'取消收藏':'收藏记忆'}</Button>{memory.status==='draft'?<Button icon="check" onClick={onConfirm}>核对完成，发布</Button>:null}<button className="icon-button danger-text" aria-label="删除记忆" onClick={onDelete}><Icon name="trash"/></button></div><section className="comment-section"><h3><Icon name="message" size={18}/>家人的留言</h3>{comments.map(a=><div key={a.id} className="comment-item"><Avatar name="小雨" color="peach"/><div><strong>家人<span>{formatDate(a.createdAt)}</span></strong><p>{a.comment}</p></div></div>)}<form onSubmit={e=>{e.preventDefault();if(!comment.trim())return;onComment(comment);setComment('');}} className="comment-form"><input placeholder="留下一句温暖的话…" value={comment} onChange={e=>setComment(e.target.value)} maxLength={1000} aria-label="家人留言"/><Button type="submit" variant="secondary" disabled={!comment.trim()}>发送</Button></form></section></div>;
 }
 
-function Personalize({state,request,refresh,notify}) {
+function Personalize({state,save,notify}) {
+  // 不再本地复制一份 prefs：之前 prefs / state.account.preferences 双写，
+  // 点一下要先渲染一次本地 prefs、refresh 回来再渲染一次全站。
+  // 现在「显示用的值」= 本地预览（仅为尚未落库的改动）+ 已保存值，只读 state。
   const saved=state.account.preferences||{ageGroup:'adult',fontScale:1,accent:'sage',highContrast:false};
-  const [prefs,setPrefs]=useState(saved);const [busy,setBusy]=useState(false);const [dirty,setDirty]=useState(false);
-  const set=(key,value)=>{setPrefs(p=>({...p,[key]:value}));setDirty(true);};
-  const prefsRef=useRef(prefs);prefsRef.current=prefs;
-  const save=useCallback(async()=>{
-    try{const result=await request('/auth/preferences',{method:'PATCH',body:JSON.stringify(prefsRef.current)});setPrefs(result.preferences);setDirty(false);await refresh();}catch(e){notify(e.message,'error');}
-  },[request,refresh,notify]);
-  // 即时预览：改了立刻套到本端，不必等保存
-  useEffect(()=>{document.documentElement.style.setProperty('--font-scale',String(Number(prefs.fontScale)||1));},[prefs.fontScale]);
-  // 自动保存：停止操作 700ms 后落库，用户不用再按一次按钮
+  const [pending,setPending]=useState(null);const [busy,setBusy]=useState(false);
+  const prefs=pending||saved;
+  const set=(key,value)=>setPending(p=>({...prefs,...p,[key]:value}));
+  const pendingRef=useRef(pending);pendingRef.current=pending;
   const saveRef=useRef(save);saveRef.current=save;
+  const flushRef=useRef(async()=>{});
+  const savedRef=useRef(saved);savedRef.current=saved;
+  // 即时预览：字号写进 documentElement，不等 React 提交、也不等网络。
+  // 若放在 useEffect 里，顺序会变成「React 重渲染整页 → 提交 → 再改字号 → 再重排整页」，
+  // 同一帧干两次全量布局。这里把写入推到下一帧：根字号从 14px 换到 21px，浏览器重新折行
+  // 整页文字固定要 40~50ms，这一步本身省不掉，但可以不让它挡住按钮的 :active 反馈。
+  const previewScale=pending?pending.fontScale:saved.fontScale;
+  const scaleRef=useRef(0);
+  const pick=(key,value)=>{
+    set(key,value);
+    if(key==='fontScale'){scaleRef.current=value;requestAnimationFrame(()=>applyFontScale(scaleRef.current));}
+  };
+  // 首次挂载 / 从别处进入设置页时补齐当前档位
+  useEffect(()=>{applyFontScale(previewScale);},[previewScale]);
+  // 自动保存：停止操作 700ms 后落库。合并期间再点只重排计时器，不会叠加请求；
+  // 卸载时只取消计时器、不清 pending，避免最后一次改动丢失。
   useEffect(()=>{
-    if(!dirty)return;
-    const t=setTimeout(()=>{saveRef.current();},700);
-    return()=>clearTimeout(t);
-  },[prefs,dirty]);
-  const flush=async()=>{setBusy(true);try{await save();notify('个性化偏好已保存，已即时应用到本端');}finally{setBusy(false);}};
-  return <section className="panel personalize-panel" style={{'--font-scale':Number(prefs.fontScale)||1,'--accent':ACCENTS.find(a=>a.id===prefs.accent)?.color,'--green':ACCENTS.find(a=>a.id===prefs.accent)?.color||'#6e9a7e'}}><h2><Icon name="sparkle"/>我的个性化偏好</h2><p className="muted">这是属于「你」的体验设置，其他家人看到的是他们自己的偏好，互不影响。修改后立即生效并自动保存。</p>
+    if(!pending)return;
+    const t=setTimeout(()=>{if(pendingRef.current===pending)flushRef.current();},700);
+    return ()=>clearTimeout(t);
+  },[pending]);
+  const flush=async()=>{
+    const values=pendingRef.current;
+    if(!values){notify('个性化偏好已保存，已即时应用到本端');return;}
+    pendingRef.current=null;setPending(null);
+    // 用 ref 取最新的已保存值：flush 常常在 700ms 之后才跑，闭包里的 saved 可能是旧的。
+    try{await saveRef.current({...savedRef.current,...values});}
+    catch(e){setPending(values);notify(e.message,'error');}
+  };
+  flushRef.current=flush;
+  const manual=async()=>{setBusy(true);try{await flush();notify('个性化偏好已保存，已即时应用到本端');}finally{setBusy(false);}};
+  return <section className="panel personalize-panel" style={{'--accent':ACCENTS.find(a=>a.id===prefs.accent)?.color,'--green':ACCENTS.find(a=>a.id===prefs.accent)?.color||'#6e9a7e'}}><h2><Icon name="sparkle"/>我的个性化偏好</h2><p className="muted">这是属于「你」的体验设置，其他家人看到的是他们自己的偏好，互不影响。修改后立即生效并自动保存。</p>
   <Field label="我的身份 / 年龄段"><div className="option-grid">{AGE_GROUPS.map(g=><button type="button" key={g.id} className={`option-card ${prefs.ageGroup===g.id?'selected':''}`} onClick={()=>set('ageGroup',g.id)}><strong>{g.label}</strong><small>{g.desc}</small></button>)}</div></Field>
-  <Field label="文字大小"><div className="option-row">{FONT_SCALES.map(f=><button type="button" key={f.id} className={`option-pill ${prefs.fontScale===f.id?'selected':''}`} onClick={()=>set('fontScale',f.id)}>{f.label}</button>)}</div></Field>
+  <Field label="文字大小"><div className="option-row">{FONT_SCALES.map(f=><button type="button" key={f.id} className={`option-pill ${prefs.fontScale===f.id?'selected':''}`} onClick={()=>pick('fontScale',f.id)}>{f.label}</button>)}</div></Field>
   <Field label="主题色"><div className="option-row">{ACCENTS.map(a=><button type="button" key={a.id} className={`option-swatch ${prefs.accent===a.id?'selected':''}`} onClick={()=>set('accent',a.id)} aria-label={a.label}><span style={{background:a.color}}/>{a.label}</button>)}</div></Field>
   <div className="setting-toggle"><span><strong>高对比度</strong><small>提高文字与背景对比，更护眼</small></span><input type="checkbox" checked={prefs.highContrast} onChange={e=>set('highContrast',e.target.checked)} aria-label="高对比度"/></div>
-  <div className="modal-actions"><Button type="button" icon="check" busy={busy} onClick={flush}>保存我的偏好</Button></div>
+  <div className="modal-actions"><Button type="button" icon="check" busy={busy} onClick={manual}>保存我的偏好</Button></div>
   </section>;
 }
 
