@@ -294,7 +294,7 @@ export async function PATCH(request,{params}) {
     }
     if(parts[0]==='settings') {
       const old=await get('settings','family');
-      const update={...old,familyName:String(body.familyName??old.familyName).trim().slice(0,60)||old.familyName,elderName:String(body.elderName??old.elderName).trim().slice(0,30)||old.elderName,fontSize:['large','extra'].includes(body.fontSize)?body.fontSize:old.fontSize,highContrast:Boolean(body.highContrast??old.highContrast),autoPlay:Boolean(body.autoPlay??old.autoPlay),speechRate:Math.min(1.2,Math.max(0.5,Number(body.speechRate??old.speechRate)||0.85))};
+      const update={...old,familyName:String(body.familyName??old.familyName).trim().slice(0,60)||old.familyName,fontSize:['large','extra'].includes(body.fontSize)?body.fontSize:old.fontSize,highContrast:Boolean(body.highContrast??old.highContrast),autoPlay:Boolean(body.autoPlay??old.autoPlay),speechRate:Math.min(1.2,Math.max(0.5,Number(body.speechRate??old.speechRate)||0.85))};
       return json(await put('settings',update));
     }
     if(parts[0]==='albums') {

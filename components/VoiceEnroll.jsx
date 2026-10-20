@@ -63,7 +63,7 @@ export default function VoiceEnroll({member,api,notify,close,refresh}) {
     try{
       const updated=await api('/voice/enroll',{method:'POST',body:JSON.stringify({memberId:member.id,audioUrl:mediaUrl,consent:true})});
       await refresh();
-      notify(`${member.name} 的声音已复刻成功，老人端将用这个声音讲故事`);
+      notify(`${member.name} 的声音已复刻成功，讲故事时会用这个声音`);
       close();
     }catch(e){notify(e.message,'error');}
     finally{setBusy(false);}
@@ -89,7 +89,7 @@ export default function VoiceEnroll({member,api,notify,close,refresh}) {
         <input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/>
         <span>我同意用这段录音复刻 <strong>{member.name}</strong> 本人的声音，仅用于家庭陪伴回放。</span>
       </label>
-      <div className="inline-notice"><Icon name="info"/><span>合成的语音为 AI 生成内容，老人端播放时会明确标注「AI 合成」。请仅复刻本人的声音。</span></div>
+      <div className="inline-notice"><Icon name="info"/><span>合成的语音为 AI 生成内容，播放时会明确标注「AI 合成」。请仅复刻本人的声音。</span></div>
       <div className="modal-actions">
         <Button variant="ghost" type="button" onClick={close}>取消</Button>
         <Button icon="volume" busy={busy} disabled={!mediaUrl||!consent} onClick={enroll}>复刻声音</Button>
