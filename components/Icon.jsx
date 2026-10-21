@@ -37,6 +37,7 @@ const paths = {
   grid:'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
   list:'M8 5h13 M8 12h13 M8 19h13 M3 5h.01 M3 12h.01 M3 19h.01',
   info:'M12 11v6 M12 7h.01 M22 12a10 10 0 1 1-20 0a10 10 0 0 1 20 0',
+  roles:'M4 6c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2v6c0 4.4-3.6 8-8 8s-8-3.6-8-8z M9 9h.01 M15 9h.01 M9 14c1 1 5 1 6 0',
 };
 export default function Icon({name,size=20,className='',...rest}) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true" {...rest}><path d={paths[name]||paths.heart}/></svg>;

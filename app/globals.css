@@ -352,3 +352,35 @@ body{font-size:1rem}
   .companion-dock-panel{width:100%;max-height:min(72vh,560px)}
   .companion-dock-panel .companion-feed{min-height:90px;max-height:calc(72vh - 240px)}
 }
+
+/* ---------- 找人说说话 · 一屋子可以换的人 ----------
+   家伴只有一个，是「记得这个家的伙伴」；这里是一群身份原型，
+   心里堵着什么就找哪种人说。所以视觉上要「一排能挑的人」，
+   而不是「一个对话框」——先看到人，才想到可以换。 */
+.roles-page-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:20px;align-items:start}
+.roles-page-main{padding:20px}
+.roles-page-side h2{display:flex;align-items:center;gap:8px;font-family:var(--serif);font-size:1.0714rem}
+.roles{display:flex;flex-direction:column;gap:16px}
+.roles-intro h2{font-family:var(--serif);font-size:1.2857rem;font-weight:600;color:var(--ink)}
+.roles-intro p{font-size:0.8571rem;line-height:1.95;color:#8d9683;margin-top:8px}
+.concern-row{display:flex;flex-wrap:wrap;gap:8px}
+.concern-chip{padding:8px 14px;border-radius:999px;border:1px solid #e8e2d5;background:#fffdf9;color:#8d9683;font-size:0.7857rem;cursor:pointer;transition:border-color .16s,background .16s,color .16s}
+.concern-chip:hover{border-color:color-mix(in srgb,var(--accent) 40%,#e8e2d5);color:#5f6d57}
+.concern-chip.active{background:color-mix(in srgb,var(--accent) 12%,#fffdf9);border-color:color-mix(in srgb,var(--accent) 45%,#e8e2d5);color:color-mix(in srgb,var(--accent) 78%,#3b3323);font-weight:600}
+.roles-hint{font-size:0.7857rem;color:#a3988a;line-height:1.8;margin:0}
+.roles-hint span{color:#8d9683}
+.role-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.role-card{position:relative;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;padding:18px 13px 16px;border-radius:16px;border:1px solid #ece5d7;background:#fffdf9;cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s}
+.role-card:hover{border-color:color-mix(in srgb,var(--accent) 38%,#ece5d7);box-shadow:0 12px 26px #7a6a4e1a;transform:translateY(-2px)}
+.role-card strong{font-family:var(--serif);font-size:0.9286rem;color:var(--ink)}
+.role-who{font-size:0.6429rem;color:#a9a091;letter-spacing:.5px}
+.role-card p{font-size:0.7143rem;line-height:1.85;color:#94998c;margin-top:2px}
+.role-card.has-thread{border-color:color-mix(in srgb,var(--accent) 30%,#ece5d7)}
+.role-badge{position:absolute;top:9px;right:10px;font-size:0.6071rem;color:#fffdf9;background:color-mix(in srgb,var(--accent) 72%,#5f6d57);border-radius:999px;padding:2px 7px}
+.roles-footnote{display:flex;align-items:flex-start;gap:6px;font-size:0.7143rem;line-height:1.85;color:#a9a091;margin:0}
+.role-back{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;border:1px solid #e8e2d5;background:#fffdf9;color:#8d9683;cursor:pointer;flex:none}
+.role-back:hover{background:#fdf7ee;color:#5f6d57}
+.role-memory-on{display:inline-flex;align-items:center;gap:4px;font-size:0.6429rem;color:#8d9683;background:color-mix(in srgb,var(--accent) 8%,#fffdf9);border-radius:999px;padding:3px 9px}
+
+@media(max-width:1000px){.roles-page-grid{grid-template-columns:1fr}.role-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:760px){.roles-page-main{padding:15px}.role-grid{grid-template-columns:repeat(2,1fr);gap:9px}.role-card{padding:14px 10px}}

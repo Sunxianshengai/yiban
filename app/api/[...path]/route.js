@@ -6,7 +6,8 @@ import { head as headBlob, issueSignedToken } from '@vercel/blob';
 import { all,get,put,remove,log,snapshot,saveMedia,readMedia,deleteMedia,usesRemoteStorage } from '../../../lib/store.mjs';
 import { fetchAudioBuffer } from '../../../lib/voice.mjs';
 import { tidyMemory, searchMemories } from '../../../lib/core.mjs';
-import {organize,generateStory,enrichScenes,aiReady,chatWithCompanion} from '../../../lib/ai.mjs';
+import {organize,generateStory,enrichScenes,aiReady,chatWithCompanion,chatWithRole} from '../../../lib/ai.mjs';
+import {CONCERNS,TONES,ROLES,MAX_TEXT as ROLE_MAX_TEXT,sanitizeRole,roleOpening,localRoleReply,buildRoleMessages,roleById} from '../../../lib/roles.mjs';
 import {buildGame,advance,currentScene,publicGame,promptForScene,TRAITS} from '../../../lib/game.mjs';
 import {PERSONAS,RELATIONS,MAX_MESSAGES,MAX_NOTES,MAX_TEXT,sanitizeCompanion,openingLine,retrieveMemories,buildMessages,localReply,localNotes} from '../../../lib/companion.mjs';
 import {voiceConfigured,enrollVoice,synthesizeVoice,cacheKey} from '../../../lib/voice.mjs';
@@ -80,6 +81,33 @@ export async function GET(request,{params}) {
         threadId:thread?.id||null,threadCount:threads.length,
         voiceMembers:members.filter(m=>m.voiceId).map(m=>({id:m.id,name:m.name})),
         aiEnabled:aiReady(),voiceEnabled:voiceConfigured(),memoryCount:pool.length,
+      });
+    }
+    if(parts[0]==='role') {
+      // 一屋子可以换的人。按「你心里堵着什么」分组，不按辈分排。
+      if(parts[1]==='thread') {
+        // 某个角色的对话记录。每个角色各聊各的，互不串味。
+        const roleId=String(new URL(request.url).searchParams.get('roleId')||'');
+        const role=ROLES.some(r=>r.id===roleId)?roleById(roleId):null;
+        if(!role) return json({error:'没有这个角色'},404);
+        const thread=await get('role_threads',`${auth.user.id}:${role.id}`);
+        const setting=sanitizeRole({roleId:role.id,toneId:thread?.toneId,name:thread?.name,useMemories:thread?.useMemories});
+        return json({
+          role,setting,opening:roleOpening(role),
+          messages:thread?.messages||[],threadId:thread?.id||null,
+        });
+      }
+      const [confirmed,threads]=await Promise.all([
+        all('memories').then(list=>list.filter(m=>m.status==='confirmed')),
+        all('role_threads').then(list=>list.filter(t=>t.userId===auth.user.id)),
+      ]);
+      const mine=confirmed.filter(m=>(m.people||[]).includes(auth.user.name));
+      return json({
+        concerns:CONCERNS,tones:TONES,
+        // lines 是这个角色自己的话术池，不让前端拿到——它是「怎么说话」，不是展示内容。
+        roles:ROLES.map(({lines,...rest})=>rest),
+        threads:threads.map(t=>({roleId:t.roleId,toneId:t.toneId,name:t.name,useMemories:Boolean(t.useMemories),count:(t.messages||[]).length,updatedAt:t.updatedAt||null})),
+        aiEnabled:aiReady(),memoryCount:(mine.length?mine:confirmed).length,
       });
     }
     if(parts[0]==='media') {
@@ -330,6 +358,37 @@ export async function POST(request,{params}) {
       const updated={...settingsDoc,companion};
       await put('settings',updated);
       return json({companion},201);
+    }
+    if(parts[0]==='role'&&parts[1]==='turn') {
+      // 一次换角色对话。记忆是「可选的」：用户主动勾了「借用家里这段记忆」才喂进去，
+      // 默认只当身份原型说话——找人聊心事先别急着翻旧账。
+      const raw=String(body.text||'').trim().slice(0,ROLE_MAX_TEXT);
+      if(!raw) throw new Error('说点什么吧');
+      const setting=sanitizeRole({roleId:body.roleId,toneId:body.toneId,name:body.name,useMemories:body.useMemories});
+      const id=`${auth.user.id}:${setting.roleId}`;
+      let thread=await get('role_threads',id);
+      const memories=setting.useMemories?retrieveMemories((await all('memories')).filter(m=>m.status==='confirmed'),raw,2):[];
+      const history=thread?.messages||[];
+      const reply=await chatWithRole(buildRoleMessages(setting,{history,text:raw,memories}));
+      const answer=reply?{text:reply,mode:'model',memoryIds:memories.map(m=>m.id)}:localRoleReply(setting,{text:raw,memories,history});
+      const now=new Date().toISOString();
+      const messages=[...history,{role:'user',text:raw,at:now},{role:'role',text:answer.text,at:now,mode:answer.mode}];
+      const trimmed=messages.length>MAX_MESSAGES?messages.slice(-MAX_MESSAGES):messages;
+      const updated={...(thread||{id:`${auth.user.id}:${setting.roleId}`,familyId:'family',userId:auth.user.id,createdAt:now}),roleId:setting.roleId,toneId:setting.toneId,name:setting.name,useMemories:setting.useMemories,messages:trimmed,updatedAt:now};
+      await put('role_threads',updated);
+      return json({
+        messages:trimmed.slice(-2),setting,threadId:updated.id,
+        mode:answer.mode,
+        sources:memories.map(m=>({id:m.id,title:m.title,year:m.year,location:m.location})),
+      },201);
+    }
+    if(parts[0]==='role'&&parts[1]==='reset') {
+      // 换个人聊，或者跟同一个人重新开始：只清这段对话，设定保留。
+      const roleId=String(body.roleId||'');
+      const id=`${auth.user.id}:${roleId}`;
+      const thread=await get('role_threads',id);
+      if(thread) await put('role_threads',{...thread,messages:[],updatedAt:new Date().toISOString()});
+      return json({ok:true});
     }
     if(parts[0]==='members') {
       const name=String(body.name||'').trim().slice(0,30);if(!name) throw new Error('请填写成员姓名');
