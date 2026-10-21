@@ -298,6 +298,46 @@ body{font-size:1rem}
 .persona-card strong{font-size:0.8571rem;font-weight:500;color:#5f6d57}
 .persona-card small{font-size:0.7143rem;color:#a8a091;line-height:1.7}
 @media(max-width:1000px){.companion-page-grid{grid-template-columns:1fr}}
+
+/* ---------- 家伴 · 右下角常驻聊天框 ----------
+   它得「一直都有」，但也不能一进门就糊在脸上。
+   所以默认是右下角一枚小按钮，点开才展开；
+   展开过一次就记住，之后跳到哪一页都还开着。
+   z-index 压在弹窗（100）之下：点开一段记忆时，记忆要盖在对话上面。 */
+.companion-dock{position:fixed;right:22px;bottom:22px;z-index:90;display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+.companion-dock-toggle{display:inline-flex;align-items:center;gap:8px;padding:12px 18px;border:none;border-radius:999px;background:var(--green,#6e9a7e);color:#fffdf9;font-size:0.8571rem;font-weight:500;box-shadow:0 12px 30px #557a6352,0 2px 6px #557a6326;cursor:pointer;transition:transform .16s,box-shadow .16s,background .16s}
+.companion-dock-toggle:hover{background:var(--green-dark,#557a63);transform:translateY(-2px);box-shadow:0 16px 36px #557a635e}
+.companion-dock-toggle:active{transform:translateY(0)}
+.companion-dock-toggle svg{flex:none}
+.companion-dock.open .companion-dock-toggle{padding:11px;border-radius:50%;background:#fffdf9;color:#8d9683;border:1px solid #e8e2d5;box-shadow:0 8px 22px #7a6a4e1f}
+.companion-dock.open .companion-dock-toggle:hover{background:#fdf7ee;transform:none}
+/* 面板高度跟着对话长：刚打开时是一张合身的小卡片，
+   话多了到 620px 封顶，然后对话区自己滚。固定成一个 600px 的空盒子，
+   开着的时候更像「加载失败」。 */
+.companion-dock-panel{width:min(376px,calc(100vw - 32px));max-height:min(78vh,620px);display:flex;flex-direction:column;gap:11px;padding:15px 16px 16px;background:#fffdf9;border:1px solid #ebe4d6;border-radius:20px;box-shadow:0 26px 60px #6c5f441f,0 2px 8px #6c5f440f;overflow:hidden}
+.companion-dock-head{display:flex;align-items:center;gap:10px;flex:none}
+.companion-dock-head>div{min-width:0;flex:1}
+.companion-dock-head strong{display:block;font-family:var(--serif);font-size:0.9286rem;color:var(--ink);line-height:1.5}
+.companion-dock-head small{display:block;font-size:0.7143rem;color:#a3988a;margin-top:2px}
+.companion-dock-actions{display:flex;align-items:center;gap:2px;flex:none}
+.companion-dock-actions .icon-button svg{transform:none}
+.companion-dock-panel .companion-dock-actions .icon-button:first-child svg{transform:rotate(-45deg)}
+.companion-dock-note{margin:0;font-size:0.7143rem;line-height:1.8;color:#a09a8c;background:#f8f5ee;border-radius:9px;padding:7px 10px;flex:none}
+.companion-dock-panel .companion-feed{flex:1 1 auto;max-height:none;min-height:120px;overflow-y:auto;padding-right:2px}
+.companion-dock-panel .companion-line{font-size:0.8571rem;line-height:1.95;padding:11px 13px;max-width:92%}
+.companion-dock-panel .companion-opening{padding:15px 16px}
+.companion-dock-panel .companion-opening p{font-size:0.9286rem;line-height:1.95}
+.companion-dock-panel .companion-sources{font-size:0.6786rem;flex:none}
+.companion-dock-panel .companion-notes{flex:none;padding-top:9px}
+.companion-dock-panel .companion-input{gap:8px;flex:none}
+.companion-dock-panel .companion-input input{font-size:0.8571rem;padding:9px 12px}
+.companion-dock-panel .companion-input .btn{font-size:0.7857rem;min-height:36px;padding:8px 13px}
+.companion-dock-panel .companion-loading,.companion-dock-panel .companion-fallback{min-height:150px;font-size:0.7857rem;gap:10px}
+.companion-suggest{display:flex;flex-wrap:wrap;gap:7px;flex:none}
+.companion-chip{padding:7px 12px;border-radius:999px;border:1px solid #e8e2d5;background:#fffdf9;color:#8d9683;font-size:0.75rem;cursor:pointer;transition:border-color .16s,background .16s,color .16s}
+.companion-chip:hover{border-color:color-mix(in srgb,var(--accent) 45%,#e8e2d5);background:color-mix(in srgb,var(--accent) 7%,#fffdf9);color:#5f6d57}
+.companion-chip:disabled{opacity:.55;cursor:default}
+
 @media(max-width:760px){
   .companion-line{max-width:94%}
   .companion-feed{max-height:none}
@@ -306,4 +346,9 @@ body{font-size:1rem}
   .persona-grid{grid-template-columns:1fr}
   .companion-head{flex-wrap:wrap}
   .companion-head-actions{margin-left:0;width:100%}
+  /* 手机上浮层贴边：留 12px，别让圆角正好卡在屏幕边上。 */
+  .companion-dock{right:12px;bottom:12px;left:12px;align-items:stretch}
+  .companion-dock-toggle{align-self:flex-end;justify-content:center}
+  .companion-dock-panel{width:100%;max-height:min(72vh,560px)}
+  .companion-dock-panel .companion-feed{min-height:90px;max-height:calc(72vh - 240px)}
 }

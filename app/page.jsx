@@ -7,7 +7,7 @@ import AuthScreen from '../components/AuthScreen';
 import {THEMES,searchMemories,ACCENTS,FONT_SCALES} from '../lib/core.mjs';
 import VoiceEnroll from '../components/VoiceEnroll';
 import LifeGame,{GameEntry} from '../components/LifeGame';
-import Companion,{CompanionEntry} from '../components/Companion';
+import Companion,{CompanionDock,CompanionEntry} from '../components/Companion';
 
 const NAV=[{id:'home',icon:'home',label:'记忆小屋'},{id:'companion',icon:'message',label:'家伴'},{id:'library',icon:'library',label:'家庭记忆库'},{id:'albums',icon:'album',label:'故事专辑'},{id:'game',icon:'sparkle',label:'人生模拟'},{id:'family',icon:'people',label:'我的家人'},{id:'feedback',icon:'activity',label:'陪伴记录'},{id:'settings',icon:'settings',label:'家庭设置'}];
 const ROLE_LABELS={admin:'管理员',editor:'编辑者',viewer:'查看者'};
@@ -117,6 +117,8 @@ export default function Page() {
   {modal?.type==='anniversary'&&<Modal title="记住一个重要的日子" onClose={close}><form onSubmit={e=>{e.preventDefault();perform(()=>request('/anniversaries',{method:'POST',body:JSON.stringify({title:calendarTitle,date:calendarDate.slice(5)})}),'纪念日已保存');}}><Field label="纪念日名称 *"><input required value={calendarTitle} onChange={e=>setCalendarTitle(e.target.value)} placeholder="例如：爸爸妈妈的结婚纪念日"/></Field><Field label="选择日期 *" hint="将保存月和日，作为每年的纪念日。"><input required type="date" value={calendarDate} onChange={e=>setCalendarDate(e.target.value)}/></Field><div className="modal-actions"><Button type="button" variant="ghost" onClick={close}>取消</Button><Button type="submit" busy={busy}>保存纪念日</Button></div></form></Modal>}
   {modal?.type==='game'&&<Modal title="人生模拟" description="用家里的记忆当剧本，走一段别人的路。" onClose={close} wide><LifeGame api={request} notify={notify} close={close} onOpenMemory={id=>{const memory=state.memories.find(m=>m.id===id);if(memory){close();open(memory);}}}/></Modal>}
   {modal?.type==='delete'&&<Modal title="确认删除？" description={`将删除「${modal.title}」。${modal.collection==='memories'?'相关互动和专辑关联也会移除。':''}此操作无法撤销。`} onClose={close}><div className="modal-actions"><Button variant="ghost" onClick={close}>保留</Button><Button variant="danger" icon="trash" busy={busy} onClick={()=>perform(()=>request(`/${modal.collection}/${modal.id}`,{method:'DELETE'}),'已删除')}>确认删除</Button></div></Modal>}
+  {/* 常驻聊天框：除了家伴自己的整页，任何页面右下角都能随时找它说话。 */}
+  <CompanionDock api={request} hidden={page==='companion'} onExpand={()=>navigate('companion')} onOpenMemory={id=>{const memory=state.memories.find(m=>m.id===id);if(memory)open(memory);}}/>
   {toastUI}</div>;
 }
 
