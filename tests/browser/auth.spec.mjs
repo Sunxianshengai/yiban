@@ -1,12 +1,16 @@
 import {test,expect,request as apiRequest} from '@playwright/test';
 
+// 不再硬编码 :3100 —— 之前它要求另起一个 3100 端口的服务，本机没起就 ECONNREFUSED。
+// 统一跟随 PW_BASE_URL（默认与 playwright.config.mjs 的 3711 一致）。
+const BASE=process.env.PW_BASE_URL||'http://localhost:3711';
+
 test('first run, invitations, roles, media authorization and sign out',async({browser,request})=>{
   const status=await (await request.get('/api/auth/status')).json();
   if(status.needsSetup){
     const setup=await request.post('/api/auth/setup',{data:{name:'小雨',email:'admin@yiban.test',password:'TestPassword123!'}});
     expect(setup.status()).toBe(201);
   }
-  const anonymous=await apiRequest.newContext({baseURL:'http://localhost:3100'});
+  const anonymous=await apiRequest.newContext({baseURL:BASE});
   expect((await anonymous.get('/api/state')).status()).toBe(401);
   expect((await anonymous.get('/api/search?q=老家')).status()).toBe(401);
   expect((await anonymous.get('/api/media/00000000-0000-0000-0000-000000000000.png')).status()).toBe(401);
@@ -15,11 +19,11 @@ test('first run, invitations, roles, media authorization and sign out',async({br
   const wrong=await anonymous.post('/api/auth/login',{data:{email:'admin@yiban.test',password:'wrong-password'}});
   expect(wrong.status()).toBe(400);
 
-  const admin=await apiRequest.newContext({baseURL:'http://localhost:3100'});
+  const admin=await apiRequest.newContext({baseURL:BASE});
   expect((await admin.post('/api/auth/login',{data:{email:'admin@yiban.test',password:'TestPassword123!'}})).status()).toBe(200);
   const invite=await (await admin.post('/api/auth/invite',{data:{role:'viewer'}})).json();
   expect(invite.code).toMatch(/^[A-F0-9]{12}$/);
-  const viewer=await apiRequest.newContext({baseURL:'http://localhost:3100'});
+  const viewer=await apiRequest.newContext({baseURL:BASE});
   const email=`viewer-${Date.now()}@yiban.test`;
   expect((await viewer.post('/api/auth/register',{data:{code:invite.code,name:'小林',email,password:'ViewerPassword123!'}})).status()).toBe(201);
   expect((await anonymous.post('/api/auth/register',{data:{code:invite.code,name:'重复',email:'repeat@yiban.test',password:'ViewerPassword123!'}})).status()).toBe(400);
@@ -29,7 +33,7 @@ test('first run, invitations, roles, media authorization and sign out',async({br
   expect((await viewer.delete('/api/memories/demo-home')).status()).toBe(403);
   expect((await viewer.post('/api/auth/invite',{data:{role:'editor'}})).status()).toBe(403);
   const code2=(await (await admin.post('/api/auth/invite',{data:{role:'editor'}})).json()).code;
-  const editor=await apiRequest.newContext({baseURL:'http://localhost:3100'});
+  const editor=await apiRequest.newContext({baseURL:BASE});
   expect((await editor.post('/api/auth/register',{data:{code:code2,name:'小陈',email:`editor-${Date.now()}@yiban.test`,password:'EditorPassword123!'}})).status()).toBe(201);
   expect((await editor.post('/api/memories',{data:{title:'编辑者的记忆',status:'draft'}})).status()).toBe(201);
   expect((await editor.post('/api/auth/invite',{data:{role:'viewer'}})).status()).toBe(403);

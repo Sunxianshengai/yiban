@@ -1,5 +1,6 @@
 import {test,expect} from '@playwright/test';
 import fs from 'node:fs';
+import {cleanupTestMemories} from './helpers.mjs';
 
 test.beforeEach(async({page,request})=>{
   const status=await (await request.get('/api/auth/status')).json();
@@ -10,6 +11,8 @@ test.beforeEach(async({page,request})=>{
     const login=await request.post('/api/auth/login',{data:{email:'admin@yiban.test',password:'TestPassword123!'}});
     expect(login.status()).toBe(200);
   }
+  const dropped=await cleanupTestMemories(request);
+  if(dropped) console.log(`清掉 ${dropped} 段上一轮遗留的测试记忆`);
   const cookies=(await request.storageState()).cookies;
   await page.context().addCookies(cookies);
   await page.goto('/');
@@ -40,12 +43,9 @@ test('upload, local organization, publishing, elder feedback and deletion work t
     const memory=state.memories.find(m=>m.title===marker);id=memory?.id;
     expect(memory.status).toBe('confirmed');expect(memory.cover).toMatch(/^\/api\/media\//);
     const image=await request.get(memory.cover);expect(image.status()).toBe(200);expect(image.headers()['content-type']).toBe('image/png');
-    await page.getByRole('button',{name:/进入老人端/}).click();
-    await page.getByRole('button',{name:/看照片/}).click();
-    await page.locator('.elder-memory').filter({hasText:marker}).click();
-    await page.getByRole('button',{name:'我记得',exact:true}).click();
-    await page.getByRole('button',{name:'喜欢',exact:true}).click();
-    await page.getByRole('button',{name:'家属模式',exact:true}).click();
+    // 单端口改造后不再有「进入老人端 / 家属模式」这一层；互动直接走接口产生，
+    // 再回到「陪伴记录」页确认它出现在动态流里。
+    for(const type of ['remember','like']) expect((await request.post('/api/activity',{data:{type,memoryId:id}})).ok()).toBe(true);
     await page.getByRole('button',{name:'陪伴记录',exact:true}).click();
     await expect(page.locator('.activity-list')).toContainText(marker);
     await page.getByRole('button',{name:/家庭记忆库/}).first().click();
@@ -79,7 +79,7 @@ test('upload, local organization, publishing, elder feedback and deletion work t
   }finally{if(id)await request.delete(`/api/memories/${id}`);}
 });
 
-test('drafts stay out of elder mode, albums and stories save, server validation works',async({request,page})=>{
+test('drafts stay out of albums, stories, games and search; server validation works',async({request,page})=>{
   const draftResponse=await request.post('/api/memories',{data:{title:'自动测试待确认',year:'1998',story:'尚未核对的故事',status:'draft'}});expect(draftResponse.status()).toBe(201);const draft=await draftResponse.json();
   let album;
   try{
@@ -91,21 +91,24 @@ test('drafts stay out of elder mode, albums and stories save, server validation 
     const generation=await (await request.post('/api/story',{data:{albumId:album.id}})).json();expect(generation.mode).toBe('local');expect(generation.story).toContain('西湖');
     await request.patch(`/api/albums/${album.id}`,{data:{story:generation.story}});
     const state=await (await request.get('/api/state')).json();expect(state.albums.find(a=>a.id===album.id).story).toBe(generation.story);
-    await page.goto('/');await page.getByRole('button',{name:/进入老人端/}).click();await page.getByRole('button',{name:/找回忆/}).click();await page.getByRole('button',{name:'老家',exact:true}).click();await expect(page.locator('.elder-memory')).not.toHaveCount(0);await expect(page.locator('.elder-main')).not.toContainText(draft.title);
+    // 草稿不进游戏：人生模拟的剧本来只取已确认记忆。
+    const game=await request.post('/api/game/start',{data:{subjectId:'family'}});expect(game.status()).toBe(201);
+    const played=await game.json();expect(JSON.stringify(played.scenes)).not.toContain(draft.title);
   }finally{await request.delete(`/api/memories/${draft.id}`);if(album)await request.delete(`/api/albums/${album.id}`);}
 });
 
 test('desktop and mobile layouts, navigation and dialogs render without errors',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/');await expect(page.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
-  fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:'artifacts/忆伴-子女端.png',fullPage:true});
-  for(const name of ['家庭记忆库','故事专辑','我的家人','陪伴记录','家庭设置']){await page.getByRole('navigation').getByRole('button',{name:new RegExp(name)}).click();await expect(page.locator('.page-heading h1')).toBeVisible();}
+  fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:'artifacts/忆伴-桌面端.png',fullPage:true});
+  for(const name of ['家庭记忆库','故事专辑','人生模拟','我的家人','陪伴记录','家庭设置']){await page.getByRole('navigation').getByRole('button',{name:new RegExp(name)}).click();await expect(page.locator('.page-heading h1')).toBeVisible();}
   await page.getByRole('navigation').getByRole('button',{name:'记忆小屋'}).click();
   await page.getByRole('button',{name:'添加一段记忆',exact:true}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
-  await page.getByRole('button',{name:/进入老人端/}).click();await page.screenshot({path:'artifacts/忆伴-老人端.png',fullPage:true});
-  await page.setViewportSize({width:390,height:844});await page.screenshot({path:'artifacts/忆伴-手机老人端.png',fullPage:true});
+  // 账号入口是常驻的：任何页面都能从顶栏打开「我的账号」面板。
+  await page.getByRole('button',{name:'我的账号'}).click();await expect(page.getByRole('dialog')).toBeVisible();await expect(page.getByRole('dialog')).toContainText('管理登录账号');await page.keyboard.press('Escape');
+  await page.setViewportSize({width:390,height:844});await page.screenshot({path:'artifacts/忆伴-手机端.png',fullPage:true});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
-  await page.getByRole('button',{name:'家属模式',exact:true}).click();await page.screenshot({path:'artifacts/忆伴-手机子女端.png',fullPage:true});
+  await page.getByRole('button',{name:'我的账号'}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   expect(errors).toEqual([]);
 });

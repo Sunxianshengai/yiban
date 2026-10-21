@@ -10,7 +10,7 @@ import {organize,generateStory,enrichScenes,aiReady} from '../../../lib/ai.mjs';
 import {buildGame,advance,currentScene,publicGame,promptForScene,TRAITS} from '../../../lib/game.mjs';
 import {voiceConfigured,enrollVoice,synthesizeVoice,cacheKey} from '../../../lib/voice.mjs';
 import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
-import {AGE_GROUPS,ACCENTS,FONT_SCALES,sanitizePreferences} from '../../../lib/core.mjs';
+import {ACCENTS,FONT_SCALES,sanitizePreferences} from '../../../lib/core.mjs';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -145,13 +145,11 @@ export async function POST(request,{params}) {
         if(!await hasAdmin())throw new Error('请先创建管理员账号');
         const body=await request.json();
         const code=String(body.code||'').trim();
-        let user;
-        if(code) {
-          user=await acceptInvite(code,body);
-          if(user.role!=='admin') throw new Error('管理员注册需要管理员邀请码');
-        } else {
-          user=await createUser(body,'admin');
-        }
+        // 邀请码自带角色：管理员邀请码建管理员，编辑/查看者邀请码按原角色加入。
+        // 注意这里**不能**在没有邀请码时直接 createUser(...,'admin')：那等于给
+        // 任何匿名访客开了一条「自己注册成管理员」的路。首个管理员只走 /auth/setup。
+        if(!code) throw new Error('请填写家庭邀请码');
+        const user=await acceptInvite(code,body);
         return setSessionCookie(json({user},201),await createSession(user.id),request);
       }
       if(parts[1]==='logout') {

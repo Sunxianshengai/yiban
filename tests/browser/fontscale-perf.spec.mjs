@@ -22,6 +22,7 @@
 // 结果写入 public/perf-fontscale.json（原始样本）与 public/perf-fontscale.md（汇总）：
 // 后者是唯一权威报告，直接对比「修复前(基线) / 修复后(当前代码)」两种实现。
 import {test,expect} from '@playwright/test';
+import {signInAsNewAdmin} from './helpers.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import {execSync} from 'node:child_process';
@@ -180,15 +181,8 @@ test(`字号切换性能验收（${DIRECTION === 'b-a' ? '当前→基线' : '�
       const errors = [];
       page.on('pageerror', e => errors.push(String(e)));
 
-      // 账号：首页「创建管理员账号」，邀请码留空 → 新建家庭空间
-      await page.goto('/', {waitUntil: 'domcontentloaded'});
-      await page.waitForSelector('.auth-screen', {timeout: 120000});
-      await page.getByRole('button', {name: '创建管理员账号'}).click();
-      await page.fill('input[name=name]', '性能测试');
-      await page.fill('input[name=email]', `perf-${label}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@yiban.test`);
-      await page.fill('input[name=password]', 'PerfTest123!');
-      await page.getByRole('button', {name: '创建管理员并进入'}).click();
-      await page.waitForSelector('.app-shell', {timeout: 120000});
+      // 账号：走统一的 helpers（管理员邀请码注册），不再用已封掉的「留空邀请码」后门
+      await signInAsNewAdmin(page, {name: '性能测试', prefix: `perf-${label}-${Math.floor(Math.random() * 1e6)}`});
       await page.getByRole('button', {name: /家庭设置/}).first().click();
       await page.waitForSelector('.personalize-panel', {timeout: 60000});
       await page.waitForSelector('.option-pill');

@@ -1,18 +1,12 @@
 import {test,expect} from '@playwright/test';
+import {signInAsNewAdmin} from './helpers.mjs';
 const BASE='http://localhost:3711';
 
 test('陪伴时光已整页移除，主端功能完好',async({browser})=>{
   const ctx=await browser.newContext({baseURL:BASE,viewport:{width:1440,height:1000}});
   const page=await ctx.newPage();
   const errs=[];page.on('pageerror',e=>errs.push(String(e)));
-  await page.goto('/');
-  await page.waitForSelector('.auth-screen',{timeout:30000});
-  await page.getByRole('button',{name:'创建管理员账号'}).click();
-  await page.fill('input[name=name]','移除测试');
-  await page.fill('input[name=email]',`rm-${Date.now()}@yiban.test`);
-  await page.fill('input[name=password]','TestPassword123!');
-  await page.getByRole('button',{name:'创建管理员并进入'}).click();
-  await page.waitForSelector('.app-shell',{timeout:30000});
+  await signInAsNewAdmin(page,{name:'移除测试',prefix:'rm'});
 
   const navs=await page.locator('.nav-item').allInnerTexts();
   console.log('NAV',JSON.stringify(navs));

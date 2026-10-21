@@ -1,17 +1,11 @@
-import {test} from '@playwright/test';
+import {test,expect} from '@playwright/test';
+import {signInAsNewAdmin} from './helpers.mjs';
 const BASE='http://localhost:3711';
 
 test('字号档位对全站文字的实际影响',async({browser})=>{
   const ctx=await browser.newContext({baseURL:BASE,viewport:{width:1440,height:1200}});
   const page=await ctx.newPage();
-  await page.goto('/');
-  await page.waitForSelector('.auth-screen',{timeout:30000});
-  await page.getByRole('button',{name:'创建管理员账号'}).click();
-  await page.fill('input[name=name]','字号测试');
-  await page.fill('input[name=email]',`fs-${Date.now()}@yiban.test`);
-  await page.fill('input[name=password]','TestPassword123!');
-  await page.getByRole('button',{name:'创建管理员并进入'}).click();
-  await page.waitForSelector('.app-shell',{timeout:30000});
+  await signInAsNewAdmin(page,{name:'字号测试',prefix:'fs'});
 
   // 采样一批有代表性的元素
   const sample=async()=>await page.evaluate(()=>{
@@ -34,7 +28,7 @@ test('字号档位对全站文字的实际影响',async({browser})=>{
   await page.waitForTimeout(500);
   const optSampler=async()=>await page.evaluate(()=>{
     const pick=s=>{const e=document.querySelector(s);return e?parseFloat(getComputedStyle(e).fontSize):null;};
-    return {optStrong:pick('.option-card strong'),optSmall:pick('.option-card small'),panelP:pick('.personalize-panel>p'),hint:pick('.settings-hint'),label:pick('.field label'),input:pick('input')};
+    return {optPill:pick('.option-pill'),panelP:pick('.personalize-panel>p'),hint:pick('.settings-hint'),label:pick('.field label'),input:pick('input')};
   });
 
   const setScale=async(label)=>{

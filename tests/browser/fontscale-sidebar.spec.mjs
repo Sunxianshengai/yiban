@@ -1,18 +1,12 @@
 import {test,expect} from '@playwright/test';
+import {signInAsNewAdmin} from './helpers.mjs';
 const BASE='http://localhost:3711';
 
 // 回归：字号切档必须真的改变全站文字，且特大档下侧栏文字不能顶出侧栏
 test('字号档位生效 + 特大档侧栏不溢出',async({browser})=>{
   const ctx=await browser.newContext({baseURL:BASE,viewport:{width:1440,height:1000}});
   const page=await ctx.newPage();
-  await page.goto('/');
-  await page.waitForSelector('.auth-screen',{timeout:30000});
-  await page.getByRole('button',{name:'创建管理员账号'}).click();
-  await page.fill('input[name=name]','字号测试');
-  await page.fill('input[name=email]',`fs-${Date.now()}@yiban.test`);
-  await page.fill('input[name=password]','TestPassword123!');
-  await page.getByRole('button',{name:'创建管理员并进入'}).click();
-  await page.waitForSelector('.app-shell',{timeout:30000});
+  await signInAsNewAdmin(page,{name:'字号测试',prefix:'fs'});
   await page.getByRole('button',{name:/家庭设置/}).first().click();
   await page.waitForTimeout(1200);
 

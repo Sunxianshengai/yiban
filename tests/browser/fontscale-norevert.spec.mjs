@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {signInAsNewAdmin} from './helpers.mjs';
 const BASE=process.env.PW_BASE_URL||'http://localhost:3711';
 
 // 回归：切换字号后不允许回退到上一个档位。
@@ -9,14 +10,7 @@ test('切换字号全过程不回退到旧档位',async({browser})=>{
   const ctx=await browser.newContext({baseURL:BASE,viewport:{width:1440,height:1000}});
   const page=await ctx.newPage();
   page.on('pageerror',e=>console.log('PAGE ERROR',e.message));
-  await page.goto('/');
-  await page.waitForSelector('.auth-screen',{timeout:30000});
-  await page.getByRole('button',{name:'创建管理员账号'}).click();
-  await page.fill('input[name=name]','回退测试');
-  await page.fill('input[name=email]',`fb-${Date.now()}@yiban.test`);
-  await page.fill('input[name=password]','TestPassword123!');
-  await page.getByRole('button',{name:'创建管理员并进入'}).click();
-  await page.waitForSelector('.app-shell',{timeout:30000});
+  await signInAsNewAdmin(page,{name:'回退测试',prefix:'fb'});
   await page.getByRole('button',{name:/家庭设置/}).first().click();
   await page.waitForTimeout(1500);
 

@@ -96,17 +96,10 @@ body{font-size:1rem}
 :is(.app-shell,.elder-app)[data-accent=blue]{--accent:#6f93a0;--green:#6f93a0;--green-dark:#577884}
 :is(.app-shell,.elder-app)[data-accent=gold]{--accent:#c2a14e;--green:#c2a14e;--green-dark:#a3863a}
 
-/* 年龄档：圆角 / 间距 / 控件尺寸自适应（adult 显式声明，避免"选了等于没选"） */
-:is(.app-shell,.elder-app)[data-profile=child]{--radius:22px;--radius-sm:16px;--btn-radius:999px}
-:is(.app-shell,.elder-app)[data-profile=child] .btn{min-height:46px;padding:13px 24px}
-:is(.app-shell,.elder-app)[data-profile=child] .nav-item{padding:15px 13px}
-:is(.app-shell,.elder-app)[data-profile=teen]{--radius:20px;--radius-sm:14px;--btn-radius:16px}
-:is(.app-shell,.elder-app)[data-profile=teen] .nav-item{padding:14px 13px}
-:is(.app-shell,.elder-app)[data-profile=adult]{--radius:18px;--radius-sm:13px;--btn-radius:12px}
-:is(.app-shell,.elder-app)[data-profile=senior]{--radius:16px;--radius-sm:12px;--btn-radius:10px}
-:is(.app-shell,.elder-app)[data-profile=senior] .btn{min-height:46px;padding:13px 22px;font-size:1rem}
-:is(.app-shell,.elder-app)[data-profile=senior] .nav-item{padding:15px 14px;font-size:0.9286rem}
-:is(.app-shell,.elder-app)[data-profile=senior] input, :is(.app-shell,.elder-app)[data-profile=senior] select, :is(.app-shell,.elder-app)[data-profile=senior] textarea{padding:13px 14px}
+/* 年龄档已移除：产品不再区分年龄段（小朋友/青少年/成年人/长辈），
+   共用同一套「温柔」外观；字号仍是各自可调的。原先按 data-profile 切换
+   圆角与控件尺寸的一整段样式一并删掉——它们既没有真实用途，又暗示用户
+   要先给自己归类。 --radius / --radius-sm 只在 :root 定义一次即可。 */
 /* 高对比度：加深文字与描边 */
 :is(.app-shell,.elder-app)[data-contrast=high]{--ink:#1f2a24;--muted:#6c756d;--border:#cfd6c9}
 :is(.app-shell,.elder-app)[data-contrast=high] .memory-card,:is(.app-shell,.elder-app)[data-contrast=high] .album-card,:is(.app-shell,.elder-app)[data-contrast=high] .family-card{box-shadow:0 0 0 1px #b9c2b2}
@@ -114,12 +107,6 @@ body{font-size:1rem}
 /* 个性化偏好面板 */
 .personalize-panel{display:flex;flex-direction:column;gap:6px}
 .personalize-panel>p{font-size:0.8571rem;line-height:1.8;margin-bottom:8px}
-.option-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}
-.option-card{display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-align:left;padding:14px 15px;border:1px solid var(--border);border-radius:12px;background:#fffdf9;transition:border-color .15s,background .15s,transform .15s}
-.option-card small{font-size:0.7143rem;color:#a7b096}
-.option-card:hover{transform:translateY(-1px)}
-.option-card.selected{border-color:var(--green);border-width:2px;background:color-mix(in srgb,var(--green) 10%,#fffdf9);box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 20%,transparent)}
-.option-card strong{font-size:0.9286rem;color:var(--ink)}
 .option-row{display:flex;flex-wrap:wrap;gap:9px}
 .option-pill{padding:9px 16px;border:1px solid var(--border);border-radius:999px;background:#fffdf9;font-size:0.8571rem;color:#788479;transition:border-color .15s,background .15s}
 .option-pill.selected{border-color:var(--green);background:var(--green);color:#fff;font-weight:600;box-shadow:0 6px 16px color-mix(in srgb,var(--green) 30%,transparent)}
@@ -231,3 +218,26 @@ body{font-size:1rem}
 
 @media(max-width:1000px){.game-page-grid{grid-template-columns:1fr}.game-steps{grid-template-columns:1fr}.game-feed{max-height:none}}
 @media(max-width:760px){.game-line.mine,.game-line.truth{margin-left:0}.free-input{flex-wrap:wrap}.free-input input{width:100%;flex:auto}.subject-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* ── 常驻账号入口 ─────────────────────────────────────────────────────────
+   以前「登录 / 账号管理」只挂在「家庭设置」页里，不在设置页就找不到，
+   容易被当成「界面没了」。这里在顶栏放一个常驻头像按钮，任何时候都能
+   打开账号面板（管理账号 / 个性化偏好 / 退出登录）。
+   侧栏底部的头像按钮也指向同一个面板，两处行为一致。 */
+.topbar-account{display:flex;align-items:center;gap:9px;padding:5px 9px 5px 5px;border-radius:999px;border:1px solid transparent;transition:background .18s,border-color .18s}
+.topbar-account:hover{background:#f7f1e7;border-color:#eadfcd}
+.topbar-account strong{display:block;font-size:0.7857rem;font-weight:500;color:#5d6753;text-align:left}
+.topbar-account small{display:block;font-size:0.6429rem;color:#a0a79a;margin-top:3px;text-align:left}
+.topbar-account>svg{color:#b0b8a6}
+.account-me{display:flex;align-items:center;gap:14px;padding:16px;border-radius:var(--radius-sm);background:color-mix(in srgb,var(--accent,#6e9a7e) 7%,#fffdf9);border:1px solid color-mix(in srgb,var(--accent,#6e9a7e) 16%,transparent)}
+.account-me h3{font-family:var(--serif);font-size:1.2857rem;font-weight:600;color:#4e5b47}
+.account-me p{font-size:0.7857rem;color:#98a18f;margin:5px 0 8px}
+.account-menu{display:flex;flex-direction:column;gap:6px;margin:16px 0}
+.account-menu>button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:13px 14px;border-radius:var(--radius-sm);border:1px solid #f0e8db;background:#fffdf9;transition:background .18s,border-color .18s}
+.account-menu>button:hover{background:#fdf7ee;border-color:#e6dac6}
+.account-menu>button>span:nth-child(2){min-width:0;flex:1}
+.account-menu strong{display:block;font-size:0.8571rem;font-weight:500;color:#4e5b47}
+.account-menu small{display:block;font-size:0.7143rem;color:#a0a892;margin-top:4px;line-height:1.7}
+.account-menu>button>svg{color:#b6bda9;flex:none}
+
+@media(max-width:760px){.topbar-account>span{display:none}.topbar-account{padding:5px}.account-menu>button{padding:12px}}
