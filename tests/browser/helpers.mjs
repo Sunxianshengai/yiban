@@ -23,6 +23,15 @@ export async function cleanupTestMemories(request,prefix='自动测试'){
   return stale.length;
 }
 
+// 对话功能全部依赖模型。E2E 跑在 `tests/mock-model.mjs` 起的假服务上，
+// 这里只负责问一句「这次跑的环境里模型通没通」，让用例能给出准确的失败原因。
+export async function modelReady(request){
+  const status=await (await request.get('/api/auth/status')).json();
+  if(!status.user)return false;
+  const data=await (await request.get('/api/companion')).json();
+  return Boolean(data.aiEnabled);
+}
+
 export async function signInAsNewAdmin(page,{name='测试家长',prefix='u'}={}){
   const req=page.request;
   const status=await (await req.get('/api/auth/status')).json();

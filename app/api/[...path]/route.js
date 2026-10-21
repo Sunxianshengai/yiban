@@ -6,10 +6,10 @@ import { head as headBlob, issueSignedToken } from '@vercel/blob';
 import { all,get,put,remove,log,snapshot,saveMedia,readMedia,deleteMedia,usesRemoteStorage } from '../../../lib/store.mjs';
 import { fetchAudioBuffer } from '../../../lib/voice.mjs';
 import { tidyMemory, searchMemories } from '../../../lib/core.mjs';
-import {organize,generateStory,enrichScenes,aiReady,chatWithCompanion,chatWithRole} from '../../../lib/ai.mjs';
-import {CONCERNS,TONES,ROLES,MAX_TEXT as ROLE_MAX_TEXT,sanitizeRole,roleOpening,localRoleReply,buildRoleMessages,roleById} from '../../../lib/roles.mjs';
+import {organize,generateStory,enrichScenes,aiReady,aiStatus,chatWithCompanion,chatWithRole,ModelError} from '../../../lib/ai.mjs';
+import {CONCERNS,TONES,KINDS,ROLES,MAX_TEXT as ROLE_MAX_TEXT,sanitizeRole,roleOpening,buildRoleMessages,roleById} from '../../../lib/roles.mjs';
 import {buildGame,advance,currentScene,publicGame,promptForScene,TRAITS} from '../../../lib/game.mjs';
-import {PERSONAS,RELATIONS,MAX_MESSAGES,MAX_NOTES,MAX_TEXT,sanitizeCompanion,openingLine,retrieveMemories,buildMessages,localReply,localNotes} from '../../../lib/companion.mjs';
+import {PERSONAS,RELATIONS,MAX_MESSAGES,MAX_NOTES,MAX_TEXT,sanitizeCompanion,openingLine,retrieveMemories,buildMessages,localNotes} from '../../../lib/companion.mjs';
 import {voiceConfigured,enrollVoice,synthesizeVoice,cacheKey} from '../../../lib/voice.mjs';
 import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
 import {ACCENTS,FONT_SCALES,sanitizePreferences} from '../../../lib/core.mjs';
@@ -17,7 +17,7 @@ import {ACCENTS,FONT_SCALES,sanitizePreferences} from '../../../lib/core.mjs';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const json=(data,status=200)=>NextResponse.json(data,{status});
-const bad=(e,status=400)=>json({error:e.message||'请求未能完成'},status);
+const bad=(e,status=400)=>json({error:e.message||'请求未能完成'},e?.status||status);
 const unauthorized=()=>json({error:'请先登录'},401);
 const forbidden=()=>json({error:'当前账号没有执行此操作的权限'},403);
 const guard=async(request,role='viewer')=>{const user=await sessionFromRequest(request);return {user,error:!user?unauthorized():!accountRole(user,role)?forbidden():null};};
@@ -80,7 +80,7 @@ export async function GET(request,{params}) {
         messages:thread?.messages||[],notes:thread?.notes||[],
         threadId:thread?.id||null,threadCount:threads.length,
         voiceMembers:members.filter(m=>m.voiceId).map(m=>({id:m.id,name:m.name})),
-        aiEnabled:aiReady(),voiceEnabled:voiceConfigured(),memoryCount:pool.length,
+        aiEnabled:aiReady(),ai:aiStatus(),voiceEnabled:voiceConfigured(),memoryCount:pool.length,
       });
     }
     if(parts[0]==='role') {
@@ -103,11 +103,11 @@ export async function GET(request,{params}) {
       ]);
       const mine=confirmed.filter(m=>(m.people||[]).includes(auth.user.name));
       return json({
-        concerns:CONCERNS,tones:TONES,
+        concerns:CONCERNS,tones:TONES,kinds:KINDS,
         // lines 是这个角色自己的话术池，不让前端拿到——它是「怎么说话」，不是展示内容。
         roles:ROLES.map(({lines,...rest})=>rest),
         threads:threads.map(t=>({roleId:t.roleId,toneId:t.toneId,name:t.name,useMemories:Boolean(t.useMemories),count:(t.messages||[]).length,updatedAt:t.updatedAt||null})),
-        aiEnabled:aiReady(),memoryCount:(mine.length?mine:confirmed).length,
+        aiEnabled:aiReady(),ai:aiStatus(),memoryCount:(mine.length?mine:confirmed).length,
       });
     }
     if(parts[0]==='media') {
@@ -327,8 +327,9 @@ export async function POST(request,{params}) {
       let thread=body.threadId?await get('companion_threads',String(body.threadId)):null;
       if(thread&&thread.userId!==auth.user.id) return forbidden();
       if(!thread) thread={id:randomUUID(),familyId:'family',userId:auth.user.id,messages:[],notes:[],createdAt:new Date().toISOString()};
+      // 不再有本地兜底：模型没答上来就如实报错，绝不拿模板话冒充它。
       const reply=await chatWithCompanion(buildMessages(companion,{history:thread.messages,text:raw,memories,notes:thread.notes}));
-      const answer=reply?{text:reply,mode:'model',memoryIds:memories.map(m=>m.id)}:localReply(companion,{text:raw,memories,history:thread.messages});
+      const answer={text:reply,mode:'model',memoryIds:memories.map(m=>m.id)};
       const messages=[...thread.messages,{role:'user',text:raw,at:new Date().toISOString()},{role:'companion',text:answer.text,at:new Date().toISOString(),mode:answer.mode}];
       // 超长的对话折进 notes：不删用户的话，只是不再逐条发给模型。
       const trimmed=messages.length>MAX_MESSAGES?messages.slice(-MAX_MESSAGES):messages;
@@ -369,8 +370,9 @@ export async function POST(request,{params}) {
       let thread=await get('role_threads',id);
       const memories=setting.useMemories?retrieveMemories((await all('memories')).filter(m=>m.status==='confirmed'),raw,2):[];
       const history=thread?.messages||[];
+      // 不再有本地兜底：模型没答上来就如实报错。
       const reply=await chatWithRole(buildRoleMessages(setting,{history,text:raw,memories}));
-      const answer=reply?{text:reply,mode:'model',memoryIds:memories.map(m=>m.id)}:localRoleReply(setting,{text:raw,memories,history});
+      const answer={text:reply,mode:'model',memoryIds:memories.map(m=>m.id)};
       const now=new Date().toISOString();
       const messages=[...history,{role:'user',text:raw,at:now},{role:'role',text:answer.text,at:now,mode:answer.mode}];
       const trimmed=messages.length>MAX_MESSAGES?messages.slice(-MAX_MESSAGES):messages;

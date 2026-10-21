@@ -12,14 +12,17 @@ test('家伴能开场、能聊天、能给出可核对的出处', async ({page})
   const opening=await page.locator('.companion-opening p').innerText();
   expect(opening.trim().length).toBeGreaterThan(0);
 
-  // 本地没配模型时要明说，不能让人以为背后有模型。
-  await expect(page.locator('.companion-note')).toContainText('本机没配模型');
+  // 这一轮起回话全部来自模型：没接上就没有回话，界面上也不会假装有。
+  await expect(page.locator('.companion-note')).toHaveCount(0);
 
-  // 说一句关于记忆的话，应当命中并回扣原文。
+  // 说一句关于记忆的话：回复由模型写，出处由检索给出，两件事分开。
   await page.getByLabel('跟家伴说一句话').fill('老家的院子还记得吗');
   await page.getByRole('button',{name:'说一句'}).click();
   await expect(page.locator('.companion-line.user')).toHaveCount(1,{timeout:15000});
-  await expect(page.locator('.companion-line.companion').last()).toBeVisible({timeout:20000});
+  await expect(page.locator('.companion-typing')).toHaveCount(0,{timeout:20000});
+  await expect(page.locator('.companion-line.companion').last()).toBeVisible();
+  // 再也不该出现「本地回话」这类标签——它现在只可能是模型说的。
+  await expect(page.locator('.companion-tag')).toHaveCount(0);
 
   // 回复里若引用了记忆，出处必须可点回原文。
   const sourceCount=await page.locator('.companion-sources .text-link').count();

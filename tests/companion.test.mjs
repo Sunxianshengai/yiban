@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import {
   PERSONAS, RELATIONS, MAX_NOTES, MAX_TEXT,
   retrieveMemories, memoryLine, sanitizeCompanion, openingLine,
-  buildMessages, localReply, localNotes, personaById,
+  buildMessages, localNotes, personaById,
 } from '../lib/companion.mjs';
+import * as companionModule from '../lib/companion.mjs';
+const localReplyExport = companionModule.localReply;
 
 const memory = (patch = {}) => ({
   id: 'm1', title: '外婆家的灶台', year: '1998', location: '绍兴', theme: '老家',
@@ -100,29 +102,15 @@ test('历史只带最近 12 条，其余靠 notes 承载', () => {
   assert.equal(dialogue[0].content, '第18句');
 });
 
-test('未配模型时的本地回话不是空壳：有出处、标 mode、不装成模型', () => {
-  const hit = localReply({}, { text: '外婆家的灶台', memories: [memory()] });
-  assert.equal(hit.mode, 'local');
-  assert.match(hit.text, /1998年/);
-  assert.match(hit.text, /外婆家的灶台/);
-  assert.deepEqual(hit.memoryIds, ['m1']);
-
-  const unknown = localReply({}, { text: '明天会下雨吗', memories: [] });
-  assert.equal(unknown.mode, 'local');
-  assert.match(unknown.text, /这个我还真不知道/);
-  assert.deepEqual(unknown.memoryIds, []);
-
-  const blank = localReply({ personaId: 'quiet' }, { text: '嗯', memories: [] });
-  assert.ok(blank.text.length > 0);
+test('不再有本地回话：模块里没有模板应答的出口', () => {
+  // 对话交给模型，本地一句话都不预备。导出面里出现任何 reply 生成器都算退回去了。
+  assert.equal(localReplyExport, undefined, 'companion.mjs 不该再导出 localReply');
 });
 
-test('提到自伤时不做挽留，给家里人指路 + 热线', () => {
-  const reply = localReply({}, { text: '我真的不想活了', memories: [memory()] });
-  assert.match(reply.text, /12356/);
-  assert.match(reply.text, /家里/);
-  // 危机优先级高于记忆命中：不能拿一段旧回忆岔开
-  assert.doesNotMatch(reply.text, /外婆家的灶台/);
-  assert.deepEqual(reply.memoryIds, []);
+test('系统提示词要求危机时给出家里人 + 热线 12356', () => {
+  const system = buildMessages({}, { text: '我真的不想活了' })[0].content;
+  assert.match(system, /12356/);
+  assert.match(system, /家里/);
 });
 
 test('记事本只收用户说过的短句，去重并限长', () => {

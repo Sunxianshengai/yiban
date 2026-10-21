@@ -61,9 +61,17 @@ npm.cmd run dev
 
 ## AI 与语音
 
-未配置云端模型时，“整理文字”仅从用户输入提取年份、主题和标签；故事专辑按已确认原文串联，不会声称已识别照片。音频优先播放家人上传的真实录音；没有录音时使用浏览器设备朗读，并在界面注明。
+「家伴」和「找人说说话」这两处对话**没有预置台词**：它们必须接入模型才有回话。没有配对模型时，界面会直接说明「还没有接入模型」，而不是拿模板话假装在聊。
 
-如需接入兼容 Chat Completions 且支持图片输入的模型服务，复制 `.env.example` 为 `.env.local` 并填写 `AI_API_URL`、`AI_API_KEY`、`AI_MODEL`。接口地址应为完整的聊天完成端点。配置后重启应用。模型输出仍需家属核对。不要把 `.env.local` 发给别人或提交到代码仓库。
+最省事的配法是把 `.env.example` 复制成 `.env.local`，只填一行：
+
+```
+DEEPSEEK_API_KEY=sk-...
+```
+
+接口地址与模型名会自动使用 DeepSeek 的默认值；也可以填 `DASHSCOPE_API_KEY` 走阿里云百炼（同一把 key 还用于声音克隆），两家都填时用 `AI_PROVIDER=deepseek|dashscope` 指定用谁。要接别的兼容 Chat Completions 的服务，把 `AI_API_URL`、`AI_API_KEY`、`AI_MODEL` 三项填全即可，填齐后会覆盖上面的预设。改完重启应用。
+
+这些功能仍会走本地降级，无需模型也能用：整理文字（从输入提取年份/主题/标签）、故事专辑（按已确认原文串联）、人生模拟的剧本骨架。音频优先播放家人上传的真实录音；没有录音时使用浏览器设备朗读，并在界面注明。模型输出仍需家属核对。不要把 `.env.local` 发给别人或提交到代码仓库。
 
 语音寻找回忆使用浏览器自带语音识别能力，需要受支持的浏览器、网络和麦克风权限；文字搜索和快捷词始终可用。手机通过局域网访问时，浏览器麦克风一般要求 HTTPS。本机 Edge 的 `localhost` 页面可先进行语音演示。
 
@@ -84,6 +92,19 @@ npm.cmd run dev
 npm.cmd test
 npm.cmd run test:e2e
 npm.cmd run build
+```
+
+E2E 需要一个假的模型服务来跑对话路径（不联网、不花钱）：
+
+```powershell
+node tests/mock-model.mjs   # 另开一个终端，监听 127.0.0.1:3799
+```
+
+然后把开发服务指向它再跑测试：
+
+```powershell
+$env:AI_API_URL="http://127.0.0.1:3799/v1/chat/completions"; $env:AI_API_KEY="mock-key"; $env:AI_MODEL="mock-model"
+npm.cmd run dev
 ```
 
 视觉检查截图保存在 `artifacts/`。开发服务运行在 <http://localhost:3000>。

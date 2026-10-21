@@ -363,6 +363,10 @@ body{font-size:1rem}
 .roles{display:flex;flex-direction:column;gap:16px}
 .roles-intro h2{font-family:var(--serif);font-size:1.2857rem;font-weight:600;color:var(--ink)}
 .roles-intro p{font-size:0.8571rem;line-height:1.95;color:#8d9683;margin-top:8px}
+.kind-row{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid #f0eade}
+.kind-tab{padding:7px 13px;border:none;border-bottom:2px solid transparent;background:none;color:#a3988a;font-size:0.7857rem;font-family:inherit;cursor:pointer;transition:color .16s,border-color .16s}
+.kind-tab:hover{color:#5f6d57}
+.kind-tab.active{color:color-mix(in srgb,var(--accent) 82%,#3b3323);border-bottom-color:color-mix(in srgb,var(--accent) 62%,#e8e2d5);font-weight:600}
 .concern-row{display:flex;flex-wrap:wrap;gap:8px}
 .concern-chip{padding:8px 14px;border-radius:999px;border:1px solid #e8e2d5;background:#fffdf9;color:#8d9683;font-size:0.7857rem;cursor:pointer;transition:border-color .16s,background .16s,color .16s}
 .concern-chip:hover{border-color:color-mix(in srgb,var(--accent) 40%,#e8e2d5);color:#5f6d57}

@@ -7,20 +7,29 @@ import {BASE,signInAsNewAdmin} from './helpers.mjs';
 //   2. 每个角色的对话各存各的，换回来还能接着说；
 //   3. 记忆默认不借用——不打开开关，它就不该提旧事。
 
-test('一屋子的人：按困惑挑、选一个就能聊、换个人回的话不一样',async({page})=>{
+test('一屋子的人：按来源与困惑挑、选一个就能聊、换个人回的话不一样',async({page})=>{
   await signInAsNewAdmin(page,{name:'测试家长',prefix:'roles'});
   await page.getByRole('navigation').getByRole('button',{name:/找人说说话/}).click();
   await expect(page.locator('.page-heading h1')).toContainText('找人说说话');
-  await expect(page.locator('.role-card')).toHaveCount(12);
+  await expect(page.locator('.role-card')).toHaveCount(30);
 
   // 按「家里的事」筛一遍，剩下的应该都是家里人这类角色。
   await page.locator('.concern-chip',{hasText:'家里的事'}).click();
   const familyCount=await page.locator('.role-card').count();
   expect(familyCount).toBeGreaterThan(1);
-  expect(familyCount).toBeLessThan(12);
+  expect(familyCount).toBeLessThan(30);
 
   await page.locator('.concern-chip',{hasText:'都能聊'}).click();
-  await expect(page.locator('.role-card')).toHaveCount(12);
+  await expect(page.locator('.role-card')).toHaveCount(30);
+
+  // 书里的人：只剩九位，并且界面明说这不是原文。
+  await page.getByRole('button',{name:'书里的人',exact:true}).click();
+  await expect(page.locator('.role-card')).toHaveCount(9);
+  await expect(page.getByText(/话是照着书里写定的性子说的/)).toBeVisible();
+  await page.getByRole('button',{name:'史书里的人',exact:true}).click();
+  await expect(page.locator('.role-card')).toHaveCount(9);
+  await page.locator('.kind-tab',{hasText:'都在这儿'}).click();
+  await expect(page.locator('.role-card')).toHaveCount(30);
 
   // 挑「母亲」聊一句。
   await page.locator('.role-card',{hasText:'母亲'}).first().click();

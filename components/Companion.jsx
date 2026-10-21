@@ -85,7 +85,6 @@ function useCompanion(api) {
 /** 一条对话记录：纸条式，不用气泡。 */
 function Line({message}) {
   return <article className={`companion-line ${message.role}`}>
-    {message.role==='companion'&&message.mode==='local'&&<small className="companion-tag">本地回话</small>}
     <p>{message.text}</p>
   </article>;
 }
@@ -104,14 +103,16 @@ function Feed({c,opening}) {
 }
 
 /** 说一句的输入区。 */
-function Composer({c,name,suggestions=[]}) {
+function Composer({c,name,suggestions=[],ready=true}) {
+  // 没配模型时把输入框关掉：能打字却永远得不到回话，比直接说「还没接上」更伤。
+  const placeholder=ready?`跟${name}说点什么…`:'还没有接入模型，暂时说不了话';
   return <>
-    {c.messages.length===0&&suggestions.length>0&&<div className="companion-suggest">
+    {ready&&c.messages.length===0&&suggestions.length>0&&<div className="companion-suggest">
       {suggestions.map(item=><button key={item} className="companion-chip" disabled={c.busy} onClick={()=>c.send(item)}>{item}</button>)}
     </div>}
     <div className="companion-input">
-      <input value={c.text} onChange={event=>c.setText(event.target.value)} onKeyDown={event=>{if(event.key==='Enter'&&!event.nativeEvent.isComposing){event.preventDefault();c.send();}}} maxLength={500} placeholder={`跟${name}说点什么…`} aria-label="跟家伴说一句话"/>
-      <Button onClick={()=>c.send()} busy={c.busy} disabled={!c.text.trim()}>说一句</Button>
+      <input value={c.text} disabled={!ready} onChange={event=>c.setText(event.target.value)} onKeyDown={event=>{if(event.key==='Enter'&&!event.nativeEvent.isComposing){event.preventDefault();c.send();}}} maxLength={500} placeholder={placeholder} aria-label="跟家伴说一句话"/>
+      <Button onClick={()=>c.send()} busy={c.busy} disabled={!ready||!c.text.trim()}>说一句</Button>
     </div>
     {c.error&&<p className="form-error"><Icon name="info" size={15}/>{c.error}</p>}
   </>;
@@ -157,11 +158,11 @@ export default function Companion({api,notify,onOpenMemory,canEdit=false}) {
       </div>
     </header>
 
-    {!data.aiEnabled&&<p className="companion-note"><Icon name="info" size={15}/>本机没配模型，家伴会用记忆库里的原文回你——话是笨一点，但它说的每句都查得到出处。</p>}
+    {!data.aiEnabled&&<p className="companion-note"><Icon name="info" size={15}/>还没有接入模型，家伴暂时说不了话。在环境变量里填上模型密钥就能开口——它没有预置台词，每句话都是现写的。</p>}
 
     <Feed c={c} opening={data.opening}/>
     {sourcesBlock(c.sources,onOpenMemory)}
-    <Composer c={c} name={companion.name}/>
+    <Composer c={c} name={companion.name} ready={Boolean(data.aiEnabled)}/>
 
     {c.notes.length>0&&<details className="companion-notes"><summary>它记得的 {c.notes.length} 件事</summary><ul>{c.notes.map((note,index)=><li key={index}>{note}</li>)}</ul></details>}
 
@@ -237,10 +238,10 @@ function DockPanel({api,onExpand,onOpenMemory,onClose}) {
   return <section className="companion-dock-panel" role="dialog" aria-label="家伴对话" ref={inputWrap}>
     {head}
     {!data?<div className="companion-loading"><span className="spinner"/><p>家伴正在想起一些事…</p></div>:<>
-      {!data.aiEnabled&&<p className="companion-dock-note">本机没配模型，它用记忆原文回你。</p>}
+      {!data.aiEnabled&&<p className="companion-dock-note">还没有接入模型，暂时说不了话。</p>}
       <Feed c={c} opening={data.opening}/>
       {sourcesBlock(c.sources,onOpenMemory)}
-      <Composer c={c} name={companion.name} suggestions={DOCK_SUGGESTIONS}/>
+      <Composer c={c} name={companion.name} suggestions={DOCK_SUGGESTIONS} ready={Boolean(data.aiEnabled)}/>
       {c.notes.length>0&&<details className="companion-notes"><summary>它记得的 {c.notes.length} 件事</summary><ul>{c.notes.map((note,index)=><li key={index}>{note}</li>)}</ul></details>}
     </>}
   </section>;
