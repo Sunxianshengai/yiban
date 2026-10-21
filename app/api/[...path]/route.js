@@ -6,8 +6,9 @@ import { head as headBlob, issueSignedToken } from '@vercel/blob';
 import { all,get,put,remove,log,snapshot,saveMedia,readMedia,deleteMedia,usesRemoteStorage } from '../../../lib/store.mjs';
 import { fetchAudioBuffer } from '../../../lib/voice.mjs';
 import { tidyMemory, searchMemories } from '../../../lib/core.mjs';
-import {organize,generateStory,enrichScenes,aiReady} from '../../../lib/ai.mjs';
+import {organize,generateStory,enrichScenes,aiReady,chatWithCompanion} from '../../../lib/ai.mjs';
 import {buildGame,advance,currentScene,publicGame,promptForScene,TRAITS} from '../../../lib/game.mjs';
+import {PERSONAS,RELATIONS,MAX_MESSAGES,MAX_NOTES,MAX_TEXT,sanitizeCompanion,openingLine,retrieveMemories,buildMessages,localReply,localNotes} from '../../../lib/companion.mjs';
 import {voiceConfigured,enrollVoice,synthesizeVoice,cacheKey} from '../../../lib/voice.mjs';
 import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
 import {ACCENTS,FONT_SCALES,sanitizePreferences} from '../../../lib/core.mjs';
@@ -60,6 +61,26 @@ export async function GET(request,{params}) {
         if(count>0) subjects.push({id:'self',name:auth.user.name,relation:'我自己',count});
       }
       return json({subjects,traits:TRAITS,canPlay:memories.length>0,aiEnabled:aiReady()});
+    }
+    if(parts[0]==='companion') {
+      // 家伴：整块的对话入口数据。首屏就可以渲染，不用等第二个请求。
+      const [settingsDoc,members,confirmed,anniversaries]=await Promise.all([
+        get('settings','family'),all('members'),all('memories').then(list=>list.filter(m=>m.status==='confirmed')),all('anniversaries'),
+      ]);
+      const companion=settingsDoc?.companion||sanitizeCompanion({}, {});
+      const threads=(await all('companion_threads')).filter(t=>t.userId===auth.user.id).sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
+      const thread=threads[0]||null;
+      // 开场白要「有由头」：优先今天是个纪念日，其次随机一段自己的记忆。
+      const mine=confirmed.filter(m=>(m.people||[]).includes(auth.user.name));
+      const pool=mine.length?mine:confirmed;
+      const opening=openingLine(companion,{memories:pool.length?[pool[Math.floor(Date.now()/86400000)%pool.length]]:[],anniversaries});
+      return json({
+        companion,opening,personas:PERSONAS,relations:RELATIONS,
+        messages:thread?.messages||[],notes:thread?.notes||[],
+        threadId:thread?.id||null,threadCount:threads.length,
+        voiceMembers:members.filter(m=>m.voiceId).map(m=>({id:m.id,name:m.name})),
+        aiEnabled:aiReady(),voiceEnabled:voiceConfigured(),memoryCount:pool.length,
+      });
     }
     if(parts[0]==='media') {
       const file=parts[1]||'';
@@ -265,6 +286,50 @@ export async function POST(request,{params}) {
         await log('game',`走完了「${updated.title}」`);
       }
       return json({...publicGame(updated),reveal:{memoryId:scene.memoryId,title:scene.title,truth:scene.truth}});
+    }
+    if(parts[0]==='companion'&&parts[1]==='turn') {
+      // 一次对话回合。事实只有一个来源：confirmed 记忆里检索出来的那几条，
+      // 检索结果随回复一起回给前端，用户可以点进去核对原文。
+      const raw=String(body.text||'').trim().slice(0,MAX_TEXT);
+      if(!raw) throw new Error('说点什么吧');
+      const settingsDoc=await get('settings','family');
+      const companion=settingsDoc?.companion||sanitizeCompanion({},{});
+      const confirmed=(await all('memories')).filter(m=>m.status==='confirmed');
+      const memories=retrieveMemories(confirmed,raw,3);
+      let thread=body.threadId?await get('companion_threads',String(body.threadId)):null;
+      if(thread&&thread.userId!==auth.user.id) return forbidden();
+      if(!thread) thread={id:randomUUID(),familyId:'family',userId:auth.user.id,messages:[],notes:[],createdAt:new Date().toISOString()};
+      const reply=await chatWithCompanion(buildMessages(companion,{history:thread.messages,text:raw,memories,notes:thread.notes}));
+      const answer=reply?{text:reply,mode:'model',memoryIds:memories.map(m=>m.id)}:localReply(companion,{text:raw,memories,history:thread.messages});
+      const messages=[...thread.messages,{role:'user',text:raw,at:new Date().toISOString()},{role:'companion',text:answer.text,at:new Date().toISOString(),mode:answer.mode}];
+      // 超长的对话折进 notes：不删用户的话，只是不再逐条发给模型。
+      const trimmed=messages.length>MAX_MESSAGES?messages.slice(-MAX_MESSAGES):messages;
+      const notes=messages.length>MAX_MESSAGES?localNotes(messages.slice(0,-MAX_MESSAGES),thread.notes):thread.notes;
+      const updated={...thread,messages:trimmed,notes:notes.slice(-MAX_NOTES),updatedAt:new Date().toISOString()};
+      await put('companion_threads',updated);
+      return json({
+        messages:trimmed.slice(-2),notes:updated.notes,threadId:updated.id,
+        mode:answer.mode,
+        sources:memories.map(m=>({id:m.id,title:m.title,year:m.year,location:m.location})),
+      },201);
+    }
+    if(parts[0]==='companion'&&parts[1]==='reset') {
+      // 换一个话题：把当前这段聊完的记录收起来，下次从干净的对话开始。
+      // 记事本（notes）保留——「记得你」这件事不该被一次换话题抹掉。
+      const thread=body.threadId?await get('companion_threads',String(body.threadId)):null;
+      if(thread&&thread.userId!==auth.user.id) return forbidden();
+      if(thread) await put('companion_threads',{...thread,messages:[],updatedAt:new Date().toISOString()});
+      return json({ok:true});
+    }
+    if(parts[0]==='companion'&&parts[1]==='config') {
+      // 改家伴的名字/性格/关系。写进 settings，整家人共用同一个家伴——
+      // 这是「家庭共享空间」的一部分，不按账号各养一只。
+      if(!accountRole(auth.user,'editor')) return forbidden();
+      const settingsDoc=await get('settings','family');
+      const companion=sanitizeCompanion(body,settingsDoc?.companion||{});
+      const updated={...settingsDoc,companion};
+      await put('settings',updated);
+      return json({companion},201);
     }
     if(parts[0]==='members') {
       const name=String(body.name||'').trim().slice(0,30);if(!name) throw new Error('请填写成员姓名');
