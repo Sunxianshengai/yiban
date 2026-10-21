@@ -6,7 +6,8 @@ import { head as headBlob, issueSignedToken } from '@vercel/blob';
 import { all,get,put,remove,log,snapshot,saveMedia,readMedia,deleteMedia,usesRemoteStorage } from '../../../lib/store.mjs';
 import { fetchAudioBuffer } from '../../../lib/voice.mjs';
 import { tidyMemory, searchMemories } from '../../../lib/core.mjs';
-import {organize,generateStory} from '../../../lib/ai.mjs';
+import {organize,generateStory,enrichScenes,aiReady} from '../../../lib/ai.mjs';
+import {buildGame,advance,currentScene,publicGame,promptForScene,TRAITS} from '../../../lib/game.mjs';
 import {voiceConfigured,enrollVoice,synthesizeVoice,cacheKey} from '../../../lib/voice.mjs';
 import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
 import {AGE_GROUPS,ACCENTS,FONT_SCALES,sanitizePreferences} from '../../../lib/core.mjs';
@@ -43,6 +44,22 @@ export async function GET(request,{params}) {
     }
     if(parts[0]==='voice'&&parts[1]==='status') {
       return json({configured:voiceConfigured(),provider:'cosyvoice'});
+    }
+    if(parts[0]==='game'&&parts[1]==='subjects') {
+      // 人生模拟的选人入口：家庭每一位成员（有已确认记忆的）都能当主角，
+      // 包括「选别人」——用同一份家庭记忆，走一遍对方的人生岔路。
+      const memories=(await all('memories')).filter(m=>m.status==='confirmed');
+      const members=await all('members');
+      const subjects=[{id:'family',name:'我们一家人',relation:'全家',count:memories.length}];
+      for(const member of members) {
+        const count=memories.filter(m=>(m.people||[]).includes(member.name)).length;
+        if(count>0) subjects.push({id:`member:${member.id}`,name:member.name,relation:member.relation||'家人',count});
+      }
+      if(auth.user.name&&!members.some(m=>m.name===auth.user.name)) {
+        const count=memories.filter(m=>(m.people||[]).includes(auth.user.name)).length;
+        if(count>0) subjects.push({id:'self',name:auth.user.name,relation:'我自己',count});
+      }
+      return json({subjects,traits:TRAITS,canPlay:memories.length>0,aiEnabled:aiReady()});
     }
     if(parts[0]==='media') {
       const file=parts[1]||'';
@@ -210,6 +227,46 @@ export async function POST(request,{params}) {
       if(!types[body.type]) throw new Error('不支持的互动类型');
       const memory=await get('memories',body.memoryId);if(!memory||memory.status!=='confirmed') throw new Error('记忆不可播放');
       return json(await log(body.type,`${types[body.type]}「${memory.title}」`,memory.id));
+    }
+    if(parts[0]==='game'&&parts[1]==='start') {
+      // 人生模拟：用家庭记忆库当剧本。任何登录者都能玩，也能选别人当主角，
+      // 但剧本只能用 status==='confirmed' 的记忆——未确认的草稿不进游戏。
+      const confirmedMemories=(await all('memories')).filter(m=>m.status==='confirmed');
+      const subjectId=String(body.subjectId||'family');
+      const memberId=subjectId.startsWith('member:')?subjectId.slice(7):null;
+      const member=memberId?await get('members',memberId):null;
+      if(memberId&&!member) throw new Error('没有找到这位家人');
+      const subject=member?{id:member.id,name:member.name}:{id:null,name:subjectId==='self'?auth.user.name:'我们一家人'};
+      // 选了某位家人，就只用提到他的记忆——不能拿别人的往事冒充他的人生。
+      const memories=member?confirmedMemories.filter(m=>(m.people||[]).includes(member.name)):confirmedMemories;
+      if(member&&!memories.length) throw new Error(`${member.name}还没有已确认的记忆，换一位试试`);
+      const game=buildGame({memories,subject,user:auth.user});
+      let enriched=null;
+      if(aiReady()) {
+        const draft=await enrichScenes(game.scenes,{name:game.subjectName},[],promptForScene);
+        if(draft){enriched='model';game.scenes=draft;game.mode='model';}
+      }
+      const record={...game,id:randomUUID(),familyId:'family',userId:auth.user.id,createdAt:new Date().toISOString()};
+      await put('games',record);
+      // 只留最近的几局：游戏记录带全部场景文本，不清理会一直堆积。
+      const mine=(await all('games')).filter(g=>g.userId===auth.user.id).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+      for(const stale of mine.slice(10)) await remove('games',stale.id);
+      return json({...publicGame(record),enriched},201);
+    }
+    if(parts[0]==='game'&&parts[1]==='turn') {
+      // 一个回合：记住玩家的选择，并把这一段真实记忆回扣给他——
+      // 选项是「如果」，记忆是「事实」，两者永远分开呈现。
+      const record=await get('games',String(body.gameId||''));
+      if(!record) throw new Error('这段模拟已经结束或不存在了');
+      if(record.userId!==auth.user.id) return forbidden();
+      const scene=currentScene(record);
+      if(!scene) throw new Error('这段模拟已经走到尽头了');
+      const updated=advance(record,{choiceId:body.choiceId,text:body.text});
+      await put('games',updated);
+      if(updated.status==='finished') {
+        await log('game',`走完了「${updated.title}」`);
+      }
+      return json({...publicGame(updated),reveal:{memoryId:scene.memoryId,title:scene.title,truth:scene.truth}});
     }
     if(parts[0]==='members') {
       const name=String(body.name||'').trim().slice(0,30);if(!name) throw new Error('请填写成员姓名');

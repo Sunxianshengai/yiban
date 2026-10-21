@@ -151,3 +151,83 @@ body{font-size:1rem}
    transform 只影响合成，不触发布局，按下这一刻不会被即将到来的重排拖慢。 */
 .option-pill{transition:border-color .15s,background .15s,transform .08s}
 .option-pill:active{transform:scale(.96)}
+
+/* ── 人生模拟 · 文字对话 ─────────────────────────────────────────
+   视觉上刻意"不像聊天软件"：它是家里人围坐读一段往事，不是和机器人对话。
+   所以消息流用纸感卡片、场景标签用年份+主题，不用气泡尾巴、不用头像。 */
+.life-game{display:flex;flex-direction:column;gap:2px}
+.game-loading{display:flex;flex-direction:column;align-items:center;gap:14px;padding:48px 0;color:var(--muted);font-size:0.8571rem}
+.game-intro{margin-bottom:18px}
+.game-intro h3{font-family:var(--serif);font-size:1.2857rem;margin-bottom:9px;color:var(--ink)}
+.game-intro p{font-size:0.8571rem;line-height:1.9;color:#9b9182}
+.game-footnote{font-size:0.7143rem;line-height:1.8;color:#b3a897;margin-top:12px;text-align:center}
+.form-error{display:flex;align-items:center;gap:7px;color:#a9635c;background:#faece8;border-radius:7px;padding:10px 12px;font-size:0.8571rem;line-height:1.8;margin:12px 0}
+.subject-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:11px;margin:16px 0 4px}
+.subject-card{display:flex;flex-direction:column;align-items:center;gap:7px;padding:18px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--paper);transition:border-color .18s,transform .18s,box-shadow .18s}
+.subject-card:hover:not(:disabled){border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow)}
+.subject-card strong{font-family:var(--serif);font-size:1rem;color:var(--ink)}
+.subject-card small{font-size:0.7143rem;color:#a89d8c;text-align:center;line-height:1.7}
+.avatar-lg{width:54px;height:54px;font-size:1.4rem}
+
+.game-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.game-head h3{font-family:var(--serif);font-size:1.2143rem;color:var(--ink)}
+.game-head p{font-size:0.7143rem;color:#aa9f8e;margin-top:6px}
+
+/* 消息流：可滚动的"读往事"区域，高度受限但能一直往回读 */
+.game-feed{display:flex;flex-direction:column;gap:18px;max-height:min(52vh,440px);overflow-y:auto;padding:4px 4px 4px 0;scroll-behavior:smooth}
+.game-turn{display:flex;flex-direction:column;gap:9px}
+.game-line{border-radius:var(--radius-sm);padding:15px 17px;line-height:1.95}
+.game-line .game-tag{display:inline-flex;align-items:center;gap:5px;font-size:0.7143rem;letter-spacing:.5px;color:#b0a493;margin-bottom:8px}
+.game-line p{font-size:0.9286rem;color:var(--ink);white-space:pre-wrap}
+.game-line em{display:block;margin-top:11px;font-style:normal;font-family:var(--serif);font-size:0.9286rem;color:#8b8171;padding-left:12px;border-left:2px solid #e3d8c6}
+.game-line.memory{background:var(--paper);border:1px solid var(--border)}
+.game-line.mine{background:color-mix(in srgb,var(--accent) 10%,#fffdf9);border:1px solid color-mix(in srgb,var(--accent) 26%,transparent);margin-left:26px}
+.game-line.mine p{color:var(--green-dark)}
+.game-line.truth{background:#f6f3ea;border:1px dashed #ddd2bd;margin-left:26px}
+.game-line.truth .game-tag{color:var(--green)}
+.game-line.truth p{font-size:0.8571rem;color:#7d7566;font-family:var(--serif);line-height:2}
+.game-turn.current .game-line.memory{border-color:color-mix(in srgb,var(--accent) 34%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 10%,transparent)}
+
+.game-summary{margin-top:6px;padding:19px;border-radius:var(--radius-sm);background:color-mix(in srgb,var(--accent) 8%,#fffdf9);border:1px solid color-mix(in srgb,var(--accent) 22%,transparent)}
+.game-summary h4{display:flex;align-items:center;gap:7px;font-family:var(--serif);font-size:1rem;color:var(--green-dark);margin-bottom:14px}
+.game-summary>p{font-size:0.8571rem;line-height:2;color:#7d7566;white-space:pre-wrap;margin-top:14px}
+.trait-bars{display:flex;flex-direction:column;gap:9px}
+.trait-bar{display:flex;align-items:center;gap:10px;font-size:0.7857rem;color:#8b8171}
+.trait-bar>span{width:2.8em;flex-shrink:0}
+.trait-bar>i{flex:1;height:8px;border-radius:999px;background:#eae0cd;overflow:hidden;display:block}
+.trait-bar>i>b{display:block;height:100%;border-radius:999px;background:var(--accent);transition:width .5s ease}
+.trait-bar>i>b.peach{background:#e09a6e}
+.trait-bar>i>b.gold{background:#c2a14e}
+.trait-bar>i>b.sage{background:#6e9a7e}
+.trait-bar>i>b.lavender{background:#9b8ec0}
+.trait-bar>em{font-style:normal;width:1.6em;text-align:right;color:#b0a493}
+
+.game-choices{margin-top:6px;padding-top:16px;border-top:1px solid var(--border)}
+.game-prompt{font-size:0.7857rem;color:#aa9f8e;margin-bottom:11px}
+.choice-list{display:flex;flex-direction:column;gap:9px}
+.choice-list>button{text-align:left;padding:14px 17px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--paper);font-size:0.9286rem;color:var(--ink);line-height:1.7;transition:border-color .16s,background .16s,transform .12s}
+.choice-list>button:hover:not(:disabled){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,#fffdf9);transform:translateX(3px)}
+.choice-list>button:active:not(:disabled){transform:scale(.995)}
+.free-input{display:flex;gap:9px;margin-top:11px;align-items:center}
+.free-input input{flex:1;font-size:0.8571rem;border-radius:var(--radius-sm)}
+.free-input .btn{flex-shrink:0}
+
+.game-page-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:22px}
+.game-page-main h2,.game-page-side h2{display:flex;align-items:center;gap:8px;margin-bottom:14px;color:var(--green-dark)}
+.game-page-main>p{margin-bottom:18px;line-height:1.9}
+.game-steps{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin:0;padding:0;list-style:none;counter-reset:step}
+.game-steps li{position:relative;padding:15px 15px 15px 46px;background:#fffdf9;border:1px solid var(--border);border-radius:var(--radius-sm);counter-increment:step}
+.game-steps li::before{content:counter(step);position:absolute;left:15px;top:15px;width:22px;height:22px;border-radius:50%;background:color-mix(in srgb,var(--accent) 18%,#fff);color:var(--green-dark);font-size:0.7143rem;display:grid;place-items:center;font-family:Georgia,serif}
+.game-steps strong{display:block;font-size:0.9286rem;color:var(--ink);margin-bottom:6px}
+.game-steps span{font-size:0.7857rem;color:#a3988a;line-height:1.8}
+.game-entry-wrap{margin-top:20px}
+.game-entry{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:17px;border-radius:var(--radius-sm);background:color-mix(in srgb,var(--accent) 8%,#fffdf9);border:1px solid color-mix(in srgb,var(--accent) 20%,transparent)}
+.game-entry>div{display:flex;align-items:center;gap:12px}
+.game-entry strong{font-size:0.9286rem;color:var(--ink)}
+.game-entry p{font-size:0.7857rem;color:#a3988a;line-height:1.8;margin-top:5px}
+.game-rules{margin:0 0 18px;padding-left:18px;display:flex;flex-direction:column;gap:12px}
+.game-rules li{font-size:0.7857rem;line-height:1.9;color:#8b8171}
+.game-page-side .btn{margin-top:4px}
+
+@media(max-width:1000px){.game-page-grid{grid-template-columns:1fr}.game-steps{grid-template-columns:1fr}.game-feed{max-height:none}}
+@media(max-width:760px){.game-line.mine,.game-line.truth{margin-left:0}.free-input{flex-wrap:wrap}.free-input input{width:100%;flex:auto}.subject-grid{grid-template-columns:repeat(2,1fr)}}
