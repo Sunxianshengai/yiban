@@ -418,3 +418,42 @@ body{font-size:1rem}
 
 @media(max-width:1000px){.life-origin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.life-grid{grid-template-columns:minmax(0,1fr)}.life-side{position:static}}
 @media(max-width:760px){.life-origin-grid{grid-template-columns:1fr}.life-top{flex-wrap:wrap;gap:12px}.life-top h1{font-size:1.5rem}.life-free{flex-direction:column}.life-free .btn{width:100%}.life-feed{max-height:none}.life-mine{margin-left:0}}
+
+/* ── 让回忆主人自己讲 ─────────────────────────────────────────
+   一块独立的小舞台：照片缓慢推拉 + 复刻音色播放，再按需升级成图生视频。
+   刻意不做成整页，是因为它属于「这段记忆」的一部分，不该把人从上下文里带走。 */
+.narrator-card{margin:24px 0;padding:22px;border-radius:var(--radius);border:1px solid var(--border);background:linear-gradient(180deg,#fffdf9,#faf6ee)}
+.narrator-loading{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:0.8571rem}
+.narrator-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.narrator-head h3{display:flex;align-items:center;gap:8px;font-family:var(--serif);font-size:1.0714rem;color:var(--ink)}
+.narrator-who{font-size:0.7857rem;color:var(--muted)}
+.narrator-hint{font-size:0.7857rem;line-height:1.9;color:var(--muted);margin:10px 0}
+.narrator-empty p{font-size:0.8571rem;line-height:1.9;color:var(--ink);margin-bottom:14px}
+.narrator-stage{display:flex;flex-direction:column;gap:14px}
+.narrator-portrait{position:relative;overflow:hidden;border-radius:var(--radius-sm);border:1px solid var(--border);background:#f4efe5}
+.narrator-portrait img{display:block;width:100%;max-height:420px;object-fit:cover;transform-origin:center}
+.narrator-portrait.is-video{display:flex;padding:0;border:none;background:#000}
+.narrator-portrait video{width:100%;max-height:460px;border-radius:var(--radius-sm)}
+.narrator-controls{display:flex;gap:10px}
+.narrator-script{margin:16px 0 0;padding:14px 16px;border-left:3px solid color-mix(in srgb,var(--accent) 45%,transparent);background:#fffdf9;border-radius:0 var(--radius-sm) var(--radius-sm) 0;font-family:var(--serif);font-size:0.9286rem;line-height:2.1;color:#6f7c62;white-space:pre-wrap}
+.narrator-disclaimer{display:flex;align-items:flex-start;gap:7px;margin-top:14px;font-size:0.7143rem;line-height:1.9;color:var(--muted)}
+.narrator-disclaimer svg{flex:none;margin-top:2px}
+.narrator-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.narrator-video{margin-top:18px;padding-top:18px;border-top:1px dashed var(--border)}
+.narrator-video h4{display:flex;align-items:center;gap:7px;font-size:0.9286rem;color:var(--ink);margin-bottom:6px}
+.narrator-options{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:14px 0}
+.narrator-options label{display:flex;flex-direction:column;gap:6px;font-size:0.7143rem;color:var(--muted)}
+.narrator-options select{font-size:0.8571rem;padding:9px 11px}
+.narrator-cost{font-size:0.7857rem;color:var(--accent);font-weight:500}
+.narrator-card audio{width:100%;height:42px}
+
+/* 照片缓慢推拉：只用 transform，避免触发重排。 */
+@keyframes life-portrait-zoom-in{from{transform:scale(1)}to{transform:scale(1.08)}}
+@keyframes life-portrait-zoom-out{from{transform:scale(1.08)}to{transform:scale(1)}}
+@keyframes life-portrait-drift{0%{transform:scale(1.04) translate3d(-1%,0,0)}50%{transform:scale(1.06) translate3d(1%,-0.6%,0)}100%{transform:scale(1.04) translate3d(-1%,0,0)}}
+.life-portrait-zoom-in{animation:life-portrait-zoom-in 22s ease-in-out infinite alternate}
+.life-portrait-zoom-out{animation:life-portrait-zoom-out 22s ease-in-out infinite alternate}
+.life-portrait-drift{animation:life-portrait-drift 26s ease-in-out infinite}
+
+@media(prefers-reduced-motion:reduce){.life-portrait-zoom-in,.life-portrait-zoom-out,.life-portrait-drift{animation:none}}
+@media(max-width:760px){.narrator-card{padding:16px}.narrator-portrait img{max-height:280px}.narrator-options{flex-direction:column;align-items:stretch}.narrator-options select{width:100%}}

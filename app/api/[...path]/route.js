@@ -11,12 +11,21 @@ import {CONCERNS,TONES,KINDS,ROLES,MAX_TEXT as ROLE_MAX_TEXT,sanitizeRole,roleOp
 import {startRun,recordChoice,currentStage,publicRun,buildEnding,MAX_STAGES,MAX_CHOICE_TEXT,STAT_META} from '../../../lib/life.mjs';
 import {PERSONAS,RELATIONS,MAX_MESSAGES,MAX_NOTES,MAX_TEXT,sanitizeCompanion,openingLine,retrieveMemories,buildMessages,localNotes} from '../../../lib/companion.mjs';
 import {voiceConfigured,enrollVoice,synthesizeVoice,cacheKey} from '../../../lib/voice.mjs';
+import {generateNarration,pickNarrator,narrationKey,videoKey,buildVideoPrompt,videoConfigured,createVideoTask,fetchVideoTask,clampResolution,clampSeconds,MAX_SCRIPT,VIDEO_RESOLUTIONS,VIDEO_DEFAULT_RESOLUTION,VIDEO_DEFAULT_SECONDS} from '../../../lib/narrate.mjs';
 import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
 import {ACCENTS,FONT_SCALES,sanitizePreferences} from '../../../lib/core.mjs';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const json=(data,status=200)=>NextResponse.json(data,{status});
+// 媒体统一从我们自己的网关出：远程存储的 Blob 是私有访问，浏览器拿 blobUrl 放不出来。
+const mediaUrl=name=>`/api/media/${name}`;
+// 系统生成的文件（配音、图生视频）落库时标 shared：谁的浏览器都该能播，但也不算谁的私有上传。
+async function saveGenerated(name,data,contentType,userId){
+  const stored=await saveMedia(name,data,contentType);
+  await put('uploads',{id:name,userId:userId||null,shared:true,blobUrl:stored.blobUrl,blobPath:stored.blobPath,contentType,createdAt:new Date().toISOString()});
+  return name;
+}
 const bad=(e,status=400)=>json({error:e.message||'请求未能完成'},e?.status||status);
 const unauthorized=()=>json({error:'请先登录'},401);
 const forbidden=()=>json({error:'当前账号没有执行此操作的权限'},403);
@@ -62,6 +71,58 @@ export async function GET(request,{params}) {
     }
     if(parts[0]==='voice'&&parts[1]==='status') {
       return json({configured:voiceConfigured(),provider:'cosyvoice'});
+    }
+    if(parts[0]==='narrate'&&parts[1]) {
+      // 只读：这段记忆有没有现成的口述稿、有没有现成的视频。
+      // 前端一进详情页就问一次，命中就什么都不用付钱。
+      const memory=await get('memories',parts[1]);
+      if(!memory) return json({error:'记忆不存在'},404);
+      if(memory.status!=='confirmed'&&!accountRole(auth.user,'editor')) return json({error:'记忆不存在'},404);
+      const members=await all('members');
+      const narrator=pickNarrator(memory,members);
+      const nKey=narrator?narrationKey(memory.id,narrator.id,memory.updatedAt||memory.createdAt||''):null;
+      const record=nKey?await get('narrations',nKey):null;
+      const video=record?.script?await get('memory_videos',videoKey({memoryId:memory.id,memberId:narrator.id,voiceId:narrator.voiceId,script:record.script,resolution:VIDEO_DEFAULT_RESOLUTION,duration:VIDEO_DEFAULT_SECONDS})):null;
+      return json({
+        memoryId:memory.id,
+        narrator:narrator?{id:narrator.id,name:narrator.name,relation:narrator.relation}:null,
+        script:record?.script||null,
+        audioUrl:record?.audioUrl||null,
+        video:video?{status:video.status,url:video.status==='ready'&&video.name?`/api/media/${video.name}`:null,taskId:video.taskId||null,resolution:video.resolution,duration:video.duration}:null,
+        voiceEnabled:voiceConfigured(),videoEnabled:videoConfigured(),aiEnabled:aiReady(),
+        maxScript:MAX_SCRIPT,resolutions:VIDEO_RESOLUTIONS,
+      });
+    }
+    if(parts[0]==='narrate-video'&&parts[1]) {
+      // 轮询图生视频任务。任务成功且拿到临时 url 时，立刻下载转存到 Blob——
+      // DashScope 那个 url 只有 24 小时寿命，转存完才是我们自己的长期资产。
+      const record=await get('memory_videos',parts[1]);
+      if(!record) return json({error:'没有这个视频任务'},404);
+      if(record.userId&&record.userId!==auth.user.id&&!accountRole(auth.user,'editor')) return forbidden();
+      if(record.status==='ready'&&record.name) return json({status:'ready',url:mediaUrl(record.name),resolution:record.resolution,duration:record.duration});
+      if(record.status==='failed') return json({status:'failed',message:record.message||'生成失败'});
+      if(!record.taskId) return json({status:'pending'});
+      const task=await fetchVideoTask(record.taskId);
+      if(task.status==='pending') return json({status:'pending'});
+      if(task.status==='failed') {
+        await put('memory_videos',{...record,status:'failed',message:String(task.message||'生成失败').slice(0,200),updatedAt:new Date().toISOString()});
+        return json({status:'failed',message:task.message||'生成失败'});
+      }
+      if(!task.videoUrl) {
+        await put('memory_videos',{...record,status:'failed',message:'任务成功但没有拿到视频地址',updatedAt:new Date().toISOString()});
+        return json({status:'failed',message:'任务成功但没有拿到视频地址'});
+      }
+      const buffer=await fetchAudioBuffer(task.videoUrl);
+      if(buffer.length>50*1024*1024) {
+        await put('memory_videos',{...record,status:'failed',message:'生成的视频超过 50 MB，无法保存',updatedAt:new Date().toISOString()});
+        return json({status:'failed',message:'生成的视频超过 50 MB，无法保存'});
+      }
+      const name=`${randomUUID()}.mp4`;
+      await saveGenerated(name,buffer,'video/mp4',auth.user.id);
+      const done={...record,status:'ready',blobUrl:null,name,updatedAt:new Date().toISOString()};
+      await put('memory_videos',done);
+      await log('narration',`让「${record.memoryTitle||'一段回忆'}」动起来了`,record.memoryId);
+      return json({status:'ready',url:mediaUrl(name),resolution:record.resolution,duration:record.duration});
     }
     if(parts[0]==='companion') {
       // 家伴：整块的对话入口数据。首屏就可以渲染，不用等第二个请求。
@@ -112,9 +173,14 @@ export async function GET(request,{params}) {
     }
     if(parts[0]==='media') {
       const file=parts[1]||'';
-      if(!/^[a-f0-9-]+\.(jpg|png|webp|mp3|wav|m4a|ogg|webm|mp4)$/.test(file)) return json({error:'无效文件名'},404);
+      // 允许 base64url 字母表（生成的配音名是 voice-<base64url>）：
+      // 原来只放行十六进制，导致所有合成音频的 URL 都被判「无效文件名」。
+      // 仍然禁止点号与斜杠，杜绝 ../ 穿越。
+      if(!/^[A-Za-z0-9_-]+\.(jpg|png|webp|mp3|wav|m4a|ogg|webm|mp4)$/.test(file)) return json({error:'无效文件名'},404);
       const upload=await get('uploads',file);
-      if(!await isManagedMedia(file)&&upload?.userId!==auth.user.id) return json({error:'素材不存在'},404);
+      // shared 标记的是「由系统生成、属于这家人的内容」（口述音频、生成的视频）：
+      // 发起人生成一次，全家人都该能听能看，不该按上传者归属拦掉。
+      if(!await isManagedMedia(file)&&upload?.userId!==auth.user.id&&!upload?.shared) return json({error:'素材不存在'},404);
       const media=await readMedia(file,upload?.blobUrl);
       if(!media)return json({error:'素材不存在'},404);
       const data=media.data;
@@ -213,7 +279,9 @@ export async function POST(request,{params}) {
     // 写操作统一按白名单放行「任何已登录用户都能用」的接口，其余一律要求 editor。
     // 反过来写（黑名单列 editor 接口）会让以后新增的接口默认对所有登录用户开放，
     // 直到有人想起把它加进数组——voice/enroll 就是这样裸奔过的。新接口必须先在这里登记。
-    const openToViewer=['activity','auth','comments','companion','game','life','role','voice'].includes(parts[0]);
+    // narrate 对 viewer 开放的是「听」：/narrate/script 写稿+配音只花几毛钱，看的人也该能听。
+    // 真正按秒计费的 /narrate/video 在分支里单独再要一次 editor。
+    const openToViewer=['activity','auth','comments','companion','game','life','narrate','role','voice'].includes(parts[0]);
     if(!openToViewer&&!accountRole(auth.user,'editor'))return forbidden();
     if(parts[0]==='upload') {
       const contentLength=Number(request.headers.get('content-length')||0);
@@ -450,16 +518,85 @@ export async function POST(request,{params}) {
       if(!member||!member.voiceId) return json({error:'该成员尚未复刻声音',voiceId:null},404);
       const key=cacheKey(member.voiceId,text,options||{});
       const cached=await get('voice_cache',key);
-      if(cached?.blobUrl) return json({audioUrl:cached.blobUrl,cached:true,voiceId:member.voiceId});
+      if(cached?.blobUrl) return json({audioUrl:mediaUrl(cached.id||key),cached:true,voiceId:member.voiceId});
       const {audioUrl,format}=await synthesizeVoice({voiceId:member.voiceId,text,options});
-      let finalUrl=audioUrl;
-      // 落盘到 Blob 再缓存：无论返回内联 base64 还是临时签名 url，都转成稳定的 Blob 地址，
+      // 落盘到 Blob 再缓存：无论返回内联 base64 还是临时签名 url，都转成稳定的地址，
       // 避免重复计费与临时 url 失效。
       const buffer=audioUrl.startsWith('data:')?Buffer.from(audioUrl.split(',')[1],'base64'):await fetchAudioBuffer(audioUrl);
       const name=`voice-${key}.${format}`;
-      finalUrl=(await saveMedia(name,buffer,`audio/${format}`)).blobUrl||finalUrl;
-      await put('voice_cache',{id:key,memberId:member.id,voiceId:member.voiceId,text:text.slice(0,200),blobUrl:finalUrl,format,createdAt:new Date().toISOString()});
-      return json({audioUrl:finalUrl,cached:false,voiceId:member.voiceId});
+      await saveGenerated(name,buffer,`audio/${format}`,auth.user.id);
+      await put('voice_cache',{id:key,memberId:member.id,voiceId:member.voiceId,text:text.slice(0,200),name,blobUrl:null,format,createdAt:new Date().toISOString()});
+      // 远程存储给的是私有 Blob 地址，浏览器不能直接播；统一走我们自己的 /api/media 网关。
+      return json({audioUrl:mediaUrl(name),cached:false,voiceId:member.voiceId});
+    }
+    if(parts[0]==='narrate'&&parts[1]==='script') {
+      // 写口述稿并立刻配音。两条都是一次性开销，命中缓存则不重复花钱。
+      const {memoryId,memberId,force}=body;
+      const memory=await get('memories',memoryId);
+      if(!memory) throw new Error('没有找到这段记忆');
+      if(memory.status!=='confirmed'&&!accountRole(auth.user,'editor')) throw new Error('这段记忆还没有经过家属核对，先确认再让它开口');
+      const members=await all('members');
+      const narrator=memberId?members.find(m=>m.id===memberId):pickNarrator(memory,members);
+      if(!narrator) throw new Error('还没有家人复刻过声音。先给一位家人复刻声音，再让 TA 来讲。');
+      if(!narrator.voiceId) throw new Error(`${narrator.name} 还没有复刻声音`);
+      const nKey=narrationKey(memory.id,narrator.id,memory.updatedAt||memory.createdAt||'');
+      const existing=await get('narrations',nKey);
+      // 稿子已经写过就别再花钱重写。没配声音服务时 audioUrl 本来就是空的，
+      // 不能因此判定「没生成过」——否则每点一次都要再跑一遍模型。
+      if(existing?.script&&!force&&(existing.audioUrl||!voiceConfigured())) {
+        return json({script:existing.script,audioUrl:existing.audioUrl||null,narrator:{id:narrator.id,name:narrator.name},cached:true,voiceId:narrator.voiceId,warning:existing.audioUrl?undefined:'未配置声音合成服务，只用文字展示'});
+      }
+      const script=await generateNarration(memory,narrator.name);
+      if(!voiceConfigured()) {
+        // 稿子能写，但没配声音服务：先把稿子给出去，别让用户的等待白费。
+        await put('narrations',{id:nKey,memoryId:memory.id,memberId:narrator.id,script,narratorName:narrator.name,audioUrl:null,createdAt:new Date().toISOString()});
+        return json({script,audioUrl:null,narrator:{id:narrator.id,name:narrator.name},cached:false,voiceId:narrator.voiceId,warning:'未配置声音合成服务，只用文字展示'});
+      }
+      const key=cacheKey(narrator.voiceId,script,{});
+      const cachedAudio=await get('voice_cache',key);
+      let audioUrl=cachedAudio?.name?mediaUrl(cachedAudio.name):null;
+      if(!audioUrl) {
+        const synth=await synthesizeVoice({voiceId:narrator.voiceId,text:script,options:{}});
+        const buffer=synth.audioUrl.startsWith('data:')?Buffer.from(synth.audioUrl.split(',')[1],'base64'):await fetchAudioBuffer(synth.audioUrl);
+        const name=`voice-${key}.${synth.format}`;
+        await saveGenerated(name,buffer,`audio/${synth.format}`,auth.user.id);
+        await put('voice_cache',{id:key,memberId:narrator.id,voiceId:narrator.voiceId,text:script.slice(0,200),name,blobUrl:null,format:synth.format,createdAt:new Date().toISOString()});
+        audioUrl=mediaUrl(name);
+      }
+      await put('narrations',{id:nKey,memoryId:memory.id,memberId:narrator.id,script,narratorName:narrator.name,audioUrl,voiceId:narrator.voiceId,createdAt:new Date().toISOString()});
+      return json({script,audioUrl,narrator:{id:narrator.id,name:narrator.name},cached:false,voiceId:narrator.voiceId});
+    }
+    if(parts[0]==='narrate'&&parts[1]==='video') {
+      // 付费接口，单独再要一次 editor：白名单里 narrate 对 viewer 开放的是「听」。
+      if(!accountRole(auth.user,'editor'))return forbidden();
+      if(!videoConfigured()) return json({error:'未配置视频生成服务，请联系管理员'},503);
+      const {memoryId,force,resolution,duration}=body;
+      const memory=await get('memories',memoryId);
+      if(!memory) throw new Error('没有找到这段记忆');
+      if(!memory.cover?.startsWith('/api/media/')) throw new Error('这段记忆还没有照片，动起来需要一张封面');
+      const members=await all('members');
+      const narrator=pickNarrator(memory,members);
+      if(!narrator?.voiceId) throw new Error('还没有家人复刻过声音。先让一位家人讲这段记忆，再让它动起来。');
+      const nKey=narrationKey(memory.id,narrator.id,memory.updatedAt||memory.createdAt||'');
+      const narration=await get('narrations',nKey);
+      if(!narration?.script) throw new Error('先让 TA 把这段回忆讲一遍，再来让它动起来');
+      const res=clampResolution(resolution),secs=clampSeconds(duration);
+      const vKey=videoKey({memoryId:memory.id,memberId:narrator.id,voiceId:narrator.voiceId,script:narration.script,resolution:res,duration:secs});
+      const existing=await get('memory_videos',vKey);
+      if(existing?.status==='ready'&&existing.name) return json({status:'ready',url:mediaUrl(existing.name),resolution:existing.resolution,duration:existing.duration,cached:true});
+      if(existing?.status==='pending'&&existing.taskId) return json({status:'pending',taskId:vKey,resolution:existing.resolution,duration:existing.duration,cached:true});
+      // 把封面图读成 data URI 传给 DashScope：我们的媒体是私有 Blob，公网 url 传不过去。
+      const coverFile=path.basename(memory.cover);
+      const upload=await get('uploads',coverFile);
+      const media=await readMedia(coverFile,upload?.blobUrl);
+      if(!media) throw new Error('读不到这段记忆的封面照片');
+      if(media.data.length>MAX_IMAGE_BYTES) throw new Error('封面照片超过 4 MB，先换一张小一点的再试');
+      const mime=media.contentType||(coverFile.endsWith('.png')?'image/png':coverFile.endsWith('.webp')?'image/webp':'image/jpeg');
+      const imageDataUri=`data:${mime};base64,${media.data.toString('base64')}`;
+      const created=await createVideoTask({imageDataUri,prompt:buildVideoPrompt(memory),resolution:res,duration:secs});
+      const record={id:vKey,memoryId:memory.id,memoryTitle:memory.title||'',memberId:narrator.id,voiceId:narrator.voiceId,scriptHash:narration.script.length,taskId:created.taskId,status:'pending',resolution:res,duration:secs,userId:auth.user.id,createdAt:new Date().toISOString()};
+      await put('memory_videos',record);
+      return json({status:'pending',taskId:vKey,resolution:res,duration:secs,cached:false},202);
     }
     return json({error:'接口不存在'},404);
   }catch(e){return bad(e);}

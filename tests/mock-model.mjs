@@ -117,8 +117,21 @@ function lifeEnding() {
   return '（假模型）后来这个人还是留在了原地，把日子过成了根。最放不下的始终是那几个人。这是假设，跟真实发生过的那一段不一样。';
 }
 
+/** 口述稿：第一人称，只复用提示里给的事实。 */
+function narration(messages) {
+  let facts = {};
+  try {
+    facts = JSON.parse(String(lastUser(messages)).split('\n').slice(1).join('\n')) || {};
+  } catch { /* 解析不出来就用通用句子 */ }
+  const who = facts['主角'] || '我';
+  const where = facts['地点'] || '那个地方';
+  const title = facts['标题'] || '那件事';
+  return `（假模型）我是${who}。${title}那天，我在${where}。事情不大，可我记了一辈子。`;
+}
+
 function answer(messages) {
   const system = systemOf(messages);
+  if (/家庭记忆的转述者|第一人称口述/.test(system)) return narration(messages);
   if (/整理这段家庭记忆|家庭记忆整理助手/.test(system)) return organize(messages);
   if (/家庭故事编辑/.test(system)) return story(messages);
   if (/人生岔路|人生推演/.test(system)) return /收束|结局|第二人称/.test(lastUser(messages)) && !/请写第/.test(lastUser(messages)) ? lifeEnding() : lifeStage(messages);
