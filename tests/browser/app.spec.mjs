@@ -103,7 +103,7 @@ test('desktop and mobile layouts, navigation and dialogs render without errors',
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/');await expect(page.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
   fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:'artifacts/忆伴-桌面端.png',fullPage:true});
-  for(const name of ['家伴','找人说说话','家庭记忆库','故事专辑','人生模拟','我的家人','陪伴记录','家庭设置']){await page.getByRole('navigation').getByRole('button',{name:new RegExp(name)}).click();await expect(page.locator('.page-heading h1')).toBeVisible();}
+  for(const name of ['说说话','家庭记忆库','故事专辑','人生模拟','我的家人','陪伴记录','家庭设置']){await page.getByRole('navigation').getByRole('button',{name:new RegExp(name)}).click();await expect(page.locator('.page-heading h1')).toBeVisible();}
   await page.getByRole('navigation').getByRole('button',{name:'记忆小屋'}).click();
   await page.getByRole('button',{name:'添加一段记忆',exact:true}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
   // 账号入口是常驻的：任何页面都能从顶栏打开「我的账号」面板。

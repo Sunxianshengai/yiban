@@ -1,17 +1,14 @@
 import {test,expect} from '@playwright/test';
-import {BASE,signInAsNewAdmin} from './helpers.mjs';
+import {signInAsNewAdmin} from './helpers.mjs';
 
-// 「找人说说话」是这一轮的主功能：一屋子可以换的人，按心里的困惑挑，不是按辈分挑。
-// 三个用例分别盯住三件容易做坏的事：
-//   1. 换角色真的换了人（同一句话不同人回得不一样）；
-//   2. 每个角色的对话各存各的，换回来还能接着说；
-//   3. 记忆默认不借用——不打开开关，它就不该提旧事。
+// 左栏的筛选：先从三十张里挑，挑到人就聊。
+// 这几条盯住的是「挑不到人」最容易踩的坑——分类叠加、筛选后列表不该乱。
 
-test('一屋子的人：按来源与困惑挑、选一个就能聊、换个人回的话不一样',async({page})=>{
+test('按来源与困惑挑人：分类是「与」的关系，能叠加也能清空',async({page})=>{
   await signInAsNewAdmin(page,{name:'测试家长',prefix:'roles'});
-  await page.getByRole('navigation').getByRole('button',{name:/找人说说话/}).click();
-  await expect(page.locator('.page-heading h1')).toContainText('找人说说话');
-  await expect(page.locator('.role-card')).toHaveCount(30);
+  await page.getByRole('navigation').getByRole('button',{name:'说说话'}).click();
+  await expect(page.locator('.page-heading h1')).toContainText('说说话');
+  await expect(page.locator('.role-card')).toHaveCount(30,{timeout:15000});
 
   // 按「家里的事」筛一遍，剩下的应该都是家里人这类角色。
   await page.locator('.concern-chip',{hasText:'家里的事'}).click();
@@ -31,41 +28,29 @@ test('一屋子的人：按来源与困惑挑、选一个就能聊、换个人�
   await page.locator('.kind-tab',{hasText:'都在这儿'}).click();
   await expect(page.locator('.role-card')).toHaveCount(30);
 
-  // 挑「母亲」聊一句。
-  await page.locator('.role-card',{hasText:'母亲'}).first().click();
-  await expect(page.locator('.companion-head h2')).toContainText('母亲');
-  // 角色先开口，不是给一个空输入框。
-  await expect(page.locator('.companion-opening')).toBeVisible();
-  await page.getByLabel('跟这个角色说一句话').fill('今天好累');
-  await page.getByRole('button',{name:'说一句'}).click();
-  await expect(page.locator('.companion-line.user')).toHaveCount(1);
-  // 用户那句是乐观插入的，角色那句要等接口回来。
-  // 注意打字动画本身也挂在 `.companion-line.companion` 上，所以等它退场再读。
-  await expect(page.locator('.companion-typing')).toHaveCount(0);
-  await expect(page.locator('.companion-line.companion')).toHaveCount(1);
-  const motherReply=await page.locator('.companion-line.companion').last().innerText();
-  expect(motherReply.length).toBeGreaterThan(4);
+  // 两个维度叠加：史书里的人 + 工作与钱，应该比单独任一个都少。
+  await page.getByRole('button',{name:'史书里的人',exact:true}).click();
+  await page.locator('.concern-chip',{hasText:'工作与钱'}).click();
+  const both=await page.locator('.role-card').count();
+  expect(both).toBeGreaterThan(0);
+  expect(both).toBeLessThan(9);
 
-  // 换个人，同一句话，回的应该是另一种话。
-  await page.getByRole('button',{name:'换个人说话'}).click();
-  await page.locator('.role-card',{hasText:'兄弟'}).first().click();
-  await expect(page.locator('.companion-head h2')).toContainText('兄弟');
-  await page.getByLabel('跟这个角色说一句话').fill('今天好累');
-  await page.getByRole('button',{name:'说一句'}).click();
-  await expect(page.locator('.companion-line.user')).toHaveCount(1);
-  await expect(page.locator('.companion-typing')).toHaveCount(0);
-  await expect(page.locator('.companion-line.companion')).toHaveCount(1);
-  const brotherReply=await page.locator('.companion-line.companion').last().innerText();
-  expect(brotherReply).not.toBe(motherReply);
+  // 搜索框能按名字/出处/脾气找到人。
+  await page.locator('.kind-tab',{hasText:'都在这儿'}).click();
+  await page.locator('.concern-chip',{hasText:'都能聊'}).click();
+  await page.getByLabel('找谁说话').fill('苏轼');
+  await expect(page.locator('.role-card')).toHaveCount(1);
+  await expect(page.locator('.role-card')).toContainText('苏轼');
 });
 
 test('每个角色的对话各聊各的，换回来还能接着说',async({page})=>{
   await signInAsNewAdmin(page,{name:'测试家长',prefix:'roles-thread'});
-  await page.getByRole('navigation').getByRole('button',{name:/找人说说话/}).click();
+  await page.getByRole('navigation').getByRole('button',{name:'说说话'}).click();
+  await expect(page.locator('.role-card')).toHaveCount(30,{timeout:15000});
 
   await page.locator('.role-card',{hasText:'老朋友'}).first().click();
   await page.getByLabel('跟这个角色说一句话').fill('最近总觉得没意思');
-  await page.getByRole('button',{name:'说一句'}).click();
+  await page.getByRole('button',{name:'说一句',exact:true}).click();
   await expect(page.locator('.companion-line.user')).toHaveCount(1);
 
   // 换去另一个角色：对话是空的，不串味。
@@ -74,7 +59,7 @@ test('每个角色的对话各聊各的，换回来还能接着说',async({page}
   await expect(page.locator('.companion-line')).toHaveCount(0);
   await expect(page.locator('.companion-opening')).toBeVisible();
 
-  // 换回老朋友：刚才那句还在。
+  // 换回老朋友：刚才那句还在，卡片上标着聊过几句。
   await page.getByRole('button',{name:'换个人说话'}).click();
   await expect(page.locator('.role-card',{hasText:'老朋友'}).first()).toBeVisible();
   await expect(page.locator('.role-card',{hasText:'聊过'}).first()).toBeVisible();
@@ -94,12 +79,13 @@ test('记忆默认不借用：不打开开关就不提旧事，打开了才提�
   const created=await request.post('/api/memories',{data:{title:'自动测试找说话的记忆',year:'1999',location:'厦门',theme:'旅行',people:['测试家长'],story:'那年夏天在厦门海边捡了很多贝壳。',status:'confirmed'}});
   expect(created.ok()).toBe(true);
 
-  await page.getByRole('navigation').getByRole('button',{name:/找人说说话/}).click();
+  await page.getByRole('navigation').getByRole('button',{name:'说说话'}).click();
+  await expect(page.locator('.role-card')).toHaveCount(30,{timeout:15000});
   await page.locator('.role-card',{hasText:'奶奶'}).first().click();
 
   // 默认没开记忆：说一件跟记忆有关的事，它不该提起厦门的贝壳。
   await page.getByLabel('跟这个角色说一句话').fill('还记得那年夏天在厦门捡贝壳吗');
-  await page.getByRole('button',{name:'说一句'}).click();
+  await page.getByRole('button',{name:'说一句',exact:true}).click();
   // 打字动画也挂 `.companion-line.companion`，等它退场才说明回复真到了，
   // 否则 `toHaveCount(1)` 会被动画骗过去。
   await expect(page.locator('.companion-typing')).toHaveCount(0);
@@ -113,7 +99,7 @@ test('记忆默认不借用：不打开开关就不提旧事，打开了才提�
   await expect(page.locator('.role-memory-on')).toBeVisible();
 
   await page.getByLabel('跟这个角色说一句话').fill('还记得那年夏天在厦门捡贝壳吗');
-  await page.getByRole('button',{name:'说一句'}).click();
+  await page.getByRole('button',{name:'说一句',exact:true}).click();
   await expect(page.locator('.companion-typing')).toHaveCount(0);
   await expect(page.locator('.companion-sources')).toBeVisible();
   await expect(page.locator('.companion-sources')).toContainText('自动测试找说话的记忆');

@@ -246,9 +246,6 @@ body{font-size:1rem}
    刻意不用聊天气泡：气泡尾巴是「和陌生人聊天」的视觉语言。
    这里是一条条摊在桌面上的纸条，像一家人围坐着说话时，
    有人把刚才讲的那句话记在纸上。 */
-.companion-page-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:22px;align-items:start}
-.companion-page-side h2{display:flex;align-items:center;gap:8px;margin-bottom:14px;color:var(--green-dark)}
-.companion-page-side .btn{margin-top:4px}
 .companion{display:flex;flex-direction:column;gap:16px}
 .companion-head{display:flex;align-items:center;gap:13px}
 .companion-head>div{min-width:0}
@@ -297,7 +294,6 @@ body{font-size:1rem}
 .persona-card.active{border-color:color-mix(in srgb,var(--accent) 60%,transparent);background:color-mix(in srgb,var(--accent) 8%,#fffdf9)}
 .persona-card strong{font-size:0.8571rem;font-weight:500;color:#5f6d57}
 .persona-card small{font-size:0.7143rem;color:#a8a091;line-height:1.7}
-@media(max-width:1000px){.companion-page-grid{grid-template-columns:1fr}}
 
 /* ---------- 家伴 · 右下角常驻聊天框 ----------
    它得「一直都有」，但也不能一进门就糊在脸上。
@@ -353,18 +349,50 @@ body{font-size:1rem}
   .companion-dock-panel .companion-feed{min-height:90px;max-height:calc(72vh - 240px)}
 }
 
-/* ---------- 找人说说话 · 一屋子可以换的人 ----------
-   家伴只有一个，是「记得这个家的伙伴」；这里是一群身份原型，
-   心里堵着什么就找哪种人说。所以视觉上要「一排能挑的人」，
-   而不是「一个对话框」——先看到人，才想到可以换。 */
-.roles-page-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:20px;align-items:start}
-.roles-page-main{padding:20px}
-.roles-page-side h2{display:flex;align-items:center;gap:8px;font-family:var(--serif);font-size:1.0714rem}
-.roles{display:flex;flex-direction:column;gap:16px}
-.roles-intro h2{font-family:var(--serif);font-size:1.2857rem;font-weight:600;color:var(--ink)}
-.roles-intro p{font-size:0.8571rem;line-height:1.95;color:#8d9683;margin-top:8px}
-.kind-row{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid #f0eade}
-.kind-tab{padding:7px 13px;border:none;border-bottom:2px solid transparent;background:none;color:#a3988a;font-size:0.7857rem;font-family:inherit;cursor:pointer;transition:color .16s,border-color .16s}
+/* ---------- 说说话 · 一个聊天机器人 ----------
+   家伴和角色卡合成一个功能：左边一列能换的人，右边一张对话框。
+   视觉上不做聊天气泡——这是围坐说话，不是跟陌生人发消息。
+   左栏是「一屋子的人」，右栏是「此刻在说的人」。 */
+.chat-shell{display:grid;grid-template-columns:minmax(238px,300px) minmax(0,1fr);gap:18px;align-items:start}
+.chat-rail-panel{border-radius:var(--radius);border:1px solid #ece5d7;background:#fffdf9;box-shadow:var(--shadow);padding:16px;position:sticky;top:18px;max-height:calc(100vh - 132px);overflow-y:auto}
+.chat-rail{display:flex;flex-direction:column;gap:11px}
+.chat-rail.compact{padding:0}
+.chat-rail-head h2{font-family:var(--serif);font-size:1.1429rem;font-weight:600;color:var(--ink)}
+.chat-rail-head p{font-size:0.7143rem;line-height:1.9;color:#94998c;margin-top:6px}
+.rail-search{padding:9px 13px;border-radius:999px;border:1px solid #e8e2d5;background:#fdfbf6;font-size:0.7857rem;font-family:inherit;color:var(--ink)}
+.rail-search:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 45%,#e8e2d5);background:#fffdf9}
+.chat-companion-card{position:relative;display:flex;align-items:center;gap:11px;text-align:left;padding:12px 13px;border-radius:14px;border:1px solid color-mix(in srgb,var(--accent) 26%,#ece5d7);background:color-mix(in srgb,var(--accent) 6%,#fffdf9);cursor:pointer;transition:border-color .18s,box-shadow .18s}
+.chat-companion-card:hover{border-color:color-mix(in srgb,var(--accent) 45%,#ece5d7);box-shadow:0 10px 24px #7a6a4e1a}
+.chat-companion-card.active{border-color:color-mix(in srgb,var(--accent) 62%,#ece5d7);box-shadow:0 12px 26px #6e9a7e2e}
+.chat-companion-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.chat-companion-text strong{font-family:var(--serif);font-size:0.9286rem;color:var(--ink)}
+.chat-companion-text small{font-size:0.6429rem;color:#8d9683;line-height:1.6}
+.role-list{display:flex;flex-direction:column;gap:6px}
+.role-card{position:relative;display:flex;align-items:center;gap:10px;text-align:left;padding:9px 11px;border-radius:12px;border:1px solid transparent;background:#fdfbf6;cursor:pointer;transition:border-color .16s,background .16s}
+.role-card:hover{border-color:#ece5d7;background:#fdf7ee}
+.role-card.active{border-color:color-mix(in srgb,var(--accent) 52%,#ece5d7);background:#fffdf9}
+.role-card.has-thread{border-color:color-mix(in srgb,var(--accent) 24%,#ece5d7)}
+.role-card.active.has-thread{border-color:color-mix(in srgb,var(--accent) 62%,#ece5d7)}
+.role-card-text{display:flex;flex-direction:column;gap:1px;min-width:0}
+.role-card strong{font-family:var(--serif);font-size:0.8571rem;color:var(--ink)}
+.role-card .role-blurb{font-size:0.6429rem;color:#a9a091;line-height:1.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-main-panel{border-radius:var(--radius);border:1px solid #ece5d7;background:#fffdf9;box-shadow:var(--shadow);padding:20px;min-height:520px}
+.chat-main{display:flex;flex-direction:column;gap:14px}
+.chat-intro h2{font-family:var(--serif);font-size:1.4286rem;font-weight:600;color:var(--ink)}
+.chat-intro>p{font-size:0.8571rem;line-height:1.95;color:#8d9683;margin-top:10px;max-width:52ch}
+.chat-intro-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0 16px}
+.chat-intro-card{display:flex;flex-direction:column;gap:7px;padding:16px;border-radius:16px;background:#fdf9f1;border:1px solid #f0eade}
+.chat-intro-card strong{font-family:var(--serif);font-size:0.9286rem;color:var(--ink)}
+.chat-intro-card small{font-size:0.7143rem;line-height:1.9;color:#94998c}
+/* 卡片是竖排 flex，图标默认被拉伸成整行宽，再叠上 rotate 会顶到上一段文字里去 */
+.chat-intro-card .little-leaf{align-self:flex-start;margin-bottom:0}
+.dock-switch{display:flex;align-items:center;gap:8px;font-size:0.7143rem;color:#a3988a}
+.dock-switch select{flex:1;min-width:0;padding:6px 10px;border-radius:9px;border:1px solid #e8e2d5;background:#fdfbf6;font-family:inherit;font-size:0.75rem;color:#5f6d57}
+/* 四个来源分类要在一行里排完：换行会让最后一个孤零零吊在下一行，
+   底边线也跟着断成两截。窄栏和特大字号下改为横向滚动，不换行。 */
+.kind-row{display:flex;flex-wrap:nowrap;gap:2px;border-bottom:1px solid #f0eade;overflow-x:auto;scrollbar-width:none}
+.kind-row::-webkit-scrollbar{display:none}
+.kind-tab{flex:0 0 auto;white-space:nowrap;padding:7px 9px;border:none;border-bottom:2px solid transparent;background:none;color:#a3988a;font-size:0.7857rem;font-family:inherit;cursor:pointer;transition:color .16s,border-color .16s}
 .kind-tab:hover{color:#5f6d57}
 .kind-tab.active{color:color-mix(in srgb,var(--accent) 82%,#3b3323);border-bottom-color:color-mix(in srgb,var(--accent) 62%,#e8e2d5);font-weight:600}
 .concern-row{display:flex;flex-wrap:wrap;gap:8px}
@@ -373,18 +401,13 @@ body{font-size:1rem}
 .concern-chip.active{background:color-mix(in srgb,var(--accent) 12%,#fffdf9);border-color:color-mix(in srgb,var(--accent) 45%,#e8e2d5);color:color-mix(in srgb,var(--accent) 78%,#3b3323);font-weight:600}
 .roles-hint{font-size:0.7857rem;color:#a3988a;line-height:1.8;margin:0}
 .roles-hint span{color:#8d9683}
-.role-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.role-card{position:relative;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;padding:18px 13px 16px;border-radius:16px;border:1px solid #ece5d7;background:#fffdf9;cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s}
-.role-card:hover{border-color:color-mix(in srgb,var(--accent) 38%,#ece5d7);box-shadow:0 12px 26px #7a6a4e1a;transform:translateY(-2px)}
-.role-card strong{font-family:var(--serif);font-size:0.9286rem;color:var(--ink)}
 .role-who{font-size:0.6429rem;color:#a9a091;letter-spacing:.5px}
-.role-card p{font-size:0.7143rem;line-height:1.85;color:#94998c;margin-top:2px}
-.role-card.has-thread{border-color:color-mix(in srgb,var(--accent) 30%,#ece5d7)}
 .role-badge{position:absolute;top:9px;right:10px;font-size:0.6071rem;color:#fffdf9;background:color-mix(in srgb,var(--accent) 72%,#5f6d57);border-radius:999px;padding:2px 7px}
 .roles-footnote{display:flex;align-items:flex-start;gap:6px;font-size:0.7143rem;line-height:1.85;color:#a9a091;margin:0}
+.roles-footnote.warn{color:#a9635c}
 .role-back{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;border:1px solid #e8e2d5;background:#fffdf9;color:#8d9683;cursor:pointer;flex:none}
 .role-back:hover{background:#fdf7ee;color:#5f6d57}
 .role-memory-on{display:inline-flex;align-items:center;gap:4px;font-size:0.6429rem;color:#8d9683;background:color-mix(in srgb,var(--accent) 8%,#fffdf9);border-radius:999px;padding:3px 9px}
 
-@media(max-width:1000px){.roles-page-grid{grid-template-columns:1fr}.role-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:760px){.roles-page-main{padding:15px}.role-grid{grid-template-columns:repeat(2,1fr);gap:9px}.role-card{padding:14px 10px}}
+@media(max-width:1000px){.chat-shell{grid-template-columns:minmax(210px,250px) minmax(0,1fr)}.chat-intro-cards{grid-template-columns:1fr}}
+@media(max-width:760px){.chat-shell{grid-template-columns:1fr}.chat-rail-panel{position:static;max-height:none;padding:13px}.chat-main-panel{padding:15px;min-height:420px}.role-list{max-height:none}.chat-intro-cards{grid-template-columns:1fr}}
