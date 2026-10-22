@@ -6,9 +6,9 @@ import { head as headBlob, issueSignedToken } from '@vercel/blob';
 import { all,get,put,remove,log,snapshot,saveMedia,readMedia,deleteMedia,usesRemoteStorage } from '../../../lib/store.mjs';
 import { fetchAudioBuffer } from '../../../lib/voice.mjs';
 import { tidyMemory, searchMemories } from '../../../lib/core.mjs';
-import {organize,generateStory,enrichScenes,aiReady,aiStatus,chatWithCompanion,chatWithRole,ModelError} from '../../../lib/ai.mjs';
+import {organize,generateStory,aiReady,aiStatus,chatWithCompanion,chatWithRole,generateLifeStage,generateLifeEnding} from '../../../lib/ai.mjs';
 import {CONCERNS,TONES,KINDS,ROLES,MAX_TEXT as ROLE_MAX_TEXT,sanitizeRole,roleOpening,buildRoleMessages,roleById} from '../../../lib/roles.mjs';
-import {buildGame,advance,currentScene,publicGame,promptForScene,TRAITS} from '../../../lib/game.mjs';
+import {startRun,recordChoice,currentStage,publicRun,buildEnding,MAX_STAGES,MAX_CHOICE_TEXT,STAT_META} from '../../../lib/life.mjs';
 import {PERSONAS,RELATIONS,MAX_MESSAGES,MAX_NOTES,MAX_TEXT,sanitizeCompanion,openingLine,retrieveMemories,buildMessages,localNotes} from '../../../lib/companion.mjs';
 import {voiceConfigured,enrollVoice,synthesizeVoice,cacheKey} from '../../../lib/voice.mjs';
 import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
@@ -25,6 +25,22 @@ const ensureOrigin=request=>sameOrigin(request)?null:forbidden();
 const isManagedMedia=async file=>(await all('memories')).some(m=>['cover','audio','video'].some(key=>m[key]===`/api/media/${file}`));
 const allowed={ 'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp','audio/mpeg':'.mp3','audio/wav':'.wav','audio/x-wav':'.wav','audio/mp4':'.m4a','audio/ogg':'.ogg','audio/webm':'.webm','video/mp4':'.mp4','video/webm':'.webm' };
 const validBlobPath=pathname=>typeof pathname==='string'&&/^yiban\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.(jpg|png|webp|mp3|wav|m4a|ogg|webm|mp4)$/.test(pathname);
+
+/** 造下一幕。这一步完全由模型写——写不出来就如实报错，不拿本地模板冒充。 */
+async function nextStage(run,{freeText}={}) {
+  const index=(run.stages||[]).length;
+  const stage=await generateLifeStage(run,{freeText});
+  return {...stage,index,mode:'model'};
+}
+
+/** 收尾：同样只由模型写；失败就让调用方把错误原样交给玩家。 */
+async function finishRun(run) {
+  // 结局的正文由模型写，但「这是假设」那句提醒、以及属性读数这些结构性的东西
+  // 不能指望模型每次都写全——它们必须来自本地，所以这里以本地结局为底再覆盖正文。
+  const base=run.ending||buildEnding(run);
+  const text=await generateLifeEnding(run);
+  return {...run,ending:{...base,mode:'model',text}};
+}
 
 export async function GET(request,{params}) {
   const {path:parts}=await params;
@@ -46,22 +62,6 @@ export async function GET(request,{params}) {
     }
     if(parts[0]==='voice'&&parts[1]==='status') {
       return json({configured:voiceConfigured(),provider:'cosyvoice'});
-    }
-    if(parts[0]==='game'&&parts[1]==='subjects') {
-      // 人生模拟的选人入口：家庭每一位成员（有已确认记忆的）都能当主角，
-      // 包括「选别人」——用同一份家庭记忆，走一遍对方的人生岔路。
-      const memories=(await all('memories')).filter(m=>m.status==='confirmed');
-      const members=await all('members');
-      const subjects=[{id:'family',name:'我们一家人',relation:'全家',count:memories.length}];
-      for(const member of members) {
-        const count=memories.filter(m=>(m.people||[]).includes(member.name)).length;
-        if(count>0) subjects.push({id:`member:${member.id}`,name:member.name,relation:member.relation||'家人',count});
-      }
-      if(auth.user.name&&!members.some(m=>m.name===auth.user.name)) {
-        const count=memories.filter(m=>(m.people||[]).includes(auth.user.name)).length;
-        if(count>0) subjects.push({id:'self',name:auth.user.name,relation:'我自己',count});
-      }
-      return json({subjects,traits:TRAITS,canPlay:memories.length>0,aiEnabled:aiReady()});
     }
     if(parts[0]==='companion') {
       // 家伴：整块的对话入口数据。首屏就可以渲染，不用等第二个请求。
@@ -213,7 +213,7 @@ export async function POST(request,{params}) {
     // 写操作统一按白名单放行「任何已登录用户都能用」的接口，其余一律要求 editor。
     // 反过来写（黑名单列 editor 接口）会让以后新增的接口默认对所有登录用户开放，
     // 直到有人想起把它加进数组——voice/enroll 就是这样裸奔过的。新接口必须先在这里登记。
-    const openToViewer=['activity','auth','comments','companion','game','role','voice'].includes(parts[0]);
+    const openToViewer=['activity','auth','comments','companion','game','life','role','voice'].includes(parts[0]);
     if(!openToViewer&&!accountRole(auth.user,'editor'))return forbidden();
     if(parts[0]==='upload') {
       const contentLength=Number(request.headers.get('content-length')||0);
@@ -278,45 +278,56 @@ export async function POST(request,{params}) {
       const memory=await get('memories',body.memoryId);if(!memory||memory.status!=='confirmed') throw new Error('记忆不可播放');
       return json(await log(body.type,`${types[body.type]}「${memory.title}」`,memory.id));
     }
-    if(parts[0]==='game'&&parts[1]==='start') {
-      // 人生模拟：用家庭记忆库当剧本。任何登录者都能玩，也能选别人当主角，
-      // 但剧本只能用 status==='confirmed' 的记忆——未确认的草稿不进游戏。
-      const confirmedMemories=(await all('memories')).filter(m=>m.status==='confirmed');
-      const subjectId=String(body.subjectId||'family');
-      const memberId=subjectId.startsWith('member:')?subjectId.slice(7):null;
-      const member=memberId?await get('members',memberId):null;
-      if(memberId&&!member) throw new Error('没有找到这位家人');
-      const subject=member?{id:member.id,name:member.name}:{id:null,name:subjectId==='self'?auth.user.name:'我们一家人'};
-      // 选了某位家人，就只用提到他的记忆——不能拿别人的往事冒充他的人生。
-      const memories=member?confirmedMemories.filter(m=>(m.people||[]).includes(member.name)):confirmedMemories;
-      if(member&&!memories.length) throw new Error(`${member.name}还没有已确认的记忆，换一位试试`);
-      const game=buildGame({memories,subject,user:auth.user});
-      let enriched=null;
-      if(aiReady()) {
-        const draft=await enrichScenes(game.scenes,{name:game.subjectName},[],promptForScene);
-        if(draft){enriched='model';game.scenes=draft;game.mode='model';}
-      }
-      const record={...game,id:randomUUID(),familyId:'family',userId:auth.user.id,createdAt:new Date().toISOString()};
-      await put('games',record);
-      // 只留最近的几局：游戏记录带全部场景文本，不清理会一直堆积。
-      const mine=(await all('games')).filter(g=>g.userId===auth.user.id).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
-      for(const stale of mine.slice(10)) await remove('games',stale.id);
-      return json({...publicGame(record),enriched},201);
+    if(parts[0]==='life'&&parts[1]==='subjects') {
+      // 人生推演的开局入口：列出「可以从哪一段记忆开始」。
+      // 只认已确认的记忆——草稿还没被家属核对过，不能拿来当人生起点。
+      const confirmed=(await all('memories')).filter(m=>m.status==='confirmed');
+      const members=await all('members');
+      const origins=confirmed
+        .filter(m=>String(m.story||m.title||'').trim())
+        .map(m=>({id:m.id,title:m.title,year:m.year||'',location:m.location||'',people:m.people||[],theme:m.theme,cover:m.cover||null,excerpt:String(m.story||'').slice(0,120)}))
+        .sort((a,b)=>String(b.year||'0').localeCompare(String(a.year||'0')));
+      return json({origins,members:members.map(m=>({id:m.id,name:m.name,relation:m.relation||'家人'})),stats:STAT_META,maxStages:MAX_STAGES,maxChoiceText:MAX_CHOICE_TEXT,aiReady:aiReady()});
     }
-    if(parts[0]==='game'&&parts[1]==='turn') {
-      // 一个回合：记住玩家的选择，并把这一段真实记忆回扣给他——
-      // 选项是「如果」，记忆是「事实」，两者永远分开呈现。
-      const record=await get('games',String(body.gameId||''));
-      if(!record) throw new Error('这段模拟已经结束或不存在了');
+    if(parts[0]==='life'&&parts[1]==='start') {
+      // 从一段记忆往后推演。起点是事实，往后全是「如果」。
+      const memory=await get('memories',String(body.memoryId||''));
+      if(!memory) throw new Error('没有找到这段记忆');
+      if(memory.status!=='confirmed') throw new Error('这段记忆还没有经过家属核对，先确认再拿它开局');
+      const subjectName=String(body.subjectName||memory.people?.[0]||'这位家人').slice(0,40);
+      const run=startRun({memory,subjectName});
+      const stage=await nextStage(run);
+      const record={...run,id:randomUUID(),familyId:'family',userId:auth.user.id,stages:[stage],createdAt:new Date().toISOString()};
+      await put('life_runs',record);
+      // 只留最近的几局：每局带八幕全文，不清理会一直堆。
+      const mine=(await all('life_runs')).filter(r=>r.userId===auth.user.id);
+      for(const stale of mine.slice(8)) await remove('life_runs',stale.id);
+      return json(publicRun(record),201);
+    }
+    if(parts[0]==='life'&&parts[1]==='turn') {
+      // 一次选择。玩家可以选预设选项，也可以自己写「我想……」。
+      const record=await get('life_runs',String(body.runId||''));
+      if(!record) throw new Error('这一局已经不在了，重新开一局吧');
       if(record.userId!==auth.user.id) return forbidden();
-      const scene=currentScene(record);
-      if(!scene) throw new Error('这段模拟已经走到尽头了');
-      const updated=advance(record,{choiceId:body.choiceId,text:body.text});
-      await put('games',updated);
-      if(updated.status==='finished') {
-        await log('game',`走完了「${updated.title}」`);
+      if(record.status!=='playing') throw new Error('这一局已经走完了');
+      const stage=currentStage(record);
+      if(!stage) throw new Error('这一幕还没准备好');
+      const freeText=body.choiceId?null:String(body.text||'').trim().slice(0,MAX_CHOICE_TEXT);
+      if(!body.choiceId&&!freeText) throw new Error('选一个，或者写一句你想怎么做');
+      // 自由输入：先让模型写下一幕，它顺带判定那句话落到了哪几个属性上。
+      // 先不落库，等选择和这一幕一起写回去，避免出现「选了但没生成」的半截状态。
+      const upcoming=await nextStage(record,{freeText});
+      const moved=recordChoice(record,{choiceId:body.choiceId,text:freeText,freeDeltas:upcoming.freeDeltas});
+      const lastPicked=moved.stages[moved.stageIndex-1]?.answer||null;
+      if(moved.status==='finished') {
+        const done=await finishRun(moved);
+        await put('life_runs',done);
+        await log('game',`走完了一段「如果」：${done.subjectName}的另一条路`);
+        return json({...publicRun(done),reveal:lastPicked});
       }
-      return json({...publicGame(updated),reveal:{memoryId:scene.memoryId,title:scene.title,truth:scene.truth}});
+      const updated={...moved,stages:[...moved.stages,upcoming]};
+      await put('life_runs',updated);
+      return json({...publicRun(updated),reveal:lastPicked});
     }
     if(parts[0]==='companion'&&parts[1]==='turn') {
       // 一次对话回合。事实只有一个来源：confirmed 记忆里检索出来的那几条，

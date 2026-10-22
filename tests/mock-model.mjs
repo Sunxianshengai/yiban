@@ -93,10 +93,35 @@ function scenes(messages) {
   });
 }
 
+
+/** 人生推演：一幕一幕地写。按提示里的幕数与「是否最后一幕」给出不同内容，让 E2E 能走出多幕。 */
+function lifeStage(messages) {
+  const user = lastUser(messages);
+  const which = Number((user.match(/请写第\s*(\d+)\s*幕/) || [])[1] || 1);
+  const free = (user.match(/而是自己写了：「([\s\S]{1,200}?)」/) || [])[1];
+  const body = {
+    narration: `（假模型）第 ${which} 幕：${free ? `你把「${free.slice(0, 40)}」说出了口。` : '窗外光线一点点暗下去。'}桌上那杯水还没喝完。`,
+    choices: [
+      {label: '往前再走一步', hint: '不甘心', deltas: {勇气: 1}},
+      {label: '留下来把话说完', hint: '放不下', deltas: {牵挂: 1}},
+      {label: '什么也不做', hint: '先放着', deltas: {坦然: 1}},
+    ],
+    ending: which >= 3,
+  };
+  if (free) body.freeDeltas = {勇气: 2, 牵挂: 1};
+  return JSON.stringify(body);
+}
+
+/** 人生推演结局：一段收束文字，不下发分数。 */
+function lifeEnding() {
+  return '（假模型）后来这个人还是留在了原地，把日子过成了根。最放不下的始终是那几个人。这是假设，跟真实发生过的那一段不一样。';
+}
+
 function answer(messages) {
   const system = systemOf(messages);
   if (/整理这段家庭记忆|家庭记忆整理助手/.test(system)) return organize(messages);
   if (/家庭故事编辑/.test(system)) return story(messages);
+  if (/人生岔路|人生推演/.test(system)) return /收束|结局|第二人称/.test(lastUser(messages)) && !/请写第/.test(lastUser(messages)) ? lifeEnding() : lifeStage(messages);
   if (/人生模拟/.test(system)) return scenes(messages);
   return chat(system, messages);
 }

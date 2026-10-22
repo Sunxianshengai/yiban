@@ -93,9 +93,12 @@ test('drafts stay out of albums, stories, games and search; server validation wo
     const generation=await (await request.post('/api/story',{data:{albumId:album.id}})).json();expect(['model','local']).toContain(generation.mode);expect(generation.story.length).toBeGreaterThan(0);
     await request.patch(`/api/albums/${album.id}`,{data:{story:generation.story}});
     const state=await (await request.get('/api/state')).json();expect(state.albums.find(a=>a.id===album.id).story).toBe(generation.story);
-    // 草稿不进游戏：人生模拟的剧本来只取已确认记忆。
-    const game=await request.post('/api/game/start',{data:{subjectId:'family'}});expect(game.status()).toBe(201);
-    const played=await game.json();expect(JSON.stringify(played.scenes)).not.toContain(draft.title);
+    // 草稿不进游戏：人生推演的起点列表只取已确认记忆。
+    const life=await request.post('/api/life/subjects',{data:{}});expect(life.status()).toBe(200);
+    const origins=await life.json();expect(JSON.stringify(origins.origins)).not.toContain(draft.title);
+    // 草稿也不能拿来开局
+    const draftRun=await request.post('/api/life/start',{data:{memoryId:draft.id}});
+    expect(draftRun.status()).toBe(400);
   }finally{await request.delete(`/api/memories/${draft.id}`);if(album)await request.delete(`/api/albums/${album.id}`);}
 });
 
@@ -103,7 +106,12 @@ test('desktop and mobile layouts, navigation and dialogs render without errors',
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/');await expect(page.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
   fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:'artifacts/忆伴-桌面端.png',fullPage:true});
-  for(const name of ['说说话','家庭记忆库','故事专辑','人生模拟','我的家人','陪伴记录','家庭设置']){await page.getByRole('navigation').getByRole('button',{name:new RegExp(name)}).click();await expect(page.locator('.page-heading h1')).toBeVisible();}
+  // 每个导航页都要真的渲染出内容。人生模拟是大界面（.life-shell），
+  // 其余页面用统一的 .page-heading，所以这里两种都认。
+  for(const name of ['说说话','家庭记忆库','故事专辑','人生模拟','我的家人','陪伴记录','家庭设置']){
+    await page.getByRole('navigation').getByRole('button',{name:new RegExp(name)}).click();
+    await expect(page.locator('.page-heading h1, .life-shell').first()).toBeVisible();
+  }
   await page.getByRole('navigation').getByRole('button',{name:'记忆小屋'}).click();
   await page.getByRole('button',{name:'添加一段记忆',exact:true}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
   // 账号入口是常驻的：任何页面都能从顶栏打开「我的账号」面板。
