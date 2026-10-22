@@ -441,6 +441,10 @@ body{font-size:1rem}
 .narrator-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
 .narrator-video{margin-top:18px;padding-top:18px;border-top:1px dashed var(--border)}
 .narrator-video h4{display:flex;align-items:center;gap:7px;font-size:0.9286rem;color:var(--ink);margin-bottom:6px}
+/* 条件没齐时仍然显示这一块，只把控件压暗——让人看得见功能，也知道卡在哪一步。 */
+.narrator-video.is-locked{opacity:0.72}
+.narrator-video.is-locked h4{color:var(--muted)}
+.narrator-video.is-locked .narrator-options{opacity:0.55}
 .narrator-options{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:14px 0}
 .narrator-options label{display:flex;flex-direction:column;gap:6px;font-size:0.7143rem;color:var(--muted)}
 .narrator-options select{font-size:0.8571rem;padding:9px 11px}

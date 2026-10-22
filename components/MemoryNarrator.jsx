@@ -119,6 +119,20 @@ export default function MemoryNarrator({memory,api,notify,canEdit}){
   const cover=memory.cover||'';
   const ken=KEN_BURNS[String(memory.id||'').length%KEN_BURNS.length];
 
+  // 视频这块永远看得见（只要这个账号能改），缺什么就把缺的那一项说出来，
+  // 说的顺序就是实际该走的顺序：先配服务 → 再复刻声音 → 再生成讲述 → 最后才轮到动起来。
+  // 之前它嵌在 script 分支里，没配密钥的人连这个功能存在都不知道。
+  const canMake=Boolean(info?.videoEnabled&&script&&cover);
+  const videoHint=!info?.videoEnabled
+    ? '视频生成服务还没配置（需要管理员在环境变量里填 DASHSCOPE_API_KEY），配好后这里就能把照片动起来。'
+    : !narrator
+    ? '动起来要配一段讲述，得先有家人的复刻声音（见上方提示）。'
+    : !script
+    ? '先用上面的「让 TA 讲这段」生成一段讲述，再来让它动起来——动起来要配着那段声音看。'
+    : !cover
+    ? '这段记忆还没有封面照片，动起来需要一张。'
+    : '让这张照片缓慢动起来，配上刚才那段声音。按秒计费，生成后长期保存，同一个版本不会重复收费。';
+
   return <section className="narrator-card">
     <header className="narrator-head">
       <h3><Icon name="volume" size={18}/>让 TA 自己讲</h3>
@@ -136,6 +150,8 @@ export default function MemoryNarrator({memory,api,notify,canEdit}){
       <Button icon="volume" busy={busy} onClick={()=>narrate(false)}>{busy?'正在准备…':'让 TA 讲这段'}</Button>
     </div>:null}
 
+    {narrator&&!script&&!info?.voiceEnabled&&!loading?<p className="narrator-hint">目前只写了稿、没有合成声音：声音服务未配置。配好后同一个按钮会连声音一起生成。</p>:null}
+
     {script?<>
       <div className="narrator-stage">
         {video?.status==='ready'&&video.url
@@ -152,36 +168,38 @@ export default function MemoryNarrator({memory,api,notify,canEdit}){
       <div className="narrator-actions">
         <Button variant="ghost" icon="repeat" busy={busy} disabled={busy} onClick={()=>narrate(true)}>换一种说法重讲</Button>
       </div>
-
-      {canEdit?<div className="narrator-video">
-        <h4><Icon name="sparkle" size={16}/>让它动起来</h4>
-        {video?.status==='pending'
-          ? <p className="narrator-hint"><span className="spinner"/>正在生成，大约要一两分钟。可以先去看别的，回来自动能播。</p>
-          : video?.status==='ready'&&video.url
-          ? <p className="narrator-hint">这版已经生成好并长期保存，再看不会重复计费。想换个时长可以重新生成。</p>
-          : <p className="narrator-hint">让这张照片缓慢动起来，配上刚才那段声音。按秒计费，生成后长期保存，同一个版本不会重复收费。</p>}
-
-        {video?.status!=='ready'&&video?.status!=='pending'?<div className="narrator-options">
-          <label>清晰度
-            <select value={resolution} onChange={e=>setResolution(e.target.value)} disabled={busy}>
-              {(info?.resolutions||['480P','720P']).map(item=><option key={item} value={item}>{item}</option>)}
-            </select>
-          </label>
-          <label>时长
-            <select value={seconds} onChange={e=>setSeconds(Number(e.target.value))} disabled={busy}>
-              {[3,5,8,10].map(item=><option key={item} value={item}>{item} 秒</option>)}
-            </select>
-          </label>
-          <span className="narrator-cost">预计约 {formatCost(resolution,seconds)} 元</span>
-        </div>:null}
-
-        {video?.status!=='ready'&&video?.status!=='pending'
-          ? <Button variant="secondary" icon="sparkle" busy={busy} disabled={busy||!info?.videoEnabled} onClick={makeVideo}>
-              {busy?'正在提交…':`生成 ${seconds} 秒视频`}
-            </Button>
-          : null}
-        {!info?.videoEnabled?<p className="narrator-hint">未配置视频生成服务，暂时用缓慢推拉的照片效果代替。</p>:null}
-      </div>:null}
     </>:null}
+
+    {canEdit?<div className={`narrator-video${canMake?'':' is-locked'}`}>
+      <h4><Icon name="sparkle" size={16}/>让它动起来</h4>
+
+      {video?.status==='pending'
+        ? <p className="narrator-hint"><span className="spinner"/>正在生成，大约要一两分钟。可以先去看别的，回来自动能播。</p>
+        : video?.status==='ready'&&video.url
+        ? <p className="narrator-hint">这版已经生成好并长期保存，再看不会重复计费。想换个时长可以重新生成。</p>
+        : <p className="narrator-hint">{videoHint}</p>}
+
+      {video?.status!=='pending'?<div className="narrator-options">
+        <label>清晰度
+          <select value={resolution} onChange={e=>setResolution(e.target.value)} disabled={busy}>
+            {(info?.resolutions||['480P','720P']).map(item=><option key={item} value={item}>{item}</option>)}
+          </select>
+        </label>
+        <label>时长
+          <select value={seconds} onChange={e=>setSeconds(Number(e.target.value))} disabled={busy}>
+            {[3,5,8,10].map(item=><option key={item} value={item}>{item} 秒</option>)}
+          </select>
+        </label>
+        <span className="narrator-cost">预计约 {formatCost(resolution,seconds)} 元</span>
+      </div>:null}
+
+      {video?.status==='ready'&&video.url
+        ? <Button variant="ghost" icon="sparkle" busy={busy} disabled={busy||!canMake} onClick={makeVideo}>
+            {busy?'正在提交…':'按这个设置重新生成一版'}
+          </Button>
+        : <Button variant="secondary" icon="sparkle" busy={busy} disabled={busy||!canMake} onClick={makeVideo}>
+            {busy?'正在提交…':`生成 ${seconds} 秒视频`}
+          </Button>}
+    </div>:null}
   </section>;
 }
