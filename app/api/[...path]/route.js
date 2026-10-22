@@ -210,8 +210,11 @@ export async function POST(request,{params}) {
       if(auth.user.role!=='admin')return forbidden();
       const body=await request.json();return json(await issueInvite(body.role));
     }
-    const requiredRole=['upload','comments','memories','organize','albums','story','members','anniversaries'].includes(parts[0])?'editor':'viewer';
-    if(!accountRole(auth.user,requiredRole))return forbidden();
+    // 写操作统一按白名单放行「任何已登录用户都能用」的接口，其余一律要求 editor。
+    // 反过来写（黑名单列 editor 接口）会让以后新增的接口默认对所有登录用户开放，
+    // 直到有人想起把它加进数组——voice/enroll 就是这样裸奔过的。新接口必须先在这里登记。
+    const openToViewer=['activity','auth','comments','companion','game','role','voice'].includes(parts[0]);
+    if(!openToViewer&&!accountRole(auth.user,'editor'))return forbidden();
     if(parts[0]==='upload') {
       const contentLength=Number(request.headers.get('content-length')||0);
       if(contentLength>52*1024*1024) throw new Error('文件不能超过 50 MB');
@@ -406,9 +409,13 @@ export async function POST(request,{params}) {
     }
     if(parts[0]==='voice'&&parts[1]==='enroll') {
       if(!voiceConfigured())return json({error:'未配置声音合成服务，请联系管理员'},503);
+      // 复刻声音会在服务商侧付费生成音色，只有编辑者能发起；
+      // 且 consent 必须由界面真实勾选后由服务端判定，不接受调用方自填 true。
+      if(!accountRole(auth.user,'editor'))return forbidden();
       const {memberId,audioUrl,consent}=body;
       if(!memberId||!audioUrl) throw new Error('缺少成员或录音');
       const member=await get('members',memberId);if(!member) throw new Error('成员不存在');
+      if(consent!==true) throw new Error('必须本人明确同意才能复刻声音');
       let source=audioUrl;
       if(typeof audioUrl==='string'&&audioUrl.startsWith('/api/media/')) {
         const name=audioUrl.split('/').pop();
@@ -424,7 +431,9 @@ export async function POST(request,{params}) {
     if(parts[0]==='voice'&&parts[1]==='speak') {
       if(!voiceConfigured())return json({error:'未配置声音合成服务，请联系管理员'},503);
       const {memberId,text,options}=body;
+      // 按量计费接口：限制单次文本长度，避免一次请求塞进整本书。
       if(!text||!text.trim()) throw new Error('合成文本为空');
+      if(text.length>2000) throw new Error('合成文本不能超过 2000 字');
       let member=null;
       if(memberId){member=await get('members',memberId);}
       if(!member||!member.voiceId) return json({error:'该成员尚未复刻声音',voiceId:null},404);
