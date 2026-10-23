@@ -11,7 +11,7 @@ test('切换字号全过程不回退到旧档位',async({browser})=>{
   const page=await ctx.newPage();
   page.on('pageerror',e=>console.log('PAGE ERROR',e.message));
   await signInAsNewAdmin(page,{name:'回退测试',prefix:'fb'});
-  await page.getByRole('button',{name:/家庭设置/}).first().click();
+  await page.getByRole('button',{name:/设置/}).first().click();
   await page.waitForTimeout(1500);
 
   // 在页面里装一个观察器，记录根字号每一次变化的时间与数值（含旧值）

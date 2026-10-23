@@ -1,10 +1,10 @@
 import {test,expect} from '@playwright/test';
 import {cleanupTestMemories} from './helpers.mjs';
 
-// 全年龄段的「成长时光」页。
+// 全年龄段的「成长记录」页。
 //
 // 这里锁的是三件产品决策：
-// 1) 导航里必须有「成长时光」和「时间胶囊」两个入口——全年龄段不是把长辈功能改名，
+// 1) 导航里必须有「成长记录」和「时间胶囊」两个入口——全年龄段不是把长辈功能改名，
 //    是要让家里每个人都有一条自己的时间线。
 // 2) 童言童语的录入必须便宜：一句话 + 选填年龄就能记下，录入框不能逼人填表。
 // 3) 时间的封存：没到开启日期的内容对谁都不显示，连写它的人自己也看不到。
@@ -27,9 +27,9 @@ test.beforeEach(async({page,request})=>{
   await page.waitForSelector('.app-shell',{timeout:30000});
 });
 
-test('导航里有「成长时光」，七个页签都在',async({page})=>{
-  await page.getByRole('button',{name:'成长时光',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'成长时光'})).toBeVisible();
+test('导航里有「成长记录」，七个页签都在',async({page})=>{
+  await page.getByRole('button',{name:'成长记录',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'成长记录'})).toBeVisible();
   for(const label of ['成长时间轴','那一年','人生里程碑','童言童语','成长对比','分龄采访','成长纪念册']){
     await expect(page.getByRole('button',{name:new RegExp(label)})).toBeVisible();
   }
@@ -42,7 +42,7 @@ test('没有出生年份时明说缺什么，而不是算出一个错的年龄',
   try{
     // 家人是刚通过 API 加的，页面上的成员列表还是旧的——重载一次再找它。
     await page.reload();
-    await page.getByRole('button',{name:'成长时光',exact:true}).click();
+    await page.getByRole('button',{name:'成长记录',exact:true}).click();
     await page.getByRole('button',{name:new RegExp(`自动测试家人${STAMP}`)}).first().click();
     await expect(page.getByText('还没有出生年份')).toBeVisible();
   }finally{
@@ -56,7 +56,7 @@ test('童言童语：三秒能记下一句话',async({page,request})=>{
   const text=`自动测试童言${STAMP}`;
   try{
     await page.reload();
-    await page.getByRole('button',{name:'成长时光',exact:true}).click();
+    await page.getByRole('button',{name:'成长记录',exact:true}).click();
     await page.getByRole('button',{name:new RegExp(`自动测试家人${STAMP}`)}).first().click();
     await page.getByRole('button',{name:/童言童语/}).click();
     await page.getByLabel(/说了什么/).fill(text);

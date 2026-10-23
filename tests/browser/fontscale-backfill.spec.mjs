@@ -9,7 +9,7 @@ test('保存回填阶段不把新字号覆盖回旧值',async({browser})=>{
   const ctx=await browser.newContext({baseURL:BASE,viewport:{width:1440,height:1000}});
   const page=await ctx.newPage();
   await signInAsNewAdmin(page,{name:'回填测试',prefix:'bf'});
-  await page.getByRole('button',{name:/家庭设置/}).first().click();
+  await page.getByRole('button',{name:/设置/}).first().click();
   await page.waitForTimeout(1500);
 
   const pill=label=>page.locator('.option-pill').filter({hasText:new RegExp(`^${label}$`)}).first();

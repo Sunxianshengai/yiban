@@ -17,17 +17,17 @@ test('陪伴时光已整页移除，主端功能完好',async({browser})=>{
   expect(await page.locator('.elder-app').count()).toBe(0);
 
   // 主端各页仍可打开
-  for(const name of ['家庭记忆库','故事专辑','我的家人','陪伴记录','家庭设置']){
+  for(const name of ['记忆库','回忆专辑','家庭成员','互动记录','设置']){
     await page.getByRole('button',{name:new RegExp(name)}).first().click();
     await page.waitForTimeout(350);
     console.log('PAGE',name,'ok');
   }
-  await page.getByRole('button',{name:/家庭设置/}).first().click();
+  await page.getByRole('button',{name:/设置/}).first().click();
   await page.waitForTimeout(400);
   await page.screenshot({path:'C:/Users/25641/AppData/Local/Temp/settings-after.png',fullPage:true});
 
   // 记忆详情：不应还有「到陪伴时光看看」
-  await page.getByRole('button',{name:'记忆小屋'}).first().click();
+  await page.getByRole('button',{name:'首页'}).first().click();
   await page.waitForTimeout(500);
   const card=page.locator('.memory-card').first();
   await card.click();

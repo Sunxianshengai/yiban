@@ -26,13 +26,13 @@ export default function Growth({api,notify,members,canEdit,onOpenMemory}) {
   const stageOf=(id)=>meta?.stages?.find(s=>s.id===id);
 
   return <div className="growth-page">
-    <div className="page-heading"><div><span className="eyebrow">GROWING UP, TOGETHER</span><h1>成长时光</h1><p>家里每个人，从出生到现在，一条自己的时间线。</p></div></div>
+    <div className="page-heading"><div><span className="eyebrow">GROWING UP, TOGETHER</span><h1>成长记录</h1><p>家里每个人，从出生到现在，一条自己的时间线。</p></div></div>
     <div className="growth-tabs">{TABS.map(t=><button key={t.id} className={tab===t.id?'selected':''} onClick={()=>setTab(t.id)}><Icon name={t.icon} size={17}/>{t.label}</button>)}</div>
     <div className="growth-picker">
       <span>看谁的人生</span>
       <div className="person-chips">
         {members.map(m=><button key={m.id} className={memberId===m.id?'selected':''} onClick={()=>setMemberId(m.id)}><Avatar name={m.name} color={m.color||'sage'}/>{m.name}<small>{m.birthYear?`${m.birthYear}年生`:'未填出生年'}</small></button>)}
-        {!members.length&&<Empty icon="people" title="还没有家人" description="先到「我的家人」里添加一位，才能排时间轴。"/>}
+        {!members.length&&<Empty icon="people" title="还没有家人" description="先到「家庭成员」里添加一位，才能排时间轴。"/>}
       </div>
     </div>
 
@@ -153,7 +153,7 @@ function ParallelView({api,notify,members,stageOf,onOpenMemory}) {
   const withBirth=members.filter(m=>m.birthYear).length;
   return <div>
     <div className="parallel-bar"><Field label="选一个年份"><input value={year} onChange={e=>setYear(e.target.value)} maxLength={4} placeholder="例如 1998"/></Field><Button icon="search" busy={busy} onClick={load}>看那一年</Button></div>
-    {withBirth<2&&<div className="inline-notice"><Icon name="info"/><span>家庭平行时间轴需要至少两位家人填了出生年份，现在只有 {withBirth} 位。去「我的家人」补上，这张表才有意义。</span></div>}
+    {withBirth<2&&<div className="inline-notice"><Icon name="info"/><span>家庭平行时间轴需要至少两位家人填了出生年份，现在只有 {withBirth} 位。去「家庭成员」补上，这张表才有意义。</span></div>}
     {data&&!rows.length&&<Empty icon="people" title={`${data.year} 年，家里还没有人`} description="选一个家人已经出生的年份试试。"/>}
     {rows.length>0&&<div className="parallel-grid">
       {rows.map(row=>{

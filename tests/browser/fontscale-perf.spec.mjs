@@ -1,6 +1,6 @@
 // 字号切换卡顿定位 · 可量化性能验收测试
 //
-// 问题：家庭设置 → 我的个性化偏好 → 文字大小 切档「有卡顿感」。
+// 问题：设置 → 我的个性化偏好 → 文字大小 切档「有卡顿感」。
 // 要回答：卡顿发生在 ①样式重排（style recalc + layout）阶段，还是 ②700ms 自动保存的网络等待阶段。
 //
 // 运行前：
@@ -126,7 +126,7 @@ const WAIT_STABLE = () => new Promise(resolve => {
   requestAnimationFrame(tick);
 });
 
-// 页面是否还停留在「家庭设置」页（防止因并发改动/导航导致假数据）
+// 页面是否还停留在「设置」页（防止因并发改动/导航导致假数据）
 const ON_SETTINGS = () => Boolean(document.querySelector('.personalize-panel') && document.querySelector('.option-pill'));
 
 // ---------------------------------------------------------------------------
@@ -183,7 +183,7 @@ test(`字号切换性能验收（${DIRECTION === 'b-a' ? '当前→基线' : '�
 
       // 账号：走统一的 helpers（管理员邀请码注册），不再用已封掉的「留空邀请码」后门
       await signInAsNewAdmin(page, {name: '性能测试', prefix: `perf-${label}-${Math.floor(Math.random() * 1e6)}`});
-      await page.getByRole('button', {name: /家庭设置/}).first().click();
+      await page.getByRole('button', {name: /设置/}).first().click();
       await page.waitForSelector('.personalize-panel', {timeout: 60000});
       await page.waitForSelector('.option-pill');
       await page.waitForTimeout(1500); // 等图片/字体/入场动画稳定
@@ -239,7 +239,7 @@ test(`字号切换性能验收（${DIRECTION === 'b-a' ? '当前→基线' : '�
           await page.waitForSelector('.app-shell', {timeout: 120000}).catch(() => {});
         }
         if (!await page.evaluate(ON_SETTINGS)) {
-          await page.getByRole('button', {name: /家庭设置/}).first().click({timeout: 60000});
+          await page.getByRole('button', {name: /设置/}).first().click({timeout: 60000});
           await page.waitForSelector('.personalize-panel', {timeout: 120000});
         }
         await page.waitForSelector('.option-pill');

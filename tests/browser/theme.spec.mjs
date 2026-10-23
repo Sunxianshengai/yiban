@@ -21,7 +21,6 @@ test('主题色作用于全站',async({browser})=>{
       const shell=q('.app-shell');
       return {accent:shell.dataset.accent,
         sidebarToken:cs(shell).getPropertyValue('--accent').trim(),
-        btn:cs(q('.btn-primary'))?.backgroundImage,
         brand:cs(q('.brand-mark'))?.color,
         navActive:cs(q('.nav-item.active'))?.color,
         navActiveBg:cs(q('.nav-item.active'))?.backgroundColor,
@@ -35,11 +34,13 @@ test('主题色作用于全站',async({browser})=>{
     console.log(a.toUpperCase(),JSON.stringify(seen[a]));
   }
   // 每个主题下按钮/品牌/导航都应不同
-  const sig=Object.values(seen).map(v=>[v.btn,v.brand,v.navActive].join('|'));
+  // 深色主题下主按钮是固定白色，不再随主题变；签名改用品牌字色与导航激活底色
+  const sig=Object.values(seen).map(v=>[v.brand,v.navActive,v.navActiveBg].join('|'));
   console.log('UNIQUE',new Set(sig).size,'of',sig.length);
   expect(new Set(sig).size).toBe(5);
   // 抽查一组具体值：peach 下品牌色应带暖色 rgb（曾因 home-refresh.css 写死绿色而全局失效）
   expect(seen.peach.brand).not.toBe(seen.sage.brand);
-  expect(seen.peach.brand).toContain('224');
+  // 深色主题的 peach 主题色是 #dfaf90，品牌字色应带其红分量
+  expect(seen.peach.brand).toContain('223');
   await ctx.close();
 });

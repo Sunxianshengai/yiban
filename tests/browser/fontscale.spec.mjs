@@ -24,7 +24,7 @@ test('字号档位对全站文字的实际影响',async({browser})=>{
     };
   });
 
-  await page.getByRole('button',{name:/家庭设置/}).first().click();
+  await page.getByRole('button',{name:/设置/}).first().click();
   await page.waitForTimeout(500);
   const optSampler=async()=>await page.evaluate(()=>{
     const pick=s=>{const e=document.querySelector(s);return e?parseFloat(getComputedStyle(e).fontSize):null;};
@@ -43,7 +43,7 @@ test('字号档位对全站文字的实际影响',async({browser})=>{
   await setScale('特大');
   const bigSet=await optSampler();
   await page.screenshot({path:'C:/Users/25641/AppData/Local/Temp/fs-large.png'});
-  await page.getByRole('button',{name:'记忆小屋'}).first().click();
+  await page.getByRole('button',{name:'首页'}).first().click();
   await page.waitForTimeout(600);
   const bigHome=await sample();
   await page.screenshot({path:'C:/Users/25641/AppData/Local/Temp/fs-large-home.png'});

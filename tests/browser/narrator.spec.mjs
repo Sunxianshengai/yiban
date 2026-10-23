@@ -49,7 +49,7 @@ test('没有任何讲述稿时，「让它动起来」这块也要看得见',asy
   let id;
   try{
     id=await publishMemory(page,marker);
-    await page.getByRole('button',{name:/家庭记忆库/}).first().click();
+    await page.getByRole('button',{name:/记忆库/}).first().click();
     await page.getByRole('textbox',{name:'搜索记忆'}).fill(marker);
     await page.getByRole('button',{name:marker,exact:true}).click();
 
@@ -94,7 +94,7 @@ test('视频生成走 editor 权限：viewer 看不到这块',async({page,reques
     const state=await (await request.get('/api/state')).json();
     expect(state.canEdit,'viewer 不该有编辑权').toBe(false);
 
-    await page.getByRole('button',{name:/家庭记忆库/}).first().click();
+    await page.getByRole('button',{name:/记忆库/}).first().click();
     await page.getByRole('textbox',{name:'搜索记忆'}).fill(marker);
     await page.getByRole('button',{name:marker,exact:true}).click();
 

@@ -143,7 +143,7 @@ export default function MemoryNarrator({memory,api,notify,canEdit}){
 
     {!info?.voiceEnabled&&!info?.aiEnabled&&!loading?<p className="narrator-hint">还没配置模型与声音服务，这个功能需要管理员先把密钥填上。</p>:null}
 
-    {!narrator&&!loading?<p className="narrator-hint">还没有家人复刻过声音。先到「我的家人」里给一位家人复刻声音，才能让 TA 来讲这段回忆。</p>:null}
+    {!narrator&&!loading?<p className="narrator-hint">还没有家人复刻过声音。先到「家庭成员」里给一位家人复刻声音，才能让 TA 来讲这段回忆。</p>:null}
 
     {narrator&&!script?<div className="narrator-empty">
       <p>可以让 {narrator.name} 用自己的声音，把这段回忆讲一遍。声音是 AI 合成的，不是真人录音。</p>

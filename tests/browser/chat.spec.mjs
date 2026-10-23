@@ -7,8 +7,8 @@ import {signInAsNewAdmin} from './helpers.mjs';
 test.beforeEach(async ({page})=>{await signInAsNewAdmin(page,{name:'测试家长',prefix:'chat'});});
 
 test('一个聊天机器人：左栏能换人，家伴能开场、能聊天、能给出可核对的出处', async ({page})=>{
-  await page.getByRole('navigation').getByRole('button',{name:'说说话'}).click();
-  await expect(page.locator('.page-heading h1')).toContainText('说说话');
+  await page.getByRole('navigation').getByRole('button',{name:'陪伴对话'}).click();
+  await expect(page.locator('.page-heading h1')).toContainText('陪伴对话');
 
   // 左栏：家伴一张，角色卡三十张。同一个聊天机器人，只是换人。
   await expect(page.locator('.chat-rail-panel')).toBeVisible({timeout:15000});
@@ -46,7 +46,7 @@ test('一个聊天机器人：左栏能换人，家伴能开场、能聊天、�
 });
 
 test('在同一个机器人里换人：换到角色卡，回的口气就变了', async ({page})=>{
-  await page.getByRole('navigation').getByRole('button',{name:'说说话'}).click();
+  await page.getByRole('navigation').getByRole('button',{name:'陪伴对话'}).click();
   await expect(page.locator('.chat-rail-panel')).toBeVisible({timeout:15000});
 
   await page.locator('.role-card',{hasText:'母亲'}).first().click();
@@ -75,7 +75,7 @@ test('在同一个机器人里换人：换到角色卡，回的口气就变了',
 });
 
 test('编辑家伴：改名字和性格后生效，刷新仍在', async ({page})=>{
-  await page.getByRole('navigation').getByRole('button',{name:'说说话'}).click();
+  await page.getByRole('navigation').getByRole('button',{name:'陪伴对话'}).click();
   await expect(page.locator('.chat-rail-panel')).toBeVisible({timeout:15000});
   await page.locator('.chat-companion-card').click();
   await expect(page.locator('.companion-head')).toBeVisible({timeout:15000});
@@ -95,12 +95,12 @@ test('编辑家伴：改名字和性格后生效，刷新仍在', async ({page})
   // 刷新后配置仍在（写进了 settings，不是内存态）；左栏的家伴卡片也跟着改名。
   await page.reload();
   await page.waitForSelector('.app-shell');
-  await page.getByRole('navigation').getByRole('button',{name:'说说话'}).click();
+  await page.getByRole('navigation').getByRole('button',{name:'陪伴对话'}).click();
   await expect(page.locator('.chat-companion-card')).toContainText('阿福',{timeout:15000});
 });
 
 test('换个话题会清空对话，但记事本不丢', async ({page})=>{
-  await page.getByRole('navigation').getByRole('button',{name:'说说话'}).click();
+  await page.getByRole('navigation').getByRole('button',{name:'陪伴对话'}).click();
   await expect(page.locator('.chat-rail-panel')).toBeVisible({timeout:15000});
   await page.locator('.chat-companion-card').click();
   await expect(page.locator('.companion-head')).toBeVisible({timeout:15000});
@@ -115,7 +115,7 @@ test('换个话题会清空对话，但记事本不丢', async ({page})=>{
 });
 
 test('手机与桌面都不横向溢出', async ({page})=>{
-  await page.getByRole('navigation').getByRole('button',{name:'说说话'}).click();
+  await page.getByRole('navigation').getByRole('button',{name:'陪伴对话'}).click();
   await expect(page.locator('.chat-rail-panel')).toBeVisible({timeout:15000});
   await page.locator('.chat-companion-card').click();
   await expect(page.locator('.companion-head')).toBeVisible({timeout:15000});

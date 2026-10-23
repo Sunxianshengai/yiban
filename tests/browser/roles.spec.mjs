@@ -6,8 +6,8 @@ import {signInAsNewAdmin} from './helpers.mjs';
 
 test('按来源与困惑挑人：分类是「与」的关系，能叠加也能清空',async({page})=>{
   await signInAsNewAdmin(page,{name:'测试家长',prefix:'roles'});
-  await page.getByRole('navigation').getByRole('button',{name:'说说话'}).click();
-  await expect(page.locator('.page-heading h1')).toContainText('说说话');
+  await page.getByRole('navigation').getByRole('button',{name:'陪伴对话'}).click();
+  await expect(page.locator('.page-heading h1')).toContainText('陪伴对话');
   await expect(page.locator('.role-card')).toHaveCount(30,{timeout:15000});
 
   // 按「家里的事」筛一遍，剩下的应该都是家里人这类角色。
@@ -45,7 +45,7 @@ test('按来源与困惑挑人：分类是「与」的关系，能叠加也能�
 
 test('每个角色的对话各聊各的，换回来还能接着说',async({page})=>{
   await signInAsNewAdmin(page,{name:'测试家长',prefix:'roles-thread'});
-  await page.getByRole('navigation').getByRole('button',{name:'说说话'}).click();
+  await page.getByRole('navigation').getByRole('button',{name:'陪伴对话'}).click();
   await expect(page.locator('.role-card')).toHaveCount(30,{timeout:15000});
 
   await page.locator('.role-card',{hasText:'老朋友'}).first().click();
@@ -79,7 +79,7 @@ test('记忆默认不借用：不打开开关就不提旧事，打开了才提�
   const created=await request.post('/api/memories',{data:{title:'自动测试找说话的记忆',year:'1999',location:'厦门',theme:'旅行',people:['测试家长'],story:'那年夏天在厦门海边捡了很多贝壳。',status:'confirmed'}});
   expect(created.ok()).toBe(true);
 
-  await page.getByRole('navigation').getByRole('button',{name:'说说话'}).click();
+  await page.getByRole('navigation').getByRole('button',{name:'陪伴对话'}).click();
   await expect(page.locator('.role-card')).toHaveCount(30,{timeout:15000});
   await page.locator('.role-card',{hasText:'奶奶'}).first().click();
 

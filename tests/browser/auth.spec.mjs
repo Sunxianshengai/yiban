@@ -49,7 +49,7 @@ test('first run, invitations, roles, media authorization and sign out',async({br
   await page.getByLabel('邮箱').fill('admin@yiban.test');await page.getByLabel('密码').fill('TestPassword123!');
   await page.getByRole('button',{name:'登录',exact:true}).click();
   await expect(page.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
-  await page.getByRole('navigation').getByRole('button',{name:'家庭设置'}).click();
+  await page.getByRole('navigation').getByRole('button',{name:'设置'}).click();
   await page.getByRole('button',{name:'管理登录账号'}).click();
   await expect(page.getByRole('dialog')).toContainText('小林');
   await page.getByRole('button',{name:'关闭窗口'}).click();
@@ -60,7 +60,7 @@ test('first run, invitations, roles, media authorization and sign out',async({br
   const viewerPage=await viewerContext.newPage();await viewerPage.goto('/');
   await expect(viewerPage.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
   await expect(viewerPage.getByRole('button',{name:'添加一段记忆',exact:true})).toBeHidden();
-  await viewerPage.getByRole('navigation').getByRole('button',{name:'家庭记忆库'}).click();
+  await viewerPage.getByRole('navigation').getByRole('button',{name:'记忆库'}).click();
   await expect(viewerPage.locator('.memory-card')).not.toHaveCount(0);
   await expect(viewerPage.getByRole('button',{name:'添加记忆',exact:true})).toBeHidden();
   await viewerContext.close();

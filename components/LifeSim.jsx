@@ -88,7 +88,7 @@ export default function LifeSim({api,onBack,onOpenMemory,aiReady}) {
     return (
       <div className="life-shell">
         <header className="life-top">
-          <button className="life-back" onClick={onBack} aria-label="回到记忆小屋"><Icon name="back" size={18}/></button>
+          <button className="life-back" onClick={onBack} aria-label="返回首页"><Icon name="back" size={18}/></button>
           <div>
             <span className="eyebrow">A LIFE, REIMAGINED</span>
             <h1>从一段记忆，往后走一生</h1>

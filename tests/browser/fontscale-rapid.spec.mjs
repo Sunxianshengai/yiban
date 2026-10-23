@@ -9,7 +9,7 @@ test('快速连点字号不回退、终态正确',async({browser})=>{
   const page=await ctx.newPage();
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await signInAsNewAdmin(page,{name:'连点测试',prefix:'rp'});
-  await page.getByRole('button',{name:/家庭设置/}).first().click();
+  await page.getByRole('button',{name:/设置/}).first().click();
   await page.waitForTimeout(1500);
 
   const pill=label=>page.locator('.option-pill').filter({hasText:new RegExp(`^${label}$`)}).first();
@@ -36,7 +36,7 @@ test('快速连点字号不回退、终态正确',async({browser})=>{
   console.log('刷新后字号',afterReload);
   expect(Math.abs(afterReload-21)).toBeLessThan(0.2);
 
-  await page.getByRole('button',{name:/家庭设置/}).first().click();
+  await page.getByRole('button',{name:/设置/}).first().click();
   await page.waitForTimeout(1200);
   const selected=await page.locator('.option-pill.selected').first().textContent();
   console.log('设置页选中档位:',selected);

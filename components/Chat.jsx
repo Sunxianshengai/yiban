@@ -518,7 +518,7 @@ export function ChatDock({ api, hidden = false, onExpand, onOpenMemory }) {
       </>}
     </section>}
     <button className="companion-dock-toggle" onClick={toggle} aria-label={open ? '收起聊天框' : '打开聊天框'} aria-expanded={open}>
-      {open ? <Icon name="close" size={20}/> : <><Icon name="message" size={18}/><span>说说话</span></>}
+      {open ? <Icon name="close" size={20}/> : <><Icon name="message" size={18}/><span>陪伴对话</span></>}
     </button>
   </div>;
 }

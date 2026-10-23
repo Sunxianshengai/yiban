@@ -45,11 +45,11 @@ test('upload, local organization, publishing, elder feedback and deletion work t
     expect(memory.status).toBe('confirmed');expect(memory.cover).toMatch(/^\/api\/media\//);
     const image=await request.get(memory.cover);expect(image.status()).toBe(200);expect(image.headers()['content-type']).toBe('image/png');
     // 单端口改造后不再有「进入老人端 / 家属模式」这一层；互动直接走接口产生，
-    // 再回到「陪伴记录」页确认它出现在动态流里。
+    // 再回到「互动记录」页确认它出现在动态流里。
     for(const type of ['remember','like']) expect((await request.post('/api/activity',{data:{type,memoryId:id}})).ok()).toBe(true);
-    await page.getByRole('button',{name:'陪伴记录',exact:true}).click();
+    await page.getByRole('button',{name:'互动记录',exact:true}).click();
     await expect(page.locator('.activity-list')).toContainText(marker);
-    await page.getByRole('button',{name:/家庭记忆库/}).first().click();
+    await page.getByRole('button',{name:/记忆库/}).first().click();
     await page.getByRole('textbox',{name:'搜索记忆'}).fill(marker);
     await expect(page.locator('.memory-card')).toHaveCount(1);
     await page.getByRole('button',{name:marker,exact:true}).click();
@@ -68,7 +68,7 @@ test('upload, local organization, publishing, elder feedback and deletion work t
     expect(edited.audio).toMatch(/^\/api\/media\//);
     const media=await request.get(edited.audio,{headers:{Range:'bytes=0-43'}});expect(media.status()).toBe(206);expect(media.body()).toBeTruthy();
     await page.reload();
-    await page.getByRole('button',{name:/家庭记忆库/}).first().click();
+    await page.getByRole('button',{name:/记忆库/}).first().click();
     await page.getByRole('textbox',{name:'搜索记忆'}).fill(marker);
     await expect(page.locator('.memory-card')).toContainText('苏州 · 老家');
     await page.getByRole('button',{name:marker,exact:true}).click();
@@ -106,13 +106,13 @@ test('desktop and mobile layouts, navigation and dialogs render without errors',
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/');await expect(page.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
   fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:'artifacts/忆伴-桌面端.png',fullPage:true});
-  // 每个导航页都要真的渲染出内容。人生模拟是大界面（.life-shell），
+  // 每个导航页都要真的渲染出内容。人生推演是大界面（.life-shell），
   // 其余页面用统一的 .page-heading，所以这里两种都认。
-  for(const name of ['说说话','家庭记忆库','故事专辑','人生模拟','我的家人','陪伴记录','家庭设置']){
+  for(const name of ['陪伴对话','记忆库','回忆专辑','人生推演','家庭成员','互动记录','设置']){
     await page.getByRole('navigation').getByRole('button',{name:new RegExp(name)}).click();
     await expect(page.locator('.page-heading h1, .life-shell').first()).toBeVisible();
   }
-  await page.getByRole('navigation').getByRole('button',{name:'记忆小屋'}).click();
+  await page.getByRole('navigation').getByRole('button',{name:'首页'}).click();
   await page.getByRole('button',{name:'添加一段记忆',exact:true}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
   // 账号入口是常驻的：任何页面都能从顶栏打开「我的账号」面板。
   await page.getByRole('button',{name:'我的账号'}).click();await expect(page.getByRole('dialog')).toBeVisible();await expect(page.getByRole('dialog')).toContainText('管理登录账号');await page.keyboard.press('Escape');

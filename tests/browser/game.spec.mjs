@@ -10,7 +10,7 @@ test.beforeEach(async({page})=>{
 
 test('从一段记忆往后走，直到模型收尾，并明确说明这不是事实',async({page})=>{
   await page.goto('/');
-  await page.getByRole('navigation').getByRole('button',{name:/人生模拟/}).click();
+  await page.getByRole('navigation').getByRole('button',{name:/人生推演/}).click();
 
   // 大界面（不是弹窗）：标题与起点列表都在页面里
   await expect(page.getByRole('heading',{name:'从一段记忆，往后走一生'})).toBeVisible();
@@ -54,7 +54,7 @@ test('从一段记忆往后走，直到模型收尾，并明确说明这不是�
 
 test('自己写一句也能推进，空输入不提交',async({page})=>{
   await page.goto('/');
-  await page.getByRole('navigation').getByRole('button',{name:/人生模拟/}).click();
+  await page.getByRole('navigation').getByRole('button',{name:/人生推演/}).click();
   await page.locator('.life-origin').first().click();
   await expect(page.locator('.life-choice')).toHaveCount(3);
 
@@ -77,7 +77,7 @@ test('没有已确认记忆时不给开局，只引导去确认一段',async({pa
   }
   try{
     await page.goto('/');
-    await page.getByRole('navigation').getByRole('button',{name:/人生模拟/}).click();
+    await page.getByRole('navigation').getByRole('button',{name:/人生推演/}).click();
     await expect(page.getByText('还没有可以出发的记忆')).toBeVisible();
   }finally{
     for(const memory of state.memories||[]){

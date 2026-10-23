@@ -8,7 +8,7 @@ test.beforeEach(async ({page})=>{await signInAsNewAdmin(page,{name:'测试家长
 // 它跟整页是同一个聊天机器人：同一个接口、同一套会话，只是尺寸不同。
 test('右下角一直有对话框：默认收起，点开能聊，换页还在', async ({page})=>{
   // 任何一页都能看到这枚按钮，包括记忆库、设置这些跟对话无关的页面。
-  await page.getByRole('button',{name:'家庭记忆库'}).click();
+  await page.getByRole('button',{name:'记忆库'}).click();
   await expect(page.locator('.companion-dock-toggle')).toBeVisible();
   await expect(page.getByRole('dialog',{name:'聊天框'})).toHaveCount(0);
 
@@ -23,7 +23,7 @@ test('右下角一直有对话框：默认收起，点开能聊，换页还在',
   await expect(panel.locator('.companion-line.companion').last()).toBeVisible({timeout:20000});
 
   // 换到另一页，框还开着，刚才说的话也还在（同一个会话线程）。
-  await page.getByRole('button',{name:'故事专辑'}).click();
+  await page.getByRole('button',{name:'回忆专辑'}).click();
   await expect(page.getByRole('dialog',{name:'聊天框'})).toBeVisible();
   await expect(page.getByRole('dialog',{name:'聊天框'}).locator('.companion-line.user')).toHaveCount(1);
 
@@ -33,7 +33,7 @@ test('右下角一直有对话框：默认收起，点开能聊，换页还在',
 });
 
 test('浮层里也能换人：一个下拉就能从家伴换到角色卡', async ({page})=>{
-  await page.getByRole('button',{name:'家庭记忆库'}).click();
+  await page.getByRole('button',{name:'记忆库'}).click();
   await page.getByRole('button',{name:'打开聊天框'}).click();
   const panel=page.getByRole('dialog',{name:'聊天框'});
   await expect(panel).toBeVisible({timeout:15000});
@@ -52,7 +52,7 @@ test('浮层里也能换人：一个下拉就能从家伴换到角色卡', async
   await expect(panel.locator('.companion-line.companion')).toHaveCount(1);
 });
 
-test('展开状态会记住，说说话自己的页面上不重复出现', async ({page})=>{
+test('展开状态会记住，陪伴对话自己的页面上不重复出现', async ({page})=>{
   await page.getByRole('button',{name:'打开聊天框'}).click();
   await expect(page.getByRole('dialog',{name:'聊天框'})).toBeVisible({timeout:15000});
 
@@ -61,8 +61,8 @@ test('展开状态会记住，说说话自己的页面上不重复出现', async
   await page.waitForSelector('.app-shell');
   await expect(page.getByRole('dialog',{name:'聊天框'})).toBeVisible({timeout:20000});
 
-  // 进到说说话整页时，浮层要让位——同一条对话不能同屏说两遍。
-  await page.getByRole('button',{name:'说说话',exact:true}).click();
+  // 进到陪伴对话整页时，浮层要让位——同一条对话不能同屏说两遍。
+  await page.getByRole('button',{name:'陪伴对话',exact:true}).click();
   await expect(page.locator('.chat-main-panel')).toBeVisible({timeout:15000});
   await expect(page.locator('.companion-dock-toggle')).toHaveCount(0);
   await expect(page.getByRole('dialog',{name:'聊天框'})).toHaveCount(0);

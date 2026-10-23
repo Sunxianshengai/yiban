@@ -26,7 +26,7 @@ test('偏好变更后字号与主题色真正生效',async({browser})=>{
   await page.waitForTimeout(700);
 
   // 切回首页看实际观感
-  await page.getByRole('button',{name:'记忆小屋'}).first().click();
+  await page.getByRole('button',{name:'首页'}).first().click();
   await page.waitForTimeout(600);
   const after=await snap();
   await page.screenshot({path:'C:/Users/25641/AppData/Local/Temp/pref-after.png'});
