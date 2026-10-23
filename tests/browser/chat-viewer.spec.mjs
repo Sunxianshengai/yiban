@@ -21,7 +21,7 @@ test('查看者能聊天，但改不了家伴的设定',async({browser})=>{
 
   await page.goto('/');
   await page.waitForSelector('.app-shell');
-  await page.getByRole('button',{name:'说说话'}).click();
+  await page.getByRole('button',{name:'说说话',exact:true}).click();
   await expect(page.locator('.chat-rail-panel')).toBeVisible({timeout:15000});
 
   // 能聊

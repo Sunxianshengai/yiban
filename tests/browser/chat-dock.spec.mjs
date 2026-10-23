@@ -62,7 +62,7 @@ test('展开状态会记住，说说话自己的页面上不重复出现', async
   await expect(page.getByRole('dialog',{name:'聊天框'})).toBeVisible({timeout:20000});
 
   // 进到说说话整页时，浮层要让位——同一条对话不能同屏说两遍。
-  await page.getByRole('button',{name:'说说话'}).click();
+  await page.getByRole('button',{name:'说说话',exact:true}).click();
   await expect(page.locator('.chat-main-panel')).toBeVisible({timeout:15000});
   await expect(page.locator('.companion-dock-toggle')).toHaveCount(0);
   await expect(page.getByRole('dialog',{name:'聊天框'})).toHaveCount(0);

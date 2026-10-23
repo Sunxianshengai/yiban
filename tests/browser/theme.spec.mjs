@@ -38,5 +38,8 @@ test('主题色作用于全站',async({browser})=>{
   const sig=Object.values(seen).map(v=>[v.btn,v.brand,v.navActive].join('|'));
   console.log('UNIQUE',new Set(sig).size,'of',sig.length);
   expect(new Set(sig).size).toBe(5);
+  // 抽查一组具体值：peach 下品牌色应带暖色 rgb（曾因 home-refresh.css 写死绿色而全局失效）
+  expect(seen.peach.brand).not.toBe(seen.sage.brand);
+  expect(seen.peach.brand).toContain('224');
   await ctx.close();
 });

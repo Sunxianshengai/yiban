@@ -1,7 +1,9 @@
 /* 清晰的家庭空间：保留字号与主题偏好，以更明确的层级呈现入口。 */
 :root{
   --bg:#f5f6f1;--paper:#fffefa;--ink:#273a32;--muted:#617369;
-  --green:#366b55;--green-dark:#244e3e;--border:#dde7dd;
+  /* --accent/--green/--green-dark 不在这里写死：由 globals.css 的
+     :is(.app-shell)[data-accent=…] 提供，五套主题色才能跟着切换。 */
+  --border:#dde7dd;
   --sage:#e5efe7;--peach:#f9eee5;--lavender:#eeebf6;--gold:#f7efd9;
   --shadow:0 8px 28px #2443350b;--radius:17px;--radius-sm:11px;
 }
@@ -9,7 +11,7 @@ body{background:#f5f6f1;color:var(--ink);letter-spacing:0}
 .sidebar{width:238px;padding:25px 17px 18px;background:#fffefa;border-right:1px solid #e2e9df;overflow-y:auto;scrollbar-width:thin}
 .workspace{margin-left:238px}
 .brand{padding:0 9px;gap:12px}
-.brand-mark{width:44px;height:44px;border-radius:13px;background:#e6efe7;color:#366b55;transform:none}
+.brand-mark{width:44px;height:44px;border-radius:13px;background:var(--sage);color:var(--accent,#366b55);transform:none}
 .brand>span:last-child{font-size:1.7rem;letter-spacing:1px;color:#294f3e;line-height:1.12}
 .brand small{font-size:.67rem;letter-spacing:.1px;margin-top:5px;color:#72867a}
 .family-switch{margin:30px 0 22px;border:1px solid #e4ece2;background:#f5f8f3;border-radius:12px;padding:12px}
@@ -21,7 +23,7 @@ body{background:#f5f6f1;color:var(--ink);letter-spacing:0}
 .sidebar-label{display:block;margin:0 0 4px;padding:0 13px;font-size:.79rem;font-weight:700;letter-spacing:.06em;color:#697d6f}
 .nav-item{margin:0;min-height:44px;padding:10px 13px;border-radius:10px;color:#4c6253;font-size:1rem;gap:12px}
 .nav-item:hover{background:#f1f6f0;color:#245d44}
-.nav-item.active{background:#e5efe6;color:#1f6042;font-weight:700}
+.nav-item.active{background:var(--sage);color:var(--green-dark,#1f6042);font-weight:700}
 .nav-count{border-radius:99px;background:#d1e3d4;color:#295d41;font-size:.69rem}
 .sidebar-bottom{padding-top:22px}
 .sidebar-companion{padding:10px 0 16px;color:#788c78}
@@ -38,7 +40,7 @@ body{background:#f5f6f1;color:var(--ink);letter-spacing:0}
 .page-heading .eyebrow{color:#668272}
 .btn{border-radius:11px;min-height:44px;font-weight:650;box-shadow:none}
 .btn-primary{background:var(--accent,#366b55);border-color:var(--accent,#366b55);box-shadow:none}
-.btn-primary:hover{background:#244e3e;box-shadow:0 7px 18px #244e3e20}
+.btn-primary:hover{background:var(--green-dark,#244e3e);box-shadow:0 7px 18px #244e3e20}
 .btn-secondary{background:#fffefa;border-color:#cbdccf;color:#285a41}
 .btn-secondary:hover{background:#f0f6ef}
 .memory-card,.album-card,.family-card,.panel,.feedback-stat,.create-album-card,.wide-notice,.account-actions,.card{border:1px solid #e2e9df;background:#fffefa;box-shadow:var(--shadow)}
@@ -131,7 +133,7 @@ body{background:#f5f6f1;color:var(--ink);letter-spacing:0}
   .sidebar .brand,.sidebar .family-switch,.sidebar .sidebar-bottom,.sidebar-label,.sidebar .desktop-nav{display:none}
   .sidebar .mobile-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;width:100%;height:100%}
   .mobile-nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;padding:3px 1px;border-radius:9px;color:#506c57;font-size:.75rem;line-height:1.15;white-space:nowrap}
-  .mobile-nav-item.active{background:#e4efe5;color:#215e3f;font-weight:700}
+  .mobile-nav-item.active{background:var(--sage);color:var(--green-dark,#215e3f);font-weight:700}
   .sidebar .mobile-more{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;position:absolute;bottom:78px;left:12px;right:12px;padding:12px;background:#fffefa;border:1px solid #dce5dc;border-radius:16px;box-shadow:0 14px 36px #24433525}
   .mobile-more button{display:flex;align-items:center;gap:10px;min-height:48px;padding:10px 12px;text-align:left;border-radius:10px;background:#f4f7f1;color:#31533d;font-size:.91rem}
   .mobile-more button:hover{background:#e6efe7}

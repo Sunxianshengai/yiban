@@ -647,3 +647,28 @@ body{font-size:1rem}
 .highlight-card header span{margin-left:auto;font-size:0.7857rem;color:var(--muted)}
 .highlight-card p{display:flex;flex-direction:column;gap:3px;margin-bottom:12px;font-size:0.9286rem;line-height:1.8}
 .highlight-card p em{font-style:normal;font-size:0.7143rem;color:var(--muted)}
+
+/* ---- Immich 风格照片墙（components/PhotoGallery.jsx） ---- */
+.photo-gallery{display:flex;flex-direction:column;gap:22px}
+.pg-timeline{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);position:sticky;top:12px;z-index:5;backdrop-filter:blur(6px)}
+.pg-timeline-label{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:.85rem;white-space:nowrap}
+.pg-timeline-track{display:flex;gap:8px;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
+.pg-time-chip{border:1px solid var(--border);background:transparent;color:var(--ink);border-radius:999px;padding:7px 14px;font-size:.85rem;cursor:pointer;white-space:nowrap;transition:background .18s,color .18s,border-color .18s}
+.pg-time-chip:hover{background:var(--sage)}
+.pg-time-chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.pg-groups{display:flex;flex-direction:column;gap:34px}
+.pg-year-title{font-family:var(--serif);font-size:1.6rem;color:var(--ink);margin:0 0 4px}
+.pg-month{margin-top:18px}
+.pg-month-title{display:flex;align-items:baseline;gap:10px;font-size:1.02rem;color:var(--ink);margin:0 0 12px}
+.pg-month-title span{color:var(--muted);font-size:.8rem;font-weight:400}
+.photo-masonry{columns:4 220px;column-gap:14px}
+.photo-cell{break-inside:avoid;margin:0 0 14px;position:relative;border-radius:var(--radius-sm);overflow:hidden;cursor:pointer;background:var(--sage);box-shadow:0 6px 18px #7a6a4e14}
+.photo-cell img{display:block;width:100%;height:auto;transition:transform .35s cubic-bezier(.2,.7,.3,1)}
+.photo-cell:hover img{transform:scale(1.06)}
+.photo-overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;padding:16px 14px;background:linear-gradient(180deg,transparent 45%,#3f382cb3 100%);opacity:0;transition:opacity .25s ease;color:#fff}
+.photo-cell:hover .photo-overlay,.photo-cell:focus-within .photo-overlay{opacity:1}
+.photo-overlay strong{font-size:.95rem}
+.photo-overlay span{font-size:.78rem;opacity:.85}
+.photo-zoom{position:absolute;top:12px;right:12px;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#fffdf9d9;color:var(--ink);opacity:0;transform:scale(.8);transition:opacity .25s,transform .25s}
+.photo-cell:hover .photo-zoom{opacity:1;transform:scale(1)}
+@media(max-width:760px){.photo-masonry{columns:2 140px;column-gap:10px}.pg-timeline{flex-direction:column;align-items:stretch}.pg-timeline-track{max-height:64px;flex-wrap:wrap;overflow-x:visible}}
