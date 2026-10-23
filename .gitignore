@@ -21,6 +21,11 @@ test-results/
 playwright-report/
 artifacts/
 
+# 性能验收脚本（tests/browser/fontscale-perf.spec.mjs）的产物
+public/perf-fontscale.json
+public/perf-fontscale.md
+public/perf-screenshots/
+
 .vercel
 .env*
 !.env.example

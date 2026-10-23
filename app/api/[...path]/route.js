@@ -14,6 +14,7 @@ import {voiceConfigured,enrollVoice,synthesizeVoice,cacheKey} from '../../../lib
 import {generateNarration,pickNarrator,narrationKey,videoKey,buildVideoPrompt,videoConfigured,createVideoTask,fetchVideoTask,clampResolution,clampSeconds,MAX_SCRIPT,VIDEO_RESOLUTIONS,VIDEO_DEFAULT_RESOLUTION,VIDEO_DEFAULT_SECONDS} from '../../../lib/narrate.mjs';
 import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
 import {ACCENTS,FONT_SCALES,sanitizePreferences} from '../../../lib/core.mjs';
+import {STAGES,MILESTONES,INTERVIEW,GROWTH_QUESTIONS,buildTimeline,buildParallel,milestoneProgress,sanitizeQuote,sanitizeCapsule,sanitizeBirthYear,capsuleState} from '../../../lib/lifestage.mjs';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -171,6 +172,62 @@ export async function GET(request,{params}) {
         aiEnabled:aiReady(),ai:aiStatus(),memoryCount:(mine.length?mine:confirmed).length,
       });
     }
+    // ── 全年龄段：人生阶段 / 成长时间轴 / 家庭平行时间轴 ──
+    if(parts[0]==='stage') {
+      if(parts[1]==='meta') {
+        // 前端拿到阶段表、里程碑清单、成长对比问题就够了；
+        // 采访问题库按阶段取，避免一次下发全部 21 条。
+        return json({stages:STAGES,milestones:MILESTONES,growthQuestions:GROWTH_QUESTIONS});
+      }
+      if(parts[1]==='interview') {
+        const stageId=String(new URL(request.url).searchParams.get('stage')||'');
+        return json({stage:stageId,questions:INTERVIEW[stageId]||INTERVIEW.elder});
+      }
+      if(parts[1]==='timeline') {
+        // A 成长时间轴：一个人从出生到现在。只能看已确认的记忆（草稿没核对过）。
+        const memberId=String(new URL(request.url).searchParams.get('memberId')||'');
+        const members=await all('members');const confirmed=(await all('memories')).filter(m=>m.status==='confirmed');
+        const member=members.find(m=>m.id===memberId);
+        if(member) return json(buildTimeline(member,confirmed.filter(m=>m.subjectId===member.id||m.people.includes(member.name))));
+        // 没指定成员就给全家人各一条，按出生年排。
+        return json({members:members.map(m=>buildTimeline(m,confirmed.filter(x=>x.subjectId===m.id||x.people.includes(m.name))))});
+      }
+      if(parts[1]==='parallel') {
+        // E 家庭平行时间轴：同一年，全家人各几岁、那年发生了什么。
+        const year=new URL(request.url).searchParams.get('year');
+        const [members,confirmed]=await Promise.all([all('members'),all('memories').then(l=>l.filter(m=>m.status==='confirmed'))]);
+        return json(buildParallel(members,confirmed,year));
+      }
+      if(parts[1]==='milestones') {
+        const memberId=String(new URL(request.url).searchParams.get('memberId')||'');
+        const record=await get('milestones',memberId)||{id:memberId,done:[]};
+        return json({memberId,...milestoneProgress(record.done||[])});
+      }
+      if(parts[1]==='quotes') {
+        // C 童言童语：按时间倒序，最新的在前面。
+        const memberId=String(new URL(request.url).searchParams.get('memberId')||'');
+        const list=(await all('quotes')).filter(q=>!memberId||q.memberId===memberId);
+        return json({quotes:list.sort((a,b)=>String(b.saidAt||'').localeCompare(String(a.saidAt||''))).slice(0,200)});
+      }
+      if(parts[1]==='answers') {
+        // H 成长对比：同一个问题，不同年份问同一个人。
+        const memberId=String(new URL(request.url).searchParams.get('memberId')||'');
+        const list=(await all('answers')).filter(a=>!memberId||a.memberId===memberId);
+        return json({answers:list.sort((a,b)=>String(a.year||'0').localeCompare(String(b.year||'0')))});
+      }
+    }
+    if(parts[0]==='capsules') {
+      // I 时间胶囊：只列「我写的」和「到日子了写给全家的」。没到开启日期的不泄露内容。
+      const now=new Date();
+      const list=await all('capsules');
+      return json({capsules:list.map(c=>{
+        const state=capsuleState(c,now);
+        const mine=c.authorId===auth.user.id;
+        return {...c,locked:state.locked,daysLeft:state.daysLeft,
+          // 没到期又不是本人写的：只让别人知道「有一封」，看不到内容。
+          text:state.locked&&!mine?'':c.text};
+      }).sort((a,b)=>String(a.openAt||'').localeCompare(String(b.openAt||'')))});
+    }
     if(parts[0]==='media') {
       const file=parts[1]||'';
       // 允许 base64url 字母表（生成的配音名是 voice-<base64url>）：
@@ -281,7 +338,7 @@ export async function POST(request,{params}) {
     // 直到有人想起把它加进数组——voice/enroll 就是这样裸奔过的。新接口必须先在这里登记。
     // narrate 对 viewer 开放的是「听」：/narrate/script 写稿+配音只花几毛钱，看的人也该能听。
     // 真正按秒计费的 /narrate/video 在分支里单独再要一次 editor。
-    const openToViewer=['activity','auth','comments','companion','game','life','narrate','role','voice'].includes(parts[0]);
+    const openToViewer=['activity','auth','capsules','comments','companion','game','life','narrate','role','stage','voice'].includes(parts[0]);
     if(!openToViewer&&!accountRole(auth.user,'editor'))return forbidden();
     if(parts[0]==='upload') {
       const contentLength=Number(request.headers.get('content-length')||0);
@@ -304,7 +361,9 @@ export async function POST(request,{params}) {
       return json(await put('activity',activity),201);
     }
     if(parts[0]==='memories') {
+      // subjectId（这段是谁的回忆）由 tidyMemory 收好了，这里只补「谁记下的」。
       const memory=tidyMemory(body);
+      memory.recorderId=auth.user.id;
       for(const key of ['cover','audio','video']) if(body[key]) {
         if(!/^\/api\/media\/[a-f0-9-]+\.[a-z0-9]+$/.test(body[key])) throw new Error('素材地址不合法');
         memory[key]=body[key];
@@ -335,10 +394,56 @@ export async function POST(request,{params}) {
       await put('albums',album);await log('album',`创建了专辑「${title}」`);return json(album,201);
     }
     if(parts[0]==='story') {
-      const album=await get('albums',body.albumId); if(!album) throw new Error('专辑不存在');
-      const memories=(await Promise.all(album.memoryIds.map(id=>get('memories',id)))).filter(m=>m?.status==='confirmed');
-      if(!memories.length) throw new Error('这张专辑还没有已确认的记忆');
-      return json(await generateStory(memories,album.title));
+      // 两条路：传 albumId 走专辑（专辑页用），直接传 memoryIds 走「成长纪念册」——
+      // 纪念册是一次性的排版产物，不该为了串一次就建一张永远留着的专辑。
+      let memories=[],title=String(body.title||'').trim().slice(0,80);
+      if(body.albumId) {
+        const album=await get('albums',body.albumId); if(!album) throw new Error('专辑不存在');
+        memories=(await Promise.all(album.memoryIds.map(id=>get('memories',id)))).filter(m=>m?.status==='confirmed');
+        if(!memories.length) throw new Error('这张专辑还没有已确认的记忆');
+        title=album.title;
+      }else{
+        const ids=Array.isArray(body.memoryIds)?body.memoryIds.filter(Boolean).slice(0,24):[];
+        if(!ids.length) throw new Error('先挑几段记忆');
+        memories=(await Promise.all(ids.map(id=>get('memories',id)))).filter(m=>m?.status==='confirmed');
+        if(!memories.length) throw new Error('挑中的记忆都还没经过家属核对');
+      }
+      return json(await generateStory(memories,title));
+    }
+    // ── 全年龄段的写接口 ──
+    // 这些都走 openToViewer：家里的任何一个人都能给孩子记一句话、勾一个里程碑、
+    // 写一封时间胶囊。真正要花钱的（声音复刻、图生视频）仍然单独要求 editor。
+    if(parts[0]==='stage') {
+      if(parts[1]==='milestones') {
+        const memberId=String(body.memberId||'');if(!memberId) throw new Error('先选一位家人');
+        const key=String(body.key||'');
+        if(!MILESTONES.some(m=>m.key===key)) throw new Error('没有这个里程碑');
+        const old=await get('milestones',memberId)||{id:memberId,done:[]};
+        const done=body.done?[...new Set([...(old.done||[]),key])]:(old.done||[]).filter(k=>k!==key);
+        await put('milestones',{...old,id:memberId,done});
+        if(body.done) await log('milestone',`记下了一个里程碑：${MILESTONES.find(m=>m.key===key).label}`);
+        return json({...milestoneProgress(done),memberId});
+      }
+      if(parts[1]==='quotes') {
+        const quote={...sanitizeQuote(body),id:randomUUID(),familyId:'family',userId:auth.user.id,createdAt:new Date().toISOString()};
+        await put('quotes',quote);
+        await log('quote',`记下了一句童言童语`);
+        return json(quote,201);
+      }
+      if(parts[1]==='answers') {
+        const key=String(body.key||'');if(!GROWTH_QUESTIONS.some(q=>q.key===key)) throw new Error('没有这个问题');
+        const answer=String(body.answer||'').trim().slice(0,300);if(!answer) throw new Error('先写下答案');
+        const record={id:randomUUID(),familyId:'family',memberId:String(body.memberId||''),key,answer,
+          year:/^\d{4}$/.test(String(body.year||''))?String(body.year):new Date().getFullYear().toString(),
+          createdAt:new Date().toISOString()};
+        await put('answers',record);return json(record,201);
+      }
+    }
+    if(parts[0]==='capsules') {
+      const capsule={...sanitizeCapsule(body),id:randomUUID(),familyId:'family',authorId:auth.user.id,createdAt:new Date().toISOString()};
+      await put('capsules',capsule);
+      await log('capsule',`写了一封时间胶囊，将在 ${capsule.openAt} 开启`);
+      return json(capsule,201);
     }
     if(parts[0]==='activity') {
       const types={play:'播放',remember:'点击了「我记得」',like:'点击了「喜欢」',replay:'点击了「再听一次」',pause:'暂停了播放'};
@@ -476,7 +581,9 @@ export async function POST(request,{params}) {
     }
     if(parts[0]==='members') {
       const name=String(body.name||'').trim().slice(0,30);if(!name) throw new Error('请填写成员姓名');
-      const member={id:randomUUID(),familyId:'family',name,relation:String(body.relation||'家人').slice(0,30),role:'家庭成员',color:'sage'};
+      // birthYear 是全年龄段功能的地基：有了它才能算「那年你几岁」。
+      const birthYear=sanitizeBirthYear(body.birthYear);
+      const member={id:randomUUID(),familyId:'family',name,relation:String(body.relation||'家人').slice(0,30),role:'家庭成员',color:'sage',birthYear};
       await put('members',member);return json(member,201);
     }
     if(parts[0]==='anniversaries') {
@@ -630,6 +737,16 @@ export async function PATCH(request,{params}) {
       if(body.clearVideo) updated.video=null;
       await put('memories',updated);return json(updated);
     }
+    if(parts[0]==='members') {
+      // 补出生年份：全年龄段功能的地基，缺了它就算不出「那年几岁」。
+      const old=await get('members',parts[1]);if(!old) throw new Error('成员不存在');
+      const patch={...old};
+      if(body.name!==undefined){const name=String(body.name||'').trim().slice(0,30);if(!name) throw new Error('请填写成员姓名');patch.name=name;}
+      if(body.birthYear!==undefined) patch.birthYear=sanitizeBirthYear(body.birthYear);
+      if(body.relation!==undefined) patch.relation=String(body.relation||'').slice(0,30);
+      if(body.color!==undefined&&['sage','peach','lavender','blue','gold'].includes(body.color)) patch.color=body.color;
+      await put('members',patch);return json(patch);
+    }
     if(parts[0]==='settings') {
       const old=await get('settings','family');
       const update={...old,familyName:String(body.familyName??old.familyName).trim().slice(0,60)||old.familyName,fontSize:['large','extra'].includes(body.fontSize)?body.fontSize:old.fontSize,highContrast:Boolean(body.highContrast??old.highContrast),autoPlay:Boolean(body.autoPlay??old.autoPlay),speechRate:Math.min(1.2,Math.max(0.5,Number(body.speechRate??old.speechRate)||0.85))};
@@ -656,7 +773,7 @@ export async function DELETE(request,{params}) {
       await remove('users',target.id);return json({ok:true});
     }
     const auth=await guard(request,'editor');if(auth.error)return auth.error;
-    if(!['memories','albums','members','anniversaries'].includes(parts[0])) return json({error:'接口不存在'},404);
+    if(!['memories','albums','members','anniversaries','quotes','answers','capsules'].includes(parts[0])) return json({error:'接口不存在'},404);
     const old=await get(parts[0],parts[1]);if(!old) return json({error:'内容不存在'},404);
     if(parts[0]==='members'&&old.role==='管理员') throw new Error('比赛版请保留管理员');
     await remove(parts[0],parts[1]);

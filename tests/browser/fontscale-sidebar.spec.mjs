@@ -14,10 +14,10 @@ test('字号档位生效 + 特大档侧栏不溢出',async({browser})=>{
   const expected={标准:14,偏大:16.1,大:18.2,特大:21};
   for(const [label,px] of Object.entries(expected)){
     await page.locator('.option-pill').filter({hasText:new RegExp(`^${label}$`)}).first().click();
-    await page.waitForTimeout(600);
-    const rootPx=await page.evaluate(()=>parseFloat(getComputedStyle(document.documentElement).fontSize));
-    console.log(label,'根字号',rootPx,'期望',px);
-    expect(Math.abs(rootPx-px)).toBeLessThan(0.2);
+    // 字号是「先存偏好、再由 useEffect 写内联样式」，两步之间隔了一次网络往返。
+    // 固定等 600ms 在整轮跑（机器忙）时会偶发读到上一档的旧值——用轮询等它真的到位。
+    await expect.poll(async()=>await page.evaluate(()=>parseFloat(getComputedStyle(document.documentElement).fontSize)),
+      {timeout:10000,message:`「${label}」档的根字号应当变成 ${px}px`}).toBeCloseTo(px,1);
   }
 
   // 特大档：侧栏里的品牌名、导航文字、账号名都不能超出侧栏右边界
