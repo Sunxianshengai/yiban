@@ -592,6 +592,18 @@ body{font-size:1rem}
 .yearbook-body p{font-size:1rem;line-height:2.05;margin-bottom:18px;text-indent:2em}
 .yearbook-paper footer{margin-top:38px;padding-top:18px;border-top:1px dashed var(--border);text-align:center;font-size:0.75rem;color:var(--muted)}
 
+/* 打印 / 存为 PDF：只印纪念册纸本身。隐藏侧栏、页签、表单与所有其余 UI，
+   并把纸放大到整页宽——浏览器「打印 → 存为 PDF」得到的就是一本干净的册子。 */
+@media print{
+  .sidebar,.topbar,.growth-tabs,.growth-picker,.yearbook-pick,.yearbook-actions,
+  .inline-notice,.page-heading{display:none!important}
+  .workspace{margin-left:0}
+  .main-content{padding:0}
+  body{background:#fff}
+  .yearbook-paper{border:none;box-shadow:none;border-radius:0;padding:0;max-width:none;width:100%}
+  .yearbook-body p{orphans:3;widows:3}
+}
+
 /* I 时间胶囊 */
 .capsules-page{display:flex;flex-direction:column;gap:20px}
 .capsule-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
@@ -618,3 +630,20 @@ body{font-size:1rem}
   .person-chips{width:100%}
 }
 .family-hint{font-size:0.75rem;color:var(--muted);margin-top:4px}
+
+/* G 高光时刻 */
+.highlights-view{display:flex;flex-direction:column;gap:20px}
+.highlight-templates{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.highlight-templates button{display:flex;align-items:center;gap:10px;padding:16px 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--paper);font-size:0.9286rem;transition:transform .15s,box-shadow .15s}
+.highlight-templates button:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.highlight-templates button.selected{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--paper))}
+.highlight-form{padding:22px;border-radius:var(--radius);border:1px solid var(--border);background:var(--paper);display:flex;flex-direction:column;gap:14px}
+.highlight-form .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.highlight-list{display:flex;flex-direction:column;gap:16px}
+.highlight-card{padding:24px 26px;border-radius:var(--radius);border:1px solid var(--border);background:linear-gradient(165deg,color-mix(in srgb,var(--gold) 30%,var(--paper)),var(--paper));box-shadow:var(--shadow)}
+.highlight-card header{display:flex;align-items:center;gap:10px;margin-bottom:14px;color:var(--ink)}
+.highlight-card header svg{color:var(--accent)}
+.highlight-card header strong{font-family:var(--serif);font-size:1.1429rem}
+.highlight-card header span{margin-left:auto;font-size:0.7857rem;color:var(--muted)}
+.highlight-card p{display:flex;flex-direction:column;gap:3px;margin-bottom:12px;font-size:0.9286rem;line-height:1.8}
+.highlight-card p em{font-style:normal;font-size:0.7143rem;color:var(--muted)}

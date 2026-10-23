@@ -5,7 +5,7 @@ import {Avatar,Button,Cover,Empty,Field} from './UI';
 
 // 全年龄段的核心页：一个人的一辈子怎么排、家里人在同一年各几岁。
 // 六个页签对应方案里的 A(时间轴) E(平行时间轴) B(里程碑) C(童言童语) H(成长对比) D(分龄采访) J(纪念册)。
-const TABS=[{id:'timeline',label:'成长时间轴',icon:'clock'},{id:'parallel',label:'那一年',icon:'people'},{id:'milestones',label:'人生里程碑',icon:'check'},{id:'quotes',label:'童言童语',icon:'message'},{id:'growth',label:'成长对比',icon:'arrow'},{id:'interview',label:'分龄采访',icon:'mic'},{id:'yearbook',label:'成长纪念册',icon:'book'}];
+const TABS=[{id:'timeline',label:'成长时间轴',icon:'clock'},{id:'parallel',label:'那一年',icon:'people'},{id:'highlights',label:'高光时刻',icon:'sparkle'},{id:'milestones',label:'人生里程碑',icon:'check'},{id:'quotes',label:'童言童语',icon:'message'},{id:'growth',label:'成长对比',icon:'arrow'},{id:'interview',label:'分龄采访',icon:'mic'},{id:'yearbook',label:'成长纪念册',icon:'book'}];
 
 export default function Growth({api,notify,members,canEdit,onOpenMemory}) {
   const [tab,setTab]=useState('timeline');
@@ -38,6 +38,7 @@ export default function Growth({api,notify,members,canEdit,onOpenMemory}) {
 
     {tab==='timeline'&&<TimelineView member={member} timeline={timeline} loading={loading} stageOf={stageOf} onOpenMemory={onOpenMemory} canEdit={canEdit} api={api} notify={notify}/>}
     {tab==='parallel'&&<ParallelView api={api} notify={notify} members={members} stageOf={stageOf} onOpenMemory={onOpenMemory}/>}
+    {tab==='highlights'&&<HighlightsView api={api} notify={notify} members={members} canEdit={canEdit} onOpenMemory={onOpenMemory}/>}
     {tab==='milestones'&&<MilestonesView api={api} notify={notify} member={member} meta={meta} canEdit={canEdit}/>}
     {tab==='quotes'&&<QuotesView api={api} notify={notify} member={member} members={members} canEdit={canEdit}/>}
     {tab==='growth'&&<GrowthAnswers api={api} notify={notify} member={member} meta={meta} canEdit={canEdit}/>}
@@ -85,6 +86,58 @@ function HintBirthYear({member,api,notify,canEdit}) {
     try{await api('/members/'+member.id,{method:'PATCH',body:JSON.stringify({birthYear:year})});notify('已记下出生年份');}catch(e){notify(e.message,'error');}
   };
   return <div className="inline-form"><input value={year} onChange={e=>setYear(e.target.value)} placeholder="例如 1990" maxLength={4}/><Button onClick={save}>记下</Button></div>;
+}
+
+// G 高光时刻：金榜题名、结婚、新生儿这类家里会郑重其事的时刻。
+// 设计原则：模板只给「该填什么」的提示，不替人写内容；一页一主角，仪式感靠排版不靠花哨。
+function HighlightsView({api,notify,members,canEdit,onOpenMemory}) {
+  const [data,setData]=useState(null);
+  const [template,setTemplate]=useState('');
+  const [memberId,setMemberId]=useState('');
+  const [year,setYear]=useState(String(new Date().getFullYear()));
+  const [fields,setFields]=useState({});
+  const [memoryId,setMemoryId]=useState('');
+  const [confirmed,setConfirmed]=useState([]);
+  const [busy,setBusy]=useState(false);
+  const load=async()=>{try{setData(await api('/highlights'));}catch(e){notify(e.message,'error');}};
+  useEffect(()=>{load();},[]);
+  useEffect(()=>{
+    if(!memberId&&members.length)setMemberId(members[0].id);
+  },[members]);
+  // 候选主图：主角名下的已确认记忆。低频加载一次即可。
+  useEffect(()=>{
+    api('/search?q=').then(d=>setConfirmed((d.memories||[]).filter(m=>m.subjectId===memberId||m.people?.includes(members.find(x=>x.id===memberId)?.name)))).catch(()=>{});
+  },[memberId,members]);
+  const tpl=data?.templates?.find(t=>t.id===template);
+  const save=async()=>{
+    if(!canEdit){notify('需要编辑者权限才能记高光时刻','error');return;}
+    setBusy(true);
+    try{await api('/highlights',{method:'POST',body:JSON.stringify({template,memberId,year,fields,memoryId:memoryId||null})});setTemplate('');setFields({});setMemoryId('');notify('高光时刻已记下');load();}
+    catch(e){notify(e.message,'error');}finally{setBusy(false);}
+  };
+  const nameOf=id=>data?.members?.find(m=>m.id===id)?.name||members.find(m=>m.id===id)?.name||'这位家人';
+  return <div className="highlights-view">
+    <div className="inline-notice"><Icon name="sparkle"/><span>金榜题名、结婚、迎来新生命……这些日子值得用郑重的方式记下来。选一个模板，按栏位慢慢填。</span></div>
+    {data&&<div className="highlight-templates">{data.templates.map(t=><button key={t.id} className={template===t.id?'selected':''} onClick={()=>{setTemplate(t.id);setFields({});}}><Icon name={t.icon} size={18}/>{t.label}</button>)}</div>}
+    {tpl&&<div className="highlight-form">
+      <div className="form-grid">
+        <Field label="主角"><select value={memberId} onChange={e=>setMemberId(e.target.value)}>{members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Field>
+        <Field label="哪一年"><input value={year} onChange={e=>setYear(e.target.value)} maxLength={4}/></Field>
+        <Field label="配一张照片（选填）"><select value={memoryId} onChange={e=>setMemoryId(e.target.value)}><option value="">不配图</option>{confirmed.map(m=><option key={m.id} value={m.id}>{m.title}</option>)}</select></Field>
+      </div>
+      {Object.entries(tpl.fields).map(([key,label])=><Field key={key} label={label}><textarea rows={2} value={fields[key]||''} onChange={e=>setFields(f=>({...f,[key]:e.target.value}))} maxLength={500}/></Field>)}
+      <Button icon="sparkle" busy={busy} onClick={save}>记下这个时刻</Button>
+    </div>}
+    {data&&<div className="highlight-list">{data.highlights.map(h=>{
+      const t=data.templates.find(x=>x.id===h.template);
+      const filled=Object.entries(h.fields||{}).filter(([,v])=>v);
+      return <article className="highlight-card" key={h.id}>
+        <header><Icon name={t?.icon||'sparkle'} size={18}/><strong>{t?.label||h.template}</strong><span>{nameOf(h.memberId)} · {h.year}</span></header>
+        {filled.map(([key,v])=><p key={key}><em>{t?.fields[key]||key}</em>{v}</p>)}
+      </article>;})}
+      {data&&!data.highlights.length&&<Empty icon="sparkle" title="还没有记下高光时刻" description="第一次获奖、金榜题名、办喜酒……都可以从上面挑一个模板开始。"/>}
+    </div>}
+  </div>;
 }
 
 function ParallelView({api,notify,members,stageOf,onOpenMemory}) {

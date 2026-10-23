@@ -14,7 +14,7 @@ import {voiceConfigured,enrollVoice,synthesizeVoice,cacheKey} from '../../../lib
 import {generateNarration,pickNarrator,narrationKey,videoKey,buildVideoPrompt,videoConfigured,createVideoTask,fetchVideoTask,clampResolution,clampSeconds,MAX_SCRIPT,VIDEO_RESOLUTIONS,VIDEO_DEFAULT_RESOLUTION,VIDEO_DEFAULT_SECONDS} from '../../../lib/narrate.mjs';
 import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
 import {ACCENTS,FONT_SCALES,sanitizePreferences} from '../../../lib/core.mjs';
-import {STAGES,MILESTONES,INTERVIEW,GROWTH_QUESTIONS,buildTimeline,buildParallel,milestoneProgress,sanitizeQuote,sanitizeCapsule,sanitizeBirthYear,capsuleState} from '../../../lib/lifestage.mjs';
+import {STAGES,MILESTONES,INTERVIEW,GROWTH_QUESTIONS,HIGHLIGHT_TEMPLATES,buildTimeline,buildParallel,milestoneProgress,sanitizeQuote,sanitizeCapsule,sanitizeBirthYear,sanitizeHighlight,capsuleState} from '../../../lib/lifestage.mjs';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -228,6 +228,13 @@ export async function GET(request,{params}) {
           text:state.locked&&!mine?'':c.text};
       }).sort((a,b)=>String(a.openAt||'').localeCompare(String(b.openAt||'')))});
     }
+    if(parts[0]==='highlights') {
+      // G 高光时刻：列全部，前端按成员过滤。模板定义一并下发，少一次请求。
+      const list=await all('highlights');
+      const members=await all('members');
+      return json({templates:HIGHLIGHT_TEMPLATES,highlights:list.sort((a,b)=>String(b.year||'0').localeCompare(String(a.year||'0'))),
+        members:members.map(m=>({id:m.id,name:m.name,color:m.color||'sage'}))});
+    }
     if(parts[0]==='media') {
       const file=parts[1]||'';
       // 允许 base64url 字母表（生成的配音名是 voice-<base64url>）：
@@ -338,7 +345,7 @@ export async function POST(request,{params}) {
     // 直到有人想起把它加进数组——voice/enroll 就是这样裸奔过的。新接口必须先在这里登记。
     // narrate 对 viewer 开放的是「听」：/narrate/script 写稿+配音只花几毛钱，看的人也该能听。
     // 真正按秒计费的 /narrate/video 在分支里单独再要一次 editor。
-    const openToViewer=['activity','auth','capsules','comments','companion','game','life','narrate','role','stage','voice'].includes(parts[0]);
+    const openToViewer=['activity','auth','capsules','comments','companion','game','highlights','life','narrate','role','stage','voice'].includes(parts[0]);
     if(!openToViewer&&!accountRole(auth.user,'editor'))return forbidden();
     if(parts[0]==='upload') {
       const contentLength=Number(request.headers.get('content-length')||0);
@@ -444,6 +451,19 @@ export async function POST(request,{params}) {
       await put('capsules',capsule);
       await log('capsule',`写了一封时间胶囊，将在 ${capsule.openAt} 开启`);
       return json(capsule,201);
+    }
+    if(parts[0]==='highlights') {
+      // G 高光时刻：一次郑重其事的记录，值得单独存、单独展示。
+      const highlight={...sanitizeHighlight(body),id:randomUUID(),familyId:'family',userId:auth.user.id,createdAt:new Date().toISOString()};
+      // 挂上主图：允许从已有记忆里选一段（存 memoryId），前端只展示已确认的记忆作候选。
+      if(body.memoryId) {
+        const memory=await get('memories',String(body.memoryId));
+        if(!memory||memory.status!=='confirmed') throw new Error('主图对应的记忆不存在或还没确认');
+        highlight.memoryId=memory.id;
+      }
+      await put('highlights',highlight);
+      await log('highlight',`记下一个高光时刻：${HIGHLIGHT_TEMPLATES.find(t=>t.id===highlight.template).label}`);
+      return json(highlight,201);
     }
     if(parts[0]==='activity') {
       const types={play:'播放',remember:'点击了「我记得」',like:'点击了「喜欢」',replay:'点击了「再听一次」',pause:'暂停了播放'};
@@ -773,7 +793,7 @@ export async function DELETE(request,{params}) {
       await remove('users',target.id);return json({ok:true});
     }
     const auth=await guard(request,'editor');if(auth.error)return auth.error;
-    if(!['memories','albums','members','anniversaries','quotes','answers','capsules'].includes(parts[0])) return json({error:'接口不存在'},404);
+    if(!['memories','albums','members','anniversaries','quotes','answers','capsules','highlights'].includes(parts[0])) return json({error:'接口不存在'},404);
     const old=await get(parts[0],parts[1]);if(!old) return json({error:'内容不存在'},404);
     if(parts[0]==='members'&&old.role==='管理员') throw new Error('比赛版请保留管理员');
     await remove(parts[0],parts[1]);

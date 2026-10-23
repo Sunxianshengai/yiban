@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {STAGES,stageOfAge,ageAtYear,stageAtYear,MILESTONES,INTERVIEW,GROWTH_QUESTIONS,buildTimeline,buildParallel,milestoneProgress,sanitizeQuote,sanitizeCapsule,sanitizeBirthYear,capsuleState} from '../lib/lifestage.mjs';
+import {STAGES,stageOfAge,ageAtYear,stageAtYear,MILESTONES,INTERVIEW,GROWTH_QUESTIONS,buildTimeline,buildParallel,milestoneProgress,sanitizeQuote,sanitizeCapsule,sanitizeBirthYear,capsuleState,HIGHLIGHT_TEMPLATES,sanitizeHighlight} from '../lib/lifestage.mjs';
 
 test('七段人生阶段首尾相接且覆盖 0-200 岁', () => {
   assert.equal(STAGES.length, 7);
@@ -129,4 +129,37 @@ test('出生年份：只认 19xx/20xx，其余一律当成「没填」', () => {
   assert.equal(sanitizeBirthYear(undefined), '');
   assert.equal(sanitizeBirthYear('某年'), '');
   assert.equal(sanitizeBirthYear('1990年'), '', '带「年」字的是记忆的年份写法，不是出生年字段');
+});
+
+test('高光时刻模板：每个模板的栏位提示齐全且 id 唯一', () => {
+  assert.ok(HIGHLIGHT_TEMPLATES.length >= 5, '金榜题名/结婚/新生儿/第一份工作/乔迁都要有');
+  assert.equal(new Set(HIGHLIGHT_TEMPLATES.map(t => t.id)).size, HIGHLIGHT_TEMPLATES.length);
+  for (const t of HIGHLIGHT_TEMPLATES) {
+    assert.ok(t.label && t.icon, `${t.id} 要有 label 和 icon`);
+    const keys = Object.keys(t.fields);
+    assert.ok(keys.length >= 3, `${t.id} 至少三组栏位提示`);
+    for (const k of keys) assert.equal(typeof t.fields[k], 'string', `${t.id}.${k} 提示必须是字符串`);
+  }
+});
+
+test('高光时刻清洗：模板与主角必填，栏位限长，缺的栏位回落空串', () => {
+  const tpl = HIGHLIGHT_TEMPLATES[0];
+  assert.throws(() => sanitizeHighlight({template: '不存在', memberId: 'm1'}), /选一个高光时刻模板/);
+  assert.throws(() => sanitizeHighlight({template: tpl.id, memberId: ''}), /选一位主角/);
+  assert.throws(() => sanitizeHighlight({template: tpl.id, memberId: 'm1', year: '202'}), /四位/);
+  const h = sanitizeHighlight({template: tpl.id, memberId: 'm1', year: '2024', fields: {mood: '激动得说不出话'}});
+  assert.equal(h.template, tpl.id);
+  assert.equal(h.memberId, 'm1');
+  assert.equal(h.year, '2024');
+  assert.equal(h.fields.mood, '激动得说不出话');
+  // 只填了一栏也允许存；没填的栏位是空串而不是 undefined
+  for (const k of Object.keys(tpl.fields)) {
+    if (k !== 'mood') assert.equal(h.fields[k], '', `${k} 缺省回落空串`);
+  }
+  // 超长截断到 500
+  const long = '一'.repeat(600);
+  const h2 = sanitizeHighlight({template: tpl.id, memberId: 'm1', fields: {mood: long}});
+  assert.equal(h2.fields.mood.length, 500);
+  // 没填年份回落当年
+  assert.ok(/^\d{4}$/.test(sanitizeHighlight({template: tpl.id, memberId: 'm1'}).year));
 });
