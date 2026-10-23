@@ -2,13 +2,12 @@ import { NextResponse } from 'next/server';
 
 // 检查某个媒体文件名是否被任何记忆的 cover/audio/video 引用。
 // 旧实现是全表扫描：每次媒体请求都把全部记忆拉出来逐条比对（O(n) JSON.parse）。
-// 现在保留同样的匹配语义，但只在 uploads 记录缺失时才走到这里（见 GET media 分支），
-// 绝大多数请求不再碰 memories 全表。
+// 查看者只可通过已发布记忆读取素材；编辑者还可读取草稿引用的素材。
 function mediaNeedle(file){return `/api/media/${file}`;}
-async function hasMemoryMediaRef(file) {
+async function hasMemoryMediaRef(file,includeDraft=false) {
   const needle=mediaNeedle(file);
   const memories=await all('memories');
-  return memories.some(m=>m.cover===needle||m.audio===needle||m.video===needle);
+  return memories.some(m=>(includeDraft||m.status==='confirmed')&&(m.cover===needle||m.audio===needle||m.video===needle));
 }
 
 // 对一个流按字节区间截取（媒体 Range 请求专用）。
@@ -52,7 +51,7 @@ import {CONCERNS,TONES,KINDS,ROLES,MAX_TEXT as ROLE_MAX_TEXT,sanitizeRole,roleOp
 import {startRun,recordChoice,currentStage,publicRun,buildEnding,MAX_STAGES,MAX_CHOICE_TEXT,STAT_META} from '../../../lib/life.mjs';
 import {PERSONAS,RELATIONS,MAX_MESSAGES,MAX_NOTES,MAX_TEXT,sanitizeCompanion,openingLine,retrieveMemories,buildMessages,localNotes} from '../../../lib/companion.mjs';
 import {voiceConfigured,enrollVoice,synthesizeVoice,cacheKey} from '../../../lib/voice.mjs';
-import {generateNarration,pickNarrator,narrationKey,videoKey,buildVideoPrompt,videoConfigured,createVideoTask,fetchVideoTask,clampResolution,clampSeconds,MAX_SCRIPT,VIDEO_RESOLUTIONS,VIDEO_DEFAULT_RESOLUTION,VIDEO_DEFAULT_SECONDS} from '../../../lib/narrate.mjs';
+import {generateNarration,pickNarrator,narrationKey,videoKey,buildVideoPrompt,videoConfigured,createVideoTask,fetchVideoTask,clampResolution,clampSeconds,MAX_SCRIPT,MAX_IMAGE_BYTES,VIDEO_RESOLUTIONS,VIDEO_DEFAULT_RESOLUTION,VIDEO_DEFAULT_SECONDS} from '../../../lib/narrate.mjs';
 import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
 import {ACCENTS,FONT_SCALES,sanitizePreferences} from '../../../lib/core.mjs';
 import {STAGES,MILESTONES,INTERVIEW,GROWTH_QUESTIONS,HIGHLIGHT_TEMPLATES,buildTimeline,buildParallel,milestoneProgress,sanitizeQuote,sanitizeCapsule,sanitizeBirthYear,sanitizeHighlight,capsuleState} from '../../../lib/lifestage.mjs';
@@ -73,7 +72,7 @@ const unauthorized=()=>json({error:'请先登录'},401);
 const forbidden=()=>json({error:'当前账号没有执行此操作的权限'},403);
 const guard=async(request,role='viewer')=>{const user=await sessionFromRequest(request);return {user,error:!user?unauthorized():!accountRole(user,role)?forbidden():null};};
 const ensureOrigin=request=>sameOrigin(request)?null:forbidden();
-const isManagedMedia=async file=>(await hasMemoryMediaRef(file));
+const isManagedMedia=async file=>(await hasMemoryMediaRef(file,true));
 const allowed={ 'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp','audio/mpeg':'.mp3','audio/wav':'.wav','audio/x-wav':'.wav','audio/mp4':'.m4a','audio/ogg':'.ogg','audio/webm':'.webm','video/mp4':'.mp4','video/webm':'.webm' };
 const validBlobPath=pathname=>typeof pathname==='string'&&/^yiban\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.(jpg|png|webp|mp3|wav|m4a|ogg|webm|mp4)$/.test(pathname);
 
@@ -263,10 +262,9 @@ export async function GET(request,{params}) {
       const list=await all('capsules');
       return json({capsules:list.map(c=>{
         const state=capsuleState(c,now);
-        const mine=c.authorId===auth.user.id;
         return {...c,locked:state.locked,daysLeft:state.daysLeft,
-          // 没到期又不是本人写的：只让别人知道「有一封」，看不到内容。
-          text:state.locked&&!mine?'':c.text};
+          // 到期前包括作者在内都只看到信封，不下发正文。
+          text:state.locked?'':c.text};
       }).sort((a,b)=>String(a.openAt||'').localeCompare(String(b.openAt||'')))});
     }
     if(parts[0]==='highlights') {
@@ -287,7 +285,8 @@ export async function GET(request,{params}) {
       // 发起人生成一次，全家人都该能听能看，不该按上传者归属拦掉。
       // 归属判定走 uploads 集合单条查询，不再全表扫描 memories（旧实现每次媒体请求
       // 都把全部记忆拉出来逐条比对，记忆越多这条路径越慢）。
-      if(!upload&&!(await hasMemoryMediaRef(file))&&upload?.userId!==auth.user.id&&!upload?.shared) return json({error:'素材不存在'},404);
+       const canReadUpload=upload?.shared||upload?.userId===auth.user.id;
+       if(!canReadUpload&&!(await hasMemoryMediaRef(file,accountRole(auth.user,'editor')))) return json({error:'素材不存在'},404);
       const media=await readMedia(file,upload?.blobUrl);
       if(!media)return json({error:'素材不存在'},404);
       const ext=path.extname(file);
@@ -843,8 +842,14 @@ export async function DELETE(request,{params}) {
       for(const session of await all('sessions'))if(session.userId===target.id)await remove('sessions',session.id);
       await remove('users',target.id);return json({ok:true});
     }
+    if(parts[0]==='capsules') {
+      const auth=await guard(request);if(auth.error)return auth.error;
+      const capsule=await get('capsules',parts[1]);if(!capsule)return json({error:'内容不存在'},404);
+      if(capsule.authorId!==auth.user.id&&!accountRole(auth.user,'editor'))return forbidden();
+      await remove('capsules',capsule.id);return json({ok:true});
+    }
     const auth=await guard(request,'editor');if(auth.error)return auth.error;
-    if(!['memories','albums','members','anniversaries','quotes','answers','capsules','highlights'].includes(parts[0])) return json({error:'接口不存在'},404);
+    if(!['memories','albums','members','anniversaries','quotes','answers','highlights'].includes(parts[0])) return json({error:'接口不存在'},404);
     const old=await get(parts[0],parts[1]);if(!old) return json({error:'内容不存在'},404);
     if(parts[0]==='members'&&old.role==='管理员') throw new Error('比赛版请保留管理员');
     await remove(parts[0],parts[1]);
