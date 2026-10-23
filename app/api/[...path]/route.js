@@ -75,6 +75,21 @@ const ensureOrigin=request=>sameOrigin(request)?null:forbidden();
 const isManagedMedia=async file=>(await hasMemoryMediaRef(file,true));
 const allowed={ 'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp','audio/mpeg':'.mp3','audio/wav':'.wav','audio/x-wav':'.wav','audio/mp4':'.m4a','audio/ogg':'.ogg','audio/webm':'.webm','video/mp4':'.mp4','video/webm':'.webm' };
 const validBlobPath=pathname=>typeof pathname==='string'&&/^yiban\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.(jpg|png|webp|mp3|wav|m4a|ogg|webm|mp4)$/.test(pathname);
+// 记忆上挂的素材地址必须和 /api/media 网关的文件名规则同构：
+// 旧正则只认十六进制 uuid，会把系统生成的 voice-*.mp3 这类名字判成「不合法」。
+const MEDIA_PATH_RE=/^\/api\/media\/[A-Za-z0-9_-]+\.(jpg|png|webp|mp3|wav|m4a|ogg|webm|mp4)$/;
+// 按量计费 / 模型接口的每用户速率限制（内存版，单实例内有效）。
+// Vercel 多实例下各实例各算各的，精确限流要换共享存储；对原型而言这足够把
+// 「一个账号把 TTS/模型费用跑飞」挡下来。触发即抛 429，由 bad() 统一回给前端。
+const rateBuckets=new Map();
+function rateLimit(name,id,limit,windowMs=60*60*1000) {
+  const key=`${name}:${id}`,now=Date.now();
+  if(rateBuckets.size>2000) for(const [k,v] of rateBuckets) if(now>v.reset) rateBuckets.delete(k);
+  const bucket=rateBuckets.get(key);
+  if(!bucket||now>bucket.reset) {rateBuckets.set(key,{count:1,reset:now+windowMs});return;}
+  bucket.count+=1;
+  if(bucket.count>limit) {const e=new Error(`这个功能一小时内使用次数已达上限，请稍后再试`);e.status=429;throw e;}
+}
 
 /** 造下一幕。这一步完全由模型写——写不出来就如实报错，不拿本地模板冒充。 */
 async function nextStage(run,{freeText}={}) {
@@ -367,7 +382,18 @@ export async function POST(request,{params}) {
         return setSessionCookie(json({user},201),await createSession(user.id),request);
       }
       if(parts[1]==='login') {
-        const body=await request.json();const user=await authenticate(body.email,body.password);
+        const body=await request.json();
+        // 登录尝试按「邮箱+来源 IP」限速：没有锁定机制的话，密码可以被一直试到对为止。
+        // 只有失败的登录才计数——正常家人一天登进登出多少次都不该被挡。
+        const ip=String(request.headers.get('x-forwarded-for')||'').split(',')[0].trim()||'local';
+        const loginKey=()=>rateLimit('login',`${String(body.email||'').trim().toLowerCase()}@${ip}`,10,15*60*1000);
+        let user;
+        try {
+          user=await authenticate(body.email,body.password);
+        }catch(e) {
+          loginKey();
+          throw e;
+        }
         return setSessionCookie(json({user}),await createSession(user.id),request);
       }
       if(parts[1]==='register') {
@@ -422,7 +448,7 @@ export async function POST(request,{params}) {
       const memory=tidyMemory(body);
       memory.recorderId=auth.user.id;
       for(const key of ['cover','audio','video']) if(body[key]) {
-        if(!/^\/api\/media\/[a-f0-9-]+\.[a-z0-9]+$/.test(body[key])) throw new Error('素材地址不合法');
+        if(!MEDIA_PATH_RE.test(body[key])) throw new Error('素材地址不合法');
         memory[key]=body[key];
       }
       if(memory.cover) memory.assetType='photo';
@@ -432,7 +458,9 @@ export async function POST(request,{params}) {
     }
     if(parts[0]==='organize') {
       let imageData=null;
-      if(body.cover&&/^\/api\/media\/[a-f0-9-]+\.(jpg|png|webp)$/.test(body.cover)&&process.env.AI_API_KEY) {
+      // 用 aiReady() 判断而不是 AI_API_KEY：模型可能通过 DEEPSEEK_API_KEY 等
+      // 预设服务商配置，只查一个变量会让这类部署静默退化成纯文本整理。
+      if(body.cover&&/^\/api\/media\/[a-f0-9-]+\.(jpg|png|webp)$/.test(body.cover)&&aiReady()) {
         const name=path.basename(body.cover);
         const media=await readMediaBuffer(name,(await get('uploads',name))?.blobUrl);
         if(!media)throw new Error('图片素材不存在');
@@ -537,6 +565,8 @@ export async function POST(request,{params}) {
       const memory=await get('memories',String(body.memoryId||''));
       if(!memory) throw new Error('没有找到这段记忆');
       if(memory.status!=='confirmed') throw new Error('这段记忆还没有经过家属核对，先确认再拿它开局');
+      // 每开一局都要模型写一幕，算一次配额。
+      rateLimit('life-start',auth.user.id,12);
       const subjectName=String(body.subjectName||memory.people?.[0]||'这位家人').slice(0,40);
       const run=startRun({memory,subjectName});
       const stage=await nextStage(run);
@@ -553,6 +583,8 @@ export async function POST(request,{params}) {
       if(!record) throw new Error('这一局已经不在了，重新开一局吧');
       if(record.userId!==auth.user.id) return forbidden();
       if(record.status!=='playing') throw new Error('这一局已经走完了');
+      // 每推一幕都是一次模型调用。正常一局 8~12 幕，一小时内推四局绰绰有余。
+      rateLimit('life-turn',auth.user.id,40);
       const stage=currentStage(record);
       if(!stage) throw new Error('这一幕还没准备好');
       const freeText=body.choiceId?null:String(body.text||'').trim().slice(0,MAX_CHOICE_TEXT);
@@ -577,6 +609,8 @@ export async function POST(request,{params}) {
       // 检索结果随回复一起回给前端，用户可以点进去核对原文。
       const raw=String(body.text||'').trim().slice(0,MAX_TEXT);
       if(!raw) throw new Error('说点什么吧');
+      // 家伴每回合都是一次模型调用，限速只为防脚本刷费用，正常聊天碰不到顶。
+      rateLimit('companion-turn',auth.user.id,60);
       const settingsDoc=await get('settings','family');
       const companion=settingsDoc?.companion||sanitizeCompanion({},{});
       const confirmed=(await all('memories')).filter(m=>m.status==='confirmed');
@@ -622,6 +656,7 @@ export async function POST(request,{params}) {
       // 默认只当身份原型说话——找人聊心事先别急着翻旧账。
       const raw=String(body.text||'').trim().slice(0,ROLE_MAX_TEXT);
       if(!raw) throw new Error('说点什么吧');
+      rateLimit('role-turn',auth.user.id,60);
       const setting=sanitizeRole({roleId:body.roleId,toneId:body.toneId,name:body.name,useMemories:body.useMemories});
       const id=`${auth.user.id}:${setting.roleId}`;
       let thread=await get('role_threads',id);
@@ -686,6 +721,7 @@ export async function POST(request,{params}) {
     }
     if(parts[0]==='voice'&&parts[1]==='speak') {
       if(!voiceConfigured())return json({error:'未配置声音合成服务，请联系管理员'},503);
+      // TTS 按字符计费：先查缓存，未命中才算一次配额——重复听同一段不扣次数。
       const {memberId,text,options}=body;
       // 按量计费接口：限制单次文本长度，避免一次请求塞进整本书。
       if(!text||!text.trim()) throw new Error('合成文本为空');
@@ -695,7 +731,10 @@ export async function POST(request,{params}) {
       if(!member||!member.voiceId) return json({error:'该成员尚未复刻声音',voiceId:null},404);
       const key=cacheKey(member.voiceId,text,options||{});
       const cached=await get('voice_cache',key);
-      if(cached?.blobUrl) return json({audioUrl:mediaUrl(cached.id||key),cached:true,voiceId:member.voiceId});
+      // 缓存命中看 name：voice_cache 里 blobUrl 恒为 null（私有 Blob 不外发），
+      // 旧代码判断 blobUrl 导致缓存永远不命中、每次都重新计费合成。
+      if(cached?.name) return json({audioUrl:mediaUrl(cached.name),cached:true,voiceId:member.voiceId});
+      rateLimit('voice-speak',auth.user.id,20);
       const {audioUrl,format}=await synthesizeVoice({voiceId:member.voiceId,text,options});
       // 落盘到 Blob 再缓存：无论返回内联 base64 还是临时签名 url，都转成稳定的地址，
       // 避免重复计费与临时 url 失效。
@@ -729,6 +768,8 @@ export async function POST(request,{params}) {
         await put('narrations',{id:nKey,memoryId:memory.id,memberId:narrator.id,script,narratorName:narrator.name,audioUrl:null,createdAt:new Date().toISOString()});
         return json({script,audioUrl:null,narrator:{id:narrator.id,name:narrator.name},cached:false,voiceId:narrator.voiceId,warning:'未配置声音合成服务，只用文字展示'});
       }
+      // 走到这里就是要真金白银写稿+配音了，才算一次配额（缓存命中在上面提前返回）。
+      rateLimit('narrate-script',auth.user.id,10);
       const key=cacheKey(narrator.voiceId,script,{});
       const cachedAudio=await get('voice_cache',key);
       let audioUrl=cachedAudio?.name?mediaUrl(cachedAudio.name):null;
@@ -747,6 +788,8 @@ export async function POST(request,{params}) {
       // 付费接口，单独再要一次 editor：白名单里 narrate 对 viewer 开放的是「听」。
       if(!accountRole(auth.user,'editor'))return forbidden();
       if(!videoConfigured()) return json({error:'未配置视频生成服务，请联系管理员'},503);
+      // 图生视频 1.5~6 元一条，是最贵的接口；命中缓存的任务轮询不计次数。
+      rateLimit('narrate-video',auth.user.id,6);
       const {memoryId,force,resolution,duration}=body;
       const memory=await get('memories',memoryId);
       if(!memory) throw new Error('没有找到这段记忆');
@@ -799,7 +842,7 @@ export async function PATCH(request,{params}) {
       const old=await get('memories',parts[1]);if(!old) return json({error:'记忆不存在'},404);
       const updated={...old,...tidyMemory(body,old),updatedAt:new Date().toISOString()};
       for(const key of ['cover','audio','video']) if(body[key] && body[key]!==old[key]) {
-        if(!/^\/api\/media\/[a-f0-9-]+\.[a-z0-9]+$/.test(body[key])) throw new Error('素材地址不合法');
+        if(!MEDIA_PATH_RE.test(body[key])) throw new Error('素材地址不合法');
         updated[key]=body[key];
       }
       if(updated.cover?.startsWith('/api/media/')) updated.assetType='photo';
