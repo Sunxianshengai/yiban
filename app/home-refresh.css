@@ -150,3 +150,56 @@ body{background:#171b26;color:var(--ink);letter-spacing:0}
   .home-action-grid,.home-path-grid,.home-aside,.home-family-strip{grid-template-columns:1fr}.home-action-card{min-height:91px;padding:15px}.home-action-copy strong{font-size:1.03rem}.home-path-card{min-height:145px}.home-path-card strong{margin-top:8px}.home-family-strip>div+div{border-left:0;padding-left:0}.home-family-strip{gap:13px}.home-family-strip strong{display:inline;margin-right:5px}
   .home-section-heading h2{font-size:1.28rem}.home-recent .memory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.home-recent .memory-body{padding:10px}.home-recent .card-title{font-size:.85rem}.home-demo-note{align-items:flex-start}
 }
+
+/* ===== 顶部导航布局层（Memotron 风格现代化改版） =====
+   取代左侧边栏：品牌 + 家庭名靠左，十个导航入口居中，通知与账号靠右。
+   手机端（≤1180px）隐藏中间链接，由底部标签栏承担导航。 */
+.app-shell{display:block}
+.workspace{margin-left:0!important}
+.topnav{position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:16px;height:64px;padding:0 clamp(16px,3vw,40px);background:#12151dd9;backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.topnav .brand{display:flex;align-items:center;gap:10px;color:var(--ink);padding:0}
+.topnav .brand-mark{width:34px;height:34px;border-radius:10px;transform:none;background:color-mix(in srgb,var(--accent) 16%,var(--paper));color:var(--accent)}
+.topnav .brand>span:last-child{font-size:1.3rem;font-family:var(--serif);letter-spacing:2px;font-weight:600}
+.topnav .family-switch{display:flex;align-items:center;gap:8px;margin:0;padding:6px 12px 6px 7px;background:transparent;border:1px solid var(--border);border-radius:999px}
+.topnav .family-switch>div{min-width:0;max-width:150px;overflow:hidden}
+.topnav .family-switch strong{display:block;font-size:.78rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.topnav .family-switch div>span,.topnav .family-switch>svg{display:none}
+.topnav .family-house{width:24px;height:24px;border-radius:999px;flex:0 0 auto}
+.topnav-links{display:flex;align-items:center;gap:2px;margin:0 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+.topnav-links::-webkit-scrollbar{display:none}
+.topnav-links .nav-item{width:auto;margin:0;border-radius:999px}
+.topnav-links button{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;font-size:.88rem;color:var(--muted);white-space:nowrap;transition:background .16s,color .16s}
+.topnav-links button:hover{background:var(--sage);color:var(--ink)}
+.topnav-links button.active{background:color-mix(in srgb,var(--accent) 15%,var(--paper));color:var(--accent);font-weight:600}
+.topnav-links .nav-count{margin-left:1px;background:color-mix(in srgb,var(--accent) 20%,var(--paper));color:var(--accent);border-radius:999px;min-width:18px;padding:1px 5px;font-size:.65rem;text-align:center}
+.topnav-actions{display:flex;align-items:center;gap:10px;margin-left:auto;flex:0 0 auto}
+.topnav .notification-button{background:transparent;border:1px solid var(--border)}
+.topnav .notification-button:hover{background:var(--sage)}
+.topnav .topbar-account{background:transparent;border:1px solid var(--border);border-radius:999px;padding:5px 11px 5px 6px}
+.topnav .topbar-account:hover{background:var(--sage);border-color:var(--border)}
+.main-content{padding-top:28px}
+.mobile-nav{display:none}
+.mobile-more{display:none}
+
+@media(max-width:1450px){
+  .topnav{gap:10px}
+  .topnav-links button{padding:8px 9px;font-size:.82rem}
+  .topnav .family-switch>div{max-width:110px}
+}
+@media(max-width:1180px){
+  .topnav-links,.topnav .family-switch{display:none}
+  .mobile-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;position:fixed;left:0;right:0;bottom:0;z-index:80;height:calc(62px + env(safe-area-inset-bottom,0px));padding:6px 10px calc(6px + env(safe-area-inset-bottom,0px));background:#12151df2;backdrop-filter:blur(12px);border-top:1px solid var(--border)}
+  .mobile-more{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;position:fixed;bottom:calc(76px + env(safe-area-inset-bottom,0px));left:12px;right:12px;z-index:79;padding:12px;background:var(--paper);border:1px solid var(--border);border-radius:16px;box-shadow:0 14px 36px #00000066}
+  .app-shell{padding-bottom:calc(78px + env(safe-area-inset-bottom,0px))}
+  .companion-dock{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+}
+.mobile-more button{display:flex;align-items:center;gap:10px;min-height:48px;padding:10px 12px;text-align:left;border-radius:10px;background:var(--sage);color:var(--ink);font-size:.91rem}
+.mobile-more button:hover{background:color-mix(in srgb,var(--accent) 14%,var(--paper))}
+.mobile-nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;padding:3px 1px;border-radius:9px;color:var(--muted);font-size:.72rem;line-height:1.15;white-space:nowrap}
+.mobile-nav-item.active{background:color-mix(in srgb,var(--accent) 14%,var(--paper));color:var(--accent);font-weight:600}
+@media(max-width:760px){
+  .topnav{height:58px}
+  .topnav .brand>span:last-child{font-size:1.15rem}
+  .topbar-account>span{display:none}
+  .topbar-account{padding:5px}
+}
