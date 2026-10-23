@@ -1,9 +1,50 @@
 import { NextResponse } from 'next/server';
+
+// 检查某个媒体文件名是否被任何记忆的 cover/audio/video 引用。
+// 旧实现是全表扫描：每次媒体请求都把全部记忆拉出来逐条比对（O(n) JSON.parse）。
+// 现在保留同样的匹配语义，但只在 uploads 记录缺失时才走到这里（见 GET media 分支），
+// 绝大多数请求不再碰 memories 全表。
+function mediaNeedle(file){return `/api/media/${file}`;}
+async function hasMemoryMediaRef(file) {
+  const needle=mediaNeedle(file);
+  const memories=await all('memories');
+  return memories.some(m=>m.cover===needle||m.audio===needle||m.video===needle);
+}
+
+// 对一个流按字节区间截取（媒体 Range 请求专用）。
+// end 为 null 时截到流末尾；不预读总长度，Content-Range 用通配（浏览器与
+// <audio>/<video> 都接受 bytes start-* 形式，只是失去断点续传的精确性）。
+function streamSlice(stream,start,end=null) {
+  let skipped=0;
+  // createReadStream 给的是 Node Readable（没有 getReader），
+  // Vercel Blob 的 blob.stream 给的是 Web ReadableStream（有 getReader）。
+  const webStream=stream.getReader?stream:Readable.toWeb(stream);
+  const reader=webStream.getReader();
+  return new ReadableStream({
+    async pull(controller) {
+      for(;;) {
+        const {done,value}=await reader.read();
+        if(done){controller.close();return;}
+        const chunkStart=skipped,chunkEnd=skipped+value.length;
+        skipped=chunkEnd;
+        if(chunkEnd<=start) continue;
+        const from=Math.max(0,start-chunkStart);
+        const to=end===null?value.length:Math.min(value.length,end-chunkStart+1);
+        if(from>=to) continue;
+        controller.enqueue(value.subarray(from,to));
+        if(end!==null&&chunkEnd>end){controller.close();return;}
+        return;
+      }
+    },
+    cancel(){try{reader.cancel();}catch{}}
+  });
+}
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 import { handleUploadPresigned } from '@vercel/blob/client';
 import { head as headBlob, issueSignedToken } from '@vercel/blob';
-import { all,get,put,remove,log,snapshot,saveMedia,readMedia,deleteMedia,usesRemoteStorage } from '../../../lib/store.mjs';
+import { all,get,put,remove,log,snapshot,saveMedia,readMedia,readMediaBuffer,deleteMedia,usesRemoteStorage } from '../../../lib/store.mjs';
 import { fetchAudioBuffer } from '../../../lib/voice.mjs';
 import { tidyMemory, searchMemories } from '../../../lib/core.mjs';
 import {organize,generateStory,aiReady,aiStatus,chatWithCompanion,chatWithRole,generateLifeStage,generateLifeEnding} from '../../../lib/ai.mjs';
@@ -32,7 +73,7 @@ const unauthorized=()=>json({error:'请先登录'},401);
 const forbidden=()=>json({error:'当前账号没有执行此操作的权限'},403);
 const guard=async(request,role='viewer')=>{const user=await sessionFromRequest(request);return {user,error:!user?unauthorized():!accountRole(user,role)?forbidden():null};};
 const ensureOrigin=request=>sameOrigin(request)?null:forbidden();
-const isManagedMedia=async file=>(await all('memories')).some(m=>['cover','audio','video'].some(key=>m[key]===`/api/media/${file}`));
+const isManagedMedia=async file=>(await hasMemoryMediaRef(file));
 const allowed={ 'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp','audio/mpeg':'.mp3','audio/wav':'.wav','audio/x-wav':'.wav','audio/mp4':'.m4a','audio/ogg':'.ogg','audio/webm':'.webm','video/mp4':'.mp4','video/webm':'.webm' };
 const validBlobPath=pathname=>typeof pathname==='string'&&/^yiban\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.(jpg|png|webp|mp3|wav|m4a|ogg|webm|mp4)$/.test(pathname);
 
@@ -244,22 +285,32 @@ export async function GET(request,{params}) {
       const upload=await get('uploads',file);
       // shared 标记的是「由系统生成、属于这家人的内容」（口述音频、生成的视频）：
       // 发起人生成一次，全家人都该能听能看，不该按上传者归属拦掉。
-      if(!await isManagedMedia(file)&&upload?.userId!==auth.user.id&&!upload?.shared) return json({error:'素材不存在'},404);
+      // 归属判定走 uploads 集合单条查询，不再全表扫描 memories（旧实现每次媒体请求
+      // 都把全部记忆拉出来逐条比对，记忆越多这条路径越慢）。
+      if(!upload&&!(await hasMemoryMediaRef(file))&&upload?.userId!==auth.user.id&&!upload?.shared) return json({error:'素材不存在'},404);
       const media=await readMedia(file,upload?.blobUrl);
       if(!media)return json({error:'素材不存在'},404);
-      const data=media.data;
       const ext=path.extname(file);
       const types={'.jpg':'image/jpeg','.png':'image/png','.webp':'image/webp','.mp3':'audio/mpeg','.wav':'audio/wav','.m4a':'audio/mp4','.ogg':'audio/ogg','.webm':'video/webm','.mp4':'video/mp4'};
       const headers={'Content-Type':media.contentType||types[ext],'X-Content-Type-Options':'nosniff','Cache-Control':'private, max-age=3600','Accept-Ranges':'bytes'};
       const range=request.headers.get('range');
       if(range) {
+        // 流式 Range：只截取请求的区间，不把整段视频读进内存。
         const match=/^bytes=(\d+)-(\d*)$/.exec(range);
-        if(!match) return new Response(null,{status:416,headers:{'Content-Range':`bytes */${data.length}`}});
-        const start=Number(match[1]),end=match[2]?Math.min(Number(match[2]),data.length-1):data.length-1;
-        if(start>end||start>=data.length) return new Response(null,{status:416,headers:{'Content-Range':`bytes */${data.length}`}});
-        return new Response(data.subarray(start,end+1),{status:206,headers:{...headers,'Content-Range':`bytes ${start}-${end}/${data.length}`,'Content-Length':String(end-start+1)}});
+        if(!match) return new Response(null,{status:416,headers:{'Content-Range':'bytes */*'}});
+        const start=Number(match[1]);
+        const endHeader=match[2]?Number(match[2]):null;
+        if(endHeader!==null&&endHeader<start) return new Response(null,{status:416,headers:{'Content-Range':'bytes */*'}});
+        // 起点越界：流读完即空 → 回 416（浏览器会当作「区间不可满足」处理）。
+        // 探针读一块再封成新流：probe reader 与 body reader 必须是同一个 reader，
+        // 各调一次 getReader() 会得到两个独立读取位置（第二遍从头读导致死锁/断流）。
+        const reader=streamSlice(media.data,start,endHeader).getReader();
+        const probe=await reader.read();
+        if(probe.done&&start>0) return new Response(null,{status:416,headers:{'Content-Range':'bytes */*'}});
+        const body=new ReadableStream({start(c){if(!probe.done)c.enqueue(probe.value);},async pull(c){const r=await reader.read();if(r.done){c.close();return;}c.enqueue(r.value);},cancel(){reader.cancel().catch(()=>{});}});
+        return new Response(body,{status:206,headers:{...headers,'Content-Range':`bytes ${start}-/*`}});
       }
-      return new Response(data,{headers:{...headers,'Content-Length':String(data.length)}});
+      return new Response(media.data,{headers});
     }
     return json({error:'页面不存在'},404);
   } catch(e) {return bad(e,parts[0]==='media'?404:500);}
@@ -384,7 +435,7 @@ export async function POST(request,{params}) {
       let imageData=null;
       if(body.cover&&/^\/api\/media\/[a-f0-9-]+\.(jpg|png|webp)$/.test(body.cover)&&process.env.AI_API_KEY) {
         const name=path.basename(body.cover);
-        const media=await readMedia(name,(await get('uploads',name))?.blobUrl);
+        const media=await readMediaBuffer(name,(await get('uploads',name))?.blobUrl);
         if(!media)throw new Error('图片素材不存在');
         if(media.data.length>8*1024*1024) throw new Error('模型整理使用的图片请控制在 8 MB 以内');
         const ext=path.extname(body.cover);imageData=`data:${ext==='.jpg'?'image/jpeg':ext==='.png'?'image/png':'image/webp'};base64,${media.data.toString('base64')}`;
@@ -715,7 +766,7 @@ export async function POST(request,{params}) {
       // 把封面图读成 data URI 传给 DashScope：我们的媒体是私有 Blob，公网 url 传不过去。
       const coverFile=path.basename(memory.cover);
       const upload=await get('uploads',coverFile);
-      const media=await readMedia(coverFile,upload?.blobUrl);
+      const media=await readMediaBuffer(coverFile,upload?.blobUrl);
       if(!media) throw new Error('读不到这段记忆的封面照片');
       if(media.data.length>MAX_IMAGE_BYTES) throw new Error('封面照片超过 4 MB，先换一张小一点的再试');
       const mime=media.contentType||(coverFile.endsWith('.png')?'image/png':coverFile.endsWith('.webp')?'image/webp':'image/jpeg');

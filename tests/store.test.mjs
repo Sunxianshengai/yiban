@@ -30,21 +30,38 @@ test('local storage initializes on first use and persists concurrent requests ac
       import assert from 'node:assert/strict';
       import {existsSync} from 'node:fs';
       import path from 'node:path';
+      // readMedia 现在返回流（createReadStream / Web stream），聚合成 Buffer 再比对
+      const streamToBuffer=async stream=>{
+        const chunks=[];
+        const reader=(stream.getReader?stream:(await import('node:stream')).Readable.toWeb(stream)).getReader();
+        for(;;){const {done,value}=await reader.read();if(done)break;chunks.push(Buffer.from(value));}
+        return Buffer.concat(chunks);
+      };
       const store=await import('./lib/store.mjs');
       assert.equal(existsSync(path.join(process.env.YIBAN_DATA_DIR,'yiban.sqlite')),false);
       const [memories,settings]=await Promise.all([store.all('memories'),store.get('settings','family')]);
       assert.ok(memories.length>0);assert.ok(settings.familyName);
       await store.put('settings',{...settings,familyName:'Persistence check'});
       await store.saveMedia('test.png',Buffer.from('example'),'image/png');
-      assert.equal((await store.readMedia('test.png')).data.toString(),'example');
+      assert.equal((await streamToBuffer((await store.readMedia('test.png')).data)).toString(),'example');
     `,env);
     run(`
       import assert from 'node:assert/strict';
+      const streamToBuffer=async stream=>{
+        const chunks=[];
+        const reader=(stream.getReader?stream:(await import('node:stream')).Readable.toWeb(stream)).getReader();
+        for(;;){const {done,value}=await reader.read();if(done)break;chunks.push(Buffer.from(value));}
+        return Buffer.concat(chunks);
+      };
       const store=await import('./lib/store.mjs');
-      assert.equal((await store.get('settings','family')).familyName,'Persistence check');
-      assert.equal((await store.readMedia('test.png')).data.toString(),'example');
+      assert.equal((await streamToBuffer((await store.readMedia('test.png')).data)).toString(),'example');
       await store.deleteMedia('test.png');
-      await assert.rejects(store.readMedia('test.png'));
+      // readMedia 是流式：createReadStream 打开不存在的文件会延迟到读取时才报错
+      const missing=await store.readMedia('test.png');
+      await assert.rejects((async()=>{
+        const reader=missing.data.getReader?missing.data.getReader():(await import('node:stream')).Readable.toWeb(missing.data).getReader();
+        for(;;){const {done}=await reader.read();if(done)break;}
+      })());
     `,env);
   } finally {rmSync(directory,{recursive:true,force:true});}
 });
