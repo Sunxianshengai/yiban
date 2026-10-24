@@ -265,3 +265,17 @@ body{background:#171b26;color:var(--ink);letter-spacing:0}
   .landing-nav{height:60px}
   .landing-window{left:20px;right:20px;top:92px}
 }
+
+/* ===== 家人卡片对齐 + 个人资料/头像 ===== */
+.family-card{display:flex;flex-direction:column}
+.family-card .family-count{margin-top:auto}
+.family-actions{display:flex;flex-direction:column;gap:9px;margin-top:14px}
+.family-actions>.btn{width:100%;font-size:0.7857rem}
+.family-actions .family-remove{margin:2px auto 0}
+img.avatar{object-fit:cover;padding:0}
+.profile-row{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap}
+.profile-row p{margin:0}
+.upload-avatar-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border:1px solid var(--border);border-radius:999px;background:var(--paper);font-size:.85rem;color:var(--ink);cursor:pointer;transition:border-color .16s,color .16s;white-space:nowrap}
+.upload-avatar-btn:hover{border-color:var(--accent);color:var(--accent)}
+.account-list input{max-width:180px;padding:6px 10px;font-size:.8571rem}
+.account-list .text-link{padding:4px 2px;gap:4px}

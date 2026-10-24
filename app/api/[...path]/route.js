@@ -52,7 +52,7 @@ import {startRun,recordChoice,currentStage,publicRun,buildEnding,MAX_STAGES,MAX_
 import {PERSONAS,RELATIONS,MAX_MESSAGES,MAX_NOTES,MAX_TEXT,sanitizeCompanion,openingLine,retrieveMemories,buildMessages,localNotes} from '../../../lib/companion.mjs';
 import {voiceConfigured,enrollVoice,synthesizeVoice,cacheKey} from '../../../lib/voice.mjs';
 import {generateNarration,pickNarrator,narrationKey,videoKey,buildVideoPrompt,videoConfigured,createVideoTask,fetchVideoTask,clampResolution,clampSeconds,MAX_SCRIPT,MAX_IMAGE_BYTES,VIDEO_RESOLUTIONS,VIDEO_DEFAULT_RESOLUTION,VIDEO_DEFAULT_SECONDS} from '../../../lib/narrate.mjs';
-import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
+import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,publicUser,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
 import {ACCENTS,FONT_SCALES,sanitizePreferences} from '../../../lib/core.mjs';
 import {STAGES,MILESTONES,INTERVIEW,GROWTH_QUESTIONS,HIGHLIGHT_TEMPLATES,buildTimeline,buildParallel,milestoneProgress,sanitizeQuote,sanitizeCapsule,sanitizeBirthYear,sanitizeHighlight,capsuleState} from '../../../lib/lifestage.mjs';
 
@@ -423,6 +423,25 @@ export async function POST(request,{params}) {
     // 真正按秒计费的 /narrate/video 在分支里单独再要一次 editor。
     const openToViewer=['activity','auth','capsules','comments','companion','game','highlights','life','narrate','role','stage','voice'].includes(parts[0]);
     if(!openToViewer&&!accountRole(auth.user,'editor'))return forbidden();
+    if(parts[0]==='auth'&&parts[1]==='avatar') {
+      const form=await request.formData();const file=form.get('file');
+      if(!file||typeof file==='string'||!file.size) throw new Error('请选择一张图片');
+      if(!['image/jpeg','image/png','image/webp'].includes(file.type)) throw new Error('头像支持 JPG / PNG / WebP 图片');
+      if(file.size>2*1024*1024) throw new Error('头像图片请控制在 2 MB 以内');
+      const ext=allowed[file.type];
+      const name=`avatar-${auth.user.id}-${randomUUID()}${ext}`;
+      const stored=await saveMedia(name,Buffer.from(await file.arrayBuffer()),file.type);
+      // shared：头像是本人身份的一部分，全家人都要能看见
+      await put('uploads',{id:name,userId:auth.user.id,shared:true,blobUrl:stored.blobUrl,blobPath:stored.blobPath,contentType:file.type,createdAt:new Date().toISOString()});
+      const user=await get('users',auth.user.id);
+      if(user.avatar?.startsWith('/api/media/')) {
+        const oldName=path.basename(user.avatar);
+        if(!await isManagedMedia(oldName)){const old=await get('uploads',oldName);await deleteMedia(oldName,old?.blobUrl);await remove('uploads',oldName);}
+      }
+      const updated={...user,avatar:mediaUrl(name)};
+      await put('users',updated);
+      return json({user:publicUser(updated)},201);
+    }
     if(parts[0]==='upload') {
       const contentLength=Number(request.headers.get('content-length')||0);
       if(contentLength>52*1024*1024) throw new Error('文件不能超过 50 MB');
@@ -836,8 +855,29 @@ export async function PATCH(request,{params}) {
       await put('users',updated);
       return json({preferences:prefs});
     }
+    // 本人改名：任何已登录用户都能改自己的名字（与 preferences 同级，不走 editor 门槛）
+    if(parts[0]==='auth'&&parts[1]==='profile') {
+      const authSelf=await guard(request);if(authSelf.error)return authSelf.error;
+      const body=await request.json().catch(()=>({}));
+      const name=String(body.name||'').trim().slice(0,30);
+      if(!name) throw new Error('请输入名字');
+      const user=await get('users',authSelf.user.id);if(!user)return json({error:'账号不存在'},404);
+      const updated={...user,name};
+      await put('users',updated);
+      return json({user:publicUser(updated)});
+    }
     const auth=await guard(request,'editor');if(auth.error)return auth.error;
     const body=await request.json();
+    // 管理员改名：可修改家庭里任何账号的名字；改自己的请走 /auth/profile
+    if(parts[0]==='auth'&&parts[1]==='accounts'&&parts[2]) {
+      if(auth.user.role!=='admin')return forbidden();
+      const name=String(body.name||'').trim().slice(0,30);
+      if(!name) throw new Error('请输入名字');
+      const target=await get('users',parts[2]);if(!target)return json({error:'账号不存在'},404);
+      const updated={...target,name};
+      await put('users',updated);
+      return json({user:publicUser(updated)});
+    }
     if(parts[0]==='memories') {
       const old=await get('memories',parts[1]);if(!old) return json({error:'记忆不存在'},404);
       const updated={...old,...tidyMemory(body,old),updatedAt:new Date().toISOString()};

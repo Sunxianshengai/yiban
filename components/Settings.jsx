@@ -10,10 +10,55 @@ import {applyFontScale} from '../lib/fontscale.mjs';
 // 从 app/page.jsx 拆出，行为与拆分前完全一致（同一批接口、同一批文案）。
 export function AccountManager({api,notify}) {
   const [accounts,setAccounts]=useState([]);const [role,setRole]=useState('editor');const [invite,setInvite]=useState(null);const [busy,setBusy]=useState(false);
+  const [editing,setEditing]=useState(null);const [editName,setEditName]=useState('');const [renameBusy,setRenameBusy]=useState(false);
   useEffect(()=>{api('/auth/accounts').then(data=>setAccounts(data.accounts)).catch(e=>notify(e.message,'error'));},[]);
+  const startRename=account=>{setEditing(account.id);setEditName(account.name);};
+  const saveRename=async account=>{
+    const name=editName.trim();
+    if(!name||name===account.name){setEditing(null);return;}
+    setRenameBusy(true);
+    try{const result=await api(`/auth/accounts/${account.id}`,{method:'PATCH',body:JSON.stringify({name})});setAccounts(list=>list.map(item=>item.id===account.id?result.user:item));notify('名字已更新');setEditing(null);}
+    catch(e){notify(e.message,'error');}
+    finally{setRenameBusy(false);}
+  };
   const create=async()=>{setBusy(true);try{setInvite(await api('/auth/invite',{method:'POST',body:JSON.stringify({role})}));}catch(e){notify(e.message,'error');}finally{setBusy(false);}};
   const drop=async account=>{if(!window.confirm(`删除 ${account.name} 的登录账号？该账号会立即退出，家庭记忆仍保留。`))return;setBusy(true);try{await api(`/auth/accounts/${account.id}`,{method:'DELETE'});setAccounts(list=>list.filter(item=>item.id!==account.id));notify('账号已移除');}catch(e){notify(e.message,'error');}finally{setBusy(false);}};
-  return <div className="account-manager"><h3>已有账号</h3><div className="account-list">{accounts.map(account=><div key={account.id}><Avatar name={account.name} color={account.role==='admin'?'peach':'sage'}/><span><strong>{account.name}</strong><small>{account.email}</small></span><em>{account.role==='admin'?'管理员':account.role==='editor'?'编辑者':'查看者'}</em>{account.role!=='admin'&&<button className="icon-button" aria-label={`移除${account.name}的账号`} disabled={busy} onClick={()=>drop(account)}><Icon name="trash" size={16}/></button>}</div>)}</div><h3>生成邀请码</h3><p>邀请码仅供一个人使用，24 小时后过期。管理员邀请码可以创建新的管理员账号。</p><Field label="新账号权限"><select value={role} onChange={e=>setRole(e.target.value)}><option value="admin">管理员 · 可管理账号和全部内容</option><option value="editor">编辑者 · 可整理和修改记忆</option><option value="viewer">查看者 · 只能浏览和体验</option></select></Field><Button icon="plus" busy={busy} onClick={create}>生成邀请码</Button>{invite&&<div className="invite-code"><span>一次性邀请码</span><strong>{invite.code}</strong><button onClick={()=>navigator.clipboard?.writeText(invite.code).then(()=>notify('邀请码已复制')).catch(()=>notify('请手动记录邀请码','error'))}>复制邀请码</button></div>}</div>;
+  return <div className="account-manager"><h3>已有账号</h3><div className="account-list">{accounts.map(account=><div key={account.id}><Avatar name={account.name} color={account.role==='admin'?'peach':'sage'} src={account.avatar}/><span>{editing===account.id?<input value={editName} onChange={e=>setEditName(e.target.value)} maxLength={30} aria-label="新的名字" autoFocus onKeyDown={e=>{if(e.key==='Enter')saveRename(account);if(e.key==='Escape')setEditing(null);}}/>:<><strong>{account.name}</strong><small>{account.email}</small></>}</span><em>{account.role==='admin'?'管理员':account.role==='editor'?'编辑者':'查看者'}</em>{editing===account.id?<><button className="text-link" disabled={renameBusy||!editName.trim()} onClick={()=>saveRename(account)}>保存</button><button className="text-link" onClick={()=>setEditing(null)}>取消</button></>:<><button className="text-link" onClick={()=>startRename(account)}>改名</button>{account.role!=='admin'&&<button className="icon-button" aria-label={`移除${account.name}的账号`} disabled={busy} onClick={()=>drop(account)}><Icon name="trash" size={16}/></button>}</>}</div>)}</div><h3>生成邀请码</h3><p>邀请码仅供一个人使用，24 小时后过期。管理员邀请码可以创建新的管理员账号。</p><Field label="新账号权限"><select value={role} onChange={e=>setRole(e.target.value)}><option value="admin">管理员 · 可管理账号和全部内容</option><option value="editor">编辑者 · 可整理和修改记忆</option><option value="viewer">查看者 · 只能浏览和体验</option></select></Field><Button icon="plus" busy={busy} onClick={create}>生成邀请码</Button>{invite&&<div className="invite-code"><span>一次性邀请码</span><strong>{invite.code}</strong><button onClick={()=>navigator.clipboard?.writeText(invite.code).then(()=>notify('邀请码已复制')).catch(()=>notify('请手动记录邀请码','error'))}>复制邀请码</button></div>}</div>;
+}
+
+// 个人资料：本人改名字 + 上传头像。非管理员只能改自己；管理员的「改名所有人」
+// 在 AccountManager 里逐行操作。头像存为 shared 素材，全家人都能看见。
+export function ProfilePanel({state,request,refresh,notify}) {
+  const account=state.account;
+  const [name,setName]=useState(account.name);
+  const [busy,setBusy]=useState(false);
+  useEffect(()=>{setName(account.name);},[account.name]);
+  const pickAvatar=async e=>{
+    const file=e.target.files?.[0];if(!file)return;
+    setBusy(true);
+    try{const form=new FormData();form.append('file',file);await request('/auth/avatar',{method:'POST',body:form});await refresh();notify('头像已更新');}
+    catch(err){notify(err.message,'error');}
+    finally{setBusy(false);e.target.value='';}
+  };
+  const saveName=async()=>{
+    const trimmed=name.trim();
+    if(!trimmed||trimmed===account.name)return;
+    setBusy(true);
+    try{await request('/auth/profile',{method:'PATCH',body:JSON.stringify({name:trimmed})});await refresh();notify('名字已更新');}
+    catch(e){notify(e.message,'error');}
+    finally{setBusy(false);}
+  };
+  return <section className="panel profile-panel">
+    <h2><Icon name="people"/>个人资料</h2>
+    <div className="profile-row">
+      <Avatar name={account.name} color={account.role==='admin'?'peach':'sage'} size="avatar-lg" src={account.avatar}/>
+      <label className={`upload-avatar-btn ${busy?'disabled':''}`}>更换头像<input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={pickAvatar} disabled={busy}/></label>
+      <p className="muted small">JPG / PNG / WebP，2 MB 以内，全家人可见。</p>
+    </div>
+    <Field label="名字"><input value={name} onChange={e=>setName(e.target.value)} maxLength={30} aria-label="我的名字"/></Field>
+    <p className="muted small">{account.email} · 改名后顶栏与账号面板立即生效。</p>
+    <Button icon="check" busy={busy} disabled={!name.trim()||name===account.name} onClick={saveName}>保存名字</Button>
+  </section>;
 }
 
 // 记忆详情弹窗：封面、元信息、故事、家人留言、记忆讲述（MemoryNarrator）。
