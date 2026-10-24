@@ -32,7 +32,7 @@ export async function modelReady(request){
   return Boolean(data.aiEnabled);
 }
 
-export async function signInAsNewAdmin(page,{name='测试家长',prefix='u'}={}){
+export async function signInAsNewAdmin(page,{name='测试家长',prefix='u',credits=1000}={}){
   const req=page.request;
   const status=await (await req.get('/api/auth/status')).json();
   if(status.needsSetup){
@@ -49,16 +49,29 @@ export async function signInAsNewAdmin(page,{name='测试家长',prefix='u'}={})
     data:{code:invite.code,name,email,password:'TestPassword123!'},
   });
   expect(created.status(),'用邀请码注册应成功').toBe(201);
+  if(credits)await fundTestAccount(req,credits);
+  page.on('dialog',dialog=>dialog.accept());
   await page.goto('/');
   await page.waitForSelector('.app-shell',{timeout:30000});
   return email;
 }
 
+// Explicit test funding; production signup never grants credits automatically.
+export async function fundTestAccount(request,amount=1000) {
+  const status=await (await request.get('/api/auth/status')).json();
+  const result=await request.post('/api/credits/grant',{data:{userId:status.user.id,amount,note:'隔离浏览器测试额度'}});
+  expect(result.status(),'管理员为测试账号发放积分').toBe(201);
+}
+
 // 导航重排后，六个次要模块收进了顶栏「更多」下拉。测试要跳到这些页面时，
 // 统一走这里：先展开「更多」，再点目标项；一级模块直接点。
-const MORE_NAV=['回忆专辑','时间胶囊','人生推演','家庭成员','互动记录','设置'];
+const MORE_NAV=['回忆专辑','时间胶囊','人生推演','家庭成员','互动记录','设置','我的积分'];
 export async function clickNavItem(page,name){
   const nav=page.getByRole('navigation');
-  if(MORE_NAV.includes(name)) await nav.getByRole('button',{name:'更多',exact:true}).click();
+  if(MORE_NAV.includes(name)) {
+    await nav.getByRole('button',{name:'更多',exact:true}).click();
+    await page.getByRole('menu',{name:'更多功能'}).getByRole('menuitem',{name:new RegExp(name)}).click();
+    return;
+  }
   await nav.getByRole('button',{name:new RegExp(name)}).click();
 }

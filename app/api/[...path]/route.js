@@ -43,7 +43,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { handleUploadPresigned } from '@vercel/blob/client';
 import { head as headBlob, issueSignedToken } from '@vercel/blob';
-import { all,get,put,remove,log,snapshot,saveMedia,readMedia,readMediaBuffer,deleteMedia,usesRemoteStorage } from '../../../lib/store.mjs';
+import { all,get,put,remove,log,snapshot,saveMedia,readMedia,readMediaBuffer,deleteMedia,usesRemoteStorage,compareAndPut } from '../../../lib/store.mjs';
 import { fetchAudioBuffer } from '../../../lib/voice.mjs';
 import { tidyMemory, searchMemories } from '../../../lib/core.mjs';
 import {organize,generateStory,aiReady,aiStatus,chatWithCompanion,chatWithRole,generateLifeStage,generateLifeEnding} from '../../../lib/ai.mjs';
@@ -55,6 +55,9 @@ import {generateNarration,pickNarrator,narrationKey,videoKey,buildVideoPrompt,vi
 import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,publicUser,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
 import {ACCENTS,FONT_SCALES,sanitizePreferences} from '../../../lib/core.mjs';
 import {STAGES,MILESTONES,INTERVIEW,GROWTH_QUESTIONS,HIGHLIGHT_TEMPLATES,buildTimeline,buildParallel,milestoneProgress,sanitizeQuote,sanitizeCapsule,sanitizeBirthYear,sanitizeHighlight,capsuleState} from '../../../lib/lifestage.mjs';
+import * as credits from '../../../lib/credits.mjs';
+import {CREDIT_PRICES} from '../../../lib/credit-prices.mjs';
+import {billedPost} from '../../../lib/credit-billing.mjs';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -67,7 +70,22 @@ async function saveGenerated(name,data,contentType,userId){
   await put('uploads',{id:name,userId:userId||null,shared:true,blobUrl:stored.blobUrl,blobPath:stored.blobPath,contentType,createdAt:new Date().toISOString()});
   return name;
 }
-const bad=(e,status=400)=>json({error:e.message||'请求未能完成'},e?.status||status);
+async function settleVideoCredits(record) {
+  if(!record.creditOperationId||!record.userId)return;
+  if(record.status==='failed')await credits.refund(record.userId,record.creditOperationId,'视频生成失败，积分已退回');
+  if(record.status==='ready'&&record.name)await credits.complete(record.userId,record.creditOperationId,
+    {status:200,body:{status:'ready',url:mediaUrl(record.name),resolution:record.resolution,duration:record.duration}});
+}
+async function saveVideoState(previous,next) {
+  return await compareAndPut('memory_videos',previous,next)?next:await get('memory_videos',previous.id);
+}
+async function videoResponse(record) {
+  await settleVideoCredits(record);
+  if(record.status==='ready')return json({status:'ready',url:mediaUrl(record.name),resolution:record.resolution,duration:record.duration});
+  if(record.status==='failed')return json({status:'failed',message:record.message||'生成失败'});
+  return json({status:'pending'});
+}
+const bad=(e,status=400)=>e.response||json({error:e.message||'请求未能完成',...(e.code==='CREDIT_PENDING'?{code:e.code}:{})},e?.status||status);
 const unauthorized=()=>json({error:'请先登录'},401);
 const forbidden=()=>json({error:'当前账号没有执行此操作的权限'},403);
 const guard=async(request,role='viewer')=>{const user=await sessionFromRequest(request);return {user,error:!user?unauthorized():!accountRole(user,role)?forbidden():null};};
@@ -112,6 +130,11 @@ export async function GET(request,{params}) {
   try {
     if(parts[0]==='auth'&&parts[1]==='status') return json({needsSetup:!(await hasAdmin()),user:await sessionFromRequest(request),remoteStorage:usesRemoteStorage});
     const auth=await guard(request);if(auth.error)return auth.error;
+    if(parts[0]==='credits') {
+      if(parts[1]==='balance')return json(await credits.balance(auth.user.id));
+      const offset=Math.max(0,Math.floor(Number(new URL(request.url).searchParams.get('offset'))||0));
+      return json({...await credits.account(auth.user.id,{offset,limit:50}),prices:CREDIT_PRICES});
+    }
     if(parts[0]==='auth'&&parts[1]==='accounts') return auth.user.role==='admin'?json({accounts:await listAccounts()}):forbidden();
     if(parts[0]==='state') {
       const data=await snapshot();
@@ -144,7 +167,7 @@ export async function GET(request,{params}) {
         narrator:narrator?{id:narrator.id,name:narrator.name,relation:narrator.relation}:null,
         script:record?.script||null,
         audioUrl:record?.audioUrl||null,
-        video:video?{status:video.status,url:video.status==='ready'&&video.name?`/api/media/${video.name}`:null,taskId:video.taskId||null,resolution:video.resolution,duration:video.duration}:null,
+        video:video?{status:video.status,url:video.status==='ready'&&video.name?`/api/media/${video.name}`:null,taskId:video.id,resolution:video.resolution,duration:video.duration}:null,
         voiceEnabled:voiceConfigured(),videoEnabled:videoConfigured(),aiEnabled:aiReady(),
         maxScript:MAX_SCRIPT,resolutions:VIDEO_RESOLUTIONS,
       });
@@ -155,30 +178,33 @@ export async function GET(request,{params}) {
       const record=await get('memory_videos',parts[1]);
       if(!record) return json({error:'没有这个视频任务'},404);
       if(record.userId&&record.userId!==auth.user.id&&!accountRole(auth.user,'editor')) return forbidden();
-      if(record.status==='ready'&&record.name) return json({status:'ready',url:mediaUrl(record.name),resolution:record.resolution,duration:record.duration});
-      if(record.status==='failed') return json({status:'failed',message:record.message||'生成失败'});
+      if(record.status==='ready'&&record.name) {await settleVideoCredits(record);return json({status:'ready',url:mediaUrl(record.name),resolution:record.resolution,duration:record.duration});}
+      if(record.status==='failed') {await settleVideoCredits(record);return json({status:'failed',message:record.message||'生成失败'});}
       if(!record.taskId) return json({status:'pending'});
       const task=await fetchVideoTask(record.taskId);
       if(task.status==='pending') return json({status:'pending'});
       if(task.status==='failed') {
-        await put('memory_videos',{...record,status:'failed',message:String(task.message||'生成失败').slice(0,200),updatedAt:new Date().toISOString()});
-        return json({status:'failed',message:task.message||'生成失败'});
+        return await videoResponse(await saveVideoState(record,{...record,status:'failed',message:String(task.message||'生成失败').slice(0,200),updatedAt:new Date().toISOString()}));
       }
       if(!task.videoUrl) {
-        await put('memory_videos',{...record,status:'failed',message:'任务成功但没有拿到视频地址',updatedAt:new Date().toISOString()});
-        return json({status:'failed',message:'任务成功但没有拿到视频地址'});
+        return await videoResponse(await saveVideoState(record,{...record,status:'failed',message:'任务成功但没有拿到视频地址',updatedAt:new Date().toISOString()}));
       }
-      const buffer=await fetchAudioBuffer(task.videoUrl);
-      if(buffer.length>50*1024*1024) {
-        await put('memory_videos',{...record,status:'failed',message:'生成的视频超过 50 MB，无法保存',updatedAt:new Date().toISOString()});
-        return json({status:'failed',message:'生成的视频超过 50 MB，无法保存'});
+      let done;
+      try {
+        const buffer=await fetchAudioBuffer(task.videoUrl);
+        if(buffer.length>50*1024*1024)throw new Error('生成的视频超过 50 MB，无法保存');
+        const name=`${randomUUID()}.mp4`;
+        await saveGenerated(name,buffer,'video/mp4',record.userId||auth.user.id);
+        done={...record,status:'ready',blobUrl:null,name,updatedAt:new Date().toISOString()};
+        done=await saveVideoState(record,done);
+      }catch(error) {
+        // The provider has finished, but we could not deliver a saved result.
+        // Absorb that failed delivery instead of leaving the user's funds frozen.
+        const failed={...record,status:'failed',message:`结果无法保存，积分已退回：${String(error.message).slice(0,120)}`,updatedAt:new Date().toISOString()};
+        return await videoResponse(await saveVideoState(record,failed));
       }
-      const name=`${randomUUID()}.mp4`;
-      await saveGenerated(name,buffer,'video/mp4',auth.user.id);
-      const done={...record,status:'ready',blobUrl:null,name,updatedAt:new Date().toISOString()};
-      await put('memory_videos',done);
-      await log('narration',`让「${record.memoryTitle||'一段回忆'}」动起来了`,record.memoryId);
-      return json({status:'ready',url:mediaUrl(name),resolution:record.resolution,duration:record.duration});
+      if(done.status==='ready')await log('narration',`让「${record.memoryTitle||'一段回忆'}」动起来了`,record.memoryId);
+      return await videoResponse(done);
     }
     if(parts[0]==='companion') {
       // 家伴：整块的对话入口数据。首屏就可以渲染，不用等第二个请求。
@@ -330,7 +356,16 @@ export async function GET(request,{params}) {
   } catch(e) {return bad(e,parts[0]==='media'?404:500);}
 }
 
-export async function POST(request,{params}) {
+export async function POST(request,context) {
+  try {
+    const originError=ensureOrigin(request);if(originError)return originError;
+    const user=await sessionFromRequest(request);
+    return await billedPost(request,billing=>handlePost(request,context,billing),user?.id);
+  }
+  catch(error){return bad(error,503);}
+}
+
+async function handlePost(request,{params},billing) {
   const {path:parts}=await params;
   try {
     const originError=ensureOrigin(request);if(originError)return originError;
@@ -412,6 +447,13 @@ export async function POST(request,{params}) {
       }
     }
     const auth=await guard(request);if(auth.error)return auth.error;
+    if(parts[0]==='credits'&&parts[1]==='grant') {
+      if(auth.user.role!=='admin')return forbidden();
+      const body=await request.json();
+      if(!await get('users',String(body.userId||'')))return json({error:'账号不存在'},404);
+      return json(await credits.grant({userId:body.userId,actorId:auth.user.id,amount:body.amount,note:body.note,
+        requestKey:request.headers.get('idempotency-key')||randomUUID()}),201);
+    }
     if(parts[0]==='auth'&&parts[1]==='invite') {
       if(auth.user.role!=='admin')return forbidden();
       const body=await request.json();return json(await issueInvite(body.role));
@@ -486,6 +528,7 @@ export async function POST(request,{params}) {
         if(media.data.length>8*1024*1024) throw new Error('模型整理使用的图片请控制在 8 MB 以内');
         const ext=path.extname(body.cover);imageData=`data:${ext==='.jpg'?'image/jpeg':ext==='.png'?'image/png':'image/webp'};base64,${media.data.toString('base64')}`;
       }
+      if(aiReady())await billing.reserve(auth.user.id,'organize');
       return json(await organize(body,imageData));
     }
     if(parts[0]==='albums') {
@@ -512,6 +555,7 @@ export async function POST(request,{params}) {
         memories=(await Promise.all(ids.map(id=>get('memories',id)))).filter(m=>m?.status==='confirmed');
         if(!memories.length) throw new Error('挑中的记忆都还没经过家属核对');
       }
+      if(aiReady())await billing.reserve(auth.user.id,'story');
       return json(await generateStory(memories,title));
     }
     // ── 全年龄段的写接口 ──
@@ -588,6 +632,7 @@ export async function POST(request,{params}) {
       rateLimit('life-start',auth.user.id,12);
       const subjectName=String(body.subjectName||memory.people?.[0]||'这位家人').slice(0,40);
       const run=startRun({memory,subjectName});
+      await billing.reserve(auth.user.id,'life_start');
       const stage=await nextStage(run);
       const record={...run,id:randomUUID(),familyId:'family',userId:auth.user.id,stages:[stage],createdAt:new Date().toISOString()};
       await put('life_runs',record);
@@ -610,6 +655,7 @@ export async function POST(request,{params}) {
       if(!body.choiceId&&!freeText) throw new Error('选一个，或者写一句你想怎么做');
       // 自由输入：先让模型写下一幕，它顺带判定那句话落到了哪几个属性上。
       // 先不落库，等选择和这一幕一起写回去，避免出现「选了但没生成」的半截状态。
+      await billing.reserve(auth.user.id,'life_turn');
       const upcoming=await nextStage(record,{freeText});
       const moved=recordChoice(record,{choiceId:body.choiceId,text:freeText,freeDeltas:upcoming.freeDeltas});
       const lastPicked=moved.stages[moved.stageIndex-1]?.answer||null;
@@ -638,6 +684,7 @@ export async function POST(request,{params}) {
       if(thread&&thread.userId!==auth.user.id) return forbidden();
       if(!thread) thread={id:randomUUID(),familyId:'family',userId:auth.user.id,messages:[],notes:[],createdAt:new Date().toISOString()};
       // 不再有本地兜底：模型没答上来就如实报错，绝不拿模板话冒充它。
+      await billing.reserve(auth.user.id,'companion');
       const reply=await chatWithCompanion(buildMessages(companion,{history:thread.messages,text:raw,memories,notes:thread.notes}));
       const answer={text:reply,mode:'model',memoryIds:memories.map(m=>m.id)};
       const messages=[...thread.messages,{role:'user',text:raw,at:new Date().toISOString()},{role:'companion',text:answer.text,at:new Date().toISOString(),mode:answer.mode}];
@@ -682,6 +729,7 @@ export async function POST(request,{params}) {
       const memories=setting.useMemories?retrieveMemories((await all('memories')).filter(m=>m.status==='confirmed'),raw,2):[];
       const history=thread?.messages||[];
       // 不再有本地兜底：模型没答上来就如实报错。
+      await billing.reserve(auth.user.id,'role');
       const reply=await chatWithRole(buildRoleMessages(setting,{history,text:raw,memories}));
       const answer={text:reply,mode:'model',memoryIds:memories.map(m=>m.id)};
       const now=new Date().toISOString();
@@ -733,6 +781,7 @@ export async function POST(request,{params}) {
         if(!upload?.blobUrl) throw new Error('声音复刻需要 Vercel Blob 存储支持；请确认已连接 Blob 后重试。');
         source=upload.blobUrl;
       }
+      await billing.reserve(auth.user.id,'voice_enroll');
       const result=await enrollVoice({memberId,audioUrl:source,consent});
       const updated={...member,voiceId:result.voiceId,voiceStatus:'ready',voiceEnrolledAt:new Date().toISOString(),voiceConsent:Boolean(consent)};
       await put('members',updated);
@@ -754,6 +803,7 @@ export async function POST(request,{params}) {
       // 旧代码判断 blobUrl 导致缓存永远不命中、每次都重新计费合成。
       if(cached?.name) return json({audioUrl:mediaUrl(cached.name),cached:true,voiceId:member.voiceId});
       rateLimit('voice-speak',auth.user.id,20);
+      await billing.reserve(auth.user.id,'voice_speak',Math.ceil(text.length/100)*CREDIT_PRICES.voice_speak.points);
       const {audioUrl,format}=await synthesizeVoice({voiceId:member.voiceId,text,options});
       // 落盘到 Blob 再缓存：无论返回内联 base64 还是临时签名 url，都转成稳定的地址，
       // 避免重复计费与临时 url 失效。
@@ -781,6 +831,7 @@ export async function POST(request,{params}) {
       if(existing?.script&&!force&&(existing.audioUrl||!voiceConfigured())) {
         return json({script:existing.script,audioUrl:existing.audioUrl||null,narrator:{id:narrator.id,name:narrator.name},cached:true,voiceId:narrator.voiceId,warning:existing.audioUrl?undefined:'未配置声音合成服务，只用文字展示'});
       }
+      await billing.reserve(auth.user.id,'narrate');
       const script=await generateNarration(memory,narrator.name);
       if(!voiceConfigured()) {
         // 稿子能写，但没配声音服务：先把稿子给出去，别让用户的等待白费。
@@ -832,8 +883,10 @@ export async function POST(request,{params}) {
       if(media.data.length>MAX_IMAGE_BYTES) throw new Error('封面照片超过 4 MB，先换一张小一点的再试');
       const mime=media.contentType||(coverFile.endsWith('.png')?'image/png':coverFile.endsWith('.webp')?'image/webp':'image/jpeg');
       const imageDataUri=`data:${mime};base64,${media.data.toString('base64')}`;
+      const feature=res==='720P'?'video_720':'video_480';
+      await billing.reserve(auth.user.id,feature,secs*CREDIT_PRICES[feature].points,{async:true,pollKey:vKey,resourceKey:vKey});
       const created=await createVideoTask({imageDataUri,prompt:buildVideoPrompt(memory),resolution:res,duration:secs});
-      const record={id:vKey,memoryId:memory.id,memoryTitle:memory.title||'',memberId:narrator.id,voiceId:narrator.voiceId,scriptHash:narration.script.length,taskId:created.taskId,status:'pending',resolution:res,duration:secs,userId:auth.user.id,createdAt:new Date().toISOString()};
+      const record={id:vKey,memoryId:memory.id,memoryTitle:memory.title||'',memberId:narrator.id,voiceId:narrator.voiceId,scriptHash:narration.script.length,taskId:created.taskId,status:'pending',resolution:res,duration:secs,userId:auth.user.id,creditOperationId:billing.operationId,createdAt:new Date().toISOString()};
       await put('memory_videos',record);
       return json({status:'pending',taskId:vKey,resolution:res,duration:secs,cached:false},202);
     }

@@ -98,6 +98,7 @@ export default function LifeSim({api,onBack,onOpenMemory,aiReady}) {
 
         {!ready&&<div className="life-notice warn"><Icon name="info" size={18}/><span>还没有配置模型。这个模拟完全由模型现写，配好 AI_API_KEY 之后才能开始。</span></div>}
 
+        <p className="credit-cost-note">开局 3 积分，之后每推进一幕 3 积分，结局不额外收费；失败退回。</p>
         {error&&<div className="life-notice warn"><Icon name="info" size={18}/><span>{error}</span></div>}
 
         {origins.length?<>
@@ -196,6 +197,7 @@ export default function LifeSim({api,onBack,onOpenMemory,aiReady}) {
           {!finished&&stage&&(
             <div className="life-choices">
               <p className="life-prompt">{busy?'正在写下一幕…':'此刻你会怎么做？'}</p>
+              <p className="credit-cost-note">本次推进 3 积分，成功后结算，失败退回。</p>
               <div className="life-choice-row">
                 {(stage.choices||[]).map(choice=>(
                   <button key={choice.id} className="life-choice" disabled={busy} onClick={()=>answer({choiceId:choice.id})}>

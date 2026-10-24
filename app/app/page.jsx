@@ -15,19 +15,46 @@ import MemoryNarrator from '../../components/MemoryNarrator';
 import Chat,{ChatDock,ChatEntry} from '../../components/Chat';
 import HomePage from '../../components/HomePage';
 import PhotoGallery from '../../components/PhotoGallery';
+import Credits,{CreditBalance} from '../../components/Credits';
+import {creditQuote} from '../../lib/credit-prices.mjs';
 
 const NAV=[{id:'home',icon:'home',label:'首页'},{id:'growth',icon:'clock',label:'成长记录'},{id:'library',icon:'library',label:'记忆库'},{id:'albums',icon:'album',label:'回忆专辑'},{id:'capsules',icon:'calendar',label:'时间胶囊'},{id:'game',icon:'sparkle',label:'人生推演'},{id:'companion',icon:'message',label:'陪伴对话'},{id:'family',icon:'people',label:'家庭成员'},{id:'feedback',icon:'activity',label:'互动记录'},{id:'settings',icon:'settings',label:'设置'}];
 // 一级导航只放最有吸引力的四个模块，其余收进「更多」，每项配一句话说明它是干嘛的。
+NAV.push({id:'credits',icon:'sparkle',label:'我的积分'});
 const PRIMARY_IDS=['home','library','growth','companion'];
-const MORE_DESC={albums:'把记忆串成可以分享的故事',capsules:'写给未来某个日子的信',game:'在推演里重走一遍人生',family:'成员、纪念日与声音复刻',feedback:'家人听过的回应与留言',settings:'账号、邀请码与偏好'};
+const MORE_DESC={albums:'把记忆串成可以分享的故事',capsules:'写给未来某个日子的信',game:'在推演里重走一遍人生',family:'成员、纪念日与声音复刻',feedback:'家人听过的回应与留言',settings:'账号、邀请码与偏好',credits:'个人余额、消费记录与管理员发放'};
 const ROLE_LABELS={admin:'管理员',editor:'编辑者',viewer:'查看者'};
 const THEMECOLORS={'家人':'peach','老家':'sage','旅行':'blue','青春':'lavender','节日':'gold','日常':'sage'};
 const initialState={memories:[],albums:[],members:[],anniversaries:[],activity:[],settings:{familyName:'我们的记忆小屋'},aiEnabled:false,account:null,canEdit:false};
 
+const pendingRequests=new Map();
+let modelConfigured=false;
 async function request(endpoint,options={}) {
-  const response=await fetch(`/api${endpoint}`,{...options,headers:options.body instanceof FormData?undefined:{'Content-Type':'application/json',...options.headers}});
-  let body;try{body=await response.json();}catch{throw new Error(`服务暂时不可用（HTTP ${response.status}），请稍后重试。`);}
-  if(!response.ok)throw new Error(body.error||'请求未能完成');return body;
+  const post=options.method==='POST';
+  let payload={};
+  if(post&&typeof options.body==='string'){try{payload=JSON.parse(options.body);}catch{}}
+  const originalQuote=post?creditQuote(endpoint,payload):null;
+  let quote=originalQuote;
+  if(['organize','story'].includes(quote?.feature)&&!modelConfigured)quote=null;
+  const signature=`${endpoint}:${options.body||''}`;
+  const previous=pendingRequests.get(signature);
+  const headers=options.body instanceof FormData?undefined:{'Content-Type':'application/json',...options.headers};
+  if(originalQuote)headers['X-Credit-Limit']=String(quote?.amount||0);
+  if(post&&(originalQuote||endpoint==='/credits/grant')) {
+    if(quote&&!previous&&!['companion','role','life_turn'].includes(quote.feature)&&
+      !window.confirm(`${quote.label}：本次最多消耗 ${quote.amount} 积分。已有结果命中缓存不扣费；生成或保存失败退回。是否继续？`))throw new Error('已取消，未扣积分');
+    const id=headers?.['Idempotency-Key']||previous||crypto.randomUUID();
+    headers['Idempotency-Key']=id;pendingRequests.set(signature,id);
+  }
+  try {
+    const response=await fetch(`/api${endpoint}`,{...options,headers});
+    let body;try{body=await response.json();}catch{throw new Error(`服务暂时不可用（HTTP ${response.status}），请稍后重试。`);}
+    if(body.code!=='CREDIT_PENDING')pendingRequests.delete(signature);
+    if(endpoint==='/state'&&response.ok)modelConfigured=Boolean(body.aiEnabled);
+    if(!response.ok)throw new Error(body.error||'请求未能完成');return body;
+  } finally {
+    if(quote||endpoint==='/credits/grant'||endpoint.startsWith('/narrate-video/'))window.dispatchEvent(new Event('credits-changed'));
+  }
 }
 
 export default function Page() {
@@ -97,9 +124,10 @@ export default function Page() {
   const toastUI=toast&&<div className={`toast ${toast.type}`} role="status"><Icon name={toast.type==='error'?'info':'check'}/>{toast.message}<button aria-label="关闭提示" onClick={()=>setToast(null)}><Icon name="close" size={16}/></button></div>;
 
   const prefs=activePrefs;
-  return <div className="app-shell" {...{['data-accent']:prefs.accent,...(prefs.highContrast?{['data-contrast']:'high'}:{})}} style={{'--accent':ACCENTS.find(a=>a.id===prefs.accent)?.color}}><header className="topnav"><button className="brand" onClick={()=>navigate('home')}><span className="brand-mark"><Icon name="leaf" size={22}/></span><span>忆伴</span></button><div className="family-switch"><span className="family-house"><Icon name="home" size={16}/></span><div><strong>{state.settings.familyName}</strong></div></div><nav className="topnav-links" aria-label="主要导航">{NAV.filter(item=>PRIMARY_IDS.includes(item.id)).map(item=><button key={item.id} className={`nav-item ${page===item.id?'active':''}`} aria-label={item.label} aria-current={page===item.id?'page':undefined} onClick={()=>navigate(item.id)}><span>{item.label}</span>{item.id==='library'&&<span className="nav-count">{state.memories.length}</span>}</button>)}<div className="topnav-more"><button className={`nav-item topnav-more-toggle ${moreOpen||!PRIMARY_IDS.includes(page)?'active':''}`} aria-label="更多" aria-expanded={moreOpen} aria-haspopup="menu" onClick={openMore}><span>更多</span><Icon name="chevron" size={14}/></button></div></nav>{moreOpen&&<div className="topnav-more-panel" role="menu" aria-label="更多功能" style={{top:morePos?.top,right:morePos?.right}}>{NAV.filter(item=>!PRIMARY_IDS.includes(item.id)).map(item=><button role="menuitem" key={item.id} className="topnav-more-item" onClick={()=>navigate(item.id)}><span className="topnav-more-icon"><Icon name={item.icon} size={19}/></span><span className="topnav-more-copy"><strong>{item.label}</strong><small>{MORE_DESC[item.id]}</small></span>{item.id==='feedback'&&state.activity.length>0&&<i className="topnav-more-dot" aria-hidden="true"/>}</button>)}</div>}<div className="topnav-actions"><button className="icon-button notification-button" aria-label="查看互动记录" onClick={()=>navigate('feedback')}><Icon name="bell"/>{state.activity.length>0&&<i/>}</button><button className="topbar-account" aria-label="我的账号" onClick={()=>setModal({type:'account'})}><Avatar name={state.account.name} color={state.account.role==='admin'?'peach':'sage'} src={state.account.avatar}/><span><strong>{state.account.name}</strong><small>{ROLE_LABELS[state.account.role]}</small></span><Icon name="chevron" size={14}/></button></div></header>
+  return <div className="app-shell" {...{['data-accent']:prefs.accent,...(prefs.highContrast?{['data-contrast']:'high'}:{})}} style={{'--accent':ACCENTS.find(a=>a.id===prefs.accent)?.color}}><header className="topnav"><button className="brand" onClick={()=>navigate('home')}><span className="brand-mark"><Icon name="leaf" size={22}/></span><span>忆伴</span></button><div className="family-switch"><span className="family-house"><Icon name="home" size={16}/></span><div><strong>{state.settings.familyName}</strong></div></div><nav className="topnav-links" aria-label="主要导航">{NAV.filter(item=>PRIMARY_IDS.includes(item.id)).map(item=><button key={item.id} className={`nav-item ${page===item.id?'active':''}`} aria-label={item.label} aria-current={page===item.id?'page':undefined} onClick={()=>navigate(item.id)}><span>{item.label}</span>{item.id==='library'&&<span className="nav-count">{state.memories.length}</span>}</button>)}<div className="topnav-more"><button className={`nav-item topnav-more-toggle ${moreOpen||!PRIMARY_IDS.includes(page)?'active':''}`} aria-label="更多" aria-expanded={moreOpen} aria-haspopup="menu" onClick={openMore}><span>更多</span><Icon name="chevron" size={14}/></button></div></nav>{moreOpen&&<div className="topnav-more-panel" role="menu" aria-label="更多功能" style={{top:morePos?.top,right:morePos?.right}}>{NAV.filter(item=>!PRIMARY_IDS.includes(item.id)).map(item=><button role="menuitem" key={item.id} className="topnav-more-item" onClick={()=>navigate(item.id)}><span className="topnav-more-icon"><Icon name={item.icon} size={19}/></span><span className="topnav-more-copy"><strong>{item.label}</strong><small>{MORE_DESC[item.id]}</small></span>{item.id==='feedback'&&state.activity.length>0&&<i className="topnav-more-dot" aria-hidden="true"/>}</button>)}</div>}<div className="topnav-actions"><CreditBalance api={request} onOpen={()=>navigate('credits')}/><button className="icon-button notification-button" aria-label="查看互动记录" onClick={()=>navigate('feedback')}><Icon name="bell"/>{state.activity.length>0&&<i/>}</button><button className="topbar-account" aria-label="我的账号" onClick={()=>setModal({type:'account'})}><Avatar name={state.account.name} color={state.account.role==='admin'?'peach':'sage'} src={state.account.avatar}/><span><strong>{state.account.name}</strong><small>{ROLE_LABELS[state.account.role]}</small></span><Icon name="chevron" size={14}/></button></div></header>
 <div className="workspace">
   <main className="main-content" data-role={state.account.role}>
+  {page==='credits'&&<Credits api={request} notify={notify} isAdmin={state.account.role==='admin'}/>}
   {page==='home'&&<HomePage state={state} open={open} favorite={favorite} navigate={navigate} setModal={setModal} onPending={()=>{navigate('library');setStatusFilter('待确认');}}/>}
 
   {page==='companion'&&<><div className="page-heading"><div><span className="eyebrow">SOMEONE TO TALK TO</span><h1>陪伴对话</h1><p>家伴记得这个家的事；也可以换成母亲、老朋友、林黛玉、苏轼——借他们的脾气把事说开。</p></div></div>

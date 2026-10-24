@@ -1,0 +1,53 @@
+import {test,expect} from '@playwright/test';
+import {signInAsNewAdmin} from './helpers.mjs';
+
+test('个人余额、管理员发放与成功回复的消费记录贯通',async({page})=>{
+  await signInAsNewAdmin(page,{name:'积分家长',prefix:'credits',credits:0});
+  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.getByRole('button',{name:'我的积分',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'我的积分',exact:true})).toBeVisible();
+  await expect(page.locator('.credits-totals').first()).toContainText('0');
+  const user=(await (await page.request.get('/api/auth/status')).json()).user;
+  await page.getByLabel('发放给',{exact:true}).selectOption(user.id);
+  await page.getByLabel('积分数量',{exact:true}).fill('50');
+  await page.getByLabel('发放说明',{exact:true}).fill('浏览器体验额度');
+  await page.getByRole('button',{name:'确认发放',exact:true}).click();
+  await expect(page.locator('.credits-grant')).toContainText('已发放 50 积分');
+  await expect(page.locator('.credits-balance strong')).toHaveText('50');
+  await page.getByRole('navigation').getByRole('button',{name:'陪伴对话',exact:true}).click();
+  await page.locator('.chat-companion-card').click();
+  await expect(page.locator('.chat-main .credit-cost-note')).toContainText('1 积分');
+  await page.getByLabel('跟家伴说一句话').fill('今天一家人很开心');
+  await page.getByRole('button',{name:'说一句',exact:true}).click();
+  await expect(page.locator('.companion-line.companion').last()).toBeVisible();
+  await expect(page.locator('.credits-balance strong')).toHaveText('49');
+  await page.getByRole('button',{name:'我的积分',exact:true}).click();
+  await expect(page.locator('.credits-table')).toContainText('消费完成');
+  await expect(page.locator('.credits-table')).toContainText('家伴对话');
+  await page.screenshot({path:'artifacts/credits-desktop.png',fullPage:true});
+  expect(errors).toEqual([]);
+});
+
+test('查看者只能查看自己的积分，无余额时停止调用；手机端可浏览流水',async({page})=>{
+  await signInAsNewAdmin(page,{name:'权限家长',prefix:'credit-viewer',credits:0});
+  const invite=await (await page.request.post('/api/auth/invite',{data:{role:'viewer'}})).json();
+  const joined=await page.request.post('/api/auth/register',{data:{code:invite.code,name:'积分查看者',email:`credits-viewer-${Date.now()}@yiban.test`,password:'ViewerPassword123!'}});
+  expect(joined.status()).toBe(201);
+  await page.reload();
+  await page.getByRole('button',{name:'我的积分',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'我的积分',exact:true})).toBeVisible();
+  await expect(page.locator('.credits-grant')).toHaveCount(0);
+  const user=(await (await page.request.get('/api/auth/status')).json()).user;
+  expect((await page.request.post('/api/credits/grant',{data:{userId:user.id,amount:100,note:'越权'}})).status()).toBe(403);
+  await page.getByRole('navigation').getByRole('button',{name:'陪伴对话',exact:true}).click();
+  await page.locator('.chat-companion-card').click();
+  await page.getByLabel('跟家伴说一句话').fill('你好');
+  await page.getByRole('button',{name:'说一句',exact:true}).click();
+  await expect(page.locator('.chat-main .form-error')).toContainText('积分不足');
+  await expect(page.locator('.credits-balance strong')).toHaveText('0');
+  await page.getByRole('button',{name:'我的积分',exact:true}).click();
+  await page.setViewportSize({width:390,height:844});
+  await expect(page.getByRole('heading',{name:'我的积分',exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.screenshot({path:'artifacts/credits-mobile.png',fullPage:true});
+});

@@ -87,6 +87,11 @@ export default function MemoryNarrator({memory,api,notify,canEdit}){
     pollRef.current=setTimeout(tick,3000);
   },[api,notify]);
 
+  useEffect(()=>{
+    if(video?.status==='pending'&&video.taskId)pollVideo(video.taskId);
+    return()=>{if(pollRef.current)clearTimeout(pollRef.current);};
+  },[video?.status,video?.taskId,pollVideo]);
+
   const makeVideo=async()=>{
     setBusy(true);setError('');
     try{
@@ -98,7 +103,6 @@ export default function MemoryNarrator({memory,api,notify,canEdit}){
       }else{
         setVideo({status:'pending',taskId:data.taskId,resolution:data.resolution,duration:data.duration});
         notify?.('正在生成，大概要一两分钟');
-        pollVideo(data.taskId);
       }
     }catch(e){if(stillMounted.current)setError(e.message);}
     finally{if(stillMounted.current)setBusy(false);}

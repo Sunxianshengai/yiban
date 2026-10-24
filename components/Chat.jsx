@@ -205,6 +205,7 @@ function Composer({ c, name, ready, suggestions = [], label }) {
         maxLength={500} placeholder={placeholder} aria-label={label} />
       <Button onClick={() => c.send()} busy={c.busy} disabled={!ready || !c.text.trim()}>说一句</Button>
     </div>
+    <p className="credit-cost-note">每次成功回复 1 积分，失败退回。快捷话题也按次计费。</p>
     {c.error && <p className="form-error"><Icon name="info" size={15}/>{c.error}</p>}
   </>;
 }
