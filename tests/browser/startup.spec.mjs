@@ -8,7 +8,7 @@ test('reconnect repeats auth detection and recovers first-run setup after a serv
       ?route.fulfill({status:503,contentType:'text/html',body:'Service unavailable'})
       :route.fulfill({json:{needsSetup:true,user:null,remoteStorage:true}});
   });
-  await page.goto('/');
+  await page.goto('/app');
   await expect(page.getByRole('heading',{name:'记忆小屋暂时无法打开'})).toBeVisible();
   await expect(page.getByText(/HTTP 503/)).toBeVisible();
   // 不断言绝对次数：React 严格模式 / 开发态会重复挂载 effect，

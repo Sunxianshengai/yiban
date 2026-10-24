@@ -203,3 +203,68 @@ body{background:#171b26;color:var(--ink);letter-spacing:0}
   .topbar-account>span{display:none}
   .topbar-account{padding:5px}
 }
+
+/* ===== 着陆页（访客第一屏，ChatGPT 官网式排版） ===== */
+.landing{min-height:100vh;background:linear-gradient(180deg,#0f1219,#12161f 60%,#0f1219);color:var(--ink)}
+.landing-nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;height:68px;padding:0 clamp(18px,4vw,48px);background:#12151dd9;backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.landing-brand{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-size:1.35rem;font-weight:600;letter-spacing:2px;color:var(--ink);text-decoration:none}
+.landing-brand .brand-mark{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:color-mix(in srgb,var(--accent) 16%,var(--paper));color:var(--accent);transform:none}
+.landing-links{display:flex;gap:4px;margin:0 auto}
+.landing-links a{padding:8px 15px;border-radius:999px;color:var(--muted);font-size:.95rem;text-decoration:none;transition:color .16s,background .16s}
+.landing-links a:hover{color:var(--ink);background:var(--sage)}
+.landing-actions{display:flex;align-items:center;gap:16px}
+.landing-login{color:var(--muted);font-size:.92rem;text-decoration:none}
+.landing-login:hover{color:var(--ink)}
+.landing-cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#edf0f6;color:#12161f;border-radius:999px;padding:11px 22px;font-weight:600;font-size:.95rem;text-decoration:none;transition:background .16s,transform .16s;white-space:nowrap}
+.landing-cta:hover{background:#dfe4ee;transform:translateY(-1px)}
+.landing-cta.big{padding:15px 28px;font-size:1.05rem}
+.landing-ghost,.landing-link{color:var(--ink);font-size:.95rem;text-decoration:none;border:1px solid var(--border);border-radius:999px;padding:14px 24px;transition:border-color .16s,color .16s}
+.landing-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.landing-link{border:0;padding:12px 4px;color:var(--accent)}
+.landing-link:hover{text-decoration:underline;color:var(--accent)}
+.landing-kicker{display:inline-block;font-size:.8rem;font-weight:700;letter-spacing:.12em;color:var(--accent);margin-bottom:14px}
+.landing-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(28px,5vw,72px);align-items:center;max-width:1280px;margin:0 auto;padding:clamp(52px,7vw,100px) clamp(18px,4vw,48px)}
+.landing-hero h1,.landing-features h2,.landing-desktop h2,.landing-faq h2,.landing-final h2{font-family:'PingFang SC','Microsoft YaHei',system-ui,sans-serif;font-weight:800;letter-spacing:.01em;line-height:1.18;color:#f2f4f9}
+.landing-hero h1{font-size:clamp(2.5rem,5.2vw,4.1rem);margin:0 0 20px}
+.landing-hero-copy p{font-size:1.05rem;line-height:1.9;color:var(--muted);max-width:30rem}
+.landing-hero-actions{display:flex;align-items:center;gap:14px;margin-top:30px;flex-wrap:wrap}
+.landing-visual{position:relative;border-radius:24px;background:radial-gradient(120% 90% at 20% 0%,#28324d,transparent 60%),linear-gradient(150deg,#1f2740,#161c2b);border:1px solid var(--border);min-height:440px;overflow:hidden;box-shadow:0 30px 80px #00000059}
+.landing-visual.small{min-height:340px}
+.landing-bubble{position:absolute;top:28px;left:28px;right:28px;background:#fff;color:#1c2027;border-radius:999px;padding:15px 22px;font-size:.98rem;line-height:1.5;box-shadow:0 18px 40px #00000066}
+.landing-bubble em{font-style:normal;font-weight:700;color:#5865d6}
+.landing-window{position:absolute;left:36px;right:36px;top:104px;bottom:-6px;background:var(--paper);border:1px solid var(--border);border-bottom:0;border-radius:16px 16px 0 0;padding:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;overflow:hidden;box-shadow:0 -10px 30px #00000040}
+.landing-window img{width:100%;height:100%;object-fit:cover;border-radius:10px;opacity:.94}
+.landing-window.two{grid-template-columns:1fr 1fr;gap:12px;padding:18px}
+.landing-features,.landing-desktop,.landing-faq{max-width:1280px;margin:0 auto;padding:clamp(44px,6vw,84px) clamp(18px,4vw,48px) 0}
+.landing-features h2,.landing-faq h2{font-size:clamp(1.9rem,3.4vw,2.7rem);margin:0 0 10px}
+.landing-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:36px}
+.landing-card{border:1px solid var(--border);border-radius:18px;padding:26px 24px;background:var(--paper);transition:border-color .2s,transform .2s}
+.landing-card:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--border));transform:translateY(-3px)}
+.landing-card h3{font-size:1.18rem;font-weight:700;margin:0}
+.landing-card p{color:var(--muted);font-size:.94rem;line-height:1.85;margin:12px 0 0}
+.landing-desktop{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(28px,5vw,72px);align-items:center;padding-bottom:0}
+.landing-desktop h2{font-size:clamp(2rem,3.8vw,3rem);margin:0 0 18px}
+.landing-desktop-copy p{color:var(--muted);line-height:1.9;max-width:28rem}
+.landing-faq-list{display:flex;flex-direction:column;gap:10px;margin-top:32px;max-width:820px}
+.landing-faq details{border:1px solid var(--border);border-radius:14px;padding:18px 22px;background:var(--paper)}
+.landing-faq summary{font-weight:600;cursor:pointer;font-size:1rem}
+.landing-faq details[open] summary{color:var(--accent)}
+.landing-faq details p{color:var(--muted);line-height:1.9;margin:12px 0 0;font-size:.94rem}
+.landing-final{text-align:center;padding:clamp(56px,8vw,110px) 20px}
+.landing-final h2{font-size:clamp(1.9rem,3.6vw,2.8rem);margin:0 0 30px}
+.landing-footer{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;max-width:1280px;margin:0 auto;padding:30px clamp(18px,4vw,48px) 40px;border-top:1px solid var(--border);color:var(--muted);font-size:.8rem}
+@media(max-width:960px){
+  .landing-links{display:none}
+  .landing-hero{grid-template-columns:1fr;padding-top:40px}
+  .landing-hero-copy{order:-1}
+  .landing-visual{min-height:360px}
+  .landing-grid{grid-template-columns:1fr 1fr}
+  .landing-desktop{grid-template-columns:1fr}
+  .landing-desktop .landing-visual{order:2}
+}
+@media(max-width:560px){
+  .landing-grid{grid-template-columns:1fr}
+  .landing-nav{height:60px}
+  .landing-login{display:none}
+  .landing-window{left:20px;right:20px;top:92px}
+}

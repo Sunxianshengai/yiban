@@ -44,7 +44,7 @@ test('first run, invitations, roles, media authorization and sign out',async({br
   expect((await viewer.get(media)).status()).toBe(404);
   expect((await editor.get(media)).status()).toBe(200);
 
-  const page=await browser.newPage();await page.goto('/');
+  const page=await browser.newPage();await page.goto('/app');
   await expect(page.getByRole('heading',{name:'登录家庭空间'})).toBeVisible();
   await page.getByLabel('邮箱').fill('admin@yiban.test');await page.getByLabel('密码').fill('TestPassword123!');
   await page.getByRole('button',{name:'登录',exact:true}).click();
