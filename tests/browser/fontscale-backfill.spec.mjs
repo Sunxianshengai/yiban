@@ -27,16 +27,16 @@ test('保存回填阶段不把新字号覆盖回旧值',async({browser})=>{
     window.__t0=performance.now();
   });
 
-  // 切到「特大」，保存过程中不允许出现 18.2px 的写入
+  // 切到「特大」，保存过程中不允许出现 20.8px（「大」档）的写入
   await pill('特大').click();
   await page.waitForTimeout(2500);
   const writes=await page.evaluate(()=>window.__writes);
   console.log('切到特大期间的字号写入:',JSON.stringify(writes));
 
-  const reverted=writes.filter(w=>w.v==='18.2px');
+  const reverted=writes.filter(w=>w.v==='20.8px');
   expect(reverted).toEqual([]);          // 绝不允许把已保存的旧档位写回去
 
   const final=await page.evaluate(()=>parseFloat(getComputedStyle(document.documentElement).fontSize));
-  expect(Math.abs(final-21)).toBeLessThan(0.2);
+  expect(Math.abs(final-24)).toBeLessThan(0.2);
   await ctx.close();
 });

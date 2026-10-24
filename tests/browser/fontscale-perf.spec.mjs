@@ -39,7 +39,7 @@ const RESULT_FILE = path.join(OUT_DIR, 'perf-fontscale.json');
 const MD_FILE = path.join(OUT_DIR, 'perf-fontscale.md');
 const SHOT_DIR = path.join(OUT_DIR, 'perf-screenshots');
 
-const FONT_PX = {'标准': 14, '偏大': 16.1, '大': 18.2, '特大': 21};
+const FONT_PX = {'标准': 16, '偏大': 18.4, '大': 20.8, '特大': 24};
 
 function stats(values) {
   const v = values.filter(x => x != null && Number.isFinite(x)).sort((a, b) => a - b);

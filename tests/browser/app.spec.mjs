@@ -13,6 +13,7 @@ test.beforeEach(async({page,request})=>{
   }
   const dropped=await cleanupTestMemories(request);
   if(dropped) console.log(`清掉 ${dropped} 段上一轮遗留的测试记忆`);
+  page.on('dialog',dialog=>dialog.accept());
   const cookies=(await request.storageState()).cookies;
   await page.context().addCookies(cookies);
   await page.goto('/');
@@ -25,7 +26,7 @@ test('upload, local organization, publishing, elder feedback and deletion work t
   try {
     await page.goto('/');
     await expect(page.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
-    await page.getByRole('button',{name:'添加一段记忆',exact:true}).click();
+    await page.getByRole('button',{name:'记一段回忆',exact:true}).click();
     await page.locator('input[type=file]').setInputFiles({name:'family.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j0WQAAAAASUVORK5CYII=','base64')});
     await expect(page.getByRole('status')).toContainText('素材上传完成');
     await page.getByLabel('记忆名称 *').fill(marker);
@@ -47,7 +48,7 @@ test('upload, local organization, publishing, elder feedback and deletion work t
     // 单端口改造后不再有「进入老人端 / 家属模式」这一层；互动直接走接口产生，
     // 再回到「互动记录」页确认它出现在动态流里。
     for(const type of ['remember','like']) expect((await request.post('/api/activity',{data:{type,memoryId:id}})).ok()).toBe(true);
-    await page.getByRole('button',{name:'互动记录',exact:true}).click();
+    await clickNavItem(page,'互动记录');
     await expect(page.locator('.activity-list')).toContainText(marker);
     await page.getByRole('button',{name:/记忆库/}).first().click();
     await page.getByRole('textbox',{name:'搜索记忆'}).fill(marker);
@@ -113,7 +114,7 @@ test('desktop and mobile layouts, navigation and dialogs render without errors',
     await expect(page.locator('.page-heading h1, .life-shell').first()).toBeVisible();
   }
   await page.getByRole('navigation').getByRole('button',{name:'首页'}).click();
-  await page.getByRole('button',{name:'添加一段记忆',exact:true}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button',{name:'记一段回忆',exact:true}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
   // 账号入口是常驻的：任何页面都能从顶栏打开「我的账号」面板。
   await page.getByRole('button',{name:'我的账号'}).click();await expect(page.getByRole('dialog')).toBeVisible();await expect(page.getByRole('dialog')).toContainText('管理登录账号');await page.keyboard.press('Escape');
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:'artifacts/忆伴-手机端.png',fullPage:true});

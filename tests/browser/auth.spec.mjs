@@ -60,7 +60,7 @@ test('first run, invitations, roles, media authorization and sign out',async({br
   const viewerContext=await browser.newContext({storageState:await viewer.storageState()});
   const viewerPage=await viewerContext.newPage();await viewerPage.goto('/');
   await expect(viewerPage.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
-  await expect(viewerPage.getByRole('button',{name:'添加一段记忆',exact:true})).toBeHidden();
+  await expect(viewerPage.getByRole('button',{name:'记一段回忆',exact:true})).toBeHidden();
   await viewerPage.getByRole('navigation').getByRole('button',{name:'记忆库'}).click();
   await expect(viewerPage.locator('.memory-card')).not.toHaveCount(0);
   await expect(viewerPage.getByRole('button',{name:'添加记忆',exact:true})).toBeHidden();

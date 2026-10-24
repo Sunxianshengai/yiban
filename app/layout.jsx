@@ -1,5 +1,6 @@
+import '@fontsource-variable/noto-sans-sc';
+import '@fontsource-variable/noto-serif-sc';
 import './globals.css';
-import './home-refresh.css';
 import './credits.css';
 
 export const metadata = {

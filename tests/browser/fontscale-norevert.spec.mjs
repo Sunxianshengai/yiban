@@ -55,15 +55,15 @@ test('切换字号全过程不回退到旧档位',async({browser})=>{
   seq.forEach(e=>console.log(`  ${e.t}ms ${e.px}px`));
 
   const finalPx=await page.evaluate(()=>parseFloat(getComputedStyle(document.documentElement).fontSize));
-  expect(Math.abs(finalPx-18.2)).toBeLessThan(0.2);
+  expect(Math.abs(finalPx-20.8)).toBeLessThan(0.2);
 
   // 核心断言：一旦升到 21px，后面就不允许在「还没点新档位之前」跌回 14px
   const pxSeq=seq.map(e=>e.px);
-  const i21=pxSeq.indexOf(21);
+  const i21=pxSeq.indexOf(24);
   expect(i21).toBeGreaterThan(-1);
-  const between=seq.slice(i21).filter(e=>e.px===14);
+  const between=seq.slice(i21).filter(e=>e.px===16);
   // 14px 只允许出现在「主动点回标准」之后
-  console.log('21px 之后出现过 14px 的次数:',between.length);
+  console.log('24px 之后出现过 16px 的次数:',between.length);
 
   await ctx.close();
 });

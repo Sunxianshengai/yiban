@@ -3,7 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import Icon from './Icon';
 import {Avatar,Button,Cover,Field,formatDate} from './UI';
 import MemoryNarrator from './MemoryNarrator';
-import {ACCENTS,FONT_SCALES} from '../lib/core.mjs';
+import {APPEARANCES,FONT_SCALES} from '../lib/core.mjs';
 import {applyFontScale} from '../lib/fontscale.mjs';
 
 // 已有登录账号的管理视图：列表 + 生成一次性邀请码。
@@ -76,7 +76,7 @@ export function MemoryDetail({memory,state,api,notify,onEdit,onDelete,onConfirm,
 // 2) 不能再监听本地预览值去写字号（旧字号会把新值覆盖回去，就是「又跳回上一个字号」）；
 // 3) 唯一的权威字号写入源在 Page 组件（监听 activePrefs.fontScale）。
 export function Personalize({state,save,applyLocal,notify}) {
-  const saved=state.account?.preferences||{fontScale:1,accent:'sage',highContrast:false};
+  const saved=state.account?.preferences||{fontScale:1,theme:'day',highContrast:false};
   const [pending,setPending]=useState(null);const [busy,setBusy]=useState(false);
   // 点选即通过 applyLocal 乐观写入父 state（版本号随之 +1），展示只认父 state——
   // pending 只负责「还有哪些键没存到服务器」，不再参与展示，杜绝旧值闪回。
@@ -105,9 +105,9 @@ export function Personalize({state,save,applyLocal,notify}) {
   };
   flushRef.current=flush;
   const manual=async()=>{setBusy(true);try{await flush();notify('个性化偏好已保存，已即时应用到本端');}finally{setBusy(false);}};
-  return <section className="panel personalize-panel" style={{'--accent':ACCENTS.find(a=>a.id===prefs.accent)?.color,'--green':ACCENTS.find(a=>a.id===prefs.accent)?.color||'#6e9a7e'}}><h2><Icon name="sparkle"/>我的个性化偏好</h2><p className="muted">这是属于「你」的体验设置，其他家人看到的是他们自己的偏好，互不影响。修改后立即生效并自动保存。</p>
-  <Field label="文字大小"><div className="option-row">{FONT_SCALES.map(f=><button type="button" key={f.id} className={`option-pill ${prefs.fontScale===f.id?'selected':''}`} onClick={()=>pick('fontScale',f.id)}>{f.label}</button>)}</div></Field>
-  <Field label="主题色"><div className="option-row">{ACCENTS.map(a=><button type="button" key={a.id} className={`option-swatch ${prefs.accent===a.id?'selected':''}`} onClick={()=>set('accent',a.id)} aria-label={a.label}><span style={{background:a.color}}/>{a.label}</button>)}</div></Field>
+  return <section className="panel personalize-panel"><h2><Icon name="sparkle"/>我的个性化偏好</h2><p className="muted">这是属于「你」的体验设置，其他家人看到的是他们自己的偏好，互不影响。修改后立即生效并自动保存。</p>
+  <div className="field"><span>文字大小</span><div className="option-row">{FONT_SCALES.map(f=><button type="button" key={f.id} className={`option-pill ${prefs.fontScale===f.id?'selected':''}`} onClick={()=>pick('fontScale',f.id)}>{f.label}</button>)}</div></div>
+  <div className="field"><span>外观主题</span><div className="option-row">{APPEARANCES.map(a=><button type="button" key={a.id} className={`option-pill ${prefs.theme===a.id?'selected':''}`} onClick={()=>set('theme',a.id)}>{a.label}</button>)}</div><small className="field-hint">日间是暖白画布配深松绿；夜间单独校准过对比度，不是日间的简单反相。</small></div>
   <div className="setting-toggle"><span><strong>高对比度</strong><small>提高文字与背景对比，更护眼</small></span><input type="checkbox" checked={prefs.highContrast} onChange={e=>set('highContrast',e.target.checked)} aria-label="高对比度"/></div>
   <div className="modal-actions"><Button type="button" icon="check" busy={busy} onClick={manual}>保存我的偏好</Button></div>
   </section>;

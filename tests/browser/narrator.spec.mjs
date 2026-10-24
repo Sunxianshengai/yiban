@@ -16,6 +16,7 @@ test.beforeEach(async({page,request})=>{
     const login=await request.post('/api/auth/login',{data:{email:'admin@yiban.test',password:'TestPassword123!'}});
     expect(login.status()).toBe(200);
   }
+  page.on('dialog',dialog=>dialog.accept());
   await cleanupTestMemories(request);
   const cookies=(await request.storageState()).cookies;
   await page.context().addCookies(cookies);
@@ -24,7 +25,7 @@ test.beforeEach(async({page,request})=>{
 async function publishMemory(page,marker){
   await page.goto('/');
   await expect(page.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
-  await page.getByRole('button',{name:'添加一段记忆',exact:true}).click();
+  await page.getByRole('button',{name:'记一段回忆',exact:true}).click();
   await page.locator('input[type=file]').setInputFiles({
     name:'family.png',mimeType:'image/png',
     buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j0WQAAAAASUVORK5CYII=','base64'),

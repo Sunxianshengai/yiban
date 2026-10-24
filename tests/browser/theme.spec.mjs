@@ -2,16 +2,16 @@ import {test,expect} from '@playwright/test';
 import {signInAsNewAdmin} from './helpers.mjs';
 const BASE=process.env.PW_BASE_URL||'http://localhost:3711';
 
-test('主题色作用于全站',async({browser})=>{
+test('日间/夜间主题作用于全站',async({browser})=>{
   const ctx=await browser.newContext({baseURL:BASE,viewport:{width:1440,height:1000}});
   const page=await ctx.newPage();
   await signInAsNewAdmin(page,{name:'主题测试',prefix:'theme'});
 
-  const probe=async(accent)=>{
-    const r=await page.evaluate(async(a)=>{
-      await fetch('/api/auth/preferences',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({accent:a,fontScale:1,highContrast:false})});
+  const probe=async(theme)=>{
+    await page.evaluate(async t=>{
+      await fetch('/api/auth/preferences',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({theme:t,fontScale:1,highContrast:false})});
       return true;
-    },accent);
+    },theme);
     await page.reload();
     await page.waitForSelector('.app-shell',{timeout:30000});
     await page.waitForTimeout(400);
@@ -19,28 +19,33 @@ test('主题色作用于全站',async({browser})=>{
       const q=s=>document.querySelector(s);
       const cs=e=>e?getComputedStyle(e):null;
       const shell=q('.app-shell');
-      return {accent:shell.dataset.accent,
-        sidebarToken:cs(shell).getPropertyValue('--accent').trim(),
-        brand:cs(q('.brand-mark'))?.color,
+      return {theme:shell.dataset.theme,
+        htmlTheme:document.documentElement.dataset.theme||'',
+        brand:cs(shell).getPropertyValue('--brand').trim(),
+        brandMark:cs(q('.brand-mark'))?.backgroundColor,
         navActive:cs(q('.nav-item.active'))?.color,
         navActiveBg:cs(q('.nav-item.active'))?.backgroundColor,
-        sidebarBg:cs(q('.sidebar'))?.backgroundColor};
+        sidebarBg:cs(q('.sidebar'))?.backgroundColor,
+        bodyBg:cs(document.body)?.backgroundColor};
     });
   };
 
-  const seen={};
-  for(const a of ['sage','peach','lavender','blue','gold']){
-    seen[a]=await probe(a);
-    console.log(a.toUpperCase(),JSON.stringify(seen[a]));
-  }
-  // 每个主题下按钮/品牌/导航都应不同
-  // 深色主题下主按钮是固定白色，不再随主题变；签名改用品牌字色与导航激活底色
-  const sig=Object.values(seen).map(v=>[v.brand,v.navActive,v.navActiveBg].join('|'));
-  console.log('UNIQUE',new Set(sig).size,'of',sig.length);
-  expect(new Set(sig).size).toBe(5);
-  // 抽查一组具体值：peach 下品牌色应带暖色 rgb（曾因 home-refresh.css 写死绿色而全局失效）
-  expect(seen.peach.brand).not.toBe(seen.sage.brand);
-  // 深色主题的 peach 主题色是 #dfaf90，品牌字色应带其红分量
-  expect(seen.peach.brand).toContain('223');
+  const day=await probe('day');
+  const night=await probe('night');
+  console.log('DAY',JSON.stringify(day));
+  console.log('NIGHT',JSON.stringify(night));
+  expect(day.theme).toBe('day');
+  expect(night.theme).toBe('night');
+  expect(night.htmlTheme).toBe('night');
+  // 两个主题的整体观感必须不同：侧栏、正文底色、品牌色全部换掉
+  expect(day.sidebarBg).not.toBe(night.sidebarBg);
+  expect(day.bodyBg).not.toBe(night.bodyBg);
+  expect(day.brand).not.toBe(night.brand);
+  // 日间品牌是深松绿 #2E5147（rgb(46,81,71)）；夜间主操作是浅薄荷 #A5C7B4
+  expect(day.brand.toLowerCase()).toBe('#2e5147');
+  expect(night.brand.toLowerCase()).toBe('#a5c7b4');
+  // 品牌徽标的底色也跟着换：日间深绿底，夜间浅薄荷底
+  const lum=s=>{const [r,g,b]=s.match(/\d+(?:\.\d+)?/g)?.slice(0,3).map(Number)||[0,0,0];return 0.2126*r+0.7152*g+0.0722*b;};
+  expect(lum(day.brandMark)).toBeLessThan(lum(night.brandMark));
   await ctx.close();
 });

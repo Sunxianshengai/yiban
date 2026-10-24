@@ -33,3 +33,4 @@ public/perf-screenshots/
 .graphflow/
 .graphflow/
 .tmp-*
+.scratch/

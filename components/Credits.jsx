@@ -17,7 +17,7 @@ export function CreditBalance({api,onOpen}) {
     window.addEventListener('focus',load);
     return()=>{alive=false;window.removeEventListener('credits-changed',load);window.removeEventListener('focus',load);};
   },[api]);
-  return <button className="credits-balance" onClick={onOpen} aria-label="我的积分"><span>积分</span><strong>{wallet?wallet.balance:'—'}</strong>{wallet?.held>0&&<small>冻结 {wallet.held}</small>}</button>;
+  return <button className="credits-balance" onClick={onOpen} aria-label="积分余额"><span>积分</span><strong>{wallet?wallet.balance:'—'}</strong>{wallet?.held>0&&<small>冻结 {wallet.held}</small>}</button>;
 }
 
 export default function Credits({api,notify,isAdmin}) {

@@ -27,14 +27,14 @@ test('快速连点字号不回退、终态正确',async({browser})=>{
 
   const final=await rootPx();
   console.log('最终字号',final);
-  expect(Math.abs(final-21)).toBeLessThan(0.2);
+  expect(Math.abs(final-24)).toBeLessThan(0.2);
 
   // 刷新后服务端确认落库的也是最后一档
   await page.reload();
   await page.waitForSelector('.app-shell',{timeout:30000});
   const afterReload=await page.evaluate(()=>parseFloat(getComputedStyle(document.documentElement).fontSize));
   console.log('刷新后字号',afterReload);
-  expect(Math.abs(afterReload-21)).toBeLessThan(0.2);
+  expect(Math.abs(afterReload-24)).toBeLessThan(0.2);
 
   await page.getByRole('button',{name:/设置/}).first().click();
   await page.waitForTimeout(1200);

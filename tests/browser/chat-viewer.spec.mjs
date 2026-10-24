@@ -18,6 +18,13 @@ test('查看者能聊天，但改不了家伴的设定',async({browser})=>{
     data:{code:invite.code,name:'只看不写',email:`viewer-${Date.now()}@yiban.test`,password:'ViewerPass123!'},
   });
   expect(created.status()).toBe(201);
+  // 陪伴对话按成功回复计 1 积分：给查看者发一点测试额度。
+  const viewerId=(await created.json()).user.id;
+  const adminCtx=await browser.newContext({baseURL:BASE});
+  await adminCtx.request.post('/api/auth/login',{data:{email:'admin@yiban.test',password:'TestPassword123!'}});
+  const granted=await adminCtx.request.post('/api/credits/grant',{data:{userId:viewerId,amount:100,note:'查看者对话测试额度'}});
+  expect(granted.status()).toBe(201);
+  await adminCtx.close();
 
   await page.goto('/');
   await page.waitForSelector('.app-shell');

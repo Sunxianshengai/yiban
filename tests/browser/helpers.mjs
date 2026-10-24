@@ -63,15 +63,9 @@ export async function fundTestAccount(request,amount=1000) {
   expect(result.status(),'管理员为测试账号发放积分').toBe(201);
 }
 
-// 导航重排后，六个次要模块收进了顶栏「更多」下拉。测试要跳到这些页面时，
-// 统一走这里：先展开「更多」，再点目标项；一级模块直接点。
-const MORE_NAV=['回忆专辑','时间胶囊','人生推演','家庭成员','互动记录','设置','我的积分'];
+// 侧栏承载全部入口（不再有「更多」下拉），测试统一按名称点侧栏按钮。
 export async function clickNavItem(page,name){
   const nav=page.getByRole('navigation');
-  if(MORE_NAV.includes(name)) {
-    await nav.getByRole('button',{name:'更多',exact:true}).click();
-    await page.getByRole('menu',{name:'更多功能'}).getByRole('menuitem',{name:new RegExp(name)}).click();
-    return;
-  }
-  await nav.getByRole('button',{name:new RegExp(name)}).click();
+  await nav.getByRole('button',{name:new RegExp('^'+name)}).click();
 }
+
