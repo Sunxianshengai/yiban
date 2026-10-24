@@ -40,7 +40,6 @@ export default async function LandingPage() {
           <a href="#faq">常见问题</a>
         </nav>
         <div className="landing-actions">
-          <a className="landing-login" href="/app">登录</a>
           <a className="landing-cta" href="/app">进入忆伴</a>
         </div>
       </header>

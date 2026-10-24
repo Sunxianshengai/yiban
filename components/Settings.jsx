@@ -30,11 +30,13 @@ export function MemoryDetail({memory,state,api,notify,onEdit,onDelete,onConfirm,
 // 1) 字号预览走 requestAnimationFrame 直写根字号，不能放进 useEffect（会双次全量布局）；
 // 2) 不能再监听本地预览值去写字号（旧字号会把新值覆盖回去，就是「又跳回上一个字号」）；
 // 3) 唯一的权威字号写入源在 Page 组件（监听 activePrefs.fontScale）。
-export function Personalize({state,save,notify}) {
+export function Personalize({state,save,applyLocal,notify}) {
   const saved=state.account?.preferences||{fontScale:1,accent:'sage',highContrast:false};
   const [pending,setPending]=useState(null);const [busy,setBusy]=useState(false);
-  const prefs=pending||saved;
-  const set=(key,value)=>setPending(p=>({...prefs,...p,[key]:value}));
+  // 点选即通过 applyLocal 乐观写入父 state（版本号随之 +1），展示只认父 state——
+  // pending 只负责「还有哪些键没存到服务器」，不再参与展示，杜绝旧值闪回。
+  const prefs=saved;
+  const set=(key,value)=>{const next={...prefs,...pendingRef.current,[key]:value};applyLocal(next);setPending(p=>({...p,[key]:value}));};
   const pendingRef=useRef(pending);pendingRef.current=pending;
   const saveRef=useRef(save);saveRef.current=save;
   const flushRef=useRef(async()=>{});

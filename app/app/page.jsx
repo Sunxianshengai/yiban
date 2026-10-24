@@ -31,7 +31,11 @@ async function request(endpoint,options={}) {
 export default function Page() {
   const [state,setState]=useState(initialState);const [loaded,setLoaded]=useState(false);const [needsSetup,setNeedsSetup]=useState(false);const [remoteStorage,setRemoteStorage]=useState(false);const [error,setError]=useState('');const [page,setPage]=useState('home');const [mobileMoreOpen,setMobileMoreOpen]=useState(false);const [modal,setModal]=useState(null);const [toast,setToast]=useState(null);const [query,setQuery]=useState('');const [filter,setFilter]=useState('全部');const [statusFilter,setStatusFilter]=useState('全部状态');const [view,setView]=useState('grid');const [person,setPerson]=useState('');const [busy,setBusy]=useState(false);const [albumSelection,setAlbumSelection]=useState([]);const [draftStory,setDraftStory]=useState('');const [storyMode,setStoryMode]=useState('');const [calendarTitle,setCalendarTitle]=useState('');const [calendarDate,setCalendarDate]=useState('');const toastTimer=useRef(null);
   const notify=useCallback((message,type='success')=>{clearTimeout(toastTimer.current);setToast({message,type});toastTimer.current=setTimeout(()=>setToast(null),4500);},[]);
-  const refresh=useCallback(async()=>{const data=await request('/state');setState(data);setLoaded(true);setError('');return data;},[]);
+  // 偏好版本号：本地乐观写入时 +1；所有服务器回包（PATCH 确认、/state 快照）
+  // 都带着发起时的版本，落后即拒收偏好字段——否则晚到的旧账号数据会把
+  // 刚点下的字号/主题色再盖回旧值（点「偏大」闪回「大」的根源）。
+  const prefVersion=useRef(0);
+  const refresh=useCallback(async()=>{const version=prefVersion.current;const data=await request('/state');setState(s=>{if(prefVersion.current!==version&&s.account&&data.account)data.account={...data.account,preferences:s.account.preferences};return data;});setLoaded(true);setError('');return data;},[]);
   const load=useCallback(async()=>{setError('');setLoaded(false);try{const status=await request('/auth/status');setNeedsSetup(status.needsSetup);setRemoteStorage(Boolean(status.remoteStorage));if(status.user)await refresh();else setState(initialState);}catch(e){setError(e.message);}finally{setLoaded(true);}},[refresh]);
   useEffect(()=>{load();return()=>clearTimeout(toastTimer.current);},[load]);
   const close=useCallback(()=>{setModal(null);setBusy(false);window.speechSynthesis?.cancel();},[]);
@@ -62,11 +66,14 @@ export default function Page() {
   // 保存个性化偏好：返回更新后的 preferences，由调用方合并进 state.account。
   // 不再走 refresh()：/state 是整份快照，只为改一个偏好把 memories/albums/activity 全换一遍
   // 会让整页重新渲染（上传按钮因 busy 变 disabled 会丢焦点、图片重新校验、布局全失效）。
+  const applyLocalPrefs=useCallback(p=>{prefVersion.current+=1;setState(s=>s.account?{...s,account:{...s.account,preferences:p}}:s);},[]);
   const savePreferences=useCallback(async(values)=>{
+    applyLocalPrefs(values);
+    const version=prefVersion.current;
     const result=await request('/auth/preferences',{method:'PATCH',body:JSON.stringify(values)});
-    setState(s=>s.account?{...s,account:{...s.account,preferences:result.preferences}}:s);
+    setState(s=>{if(prefVersion.current!==version)return s;return s.account?{...s,account:{...s.account,preferences:result.preferences}}:s;});
     return result.preferences;
-  },[request]);
+  },[applyLocalPrefs,request]);
 
   if(!loaded)return <div className="loading-screen"><span className="brand-mark"><Icon name="leaf" size={35}/></span><h1>忆伴</h1><p>正在打开你的记忆小屋…</p><span className="spinner"/></div>;
   if(error)return <div className="loading-screen"><Icon name="info" size={40}/><h2>记忆小屋暂时无法打开</h2><p>{error}</p><Button onClick={load}>重新连接</Button></div>;
@@ -100,7 +107,7 @@ export default function Page() {
   {page==='feedback'&&<><div className="page-heading"><div><span className="eyebrow">MOMENTS OF CONNECTION</span><h1>互动记录</h1><p>记录被看见的回忆，珍藏家人回应的瞬间。</p></div><Button variant="secondary" icon="sun" onClick={()=>navigate('game')}>去人生推演走一段</Button></div><div className="feedback-stats">{[{label:'故事播放',value:playCount,icon:'play'},{label:'记忆回应',value:state.activity.filter(a=>a.type==='remember').length,icon:'check'},{label:'喜欢的瞬间',value:state.activity.filter(a=>a.type==='like').length,icon:'heart'},{label:'再次聆听',value:state.activity.filter(a=>a.type==='replay').length,icon:'repeat'}].map(item=><div key={item.label} className="feedback-stat"><span><Icon name={item.icon} size={24}/></span><strong>{item.value}</strong><p>{item.label}</p></div>)}</div><ChatEntry onOpen={()=>navigate('companion')}/><div className="feedback-columns"><section className="panel"><div className="section-title"><h2>最近的家庭动态</h2><span className="badge">真实操作记录</span></div>{state.activity.length?<div className="activity-list">{state.activity.slice(0,40).map(a=><div key={a.id} className="activity-item"><span className={`activity-icon ${['like','remember','replay'].includes(a.type)?'peach':'sage'}`}><Icon name={a.type==='like'?'heart':a.type==='remember'?'check':a.type==='play'?'play':a.type==='replay'?'repeat':a.type==='comment'?'message':'library'} size={17}/></span><div><p>{a.text}</p><span>{formatDate(a.createdAt)}</span></div>{a.memoryId&&state.memories.some(m=>m.id===a.memoryId)&&<button className="text-link" onClick={()=>open(state.memories.find(m=>m.id===a.memoryId))}>查看<Icon name="arrow" size={14}/></button>}</div>)}</div>:<Empty icon="heart" title="还没有互动记录" description="在记忆详情里播放一段故事，或点击“我记得”，这里就会留下记录。"/>}</section><aside className="panel feedback-favorites"><h2>家人珍藏的回忆</h2><p className="muted">由家人收藏，方便下次一起重温</p>{state.memories.filter(m=>m.favorite).map(m=><button key={m.id} onClick={()=>open(m)}><Cover memory={m}/><span><strong>{m.title}</strong><small>{m.year}年 · {m.theme}</small></span><Icon name="heart" size={15}/></button>)}<div className="inline-notice"><Icon name="info"/><span>这些数据只表示软件操作，不用于推断认知能力或情绪状态。</span></div></aside></div></>}
 
   {page==='settings'&&<><div className="page-heading"><div><span className="eyebrow">A COMFORTABLE SPACE</span><h1>设置</h1><p>让这个记忆小屋，更适合你的家人。</p></div></div><div className="account-actions"><span><Icon name="people" size={17}/>{state.account.name} · {ROLE_LABELS[state.account.role]}</span>{state.account.role==='admin'&&<Button variant="secondary" icon="plus" onClick={openAccounts}>管理登录账号</Button>}<Button variant="ghost" icon="logout" onClick={signOut}>退出登录</Button></div><div className="inline-notice"><Icon name="shield"/><span>每位受邀家人使用自己的邮箱和密码登录。管理员生成邀请码，编辑者可整理内容，查看者只浏览已发布记忆。</span></div>
-  <Personalize state={state} save={savePreferences} notify={notify}/>
+  <Personalize state={state} save={savePreferences} applyLocal={applyLocalPrefs} notify={notify}/>
   <Settings state={state} request={request} refresh={refresh} notify={notify}/></>}
   <footer className="app-footer"><span><Icon name="leaf" size={14}/>忆伴 · 让每一份回忆，都有温度</span><span>新生杯作品原型 · 家庭记忆与陪伴工具</span></footer></main></div>
   <nav className="mobile-nav" aria-label="手机导航">{['home','library','growth','companion'].map(id=>{const item=NAV.find(entry=>entry.id===id);return <button key={id} className={`mobile-nav-item ${page===id?'active':''}`} aria-label={item.label} aria-current={page===id?'page':undefined} onClick={()=>navigate(id)}><Icon name={item.icon} size={22}/><span>{item.label}</span></button>;})}<button className={`mobile-nav-item ${mobileMoreOpen||!['home','library','growth','companion'].includes(page)?'active':''}`} aria-label="更多功能" aria-expanded={mobileMoreOpen} onClick={()=>setMobileMoreOpen(value=>!value)}><Icon name="grid" size={22}/><span>更多</span></button></nav>

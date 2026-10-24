@@ -213,8 +213,6 @@ body{background:#171b26;color:var(--ink);letter-spacing:0}
 .landing-links a{padding:8px 15px;border-radius:999px;color:var(--muted);font-size:.95rem;text-decoration:none;transition:color .16s,background .16s}
 .landing-links a:hover{color:var(--ink);background:var(--sage)}
 .landing-actions{display:flex;align-items:center;gap:16px}
-.landing-login{color:var(--muted);font-size:.92rem;text-decoration:none}
-.landing-login:hover{color:var(--ink)}
 .landing-cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#edf0f6;color:#12161f;border-radius:999px;padding:11px 22px;font-weight:600;font-size:.95rem;text-decoration:none;transition:background .16s,transform .16s;white-space:nowrap}
 .landing-cta:hover{background:#dfe4ee;transform:translateY(-1px)}
 .landing-cta.big{padding:15px 28px;font-size:1.05rem}
@@ -265,6 +263,5 @@ body{background:#171b26;color:var(--ink);letter-spacing:0}
 @media(max-width:560px){
   .landing-grid{grid-template-columns:1fr}
   .landing-nav{height:60px}
-  .landing-login{display:none}
   .landing-window{left:20px;right:20px;top:92px}
 }
