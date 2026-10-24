@@ -1,4 +1,5 @@
 import {test,expect,request as apiRequest} from '@playwright/test';
+import {clickNavItem} from './helpers.mjs';
 
 // 不再硬编码 :3100 —— 之前它要求另起一个 3100 端口的服务，本机没起就 ECONNREFUSED。
 // 统一跟随 PW_BASE_URL（默认与 playwright.config.mjs 的 3711 一致）。
@@ -49,7 +50,7 @@ test('first run, invitations, roles, media authorization and sign out',async({br
   await page.getByLabel('邮箱').fill('admin@yiban.test');await page.getByLabel('密码').fill('TestPassword123!');
   await page.getByRole('button',{name:'登录',exact:true}).click();
   await expect(page.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
-  await page.getByRole('navigation').getByRole('button',{name:'设置'}).click();
+  await clickNavItem(page,'设置');
   await page.getByRole('button',{name:'管理登录账号'}).click();
   await expect(page.getByRole('dialog')).toContainText('小林');
   await page.getByRole('button',{name:'关闭窗口'}).click();

@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {cleanupTestMemories} from './helpers.mjs';
+import {cleanupTestMemories,clickNavItem} from './helpers.mjs';
 
 // 全年龄段的「成长记录」页。
 //
@@ -76,7 +76,7 @@ test('时间胶囊：没到期的内容谁都看不到，连写它的人也看�
   const member=await created.json();
   try{
     await page.reload();
-    await page.getByRole('button',{name:'时间胶囊',exact:true}).click();
+    await clickNavItem(page,'时间胶囊');
     await expect(page.getByRole('heading',{name:'时间胶囊',exact:true})).toBeVisible();
     await page.getByRole('button',{name:'写一封'}).click();
     await page.getByLabel(/标题/).fill('给你十八岁那天');

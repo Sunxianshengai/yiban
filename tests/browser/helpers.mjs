@@ -53,3 +53,12 @@ export async function signInAsNewAdmin(page,{name='测试家长',prefix='u'}={})
   await page.waitForSelector('.app-shell',{timeout:30000});
   return email;
 }
+
+// 导航重排后，六个次要模块收进了顶栏「更多」下拉。测试要跳到这些页面时，
+// 统一走这里：先展开「更多」，再点目标项；一级模块直接点。
+const MORE_NAV=['回忆专辑','时间胶囊','人生推演','家庭成员','互动记录','设置'];
+export async function clickNavItem(page,name){
+  const nav=page.getByRole('navigation');
+  if(MORE_NAV.includes(name)) await nav.getByRole('button',{name:'更多',exact:true}).click();
+  await nav.getByRole('button',{name:new RegExp(name)}).click();
+}

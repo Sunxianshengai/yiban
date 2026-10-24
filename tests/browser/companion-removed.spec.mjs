@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {signInAsNewAdmin} from './helpers.mjs';
+import {signInAsNewAdmin,clickNavItem} from './helpers.mjs';
 const BASE='http://localhost:3711';
 
 test('陪伴时光已整页移除，主端功能完好',async({browser})=>{
@@ -18,11 +18,11 @@ test('陪伴时光已整页移除，主端功能完好',async({browser})=>{
 
   // 主端各页仍可打开
   for(const name of ['记忆库','回忆专辑','家庭成员','互动记录','设置']){
-    await page.getByRole('button',{name:new RegExp(name)}).first().click();
+    await clickNavItem(page,name);
     await page.waitForTimeout(350);
     console.log('PAGE',name,'ok');
   }
-  await page.getByRole('button',{name:/设置/}).first().click();
+  await clickNavItem(page,'设置');
   await page.waitForTimeout(400);
   await page.screenshot({path:'C:/Users/25641/AppData/Local/Temp/settings-after.png',fullPage:true});
 

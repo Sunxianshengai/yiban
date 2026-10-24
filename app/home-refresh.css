@@ -320,3 +320,21 @@ img.avatar{object-fit:cover;padding:0}
   .auth-quote{font-size:1.08rem;min-height:0}
   .auth-panel{padding:28px 20px 40px}
 }
+
+/* 顶栏「更多」下拉：重点模块之外的入口收在这里，每项一句话说明。 */
+.topnav-more{position:relative}
+.topnav-more-toggle svg{transition:transform .2s ease}
+.topnav-more-toggle[aria-expanded="true"] svg{transform:rotate(180deg)}
+.topnav-more-panel{position:fixed;width:308px;padding:9px;display:grid;gap:3px;background:#171b26;border:1px solid #2a3142;border-radius:16px;box-shadow:0 24px 60px #00000073;z-index:120;animation:more-in .18s ease both}
+@keyframes more-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.topnav-more-item{display:flex;align-items:center;gap:12px;min-height:56px;padding:9px 11px;border-radius:11px;text-align:left;background:transparent;border:0;cursor:pointer;transition:background .18s ease}
+.topnav-more-item:hover{background:#212836}
+.topnav-more-icon{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border-radius:10px;background:#212836;color:#b6ddcd}
+.topnav-more-item:hover .topnav-more-icon{background:#2a3142}
+.topnav-more-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
+.topnav-more-copy strong{font-size:.95rem;color:#e7eaf2;font-weight:650}
+.topnav-more-copy small{font-size:.76rem;color:#8b91a4;line-height:1.45}
+.topnav-more-dot{width:7px;height:7px;border-radius:50%;background:#dfaf90;margin-left:auto;flex:0 0 auto}
+.mobile-more .mobile-more-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
+.mobile-more .mobile-more-copy strong{font-size:.91rem}
+.mobile-more .mobile-more-copy small{font-size:.72rem;color:#8b91a4;line-height:1.4}

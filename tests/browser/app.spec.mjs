@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 import fs from 'node:fs';
-import {cleanupTestMemories} from './helpers.mjs';
+import {cleanupTestMemories,clickNavItem} from './helpers.mjs';
 
 test.beforeEach(async({page,request})=>{
   const status=await (await request.get('/api/auth/status')).json();
@@ -109,7 +109,7 @@ test('desktop and mobile layouts, navigation and dialogs render without errors',
   // 每个导航页都要真的渲染出内容。人生推演是大界面（.life-shell），
   // 其余页面用统一的 .page-heading，所以这里两种都认。
   for(const name of ['陪伴对话','记忆库','回忆专辑','人生推演','家庭成员','互动记录','设置']){
-    await page.getByRole('navigation').getByRole('button',{name:new RegExp(name)}).click();
+    await clickNavItem(page,name);
     await expect(page.locator('.page-heading h1, .life-shell').first()).toBeVisible();
   }
   await page.getByRole('navigation').getByRole('button',{name:'首页'}).click();

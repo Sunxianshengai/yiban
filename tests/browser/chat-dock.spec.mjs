@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {signInAsNewAdmin} from './helpers.mjs';
+import {signInAsNewAdmin,clickNavItem} from './helpers.mjs';
 
 test.beforeEach(async ({page})=>{await signInAsNewAdmin(page,{name:'测试家长',prefix:'dock'});});
 
@@ -23,7 +23,7 @@ test('右下角一直有对话框：默认收起，点开能聊，换页还在',
   await expect(panel.locator('.companion-line.companion').last()).toBeVisible({timeout:20000});
 
   // 换到另一页，框还开着，刚才说的话也还在（同一个会话线程）。
-  await page.getByRole('button',{name:'回忆专辑'}).click();
+  await clickNavItem(page,'回忆专辑');
   await expect(page.getByRole('dialog',{name:'聊天框'})).toBeVisible();
   await expect(page.getByRole('dialog',{name:'聊天框'}).locator('.companion-line.user')).toHaveCount(1);
 
