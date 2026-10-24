@@ -279,3 +279,44 @@ img.avatar{object-fit:cover;padding:0}
 .upload-avatar-btn:hover{border-color:var(--accent);color:var(--accent)}
 .account-list input{max-width:180px;padding:6px 10px;font-size:.8571rem}
 .account-list .text-link{padding:4px 2px;gap:4px}
+
+/* 登录页：全幅照片舞台 + 悬浮拍立得 + 玻璃拟态表单卡。 */
+.auth-screen{grid-template-columns:minmax(0,1.15fr) minmax(400px,.85fr);background:#0b0e14;overflow:hidden;--accent:#6f9c85;--green-dark:#48705c;--sage:#22302a}
+.auth-stage{position:relative;display:flex;flex-direction:column;justify-content:space-between;gap:18px;padding:clamp(24px,4vw,52px);overflow:hidden;background:url('/auth-bg/hands-photos.jpg') center/cover no-repeat #0b0e14}
+.auth-stage::before{content:'';position:absolute;inset:0;background:linear-gradient(115deg,#0b0e14f5 0%,#0b0e14cc 45%,#0b0e1499 100%)}
+.auth-stage>*{position:relative;z-index:1}
+.auth-brand{display:flex;align-items:center;gap:12px;font-family:var(--serif);font-size:1.5rem;color:#e8ecf5;letter-spacing:.06em}
+.auth-brand .brand-mark{width:42px;height:42px;border-radius:12px;background:#ffffff1c;color:#dfe8dc;backdrop-filter:blur(6px);transform:none}
+.auth-quote{min-height:2.7em;font-family:var(--serif);font-size:clamp(1.25rem,2vw,1.7rem);color:#e3e7f0;line-height:1.6;margin:0;animation:auth-quote-in .7s ease both}
+@keyframes auth-quote-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.auth-polaroids{position:relative;flex:1;min-height:330px;margin:14px 0 6px}
+.auth-polaroid{position:absolute;width:min(235px,24vw);padding:9px 9px 0;background:#f4f1ea;border-radius:4px;box-shadow:0 24px 48px #00000078;transition:transform .45s ease,box-shadow .35s ease;animation:auth-float 7s ease-in-out infinite;transform:translate(var(--px,0),var(--py,0)) rotate(var(--rot,0deg))}
+.auth-polaroid img{width:100%;aspect-ratio:1.35;object-fit:cover;border-radius:2px;display:block}
+.auth-polaroid figcaption{padding:10px 4px 12px;font-size:.78rem;color:#5c554a;text-align:center;font-family:var(--serif)}
+.auth-polaroid-0{left:7%;top:8%;--rot:-7deg}
+.auth-polaroid-1{left:38%;top:40%;--rot:4deg;animation-delay:-2.3s;width:min(205px,21vw)}
+.auth-polaroid-2{left:15%;top:60%;--rot:-2deg;animation-delay:-4.6s;width:min(185px,19vw)}
+.auth-polaroid:hover{transform:translate(var(--px,0),var(--py,0)) rotate(0deg) scale(1.06);z-index:2;box-shadow:0 30px 62px #00000099;animation-play-state:paused}
+@keyframes auth-float{0%,100%{translate:0 0}50%{translate:0 -12px}}
+@media(prefers-reduced-motion:reduce){.auth-polaroid{animation:none}.auth-quote{animation:none}}
+.auth-stage-note{font-size:.75rem;color:#b9c0cf;opacity:.85}
+.auth-panel{display:grid;place-items:center;padding:44px clamp(24px,4vw,56px);background:radial-gradient(900px 620px at 72% 28%,#141b28,#0b0e14)}
+.auth-box{width:min(430px,100%);padding:clamp(28px,3.4vw,44px);background:#151a26e8;border:1px solid #2a3142;border-radius:22px;box-shadow:0 30px 80px #00000066;backdrop-filter:blur(14px)}
+.auth-box .eyebrow{color:#8fa4b8}
+.auth-box h2{color:#eef1f8}
+.auth-box>p{color:#9aa3b8}
+.auth-box input{min-height:47px;background:#10141d;border-color:#2c3344;color:#e7eaf2}
+.auth-box input:focus{border-color:#7fa5b8;box-shadow:0 0 0 3px #7fa5b826}
+.auth-submit{box-shadow:0 14px 30px #356b5540;transition:transform .2s ease,box-shadow .2s ease}
+.auth-submit:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 18px 36px #356b5559}
+.auth-switch button{color:#a8b3c9}
+.auth-switch button:hover{color:#e6eaf4}
+.auth-note{border-top-color:#2a3142;color:#8b93a8}
+.auth-error{background:#241719;border-color:#4a2c2c}
+@media(max-width:900px){
+  .auth-screen{grid-template-columns:1fr;overflow:auto}
+  .auth-stage{padding:22px 24px 26px;gap:10px}
+  .auth-polaroids{display:none}
+  .auth-quote{font-size:1.08rem;min-height:0}
+  .auth-panel{padding:28px 20px 40px}
+}
