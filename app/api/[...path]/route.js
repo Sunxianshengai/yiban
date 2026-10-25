@@ -140,13 +140,14 @@ export async function GET(request,{params}) {
       const data=await snapshot();
       if(!accountRole(auth.user,'editor')) {
         data.memories=data.memories.filter(m=>m.status==='confirmed');
-        data.activity=data.activity.filter(a=>a.type!=='comment');
+        const visibleIds=new Set(data.memories.map(m=>m.id));
+        data.activity=data.activity.filter(a=>!a.memoryId||visibleIds.has(a.memoryId));
       }
       return json({...data,account:auth.user,canEdit:accountRole(auth.user,'editor')});
     }
     if(parts[0]==='search') {
       const q=new URL(request.url).searchParams.get('q');
-      return json({memories:searchMemories((await all('memories')).filter(m=>m.status==='confirmed'),q),mode:'keyword'});
+      return json({memories:searchMemories((await all('memories')).filter(m=>m.status==='confirmed'),q,await all('members')),mode:'keyword'});
     }
     if(parts[0]==='voice'&&parts[1]==='status') {
       return json({configured:voiceConfigured(),provider:'cosyvoice'});
@@ -501,13 +502,13 @@ async function handlePost(request,{params},billing) {
     if(parts[0]==='comments') {
       const memory=await get('memories',body.memoryId);if(!memory) throw new Error('记忆不存在');
       const comment=String(body.text||'').trim().slice(0,1000);if(!comment) throw new Error('请输入留言');
-      const activity={id:randomUUID(),familyId:'family',userId:auth.user.id,type:'comment',text:`给「${memory.title}」留下了留言`,comment,memoryId:memory.id,createdAt:new Date().toISOString()};
+      const activity={id:randomUUID(),familyId:'family',userId:auth.user.id,actorName:auth.user.name,type:'comment',text:`给「${memory.title}」留下了留言`,comment,memoryId:memory.id,createdAt:new Date().toISOString()};
       return json(await put('activity',activity),201);
     }
     if(parts[0]==='memories') {
       // subjectId（这段是谁的回忆）由 tidyMemory 收好了，这里只补「谁记下的」。
       const memory=tidyMemory(body);
-      memory.recorderId=auth.user.id;
+      memory.recorderId=auth.user.id;memory.recorderName=auth.user.name;
       for(const key of ['cover','audio','video']) if(body[key]) {
         if(!MEDIA_PATH_RE.test(body[key])) throw new Error('素材地址不合法');
         memory[key]=body[key];

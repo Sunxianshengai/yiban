@@ -3,6 +3,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Button} from './UI';
 import Icon from './Icon';
+import {creditQuote} from '../lib/credit-prices.mjs';
 
 // 让回忆主人「自己讲」这一段记忆。
 //
@@ -14,12 +15,6 @@ import Icon from './Icon';
 // 一个诚实的约束：这是 AI 合成的声音，画面上必须一直挂着这句话。
 
 const KEN_BURNS=['life-portrait-zoom-in','life-portrait-zoom-out','life-portrait-drift'];
-
-function formatCost(resolution,seconds){
-  // 与官方价目表一致：480P 0.3 元/秒，720P 0.6 元/秒。只用来给用户一个心理预期。
-  const per={ '480P':0.3,'720P':0.6 }[resolution]||0.3;
-  return (per*seconds).toFixed(seconds*per%1===0?0:1);
-}
 
 export default function MemoryNarrator({memory,api,notify,canEdit}){
   const [info,setInfo]=useState(null);
@@ -145,7 +140,7 @@ export default function MemoryNarrator({memory,api,notify,canEdit}){
 
     {error?<p className="form-error">{error}</p>:null}
 
-    {!info?.voiceEnabled&&!info?.aiEnabled&&!loading?<p className="narrator-hint">还没配置模型与声音服务，这个功能需要管理员先把密钥填上。</p>:null}
+    {!info?.voiceEnabled&&!info?.aiEnabled&&!loading?<p className="narrator-hint">合成讲述暂未开启，请联系管理员。你仍可以阅读故事和播放原声。</p>:null}
 
     {!narrator&&!loading?<p className="narrator-hint">还没有家人复刻过声音。先到「家庭成员」里给一位家人复刻声音，才能让 TA 来讲这段回忆。</p>:null}
 
@@ -194,7 +189,7 @@ export default function MemoryNarrator({memory,api,notify,canEdit}){
             {[3,5,8,10].map(item=><option key={item} value={item}>{item} 秒</option>)}
           </select>
         </label>
-        <span className="narrator-cost">预计约 {formatCost(resolution,seconds)} 元</span>
+        <span className="narrator-cost">本次最多 {creditQuote('/narrate/video',{resolution,duration:seconds}).amount} 积分</span>
       </div>:null}
 
       {video?.status==='ready'&&video.url

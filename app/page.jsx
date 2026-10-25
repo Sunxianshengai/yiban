@@ -134,9 +134,9 @@ export default async function LandingPage() {
               <a className="landing-fcard is-tint tint-blue compact" href="/app">
                 <span className="f-icon"><Icon name="waypoints" size={22} /></span>
                 <div className="fbody">
-                  <span className="tag">人生推演</span>
-                  <h3>把往事串成一条线</h3>
-                  <span className="go">试试推演 <Icon name="arrow" size={15} /></span>
+                  <span className="tag">问题引导</span>
+                  <h3>从一个问题，记下家人的原话</h3>
+                  <span className="go">问问家人 <Icon name="arrow" size={15} /></span>
                 </div>
               </a>
             </div>
@@ -147,8 +147,8 @@ export default async function LandingPage() {
                 <span className="f-icon"><Icon name="mic" size={26} /></span>
                 <div>
                   <span className="tag">陪伴对话</span>
-                  <h3>听故事、聊往事，像家人在身边</h3>
-                  <p>播放、暂停、连续收听，可以回应「我记得」「再听一次」；字号与朗读速度都能调。</p>
+                  <h3>聊今天，也找回家里的旧事</h3>
+                  <p>家伴参考已经核对的家庭记忆，回答附上来源。AI 陪伴，不代表任何真实家人。</p>
                   <span className="go">开始陪伴 <Icon name="arrow" size={15} /></span>
                 </div>
               </div>
@@ -157,9 +157,9 @@ export default async function LandingPage() {
               <img className="bgimg" src="/auth-bg/album-warm.jpg" alt="" />
               <span className="shade" aria-hidden="true" />
               <div className="fbody">
-                <span className="tag">成长记录</span>
-                <h3>看着孩子们一年年长大</h3>
-                <p>按人物归档的高光时刻：生日、第一步、毕业礼，接成一整条成长线。</p>
+                <span className="tag">家人故事</span>
+                <h3>每一位家人，都有自己的故事</h3>
+                <p>把旅行、毕业、团聚和普通日子，沿着人物与年份慢慢展开。</p>
                 <span className="go">查看成长线 <Icon name="arrow" size={15} /></span>
               </div>
             </a>
@@ -267,7 +267,7 @@ export default async function LandingPage() {
           ))}
         </div>
         <div className="landing-footer-base">
-          <span>© 2026 忆伴 · 家庭记忆与陪伴 · 新生杯作品原型</span>
+          <span>© 2026 忆伴 · 家庭记忆与陪伴</span>
           <span>AI 生成内容明确标注 · 扣费前必先说明</span>
         </div>
       </footer>

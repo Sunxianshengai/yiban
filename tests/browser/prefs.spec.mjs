@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 import {signInAsNewAdmin} from './helpers.mjs';
-const BASE='http://localhost:3711';
+const BASE=process.env.PW_BASE_URL||'http://localhost:3711';
 
 test('偏好变更后字号与主题真正生效',async({browser})=>{
   const ctx=await browser.newContext({baseURL:BASE,viewport:{width:1440,height:1000}});

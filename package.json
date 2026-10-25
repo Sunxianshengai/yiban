@@ -10,7 +10,8 @@
     "electron": "electron .",
     "desktop:pack": "electron-builder --win nsis",
     "test": "node --test tests/*.test.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:core": "playwright test tests/browser/modern-product.spec.mjs tests/browser/auth.spec.mjs tests/browser/credits.spec.mjs tests/browser/prefs.spec.mjs --project=functional"
   },
   "dependencies": {
     "@fontsource-variable/noto-sans-sc": "^5.3.1",

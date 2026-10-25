@@ -18,7 +18,6 @@ import {Avatar,Button,Modal} from './UI';
  * 视觉上不用气泡尾巴：这是围坐说话，不是跟陌生人聊天。
  */
 
-const DOCK_KEY = 'yiban-companion-dock';
 const COMPANION = 'companion';
 const COMPANION_SUGGESTIONS = ['今天有点累', '讲讲家里的事', '你还记得那年夏天吗'];
 
@@ -30,7 +29,7 @@ function useDirectory(api) {
 
   const load = useCallback(async () => {
     try {
-      const [companion, roles] = await Promise.all([api('/companion'), api('/role')]);
+      const [companion, roles] = await Promise.all([api('/companion'), Promise.resolve({})]);
       setDirectory({
         companion: companion.companion || { name: '家伴', personaId: 'gentle', relation: '家里人' },
         companionOpening: companion.opening || null,
@@ -221,76 +220,6 @@ function sourcesBlock(sources, onOpenMemory) {
 }
 
 /** 左栏：家伴 + 三十张角色卡。同一份筛选逻辑给整页版和浮层版共用。 */
-function Rail({ d, active, onPick, compact = false }) {
-  const [kind, setKind] = useState('');
-  const [concern, setConcern] = useState('');
-  const [query, setQuery] = useState('');
-  const directory = d.directory;
-  const companion = directory.companion;
-  const persona = (directory.personas || []).find(item => item.id === companion.personaId);
-
-  const keyword = query.trim().toLowerCase();
-  const list = (directory.roles || []).filter(item => {
-    if (kind && item.kind !== kind) return false;
-    if (concern && !(item.concerns || []).includes(concern)) return false;
-    if (keyword && !`${item.name}${item.who}${item.blurb}`.toLowerCase().includes(keyword)) return false;
-    return true;
-  });
-
-  return <div className={`chat-rail ${compact ? 'compact' : ''}`}>
-    {!compact && <div className="chat-rail-head">
-      <h2>跟谁说说话</h2>
-      <p>家伴记得这个家的事；下面那些人是身份原型，借的是脾气，不是某个真人。</p>
-    </div>}
-
-    {!compact && <input className="rail-search" value={query} onChange={event => setQuery(event.target.value)}
-      placeholder="找谁说话…" aria-label="找谁说话" maxLength={24} />}
-
-    <button className={`chat-companion-card ${active === COMPANION ? 'active' : ''}`} onClick={() => onPick(COMPANION)}>
-      <Avatar name={companion.name} color={companion.color || 'sage'} size="avatar-lg" />
-      <span className="chat-companion-text">
-        <strong>{companion.name}</strong>
-        <small>{persona ? persona.name : '记得这个家的人'}{companion.relation ? ` · ${companion.relation}` : ''}</small>
-      </span>
-      {directory.companionThreadCount > 0 && <span className="role-badge">聊过</span>}
-    </button>
-
-    <div className="kind-row">
-      <button className={`kind-tab ${kind === '' ? 'active' : ''}`} onClick={() => setKind('')}>都在这儿</button>
-      {(directory.kinds || []).map(item => (
-        <button key={item.id} className={`kind-tab ${kind === item.id ? 'active' : ''}`} onClick={() => setKind(item.id)} title={item.blurb}>{item.label}</button>
-      ))}
-    </div>
-    <div className="concern-row">
-      <button className={`concern-chip ${concern === '' ? 'active' : ''}`} onClick={() => setConcern('')}>都能聊</button>
-      {(directory.concerns || []).map(item => (
-        <button key={item.id} className={`concern-chip ${concern === item.id ? 'active' : ''}`} onClick={() => setConcern(item.id)} title={item.blurb}>{item.label}</button>
-      ))}
-    </div>
-
-    <div className="role-list">
-      {list.map(item => {
-        const thread = d.used.get(item.id);
-        return <button key={item.id} className={`role-card ${thread ? 'has-thread' : ''} ${active === item.id ? 'active' : ''}`} onClick={() => onPick(item.id)}>
-          <Avatar name={item.name} color={item.color} />
-          <span className="role-card-text">
-            <strong>{thread?.name || item.name}</strong>
-            <small className="role-who">{item.who}</small>
-            <small className="role-blurb">{item.blurb}</small>
-          </span>
-          {thread && <span className="role-badge">聊过 {thread.count} 句</span>}
-        </button>;
-      })}
-    </div>
-    {list.length === 0 && <p className="roles-hint">这个组合下暂时没有人。换个分类，或者点「都在这儿」。</p>}
-    {(kind === 'book' || kind === 'history') && <p className="roles-footnote"><Icon name="info" size={14}/>
-      {kind === 'book' ? '话是照着书里写定的性子说的——不是原文，也不是作者写的那句话。' : '话是照着史书里的记载推出来的——不是本人真说过的话。'}
-    </p>}
-    {!directory.aiEnabled && <p className="roles-footnote warn"><Icon name="info" size={14}/>还没接模型，选得了人但说不了话。</p>}
-  </div>;
-}
-
-/** 右栏：跟选中的这个人说话。 */
 function Conversation({ c, d, notify, onOpenMemory, canEdit }) {
   const directory = d.directory;
   const [editing, setEditing] = useState(false);
@@ -331,7 +260,6 @@ function Conversation({ c, d, notify, onOpenMemory, canEdit }) {
     {c.error && !c.setting && <p className="form-error"><Icon name="info" size={15}/>{c.error}</p>}
 
     <header className="companion-head">
-      <button className="role-back" onClick={c.leave} aria-label="换个人说话"><Icon name="back" size={18}/></button>
       <Avatar name={name} color={c.setting?.color || role?.color || 'sage'} />
       <div>
         <h2>{name}<em>{isCompanion ? (c.setting?.relation || '家里人') : (role?.who || '')}</em></h2>
@@ -350,7 +278,7 @@ function Conversation({ c, d, notify, onOpenMemory, canEdit }) {
 
     {!directory.aiEnabled && <p className="companion-note"><Icon name="info" size={15}/>
       {isCompanion
-        ? '还没有接入模型，家伴暂时说不了话。在环境变量里填上模型密钥就能开口——它没有预置台词，每句话都是现写的。'
+        ? '还没有接入模型，家伴暂时说不了话。请联系管理员开启服务；已经保存的家庭记忆仍可正常查看。'
         : '还没有接入模型，这些人暂时说不了话。在环境变量里填上密钥就能开口——他们没有预置台词，话全部现写。'}
     </p>}
     {isCompanion && c.setting?.useMemories && <p className="companion-note"><Icon name="info" size={15}/>它读得到这个家已确认的记忆，下面提到的事都能点回原文核对。</p>}
@@ -416,120 +344,20 @@ function Conversation({ c, d, notify, onOpenMemory, canEdit }) {
 }
 
 /** 还没选人的时候，右栏说什么。 */
-function Placeholder({ d }) {
-  const directory = d.directory;
-  const companion = directory.companion;
-  const persona = (directory.personas || []).find(item => item.id === companion.personaId);
-  return <div className="chat-intro">
-    <h2>今天想找谁说说话</h2>
-    <p>这些人都不认识你，也不会替你拿主意。左边挑一个，用 TA 的性子把事说开——有时候「我妈会怎么说」比「一个 AI 怎么说」管用。</p>
-    <div className="chat-intro-cards">
-      <div className="chat-intro-card">
-        <span className="little-leaf"><Icon name="message" size={18}/></span>
-        <strong>{companion.name}：记得这个家的那一个</strong>
-        <small>{persona ? persona.name : '记得这个家的人'}。它读这个家已确认的记忆，提到的事都能点回原文核对。</small>
-      </div>
-      <div className="chat-intro-card">
-        <span className="little-leaf"><Icon name="roles" size={18}/></span>
-        <strong>三十张角色卡：借的是脾气，不是真人</strong>
-        <small>身边的人、书里的人、史书里的人。默认不碰你家的记忆，需要时自己打开开关。</small>
-      </div>
-    </div>
-    <p className="roles-footnote"><Icon name="info" size={14}/>家伴和角色卡是两个入口、同一张对话框——它们都不是真人，也不会替你做决定。</p>
-  </div>;
-}
-
-export default function Chat({ api, notify, onOpenMemory, canEdit = false }) {
-  const d = useDirectory(api);
-  const c = useConversation(api, d.reload);
-
-  if (d.error && !d.directory) return <div className="companion-fallback"><Icon name="info" size={30}/><p>{d.error}</p><Button onClick={d.reload}>再试一次</Button></div>;
-  if (!d.directory) return <div className="companion-loading"><span className="spinner"/><p>正在把这些人请出来…</p></div>;
-
-  return <div className="chat-shell">
-    <aside className="chat-rail-panel">
-      <Rail d={d} active={c.active} onPick={c.open} />
-    </aside>
-    <section className="chat-main-panel">
-      {c.active
-        ? <Conversation c={c} d={d} notify={notify} onOpenMemory={onOpenMemory} canEdit={canEdit} />
-        : <Placeholder d={d} />}
-    </section>
-  </div>;
-}
-
-/** 右下角常驻的聊天框：任何页面都能随时说一句。 */
-export function ChatDock({ api, hidden = false, onExpand, onOpenMemory }) {
-  const [open, setOpen] = useState(false);
-  const d = useDirectory(api);
-  const c = useConversation(api, d.reload);
-  const inputWrap = useRef(null);
-
-  // 默认收起：不请自来的面板会挡住页面内容。展开过一次就记住。
-  useEffect(() => { try { if (localStorage.getItem(DOCK_KEY) === 'open') setOpen(true); } catch {} }, []);
-  const write = next => { try { localStorage.setItem(DOCK_KEY, next ? 'open' : 'closed'); } catch {} };
-  const toggle = () => setOpen(value => { const next = !value; write(next); return next; });
-
-  useEffect(() => {
-    if (!open) return;
-    const handle = event => { if (event.key === 'Escape') setOpen(false); };
-    document.addEventListener('keydown', handle);
-    return () => document.removeEventListener('keydown', handle);
-  }, [open]);
-
-  // 展开时默认落在「家伴」上：浮层是「刚才那句话想跟它说一声」，不是来挑角色的。
-  useEffect(() => { if (open && !c.active) c.open(COMPANION); }, [open]);
-  useEffect(() => { if (open) inputWrap.current?.querySelector('input')?.focus(); }, [open, c.active]);
-
-  if (hidden) return null;
-
-  const directory = d.directory;
-  const isCompanion = c.active === COMPANION;
-  const role = !isCompanion && directory ? (directory.roles || []).find(item => item.id === c.active) || null : null;
-  const name = c.setting?.name || role?.name || directory?.companion?.name || '家伴';
-
-  return <div className={`companion-dock ${open ? 'open' : ''}`}>
-    {open && <section className="companion-dock-panel" role="dialog" aria-label="聊天框" ref={inputWrap}>
-      <header className="companion-dock-head">
-        <Avatar name={name} color={c.setting?.color || role?.color || 'sage'} />
-        <div><strong>{name}</strong><small>{isCompanion ? '记得这个家的人' : (role?.who || '')}</small></div>
-        <div className="companion-dock-actions">
-          {onExpand && <button className="icon-button" aria-label="展开到整页" onClick={onExpand}><Icon name="arrow" size={18}/></button>}
-          <button className="icon-button" aria-label="关闭聊天框" onClick={toggle}><Icon name="close" size={18}/></button>
-        </div>
-      </header>
-
-      {d.error && !directory && <div className="companion-fallback"><Icon name="info" size={26}/><p>{d.error}</p><Button onClick={d.reload}>再试一次</Button></div>}
-      {!directory && !d.error && <div className="companion-loading"><span className="spinner"/><p>正在把这些人请出来…</p></div>}
-      {directory && <>
-        <label className="dock-switch">
-          <span>跟谁说</span>
-          <select value={c.active || COMPANION} onChange={event => c.open(event.target.value)} aria-label="换个人">
-            <option value={COMPANION}>{directory.companion.name}（记得这个家）</option>
-            {(directory.roles || []).map(item => <option key={item.id} value={item.id}>{item.name} · {item.who}</option>)}
-          </select>
-        </label>
-        {!directory.aiEnabled && <p className="companion-dock-note">还没有接入模型，暂时说不了话。</p>}
-        <Feed c={c} />
-        {sourcesBlock(c.sources, onOpenMemory)}
-        <Composer c={c} name={name} ready={directory.aiEnabled}
-          suggestions={isCompanion ? COMPANION_SUGGESTIONS : []}
-          label={isCompanion ? '跟家伴说一句话' : '跟这个角色说一句话'} />
-        {isCompanion && c.notes.length > 0 && <details className="companion-notes"><summary>它记得的 {c.notes.length} 件事</summary><ul>{c.notes.map((note, index) => <li key={index}>{note}</li>)}</ul></details>}
-      </>}
-    </section>}
-    <button className="companion-dock-toggle" onClick={toggle} aria-label={open ? '收起聊天框' : '打开聊天框'} aria-expanded={open}>
-      {open ? <Icon name="close" size={20}/> : <><Icon name="message" size={18}/><span>陪伴对话</span></>}
-    </button>
-  </div>;
+export default function Chat({api,notify,onOpenMemory,canEdit=false}) {
+  const d=useDirectory(api);const c=useConversation(api,d.reload);const opened=useRef(false);
+  useEffect(()=>{if(d.directory&&!opened.current){opened.current=true;c.open(COMPANION);}},[d.directory]);
+  if(d.error&&!d.directory)return <div className="companion-fallback"><p>{d.error}</p><Button onClick={d.reload}>重新连接</Button></div>;
+  if(!d.directory)return <div className="companion-loading"><span className="spinner"/><p>正在打开家伴…</p></div>;
+  return <div className="chat-shell focused-chat"><aside className="chat-guide"><Avatar name={d.directory.companion.name} size="avatar-xl"/><h2>一个记得家里故事的伙伴</h2><p>聊聊今天，也可以问问以前。提到的家庭往事，都能回到原文核对。</p><div className="chat-guide-topics">{['找一段家里的回忆','聊聊最近的小事','一起回想那一年'].map(t=><button key={t} disabled={c.busy||!d.directory.aiEnabled} onClick={()=>c.setText(t)}><Icon name="message" size={16}/>{t}<Icon name="arrow" size={14}/></button>)}</div><small>AI 陪伴，不代表任何真实家人。每次成功回复 1 积分，失败退回。</small></aside><section className="chat-main-panel">{c.active?<Conversation c={c} d={d} notify={notify} onOpenMemory={onOpenMemory} canEdit={canEdit}/>:<div className="chat-intro"><h2>想起哪一段，就从那里聊起</h2>{c.error&&<p className="form-error">{c.error}</p>}<Button busy={c.busy} onClick={()=>c.open(COMPANION)}>开始和家伴聊聊</Button></div>}</section></div>;
 }
 
 export function ChatEntry({ onOpen }) {
   return <div className="companion-entry">
     <span className="little-leaf"><Icon name="message" size={21}/></span>
     <div>
-      <strong>找个人说说话</strong>
-      <p>家伴记得这个家的事；也可以换成母亲、林黛玉、苏轼——借他们的脾气说开。</p>
+      <strong>和家伴聊聊</strong>
+      <p>聊聊今天，也找回家里已经核对的故事。提到的往事可以回到原文。</p>
     </div>
     <Button variant="secondary" onClick={onOpen}>去聊聊</Button>
   </div>;
