@@ -83,3 +83,18 @@ button:disabled{cursor:not-allowed}.record-workspace :is(input,textarea,select){
  .growth-tabs{gap:6px;padding:6px}.growth-tabs>button{font-size:.76rem;padding:10px;gap:5px}.growth-tools{margin-left:0}.growth-tools summary{font-size:.76rem;padding:12px 10px}.interview-card{flex-wrap:wrap}.interview-card>p{flex-basis:100%;margin-bottom:0}.interview-card .text-link{margin-left:auto}.focused-chat .chat-main-panel{padding:16px;min-height:480px}.focused-chat .companion-feed{max-height:42dvh;min-height:180px}.story-player{padding:16px}.story-player-title{flex-basis:100%}.story-player>.btn{width:100%}.detail-enhance summary{flex-wrap:wrap}.detail-enhance summary>span{margin-left:28px}.comment-form{flex-wrap:wrap}.comment-form input{min-width:0;flex-basis:100%}.comment-form .btn{margin-left:auto}
 }
 @media(prefers-reduced-motion:reduce){.memory-card{transition:none}.memory-card:hover{transform:none}}
+
+/* ---------- 记录表单：familia 大图预览（图上叠字，随输入实时变化） ---------- */
+.record-preview{position:relative;height:196px;border-radius:22px;overflow:hidden}
+.record-preview .cover{border-radius:0}
+.record-preview-overlay{position:absolute;inset:auto 0 0 0;padding:30px 16px 12px;
+  background:linear-gradient(180deg,rgba(0,0,0,0),rgba(15,10,8,.74));
+  display:flex;flex-direction:column;gap:2px;pointer-events:none}
+.record-preview-overlay strong{font-family:var(--serif);font-weight:600;color:#fff;font-size:1.0625rem;line-height:1.35;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.record-preview-overlay span{font-size:.75rem;color:rgba(255,255,255,.8)}
+.record-preview-overlay:empty{display:none}
+@media(max-width:640px){
+  .record-preview{display:block;height:200px;border-radius:20px}
+  .record-media-row{gap:14px}
+}
