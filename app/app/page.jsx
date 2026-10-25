@@ -134,10 +134,10 @@ export default function Page() {
 
   const prefs=activePrefs;
   const pageLabel=NAV.find(item=>item.id===page)?.label||'';
-  const navItem=(id)=>{const item=NAV.find(entry=>entry.id===id);return <button key={id} className={`nav-item ${page===id?'active':''}`} aria-current={page===id?'page':undefined} onClick={()=>navigate(id)}><Icon name={item.icon} size={20}/><span>{item.label}</span>{id==='library'&&<span className="nav-count">{state.memories.length}</span>}{id==='feedback'&&state.activity.length>0&&<span className="nav-count">{state.activity.length}</span>}</button>;};
+  const navItem=(id)=>{const item=NAV.find(entry=>entry.id===id);return <button key={id} aria-label={item.label} title={item.label} className={`nav-item ${page===id?'active':''}`} aria-current={page===id?'page':undefined} onClick={()=>navigate(id)}><Icon name={item.icon} size={20}/><span>{item.label}</span>{id==='library'&&<span className="nav-count">{state.memories.length}</span>}{id==='feedback'&&state.activity.length>0&&<span className="nav-count">{state.activity.length}</span>}</button>;};
   // 手机底部导航：「我家」承载家庭成员页（页内聚合了专辑/胶囊/推演/互动/积分/设置入口）。
   const mobileNavItem=id=>{const item=NAV.find(entry=>entry.id===id);return <button key={id} className={`mobile-nav-item ${page===id?'active':''}`} aria-current={page===id?'page':undefined} onClick={()=>navigate(id)}><Icon name={item.icon} size={21}/><span>{id==='family'?'我家':item.label}</span></button>;};
-  return <div className="app-shell" {...(prefs.theme?{['data-theme']:prefs.theme}:{})} {...(prefs.highContrast?{['data-contrast']:'high'}:{})}>
+  return <div className={`app-shell ${page==='companion'?'chat-workspace-active':''}`} {...(prefs.theme?{['data-theme']:prefs.theme}:{})} {...(prefs.highContrast?{['data-contrast']:'high'}:{})}>
   <aside className="sidebar">
     <button className="brand" onClick={()=>navigate('home')} aria-label="回到首页"><span className="brand-mark"><Icon name="leaf" size={22}/></span><span>忆伴</span></button>
     <div className="family-switch"><span className="family-house"><Icon name="home" size={16}/></span><div><strong>{state.settings.familyName}</strong></div></div>
@@ -153,8 +153,8 @@ export default function Page() {
   {page==='credits'&&<Credits api={request} notify={notify} isAdmin={state.account.role==='admin'}/>}
   {page==='home'&&<HomePage state={state} open={open} favorite={favorite} navigate={navigate} setModal={setModal} onPending={()=>{navigate('library');setStatusFilter('待确认');}}/>}
 
-  {page==='companion'&&<><div className="page-heading"><div><h1>陪伴对话</h1><p>从家里真实的故事开始，找回片刻，也聊聊今天。</p></div></div>
-    <Chat api={request} notify={notify} canEdit={state.canEdit} onOpenMemory={id=>{const memory=state.memories.find(m=>m.id===id);if(memory)open(memory);}}/>
+  {page==='companion'&&<>
+    <Chat accountId={state.account.id} accountName={state.account.name} notify={notify} canEdit={state.canEdit} onSaveMemory={starter=>setModal({type:'upload',starter})} onOpenMemory={async id=>{try{const fresh=await refresh();const memory=fresh.memories.find(m=>m.id===id&&m.status==='confirmed');if(memory)open(memory);else notify('这段记忆已移除或未发布','error');}catch(e){notify(e.message,'error');}}}/>
   </>}
 
   {['library','albums'].includes(page)&&<nav className="collection-tabs" aria-label="记忆分类"><button className={page==='library'?'active':''} aria-current={page==='library'?'page':undefined} onClick={()=>navigate('library')}><Icon name="library" size={18}/>全部记忆</button><button className={page==='albums'?'active':''} aria-current={page==='albums'?'page':undefined} onClick={()=>navigate('albums')}><Icon name="album" size={18}/>故事专辑</button></nav>}

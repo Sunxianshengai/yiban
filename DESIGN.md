@@ -47,6 +47,20 @@ typography:
     fontFamily: "Noto Sans SC Variable, Noto Sans SC, PingFang SC, Microsoft YaHei, system-ui, sans-serif"
     fontSize: "1rem"
     fontWeight: 500
+  chat-body:
+    fontFamily: "Noto Sans SC Variable, Noto Sans SC, PingFang SC, Microsoft YaHei, system-ui, sans-serif"
+    fontSize: "1rem"
+    fontWeight: 400
+    lineHeight: 1.95
+  chat-control:
+    fontFamily: "Noto Sans SC Variable, Noto Sans SC, PingFang SC, Microsoft YaHei, system-ui, sans-serif"
+    fontSize: ".875rem"
+  chat-note:
+    fontFamily: "Noto Sans SC Variable, Noto Sans SC, PingFang SC, Microsoft YaHei, system-ui, sans-serif"
+    fontSize: ".75rem"
+  chat-code:
+    fontFamily: "Consolas, monospace"
+    fontSize: ".84em"
 rounded:
   radius-sm: "10px"
   radius: "12px"
@@ -103,6 +117,23 @@ components:
     textColor: "{colors.ink}"
     rounded: "{rounded.radius}"
     padding: "20px"
+  chat-user-message:
+    backgroundColor: "{colors.surface-2}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.feature}"
+    padding: "14px 20px"
+  chat-reply:
+    textColor: "{colors.ink}"
+    typography: "{typography.chat-body}"
+  chat-composer:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.feature}"
+    padding: "16px 16px 10px"
+  chat-history-active:
+    backgroundColor: "{colors.leaf}"
+    textColor: "{colors.brand}"
+    padding: "11px 10px"
 ---
 
 # Design System: 忆伴
@@ -150,11 +181,15 @@ components:
 
 **Editorial Font:** Noto Serif SC Variable，回退到 Noto Serif SC、宋体类字体与 serif；现有年册、引语和部分编辑内容保留此字体。家庭首页、记忆卡标题和详情正文使用无衬线。
 
+**Code Font:** Consolas，回退 monospace；仅用于陪伴对话中真实的行内代码和代码块，不用于普通回复、标签或装饰数字。
+
 ### Hierarchy
 - **Headline:** 首页问候使用前置 headline 令牌；手机在 640px 断点改为 1.5rem。故事主标题使用响应式 1.5–2rem 与 1.45 行高。
 - **Title:** 记忆卡标题使用前置 title 令牌，最多展示两行；栏目标题常用 1.05–1.18rem。
 - **Body:** 基础正文使用前置 body 令牌；760px 以下基础正文变为 1.0625rem。故事详情正文为 1rem、2 倍行高并保留换行。
 - **Label:** 字段标签使用前置 label 令牌；按钮使用 button 令牌。元数据存在 .7–.85rem 的局部尺寸，并不构成新增的全局字体档位。
+
+陪伴对话使用局部 chat 角色，不替换全站正文层级：桌面 AI 回复使用 chat-body；用户气泡和输入文字也为 1rem，行高分别为 1.9 和 1.8。768px 以下回复与用户气泡为 .9rem，回复行高为 1.9；输入使用 `max(1rem,16px)`，兼顾手机输入和家庭大字号偏好。对话方式、表达风格与家庭记忆选项使用 chat-control，费用和 AI／合成声音说明使用 chat-note；这些角色在手机上保留 rem 缩放。代码使用 chat-code，相对正文缩放。历史摘要、工具说明等仍有局部微字号，不将每个值升级为全站字体档位。
 
 **The Root Scale Rule.** 延续 rem 字号并保留现有根字号偏好机制；不要将家庭内容文字固定成不可缩放的像素尺寸。
 
@@ -168,9 +203,13 @@ components:
 
 1180px 以下侧栏替换为底部五列导航，预留安全区与内容底部空间。录入弹窗在桌面使用双列基础字段，640px 以下改为单列；手机隐藏装饰性预览，保留素材操作。录入区独立滚动，保存栏保持在弹窗底部。
 
+陪伴对话为独立的操作型工作区（Operate）：桌面 1181px 起把应用侧栏收为 76px 图标栏，旁边是 236px 历史栏；消息列表和底部输入区居中，上限均为 800px。消息独立滚动，工作区填满可用视口，输入区留在下方。769–1100px 历史栏缩至 210px。768px 以下历史转为左侧抽屉，宽度为 `min(300px,85%)`；消息水平留白为 18px，输入区为 12px。1180px 以下沿用主应用底部导航并预留 64px 与安全区空间。这些尺寸仅约束陪伴对话，不改变其他页面框架。
+
 ## Elevation & Depth
 
 常规内容卡通过浅底和细描边建立层次，不使用持续阴影。浮层阴影引用 globals.css 的 shadow-float：日间为 `0 14px 44px rgba(35,48,41,.16),0 2px 8px rgba(35,48,41,.08)`，夜间切换为更深的双层阴影。弹窗遮罩使用深绿透明底与轻模糊；顶栏和移动导航使用半透明背景与模糊。
+
+陪伴对话的历史栏、消息和输入区保持平面。对话菜单与家庭记忆选项菜单复用 shadow-float，移动历史抽屉以透明遮罩阻隔背景；不另建聊天专属阴影或品牌色。
 
 记忆卡悬停向上移动 2px 并加强描边，过渡为 .18s ease-out；减少动态效果偏好关闭移动与动画。通用按钮状态过渡为 .16s，字段为 .15s。
 
@@ -179,6 +218,8 @@ components:
 ## Shapes
 
 控件使用 radius-sm，卡片和音频区使用 radius，首页主故事使用 feature，大弹窗使用 radius-lg；手机弹窗改为 feature。徽记使用 pill，头像使用圆形。容器使用 1px 细描边，图像随容器裁切；详情图保留完整画面，列表封面填充裁切。
+
+陪伴对话用户气泡与输入容器复用 feature；代码块和浮层菜单复用 radius。历史行及工具按钮使用 8px 局部圆角，菜单行与来源按钮为 7px，行内代码为 4px；这些是聊天组件内部细节，不扩大全站圆角 ramp。发送／停止按钮为圆形。
 
 ## Components
 
@@ -209,6 +250,16 @@ components:
 ### Record Dialog
 
 先呈现素材与故事，再呈现名称与人物；时间、地点、分类收进可展开区。发布选择有独立浅底区，底部保留草稿状态和保存动作。弹窗将焦点带入、限制键盘循环、支持 Escape 关闭，并在关闭后归还焦点。
+
+### Chat Workspace
+
+历史栏用画布底、细分隔线和浅叶绿选中行承托搜索与会话列表。桌面可折叠；手机打开时作为具名模态对话框，将焦点带入抽屉，Tab／Shift + Tab 在其中循环，主对话区、顶栏和底部导航设为 inert；Escape、遮罩或关闭按钮关闭后归还焦点。
+
+用户消息右对齐，以浅底气泡保留换行；AI 回复采用没有气泡背景的段落式 Markdown，支持标题、列表、引用、表格和可复制代码。段落间距为 16px，表格和代码块在自身范围内横向滚动。每条回复下方提供复制、朗读、版本与反馈等弱工具，家庭来源紧邻该条回复，引用使用品牌色。键盘工具焦点为 2px brand 轮廓、3px 外偏移；选中反馈使用 leaf 与 brand。
+
+底部多行输入容器用较强描边，获得焦点时转为 brand；选项可换行，发送按钮保持独立。发送为 brand／on-brand，悬停为 brand-strong，禁用为 surface-2／muted；生成时同一位置切换为停止按钮。手机发送、选项及抽屉关闭触点至少 44px。费用和失败／停止退回说明放在输入区下，AI 真实性与设备合成声音说明持续可见。空状态提供三条话题建议，只填入输入框，保留用户确认发送的动作。
+
+此记录对应 2026-10-25 陪伴工作区实现及桌面空态／会话、390px 手机／历史抽屉、820px 平板和手机大字号截图。独立完成评审的字号与抽屉焦点问题已修复，结论为可交付；不据此推断所有历史页面或主题状态均已复核。
 
 ## Do's and Don'ts
 

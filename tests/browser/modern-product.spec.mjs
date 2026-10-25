@@ -73,7 +73,7 @@ test('viewer can respond, failed requests preserve their words, and author is sh
 
 test('companion opens directly without the role catalogue and mobile has no floating duplicate',async({page})=>{
   await page.locator('.side-nav').getByRole('button',{name:'陪伴对话'}).click();
-  await expect(page.locator('.companion-head h2')).toBeVisible();
+  await expect(page.getByRole('region',{name:'聊天工作区'})).toBeVisible();
   await expect(page.locator('.role-list')).toHaveCount(0);
   await page.setViewportSize({width:390,height:844});
   await expect(page.locator('.companion-dock')).toHaveCount(0);
@@ -93,7 +93,7 @@ test('desktop mobile and large text keep essential actions visible',async({page}
   await page.evaluate(()=>document.documentElement.style.fontSize='24px');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.getByRole('navigation',{name:'手机导航'}).getByRole('button',{name:'陪伴对话'}).click();
-  await expect(page.locator('.companion-head h2')).toBeVisible();
+  await expect(page.getByRole('region',{name:'聊天工作区'})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   expect(errors).toEqual([]);
 });

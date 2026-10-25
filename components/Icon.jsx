@@ -2,7 +2,7 @@
 // 图标系统：统一接入 Lucide（ISC 开源线性图标库），视觉与「暖白画布 + 深松绿」设计语言一致。
 // 对外 API 保持不变：<Icon name size className {...rest}/>；未知名称回退到 Heart。
 import {
-  Activity,Album,ArrowLeft,ArrowRight,Bell,BookOpen,Cake,Calendar,Camera,Check,ChevronRight,
+  Activity,Album,Archive,ArrowLeft,ArrowRight,ArrowUp,Bell,BookOpen,Cake,Calendar,Camera,Check,ChevronDown,ChevronRight,Copy,MoreHorizontal,PanelLeft,Square,ThumbsDown,
   ChevronsLeft,ChevronsRight,CirclePlay,Clapperboard,Clock,Coins,Download,Eye,GalleryHorizontalEnd,
   Headphones,Heart,HeartHandshake,Hourglass,House,Image as ImageIcon,Info,LayoutGrid,Leaf,
   Library,Lightbulb,List,Lock,LockOpen,LogOut,MapPin,MessageSquare,MessagesSquare,Mic,Moon,
@@ -26,7 +26,7 @@ const icons = {
   'skip-back':SkipBack, 'skip-forward':SkipForward, lock:Lock, 'lock-open':LockOpen,
   lightbulb:Lightbulb, music:Music, 'chevrons-left':ChevronsLeft, 'chevrons-right':ChevronsRight,
   star:Star, moon:Moon, eye:Eye, 'circle-play':CirclePlay, 'shield-check':ShieldCheck,
-  user:UserRound,
+  user:UserRound,archive:Archive,copy:Copy,more:MoreHorizontal,panel:PanelLeft,stop:Square,send:ArrowUp,down:ChevronDown,'thumbs-down':ThumbsDown,
 };
 
 export default function Icon({name,size=20,className='',...rest}) {

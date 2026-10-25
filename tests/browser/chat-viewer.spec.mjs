@@ -1,54 +1,12 @@
 import {test,expect} from '@playwright/test';
-
-// 查看者（viewer）看到的世界：能聊天，但改不了家伴的设定。
-// 家伴的人设写在全家的 settings 里，改它等于替全家人决定；角色卡的称呼和脾气
-// 只存在自己名下，所以查看者仍然能给自己换称呼、换语气。
-test('查看者能聊天，但改不了家伴的设定',async({browser})=>{
-  const BASE=process.env.PW_BASE_URL||'http://localhost:3711';
-  const ctx=await browser.newContext({baseURL:BASE,viewport:{width:1440,height:1000}});
-  const page=await ctx.newPage();
-  const errs=[];page.on('pageerror',e=>errs.push(String(e)));
-
-  // 先用管理员签一个查看者邀请码。
-  const status=await (await page.request.get('/api/auth/status')).json();
-  if(status.needsSetup) await page.request.post('/api/auth/setup',{data:{name:'小雨',email:'admin@yiban.test',password:'TestPassword123!'}});
-  else if(!status.user) await page.request.post('/api/auth/login',{data:{email:'admin@yiban.test',password:'TestPassword123!'}});
-  const invite=await (await page.request.post('/api/auth/invite',{data:{role:'viewer'}})).json();
-  const created=await page.request.post('/api/auth/register',{
-    data:{code:invite.code,name:'只看不写',email:`viewer-${Date.now()}@yiban.test`,password:'ViewerPass123!'},
-  });
-  expect(created.status()).toBe(201);
-  // 陪伴对话按成功回复计 1 积分：给查看者发一点测试额度。
-  const viewerId=(await created.json()).user.id;
-  const adminCtx=await browser.newContext({baseURL:BASE});
-  await adminCtx.request.post('/api/auth/login',{data:{email:'admin@yiban.test',password:'TestPassword123!'}});
-  const granted=await adminCtx.request.post('/api/credits/grant',{data:{userId:viewerId,amount:100,note:'查看者对话测试额度'}});
-  expect(granted.status()).toBe(201);
-  await adminCtx.close();
-
-  await page.goto('/');
-  await page.waitForSelector('.app-shell');
-  await page.getByRole('button',{name:'陪伴对话',exact:true}).click();
-  await expect(page.locator('.chat-rail-panel')).toBeVisible({timeout:15000});
-
-  // 能聊
-  await page.locator('.chat-companion-card').click();
-  await expect(page.locator('.companion-head')).toBeVisible({timeout:15000});
-  await page.getByLabel('跟家伴说一句话').fill('你好');
-  await page.getByRole('button',{name:'说一句',exact:true}).click();
-  await expect(page.locator('.companion-line.companion').last()).toBeVisible({timeout:20000});
-
-  // 家伴没有编辑入口
-  await expect(page.getByRole('button',{name:'编辑家伴'})).toHaveCount(0);
-
-  // 但角色卡自己的称呼和脾气是自己的，查看者能改。
-  await page.getByRole('button',{name:'换个人说话'}).click();
-  await page.locator('.role-card',{hasText:'母亲'}).first().click();
-  await expect(page.locator('.companion-head h2')).toContainText('母亲');
-  await page.getByRole('button',{name:'换个说法'}).click();
-  await expect(page.getByRole('dialog',{name:'换个说法'})).toBeVisible();
-  await page.getByRole('dialog',{name:'换个说法'}).getByRole('button',{name:'取消'}).click();
-
-  expect(errs).toEqual([]);
-  await ctx.close();
+import {signInAsNewAdmin} from './helpers.mjs';
+test('viewers have private conversations and preferences but cannot publish AI drafts',async({page,browser})=>{
+  await signInAsNewAdmin(page,{prefix:'chat-owner',credits:5});const privateThread=await (await page.request.post('/api/chat/threads',{data:{title:'管理员的私人对话'}})).json();
+  const invite=await (await page.request.post('/api/auth/invite',{data:{role:'viewer'}})).json();const context=await browser.newContext({baseURL:process.env.PW_BASE_URL||'http://localhost:3711'});
+  try{
+    const joined=await context.request.post('/api/auth/register',{data:{code:invite.code,name:'爸爸',email:`chat-viewer-${Date.now()}@yiban.test`,password:'TestPassword123!'}});expect(joined.status()).toBe(201);const user=(await (await context.request.get('/api/auth/status')).json()).user;
+    expect((await page.request.post('/api/credits/grant',{data:{userId:user.id,amount:5,note:'查看者聊天测试'}})).status()).toBe(201);expect((await context.request.get(`/api/chat/threads/${privateThread.id}`)).status()).toBe(404);
+    const viewer=await context.newPage();await viewer.goto('/');await viewer.locator('.side-nav').getByRole('button',{name:'陪伴对话'}).click();await expect(viewer.getByLabel('发送给家伴的消息')).toBeEnabled();await viewer.getByLabel('表达风格').selectOption('warm');await viewer.getByLabel('发送给家伴的消息').fill('今天过得很好');await viewer.getByRole('button',{name:'发送消息',exact:true}).click();await expect(viewer.getByRole('button',{name:'发送消息',exact:true})).toBeVisible({timeout:20000});
+    await expect(viewer.locator('.cw-assistant')).toContainText('听见了');await expect(viewer.getByRole('button',{name:'存为记忆草稿'})).toHaveCount(0);await expect(viewer.getByLabel('表达风格')).toHaveValue('warm');await expect(viewer.getByRole('button',{name:'编辑消息',exact:true})).toBeVisible();
+  }finally{await context.close();}
 });

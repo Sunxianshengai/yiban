@@ -150,7 +150,15 @@ const server = http.createServer((req, res) => {
   req.on('end', () => {
     let body = {};
     try { body = JSON.parse(raw || '{}'); } catch { /* 空 body 也照常回一句 */ }
-    const content = answer(Array.isArray(body.messages) ? body.messages : []);
+    const messages=Array.isArray(body.messages)?body.messages:[];
+    if(lastUser(messages)==='[test:fail]'){res.writeHead(429,{'Content-Type':'application/json'});res.end(JSON.stringify({error:{message:'Mock rate limit'}}));return;}
+    const content=lastUser(messages)==='[test:markdown]'?'## 一段故事\n\n| 年份 | 回忆 |\n| --- | --- |\n| 2008 | 夏天 |\n\n```js\nconsole.log("hello")\n```\n\n<script>window.chatUnsafeExecuted=true</script>':answer(messages);
+    if(body.stream){
+      res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache'});
+      const chunks=content.match(/.{1,5}/gs)||[];let index=0;
+      const timer=setInterval(()=>{if(index<chunks.length)res.write(`data: ${JSON.stringify({choices:[{delta:{content:chunks[index++]},finish_reason:null}]})}\n\n`);else{clearInterval(timer);res.end(`data: ${JSON.stringify({choices:[{delta:{},finish_reason:'stop'}]})}\n\ndata: [DONE]\n\n`);}},120);
+      res.on('close',()=>clearInterval(timer));return;
+    }
     res.writeHead(200, {'Content-Type': 'application/json'});
     res.end(JSON.stringify({choices: [{message: {role: 'assistant', content}}]}));
   });

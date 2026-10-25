@@ -34,3 +34,7 @@ public/perf-screenshots/
 .graphflow/
 .tmp-*
 .scratch/
+
+# 本地代理技能与评审截图，不进仓库
+.agents/
+.impeccable/
