@@ -98,15 +98,16 @@ test('视频创建只冻结；查询失败仍保持冻结，明确失败退回�
   delete process.env.DASHSCOPE_API_KEY;
 });
 
-test('模型空故事不扣费；超过用户确认上限的报价不执行也不冻结',async()=>{
+test('模型空输出不扣费；超过用户确认上限的报价不执行也不冻结',async()=>{
+  await call('POST','credits/grant',{cookie:adminCookie,body:{userId:admin.id,amount:100,note:'整理计费测试'},key:'organize-grant'});
   const before=await (await call('GET','credits',{cookie:adminCookie})).json();
   let calls=0;
-  globalThis.fetch=async()=>{calls++;return Response.json({choices:[{message:{content:''}}]});};
-  const empty=await call('POST','story',{cookie:adminCookie,body:{memoryIds:['demo-child']},key:'empty-story'});
+  globalThis.fetch=async()=>{calls++;return Response.json({choices:[{message:{content:'{"title":"","story":""}'}}]});};
+  const empty=await call('POST','organize',{cookie:adminCookie,body:{title:'空输出测试'},key:'empty-organize'});
   assert.equal(empty.status,502);
   assert.equal((await (await call('GET','credits',{cookie:adminCookie})).json()).balance,before.balance);
   const count=calls;
-  const changed=await call('POST','story',{cookie:adminCookie,body:{memoryIds:['demo-child']},key:'old-price',max:2});
+  const changed=await call('POST','organize',{cookie:adminCookie,body:{title:'空输出测试'},key:'old-price',max:1});
   assert.equal(changed.status,409);
   assert.equal(calls,count);
   assert.equal((await (await call('GET','credits',{cookie:adminCookie})).json()).held,0);

@@ -151,4 +151,3 @@ export default function Chat({accountId='me',accountName='',notify,onOpenMemory,
   </div>;
 }
 
-export function ChatEntry({onOpen}){return <div className="companion-entry"><span className="little-leaf"><Icon name="message" size={21}/></span><div><strong>和家伴聊聊</strong><p>聊聊今天，也找回家里已经核对的故事。提到的往事可以回到原文。</p></div><Button variant="secondary" onClick={onOpen}>去聊聊</Button></div>;}

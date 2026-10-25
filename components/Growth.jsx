@@ -4,11 +4,11 @@ import Icon from './Icon';
 import {Avatar,Button,Cover,Empty,Field} from './UI';
 
 // 全年龄段的核心页：一个人的一辈子怎么排、家里人在同一年各几岁。
-// 六个页签对应方案里的 A(时间轴) E(平行时间轴) B(里程碑) C(童言童语) H(成长对比) D(分龄采访) J(纪念册)。
-const LEGACY_TABS=[{id:'timeline',label:'成长时间轴',icon:'clock'},{id:'parallel',label:'那一年',icon:'people'},{id:'highlights',label:'高光时刻',icon:'sparkle'},{id:'milestones',label:'人生里程碑',icon:'check'},{id:'quotes',label:'童言童语',icon:'message'},{id:'growth',label:'成长对比',icon:'arrow'},{id:'interview',label:'分龄采访',icon:'mic'},{id:'yearbook',label:'成长纪念册',icon:'book'}];
+// 六个页签对应方案里的 A(时间轴) E(平行时间轴) B(里程碑) C(童言童语) H(成长对比) D(分龄采访)。
+const LEGACY_TABS=[{id:'timeline',label:'成长时间轴',icon:'clock'},{id:'parallel',label:'那一年',icon:'people'},{id:'highlights',label:'高光时刻',icon:'sparkle'},{id:'milestones',label:'人生里程碑',icon:'check'},{id:'quotes',label:'童言童语',icon:'message'},{id:'growth',label:'成长对比',icon:'arrow'},{id:'interview',label:'分龄采访',icon:'mic'}];
 
 const TABS=LEGACY_TABS.filter(t=>['timeline','parallel','interview'].includes(t.id));
-export default function Growth({api,notify,members,canEdit,onOpenMemory,onRecord,onAlbums,selectedMemberId}) {
+export default function Growth({api,notify,members,canEdit,onOpenMemory,onRecord,selectedMemberId}) {
   const [tab,setTab]=useState('timeline');
   const [meta,setMeta]=useState(null);
   const [memberId,setMemberId]=useState(selectedMemberId||'');
@@ -27,8 +27,8 @@ export default function Growth({api,notify,members,canEdit,onOpenMemory,onRecord
   const stageOf=(id)=>meta?.stages?.find(s=>s.id===id);
 
   return <div className="growth-page">
-    <div className="page-heading"><div><h1>家人故事</h1><p>家里每个人，从出生到现在，一条自己的时间线。</p></div><Button variant="secondary" icon="album" onClick={onAlbums}>整理成故事专辑</Button></div>
-    <div className="growth-tabs">{TABS.map(t=><button key={t.id} className={tab===t.id?'selected':''} onClick={()=>setTab(t.id)}><Icon name={t.icon} size={17}/>{t.id==='timeline'?'人生时间轴':t.id==='interview'?'问问家人':t.label}</button>)}<details className="growth-tools"><summary>记录工具</summary><div>{LEGACY_TABS.filter(t=>!['timeline','parallel','interview','yearbook'].includes(t.id)).map(t=><button key={t.id} onClick={()=>setTab(t.id)}>{t.label}</button>)}</div></details></div>
+    <div className="page-heading"><div><h1>家人故事</h1><p>家里每个人，从出生到现在，一条自己的时间线。</p></div></div>
+    <div className="growth-tabs">{TABS.map(t=><button key={t.id} className={tab===t.id?'selected':''} onClick={()=>setTab(t.id)}><Icon name={t.icon} size={17}/>{t.id==='timeline'?'人生时间轴':t.id==='interview'?'问问家人':t.label}</button>)}<details className="growth-tools"><summary>记录工具</summary><div>{LEGACY_TABS.filter(t=>!['timeline','parallel','interview'].includes(t.id)).map(t=><button key={t.id} onClick={()=>setTab(t.id)}>{t.label}</button>)}</div></details></div>
     <div className="growth-picker">
       <span>看谁的人生</span>
       <div className="person-chips">
@@ -44,7 +44,6 @@ export default function Growth({api,notify,members,canEdit,onOpenMemory,onRecord
     {tab==='quotes'&&<QuotesView api={api} notify={notify} member={member} members={members} canEdit={canEdit}/>}
     {tab==='growth'&&<GrowthAnswers api={api} notify={notify} member={member} meta={meta} canEdit={canEdit}/>}
     {tab==='interview'&&<InterviewView api={api} notify={notify} member={member} meta={meta} onRecord={canEdit?onRecord:null}/>}
-    {tab==='yearbook'&&<YearbookView member={member} timeline={timeline} api={api} notify={notify} stageOf={stageOf}/>}
   </div>;
 }
 
@@ -118,7 +117,7 @@ function HighlightsView({api,notify,members,canEdit,onOpenMemory}) {
   const nameOf=id=>data?.members?.find(m=>m.id===id)?.name||members.find(m=>m.id===id)?.name||'这位家人';
   return <div className="highlights-view">
     <div className="inline-notice"><Icon name="sparkle"/><span>金榜题名、结婚、迎来新生命……这些日子值得用郑重的方式记下来。选一个模板，按栏位慢慢填。</span></div>
-    {data&&<div className="highlight-templates">{data.templates.map(t=><button key={t.id} className={template===t.id?'selected':''} onClick={()=>{setTemplate(t.id);setFields({});}}><Icon name={t.icon} size={18}/>{t.id==='timeline'?'人生时间轴':t.id==='interview'?'问问家人':t.label}</button>)}<details className="growth-tools"><summary>记录工具</summary><div>{LEGACY_TABS.filter(t=>!['timeline','parallel','interview','yearbook'].includes(t.id)).map(t=><button key={t.id} onClick={()=>setTab(t.id)}>{t.label}</button>)}</div></details></div>}
+    {data&&<div className="highlight-templates">{data.templates.map(t=><button key={t.id} className={template===t.id?'selected':''} onClick={()=>{setTemplate(t.id);setFields({});}}><Icon name={t.icon} size={18}/>{t.id==='timeline'?'人生时间轴':t.id==='interview'?'问问家人':t.label}</button>)}<details className="growth-tools"><summary>记录工具</summary><div>{LEGACY_TABS.filter(t=>!['timeline','parallel','interview'].includes(t.id)).map(t=><button key={t.id} onClick={()=>setTab(t.id)}>{t.label}</button>)}</div></details></div>}
     {tpl&&<div className="highlight-form">
       <div className="form-grid">
         <Field label="主角"><select value={memberId} onChange={e=>setMemberId(e.target.value)}>{members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Field>
@@ -259,32 +258,5 @@ function InterviewView({api,notify,member,meta,onRecord}) {
     <div className="inline-notice"><Icon name="mic"/><span>问什么样的问题，决定了能听到什么样的故事。按他现在的人生阶段挑，别用同一套问所有人。</span></div>
     <Field label="他在哪个人生阶段"><select value={stageId} onChange={e=>setStageId(e.target.value)}>{(meta?.stages||[]).map(s=><option key={s.id} value={s.id}>{s.label}{s.hint?` · ${s.hint}`:''}</option>)}</select></Field>
     <div className="interview-list">{questions.map((q,i)=><article className="interview-card" key={i}><p>{q}</p>{onRecord&&<Button variant="secondary" icon="mic" onClick={()=>onRecord({question:q,subjectId:member?.id||'',people:member?.name||''})}>记下回答</Button>}<button className="text-link" onClick={()=>copy(q,i)}><Icon name={copied===i?'check':'edit'} size={14}/>{copied===i?'已复制':'复制这一问'}</button></article>)}</div>
-  </div>;
-}
-
-function YearbookView({member,timeline,api,notify,stageOf}) {
-  const [pick,setPick]=useState([]);
-  const [making,setMaking]=useState(false);
-  const [story,setStory]=useState('');
-  const items=(timeline?.items||[]).filter(i=>pick.includes(i.memoryId));
-  const make=async()=>{
-    if(!items.length){notify('先挑几段记忆','error');return;}
-    setMaking(true);
-    try{
-      const result=await api('/story',{method:'POST',body:JSON.stringify({memoryIds:items.map(i=>i.memoryId),title:`${member?.name}的成长纪念册`})});
-      setStory(result.story||'');
-    }catch(e){notify(e.message,'error');}finally{setMaking(false);}
-  };
-  return <div className="yearbook">
-    <div className="inline-notice"><Icon name="book"/><span>挑几段记忆，串成一本可以打印的成长纪念册。写完用浏览器「打印 → 存为 PDF」就能带走或付印。</span></div>
-    <div className="yearbook-pick">{(timeline?.items||[]).map(item=>{
-      const stage=stageOf(item.stage);
-      return <button key={item.memoryId} className={pick.includes(item.memoryId)?'selected':''} onClick={()=>setPick(ids=>ids.includes(item.memoryId)?ids.filter(x=>x!==item.memoryId):[...ids,item.memoryId])}>
-        <Cover memory={{cover:item.cover,title:item.title}}/><span><strong>{item.title}</strong><small>{item.year}{item.age!==null?` · ${item.age} 岁`:''}{stage?` · ${stage.label}`:''}</small></span>
-      </button>;})}
-      {!(timeline?.items||[]).length&&<Empty icon="clock" title="这个人还没有能排进纪念册的记忆" description="先到时间轴页签里确认几段带年份的记忆。"/>}
-    </div>
-    <div className="yearbook-actions"><Button variant="secondary" icon="book" busy={making} onClick={make}>串成纪念册（已选 {pick.length} 段）</Button>{story&&<Button icon="download" onClick={()=>window.print()}>打印 / 存为 PDF</Button>}</div>
-    {story&&<article className="yearbook-paper"><h1>{member?.name}的成长纪念册</h1><p className="yearbook-sub">{timeline?.items?.length?`${items[0]?.year} — ${items.at(-1)?.year}`:''}</p><div className="yearbook-body">{story.split(/\n+/).filter(Boolean).map((p,i)=><p key={i}>{p}</p>)}</div><footer>这些片段由家人保存并核对，是真实发生过的事。</footer></article>}
   </div>;
 }

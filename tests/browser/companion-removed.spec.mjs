@@ -17,7 +17,7 @@ test('陪伴时光已整页移除，主端功能完好',async({browser})=>{
   expect(await page.locator('.elder-app').count()).toBe(0);
 
   // 主端各页仍可打开
-  for(const name of ['记忆库','回忆专辑','家庭成员','互动记录','设置']){
+  for(const name of ['记忆库','家人故事','家庭成员','设置']){
     await clickNavItem(page,name);
     await page.waitForTimeout(350);
     console.log('PAGE',name,'ok');

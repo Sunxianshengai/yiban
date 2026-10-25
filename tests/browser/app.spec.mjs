@@ -28,8 +28,10 @@ test('upload, local organization, publishing, elder feedback and deletion work t
     await expect(page.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
     await page.getByRole('button',{name:'记一段回忆',exact:true}).click();
     await page.locator('input[type=file]').setInputFiles({name:'family.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j0WQAAAAASUVORK5CYII=','base64')});
-    await expect(page.getByRole('status')).toContainText('素材上传完成');
-    await page.getByLabel('记忆名称 *').fill(marker);
+    await expect(page.locator('.toast')).toContainText('素材上传完成');
+    await page.getByLabel('记忆名称').fill(marker);
+    // 年份、地点、人物在「补充」折叠区里。
+    await page.locator('details.record-details summary').click();
     await page.getByLabel('年份',{exact:true}).fill('2005');
     await page.getByLabel('地点',{exact:true}).fill('老家');
     await page.getByLabel('照片里的家人').fill('林阿姨、小雨');
@@ -45,24 +47,23 @@ test('upload, local organization, publishing, elder feedback and deletion work t
     const memory=state.memories.find(m=>m.title===marker);id=memory?.id;
     expect(memory.status).toBe('confirmed');expect(memory.cover).toMatch(/^\/api\/media\//);
     const image=await request.get(memory.cover);expect(image.status()).toBe(200);expect(image.headers()['content-type']).toBe('image/png');
-    // 单端口改造后不再有「进入老人端 / 家属模式」这一层；互动直接走接口产生，
-    // 再回到「互动记录」页确认它出现在动态流里。
+    // 互动直接走接口产生；动态流并入记忆详情，这里用 API 确认记录已留痕。
     for(const type of ['remember','like']) expect((await request.post('/api/activity',{data:{type,memoryId:id}})).ok()).toBe(true);
-    await clickNavItem(page,'互动记录');
-    await expect(page.locator('.activity-list')).toContainText(marker);
+    const active=(await (await request.get('/api/state')).json()).activity;
+    expect(active.filter(a=>a.memoryId===id).map(a=>a.text).join(' ')).toContain(marker);
     await page.getByRole('button',{name:/记忆库/}).first().click();
     await page.getByRole('textbox',{name:'搜索记忆'}).fill(marker);
     await expect(page.locator('.memory-card')).toHaveCount(1);
     await page.getByRole('button',{name:marker,exact:true}).click();
     await page.getByRole('textbox',{name:'家人留言'}).fill('期待和妈妈一起重温这个瞬间。');
+    // 留言发送后详情弹窗保持打开，留言直接出现在列表里。
     await page.getByRole('button',{name:'发送',exact:true}).click();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-    await page.getByRole('button',{name:marker,exact:true}).click();
     await expect(page.locator('.comment-item')).toContainText('期待和妈妈一起重温这个瞬间。');
     await page.getByRole('button',{name:'编辑记忆',exact:true}).click();
     const wav=Buffer.alloc(44+100);wav.write('RIFF',0);wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(8000,24);wav.writeUInt32LE(16000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(100,40);
     await page.locator('input[type=file]').setInputFiles({name:'voice.wav',mimeType:'audio/wav',buffer:wav});
     await expect(page.getByText('家人录音已添加')).toBeVisible();
+    await page.locator('details.record-details summary').click();
     await page.getByLabel('地点',{exact:true}).fill('苏州 · 老家');
     await page.getByRole('button',{name:'保存并发布',exact:true}).click();
     const edited=(await (await request.get('/api/state')).json()).memories.find(m=>m.id===id);
@@ -81,37 +82,27 @@ test('upload, local organization, publishing, elder feedback and deletion work t
   }finally{if(id)await request.delete(`/api/memories/${id}`);}
 });
 
-test('drafts stay out of albums, stories, games and search; server validation works',async({request,page})=>{
+test('drafts stay out of search; server validation works',async({request,page})=>{
   const draftResponse=await request.post('/api/memories',{data:{title:'自动测试待确认',year:'1998',story:'尚未核对的故事',status:'draft'}});expect(draftResponse.status()).toBe(201);const draft=await draftResponse.json();
-  let album;
   try{
     const search=await (await request.get('/api/search?q=自动测试待确认')).json();expect(search.memories).toHaveLength(0);
     const invalid=await request.post('/api/memories',{data:{title:'错误年份',year:'abc'}});expect(invalid.status()).toBe(400);
     const upload=await request.post('/api/upload',{multipart:{file:{name:'unsafe.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg/>')}}});expect(upload.status()).toBe(400);
     const badFile=await request.get('/api/media/invalid.jpg');expect(badFile.status()).toBe(404);
-    const creation=await request.post('/api/albums',{data:{title:'自动测试旅行专辑',description:'测试',memoryIds:['demo-westlake','demo-train',draft.id]}});expect(creation.status()).toBe(201);album=await creation.json();expect(album.memoryIds).toHaveLength(2);
-    // 故事可能由模型写、也可能走本地串联；两种都只认已确认记忆里的事实。
-    const generation=await (await request.post('/api/story',{data:{albumId:album.id}})).json();expect(['model','local']).toContain(generation.mode);expect(generation.story.length).toBeGreaterThan(0);
-    await request.patch(`/api/albums/${album.id}`,{data:{story:generation.story}});
-    const state=await (await request.get('/api/state')).json();expect(state.albums.find(a=>a.id===album.id).story).toBe(generation.story);
-    // 草稿不进游戏：人生推演的起点列表只取已确认记忆。
-    const life=await request.post('/api/life/subjects',{data:{}});expect(life.status()).toBe(200);
-    const origins=await life.json();expect(JSON.stringify(origins.origins)).not.toContain(draft.title);
-    // 草稿也不能拿来开局
-    const draftRun=await request.post('/api/life/start',{data:{memoryId:draft.id}});
-    expect(draftRun.status()).toBe(400);
-  }finally{await request.delete(`/api/memories/${draft.id}`);if(album)await request.delete(`/api/albums/${album.id}`);}
+    // 已删除的接口不再存在
+    expect((await request.post('/api/albums',{data:{title:'x',memoryIds:[]}})).status()).toBe(404);
+    expect((await request.post('/api/life/start',{data:{memoryId:draft.id}})).status()).toBe(404);
+  }finally{await request.delete(`/api/memories/${draft.id}`);}
 });
 
 test('desktop and mobile layouts, navigation and dialogs render without errors',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/');await expect(page.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
   fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:'artifacts/忆伴-桌面端.png',fullPage:true});
-  // 每个导航页都要真的渲染出内容。人生推演是大界面（.life-shell），
-  // 其余页面用统一的 .page-heading，所以这里两种都认。
-  for(const name of ['陪伴对话','记忆库','回忆专辑','人生推演','家庭成员','互动记录','设置']){
+  // 每个导航页都要真的渲染出内容，用统一的 .page-heading 校验。
+  for(const name of ['陪伴对话','记忆库','家人故事','家庭成员','设置']){
     await clickNavItem(page,name);
-    await expect(page.locator('.page-heading h1, .life-shell').first()).toBeVisible();
+    await expect(page.locator('.page-heading h1').or(page.getByRole('region',{name:'聊天工作区'})).first()).toBeVisible();
   }
   await page.getByRole('navigation').getByRole('button',{name:'首页'}).click();
   await page.getByRole('button',{name:'记一段回忆',exact:true}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);

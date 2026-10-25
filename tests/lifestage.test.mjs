@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {STAGES,stageOfAge,ageAtYear,stageAtYear,MILESTONES,INTERVIEW,GROWTH_QUESTIONS,buildTimeline,buildParallel,milestoneProgress,sanitizeQuote,sanitizeCapsule,sanitizeBirthYear,capsuleState,HIGHLIGHT_TEMPLATES,sanitizeHighlight} from '../lib/lifestage.mjs';
+import {STAGES,stageOfAge,ageAtYear,stageAtYear,MILESTONES,INTERVIEW,GROWTH_QUESTIONS,buildTimeline,buildParallel,milestoneProgress,sanitizeQuote,sanitizeBirthYear,HIGHLIGHT_TEMPLATES,sanitizeHighlight} from '../lib/lifestage.mjs';
 
 test('七段人生阶段首尾相接且覆盖 0-200 岁', () => {
   assert.equal(STAGES.length, 7);
@@ -100,16 +100,6 @@ test('童言童语：空话被拒，内容按长度截断', () => {
   assert.equal(sanitizeQuote({text: 'x'.repeat(500)}).text.length, 300);
 });
 
-test('时间胶囊：必须有收信人和合法开启日期', () => {
-  assert.throws(() => sanitizeCapsule({text: '', targetMemberId: 'm2', openAt: '2030-01-01'}), /写一句/);
-  assert.throws(() => sanitizeCapsule({text: '给十年后的你', targetMemberId: '', openAt: '2030-01-01'}), /选一位/);
-  assert.throws(() => sanitizeCapsule({text: '给十年后的你', targetMemberId: 'm2', openAt: '2030/01/01'}), /开启日期/);
-  const c = sanitizeCapsule({text: '给十年后的你', targetMemberId: 'm2', openAt: '2030-01-01', title: '给小雨'});
-  assert.equal(c.title, '给小雨');
-  assert.equal(capsuleState(c, new Date('2029-01-01')).locked, true);
-  assert.ok(capsuleState(c, new Date('2029-01-01')).daysLeft > 300);
-  assert.equal(capsuleState(c, new Date('2031-01-01')).locked, false);
-});
 
 test('分龄采访与成长对比问题覆盖每一段', () => {
   for (const s of STAGES) assert.ok(Array.isArray(INTERVIEW[s.id]) && INTERVIEW[s.id].length >= 3, `${s.id} 至少要三个问题`);

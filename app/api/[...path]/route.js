@@ -46,15 +46,14 @@ import { head as headBlob, issueSignedToken } from '@vercel/blob';
 import { all,get,put,remove,log,snapshot,saveMedia,readMedia,readMediaBuffer,deleteMedia,usesRemoteStorage,compareAndPut } from '../../../lib/store.mjs';
 import { fetchAudioBuffer } from '../../../lib/voice.mjs';
 import { tidyMemory, searchMemories } from '../../../lib/core.mjs';
-import {organize,generateStory,aiReady,aiStatus,chatWithCompanion,chatWithRole,generateLifeStage,generateLifeEnding} from '../../../lib/ai.mjs';
+import {organize,aiReady,aiStatus,chatWithCompanion,chatWithRole} from '../../../lib/ai.mjs';
 import {CONCERNS,TONES,KINDS,ROLES,MAX_TEXT as ROLE_MAX_TEXT,sanitizeRole,roleOpening,buildRoleMessages,roleById} from '../../../lib/roles.mjs';
-import {startRun,recordChoice,currentStage,publicRun,buildEnding,MAX_STAGES,MAX_CHOICE_TEXT,STAT_META} from '../../../lib/life.mjs';
 import {PERSONAS,RELATIONS,MAX_MESSAGES,MAX_NOTES,MAX_TEXT,sanitizeCompanion,openingLine,retrieveMemories,buildMessages,localNotes} from '../../../lib/companion.mjs';
 import {voiceConfigured,enrollVoice,synthesizeVoice,cacheKey} from '../../../lib/voice.mjs';
 import {generateNarration,pickNarrator,narrationKey,videoKey,buildVideoPrompt,videoConfigured,createVideoTask,fetchVideoTask,clampResolution,clampSeconds,MAX_SCRIPT,MAX_IMAGE_BYTES,VIDEO_RESOLUTIONS,VIDEO_DEFAULT_RESOLUTION,VIDEO_DEFAULT_SECONDS} from '../../../lib/narrate.mjs';
 import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,publicUser,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
 import {FONT_SCALES,sanitizePreferences} from '../../../lib/core.mjs';
-import {STAGES,MILESTONES,INTERVIEW,GROWTH_QUESTIONS,HIGHLIGHT_TEMPLATES,buildTimeline,buildParallel,milestoneProgress,sanitizeQuote,sanitizeCapsule,sanitizeBirthYear,sanitizeHighlight,capsuleState} from '../../../lib/lifestage.mjs';
+import {STAGES,MILESTONES,INTERVIEW,GROWTH_QUESTIONS,HIGHLIGHT_TEMPLATES,buildTimeline,buildParallel,milestoneProgress,sanitizeQuote,sanitizeBirthYear,sanitizeHighlight} from '../../../lib/lifestage.mjs';
 import * as credits from '../../../lib/credits.mjs';
 import {CREDIT_PRICES} from '../../../lib/credit-prices.mjs';
 import {billedPost} from '../../../lib/credit-billing.mjs';
@@ -107,22 +106,6 @@ function rateLimit(name,id,limit,windowMs=60*60*1000) {
   if(!bucket||now>bucket.reset) {rateBuckets.set(key,{count:1,reset:now+windowMs});return;}
   bucket.count+=1;
   if(bucket.count>limit) {const e=new Error(`这个功能一小时内使用次数已达上限，请稍后再试`);e.status=429;throw e;}
-}
-
-/** 造下一幕。这一步完全由模型写——写不出来就如实报错，不拿本地模板冒充。 */
-async function nextStage(run,{freeText}={}) {
-  const index=(run.stages||[]).length;
-  const stage=await generateLifeStage(run,{freeText});
-  return {...stage,index,mode:'model'};
-}
-
-/** 收尾：同样只由模型写；失败就让调用方把错误原样交给玩家。 */
-async function finishRun(run) {
-  // 结局的正文由模型写，但「这是假设」那句提醒、以及属性读数这些结构性的东西
-  // 不能指望模型每次都写全——它们必须来自本地，所以这里以本地结局为底再覆盖正文。
-  const base=run.ending||buildEnding(run);
-  const text=await generateLifeEnding(run);
-  return {...run,ending:{...base,mode:'model',text}};
 }
 
 export async function GET(request,{params}) {
@@ -298,17 +281,6 @@ export async function GET(request,{params}) {
         return json({answers:list.sort((a,b)=>String(a.year||'0').localeCompare(String(b.year||'0')))});
       }
     }
-    if(parts[0]==='capsules') {
-      // I 时间胶囊：只列「我写的」和「到日子了写给全家的」。没到开启日期的不泄露内容。
-      const now=new Date();
-      const list=await all('capsules');
-      return json({capsules:list.map(c=>{
-        const state=capsuleState(c,now);
-        return {...c,locked:state.locked,daysLeft:state.daysLeft,
-          // 到期前包括作者在内都只看到信封，不下发正文。
-          text:state.locked?'':c.text};
-      }).sort((a,b)=>String(a.openAt||'').localeCompare(String(b.openAt||'')))});
-    }
     if(parts[0]==='highlights') {
       // G 高光时刻：列全部，前端按成员过滤。模板定义一并下发，少一次请求。
       const list=await all('highlights');
@@ -464,7 +436,7 @@ async function handlePost(request,{params},billing) {
     // 直到有人想起把它加进数组——voice/enroll 就是这样裸奔过的。新接口必须先在这里登记。
     // narrate 对 viewer 开放的是「听」：/narrate/script 写稿+配音只花几毛钱，看的人也该能听。
     // 真正按秒计费的 /narrate/video 在分支里单独再要一次 editor。
-    const openToViewer=['activity','auth','capsules','comments','companion','game','highlights','life','narrate','role','stage','voice'].includes(parts[0]);
+    const openToViewer=['activity','auth','comments','companion','highlights','narrate','role','stage','voice'].includes(parts[0]);
     if(!openToViewer&&!accountRole(auth.user,'editor'))return forbidden();
     if(parts[0]==='auth'&&parts[1]==='avatar') {
       const form=await request.formData();const file=form.get('file');
@@ -532,36 +504,9 @@ async function handlePost(request,{params},billing) {
       if(aiReady())await billing.reserve(auth.user.id,'organize');
       return json(await organize(body,imageData));
     }
-    if(parts[0]==='albums') {
-      const title=String(body.title||'').trim().slice(0,80);if(!title) throw new Error('请填写专辑名称');
-      const ids=[...new Set(body.memoryIds||[])];
-      const selected=await Promise.all(ids.map(id=>get('memories',id)));
-      const validIds=ids.filter((id,index)=>selected[index]?.status==='confirmed');
-      if(!validIds.length) throw new Error('请至少选择一段已确认的记忆');
-      const album={id:randomUUID(),familyId:'family',title,description:String(body.description||'').slice(0,200),memoryIds:validIds,cover:selected[ids.indexOf(validIds[0])].cover,story:'',createdAt:new Date().toISOString()};
-      await put('albums',album);await log('album',`创建了专辑「${title}」`);return json(album,201);
-    }
-    if(parts[0]==='story') {
-      // 两条路：传 albumId 走专辑（专辑页用），直接传 memoryIds 走「成长纪念册」——
-      // 纪念册是一次性的排版产物，不该为了串一次就建一张永远留着的专辑。
-      let memories=[],title=String(body.title||'').trim().slice(0,80);
-      if(body.albumId) {
-        const album=await get('albums',body.albumId); if(!album) throw new Error('专辑不存在');
-        memories=(await Promise.all(album.memoryIds.map(id=>get('memories',id)))).filter(m=>m?.status==='confirmed');
-        if(!memories.length) throw new Error('这张专辑还没有已确认的记忆');
-        title=album.title;
-      }else{
-        const ids=Array.isArray(body.memoryIds)?body.memoryIds.filter(Boolean).slice(0,24):[];
-        if(!ids.length) throw new Error('先挑几段记忆');
-        memories=(await Promise.all(ids.map(id=>get('memories',id)))).filter(m=>m?.status==='confirmed');
-        if(!memories.length) throw new Error('挑中的记忆都还没经过家属核对');
-      }
-      if(aiReady())await billing.reserve(auth.user.id,'story');
-      return json(await generateStory(memories,title));
-    }
     // ── 全年龄段的写接口 ──
-    // 这些都走 openToViewer：家里的任何一个人都能给孩子记一句话、勾一个里程碑、
-    // 写一封时间胶囊。真正要花钱的（声音复刻、图生视频）仍然单独要求 editor。
+    // 这些都走 openToViewer：家里的任何一个人都能给孩子记一句话、勾一个里程碑。
+    // 真正要花钱的（声音复刻、图生视频）仍然单独要求 editor。
     if(parts[0]==='stage') {
       if(parts[1]==='milestones') {
         const memberId=String(body.memberId||'');if(!memberId) throw new Error('先选一位家人');
@@ -588,12 +533,6 @@ async function handlePost(request,{params},billing) {
         await put('answers',record);return json(record,201);
       }
     }
-    if(parts[0]==='capsules') {
-      const capsule={...sanitizeCapsule(body),id:randomUUID(),familyId:'family',authorId:auth.user.id,createdAt:new Date().toISOString()};
-      await put('capsules',capsule);
-      await log('capsule',`写了一封时间胶囊，将在 ${capsule.openAt} 开启`);
-      return json(capsule,201);
-    }
     if(parts[0]==='highlights') {
       // G 高光时刻：一次郑重其事的记录，值得单独存、单独展示。
       const highlight={...sanitizeHighlight(body),id:randomUUID(),familyId:'family',userId:auth.user.id,createdAt:new Date().toISOString()};
@@ -612,63 +551,6 @@ async function handlePost(request,{params},billing) {
       if(!types[body.type]) throw new Error('不支持的互动类型');
       const memory=await get('memories',body.memoryId);if(!memory||memory.status!=='confirmed') throw new Error('记忆不可播放');
       return json(await log(body.type,`${types[body.type]}「${memory.title}」`,memory.id));
-    }
-    if(parts[0]==='life'&&parts[1]==='subjects') {
-      // 人生推演的开局入口：列出「可以从哪一段记忆开始」。
-      // 只认已确认的记忆——草稿还没被家属核对过，不能拿来当人生起点。
-      const confirmed=(await all('memories')).filter(m=>m.status==='confirmed');
-      const members=await all('members');
-      const origins=confirmed
-        .filter(m=>String(m.story||m.title||'').trim())
-        .map(m=>({id:m.id,title:m.title,year:m.year||'',location:m.location||'',people:m.people||[],theme:m.theme,cover:m.cover||null,excerpt:String(m.story||'').slice(0,120)}))
-        .sort((a,b)=>String(b.year||'0').localeCompare(String(a.year||'0')));
-      return json({origins,members:members.map(m=>({id:m.id,name:m.name,relation:m.relation||'家人'})),stats:STAT_META,maxStages:MAX_STAGES,maxChoiceText:MAX_CHOICE_TEXT,aiReady:aiReady()});
-    }
-    if(parts[0]==='life'&&parts[1]==='start') {
-      // 从一段记忆往后推演。起点是事实，往后全是「如果」。
-      const memory=await get('memories',String(body.memoryId||''));
-      if(!memory) throw new Error('没有找到这段记忆');
-      if(memory.status!=='confirmed') throw new Error('这段记忆还没有经过家属核对，先确认再拿它开局');
-      // 每开一局都要模型写一幕，算一次配额。
-      rateLimit('life-start',auth.user.id,12);
-      const subjectName=String(body.subjectName||memory.people?.[0]||'这位家人').slice(0,40);
-      const run=startRun({memory,subjectName});
-      await billing.reserve(auth.user.id,'life_start');
-      const stage=await nextStage(run);
-      const record={...run,id:randomUUID(),familyId:'family',userId:auth.user.id,stages:[stage],createdAt:new Date().toISOString()};
-      await put('life_runs',record);
-      // 只留最近的几局：每局带八幕全文，不清理会一直堆。
-      const mine=(await all('life_runs')).filter(r=>r.userId===auth.user.id);
-      for(const stale of mine.slice(8)) await remove('life_runs',stale.id);
-      return json(publicRun(record),201);
-    }
-    if(parts[0]==='life'&&parts[1]==='turn') {
-      // 一次选择。玩家可以选预设选项，也可以自己写「我想……」。
-      const record=await get('life_runs',String(body.runId||''));
-      if(!record) throw new Error('这一局已经不在了，重新开一局吧');
-      if(record.userId!==auth.user.id) return forbidden();
-      if(record.status!=='playing') throw new Error('这一局已经走完了');
-      // 每推一幕都是一次模型调用。正常一局 8~12 幕，一小时内推四局绰绰有余。
-      rateLimit('life-turn',auth.user.id,40);
-      const stage=currentStage(record);
-      if(!stage) throw new Error('这一幕还没准备好');
-      const freeText=body.choiceId?null:String(body.text||'').trim().slice(0,MAX_CHOICE_TEXT);
-      if(!body.choiceId&&!freeText) throw new Error('选一个，或者写一句你想怎么做');
-      // 自由输入：先让模型写下一幕，它顺带判定那句话落到了哪几个属性上。
-      // 先不落库，等选择和这一幕一起写回去，避免出现「选了但没生成」的半截状态。
-      await billing.reserve(auth.user.id,'life_turn');
-      const upcoming=await nextStage(record,{freeText});
-      const moved=recordChoice(record,{choiceId:body.choiceId,text:freeText,freeDeltas:upcoming.freeDeltas});
-      const lastPicked=moved.stages[moved.stageIndex-1]?.answer||null;
-      if(moved.status==='finished') {
-        const done=await finishRun(moved);
-        await put('life_runs',done);
-        await log('game',`走完了一段「如果」：${done.subjectName}的另一条路`);
-        return json({...publicRun(done),reveal:lastPicked});
-      }
-      const updated={...moved,stages:[...moved.stages,upcoming]};
-      await put('life_runs',updated);
-      return json({...publicRun(updated),reveal:lastPicked});
     }
     if(parts[0]==='companion'&&parts[1]==='turn') {
       // 一次对话回合。事实只有一个来源：confirmed 记忆里检索出来的那几条，
@@ -959,10 +841,6 @@ export async function PATCH(request,{params}) {
       const update={...old,familyName:String(body.familyName??old.familyName).trim().slice(0,60)||old.familyName,fontSize:['large','extra'].includes(body.fontSize)?body.fontSize:old.fontSize,highContrast:Boolean(body.highContrast??old.highContrast),autoPlay:Boolean(body.autoPlay??old.autoPlay),speechRate:Math.min(1.2,Math.max(0.5,Number(body.speechRate??old.speechRate)||0.85))};
       return json(await put('settings',update));
     }
-    if(parts[0]==='albums') {
-      const old=await get('albums',parts[1]);if(!old) throw new Error('专辑不存在');
-      return json(await put('albums',{...old,story:String(body.story??old.story).slice(0,10000)}));
-    }
     return json({error:'接口不存在'},404);
   }catch(e){return bad(e);}
 }
@@ -979,21 +857,12 @@ export async function DELETE(request,{params}) {
       for(const session of await all('sessions'))if(session.userId===target.id)await remove('sessions',session.id);
       await remove('users',target.id);return json({ok:true});
     }
-    if(parts[0]==='capsules') {
-      const auth=await guard(request);if(auth.error)return auth.error;
-      const capsule=await get('capsules',parts[1]);if(!capsule)return json({error:'内容不存在'},404);
-      if(capsule.authorId!==auth.user.id&&!accountRole(auth.user,'editor'))return forbidden();
-      await remove('capsules',capsule.id);return json({ok:true});
-    }
     const auth=await guard(request,'editor');if(auth.error)return auth.error;
-    if(!['memories','albums','members','anniversaries','quotes','answers','highlights'].includes(parts[0])) return json({error:'接口不存在'},404);
+    if(!['memories','members','anniversaries','quotes','answers','highlights'].includes(parts[0])) return json({error:'接口不存在'},404);
     const old=await get(parts[0],parts[1]);if(!old) return json({error:'内容不存在'},404);
     if(parts[0]==='members'&&old.role==='管理员') throw new Error('比赛版请保留管理员');
     await remove(parts[0],parts[1]);
     if(parts[0]==='memories') {
-      for(const album of await all('albums')) if(album.memoryIds.includes(old.id)) {
-        const ids=album.memoryIds.filter(id=>id!==old.id);await put('albums',{...album,memoryIds:ids,cover:ids.length?(await get('memories',ids[0]))?.cover:null,story:''});
-      }
       for(const key of ['cover','audio','video']) if(old[key]?.startsWith('/api/media/')) {
         const file=path.basename(old[key]);if(!await isManagedMedia(file)){const upload=await get('uploads',file);await deleteMedia(file,upload?.blobUrl);await remove('uploads',file);}
       }
