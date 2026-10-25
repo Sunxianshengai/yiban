@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>暖伴 · 设计模式复刻 Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Urbanist:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   原创复刻 Demo：复现逆向观察到的设计模式，代码与文案全部原创。
+   品牌示例名"暖伴"为占位，可替换为忆伴。
+   ============================================================ */
+:root{
+  --ink:#2B1C12;          /* 暖棕正文色 */
+  --ink-title:#161E2A;    /* 墨蓝标题色 */
+  --lav:#EFEBFE;          /* 淡紫 */
+  --glow:rgba(140,96,255,.4);
+  --peach:#F5A56E; --apricot:#F7C579; --sage:#8FAE6E;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Urbanist',sans-serif;color:var(--ink);background:#fff;overflow-x:hidden}
+
+/* —— 模式①：流动渐变首屏背景（200% 尺寸 + position 循环） —— */
+.hero-wrap{position:relative;overflow:hidden}
+.hero-bg{position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(45deg,var(--lav),#fff 45%,#FDF2EA 75%,var(--lav));
+  background-size:200% 200%;
+  animation:gradientMove 12s ease-in-out infinite;
+  animation:gradientMove 12s ease-in-out infinite, heroBg 1.4s cubic-bezier(.2,.7,.2,1) both;}
+@keyframes gradientMove{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes heroBg{0%{transform:scaleY(0) scaleX(1.2) skewY(14deg)}100%{transform:scaleY(1) scaleX(1) skewY(0)}}
+
+/* —— 模式②：入场三件套（背景展开 / 文案上滑 / 样机上浮） —— */
+@keyframes riseIn{0%{transform:translateY(40px) skewY(1.5deg);opacity:0}100%{transform:translateY(0) skewY(0);opacity:1}}
+@keyframes floatUp{0%{transform:translateY(80px);opacity:0}100%{transform:translateY(0);opacity:1}}
+.hero-copy{animation:riseIn .9s .15s cubic-bezier(.2,.7,.2,1) both}
+.hero-phone{animation:floatUp 1s .3s cubic-bezier(.2,.7,.2,1) both}
+
+/* —— 导航 —— */
+.nav{display:flex;align-items:center;justify-content:space-between;max-width:1160px;margin:0 auto;padding:22px 24px;position:relative;z-index:2}
+.brand{font-family:'Lora',serif;font-style:italic;font-weight:700;font-size:26px;color:var(--ink-title);text-decoration:none}
+.nav-links{display:flex;gap:34px}
+.nav-links a{color:var(--ink);text-decoration:none;font-weight:500;font-size:16px}
+.nav-links a:hover{opacity:.65}
+@media(max-width:860px){.nav-links{display:none}}
+
+/* —— 模式③：发光胶囊按钮 —— */
+.pill{display:inline-flex;align-items:center;gap:10px;border:none;cursor:pointer;
+  font-family:inherit;font-weight:700;font-size:15px;letter-spacing:.02em;
+  border-radius:88px;padding:16px 36px;text-decoration:none}
+.pill-white{background:#fff;color:var(--ink);box-shadow:0 0 12px var(--glow),0 2px 10px rgba(0,0,0,.06)}
+.pill-white:hover{transform:translateY(-1px);box-shadow:0 0 20px var(--glow),0 6px 18px rgba(0,0,0,.08)}
+.pill-dark{position:relative;background:#14100E;color:#fff;isolation:isolate}
+.pill-dark::before{content:"";position:absolute;inset:-2.5px;border-radius:999px;z-index:-2;
+  background:linear-gradient(90deg,#8C60FF,#FF6EB4,#FF9D5C,#8C60FF);background-size:200% 100%;
+  animation:gradientMove 6s linear infinite;filter:blur(1px)}
+.pill-dark::after{content:"";position:absolute;inset:0;border-radius:999px;z-index:-1;background:#14100E}
+.pill-dark{box-shadow:0 0 16px rgba(140,96,255,.35)}
+
+/* —— 首屏 —— */
+.hero{max-width:900px;margin:0 auto;padding:64px 24px 96px;text-align:center;position:relative;z-index:1}
+.hero h1{font-family:'Lora',serif;font-weight:600;font-size:clamp(36px,5vw,56px);color:var(--ink-title);line-height:1.18}
+.hero p{max-width:640px;margin:26px auto 38px;font-size:19px;line-height:1.7}
+.hero-note{display:inline-flex;gap:8px;align-items:center;margin-top:26px;font-size:14px;color:#8a7a6d}
+
+/* —— 两栏布局容器 —— */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;max-width:1160px;margin:0 auto;padding:88px 24px}
+@media(max-width:860px){.split{grid-template-columns:1fr;gap:40px;padding:64px 20px}}
+.split .appicon{width:84px;height:84px;border-radius:22px;background:#fff;display:grid;place-items:center;font-size:38px;box-shadow:0 0 22px var(--glow),0 4px 16px rgba(0,0,0,.06);margin-bottom:26px}
+.split h2{font-family:'Lora',serif;font-weight:600;font-size:clamp(28px,3vw,38px);color:var(--ink-title);margin-bottom:18px}
+.split .lead{font-size:19px;line-height:1.75;max-width:430px}
+
+/* —— 手机样机（纯 CSS） —— */
+.phone{width:320px;height:660px;margin:0 auto;background:#1b1b1f;border-radius:48px;padding:12px;box-shadow:0 30px 60px rgba(30,20,60,.25),0 0 0 2px #3a3a40;position:relative}
+.phone .screen{width:100%;height:100%;border-radius:38px;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.phone .notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:110px;height:26px;background:#1b1b1f;border-radius:14px;z-index:5}
+.sunset{background:linear-gradient(175deg,#FDEFE2 0%,var(--apricot) 45%,var(--peach) 100%)}
+.lavbg{background:linear-gradient(175deg,#F6F3FF 0%,var(--lav) 60%,#FDE8E2 100%)}
+
+/* 转轮选择器 + 极光高亮胶囊（模式④） */
+.wheel{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-weight:800;font-size:26px;color:rgba(43,28,18,.35)}
+.wheel .on{position:relative;color:#fff;font-size:52px;padding:8px 44px;border-radius:60px;
+  background:linear-gradient(90deg,#8C60FF,#FF6EB4,#FF9D5C,#8C60FF);background-size:220% 100%;
+  animation:gradientMove 5s linear infinite;
+  box-shadow:0 10px 30px rgba(140,96,255,.45);text-shadow:0 2px 8px rgba(0,0,0,.18)}
+.wheel .on::before{content:"";position:absolute;inset:0;border-radius:60px;background:rgba(255,255,255,.16);backdrop-filter:blur(2px)}
+.cta-bar{padding:22px;display:flex;justify-content:center}
+.cta-bar .pill{border-radius:999px;font-size:14px;padding:14px 42px}
+
+/* 聊天界面（模式⑤） */
+.chat{flex:1;display:flex;flex-direction:column;padding:20px 14px 12px;gap:10px;background:linear-gradient(175deg,#FDF4EC,#F3E7FA)}
+.chat .msg{max-width:78%;padding:10px 14px;border-radius:20px;font-size:14.5px;line-height:1.45;position:relative}
+.chat .them{align-self:flex-start;background:#fff;color:var(--ink);border-bottom-left-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+.chat .them .avatar{position:absolute;left:-26px;bottom:0;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#F7C579,#F5A56E);display:grid;place-items:center;font-size:11px}
+.chat .me{align-self:flex-end;background:#7E9B5B;color:#fff;border-bottom-right-radius:6px}
+.chat .me .mini{float:right;width:20px;height:20px;border-radius:50%;background:#fff;color:#7E9B5B;font-size:10px;display:grid;place-items:center;margin:8px 0 0 8px}
+.chips{display:flex;gap:8px;padding:10px 14px 6px;flex-wrap:wrap}
+.chip{font-size:12.5px;font-weight:700;padding:7px 14px;border-radius:999px;background:rgba(255,255,255,.85);color:#5a5a5a}
+.chip.hot{background:#4A90E2;color:#fff}
+.inputbar{display:flex;align-items:center;gap:10px;padding:10px 14px 16px}
+.inputbar .field{flex:1;background:#fff;border-radius:999px;padding:11px 16px;font-size:13px;color:#9a9a9a}
+.inputbar .send{width:40px;height:40px;border-radius:50%;background:#14100E;color:#fff;display:grid;place-items:center;font-size:16px}
+
+/* 记忆卡：图上叠字（模式⑥） */
+.memcard{flex:1;margin:14px;border-radius:22px;overflow:hidden;position:relative;display:flex;flex-direction:column;justify-content:flex-end;
+  background:linear-gradient(180deg,#7FB2C9 0%,#C9D9C4 60%,#F1D9A8 100%)}
+.memcard::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(20,12,8,.72) 100%)}
+.memcard .mtitle{position:relative;color:#fff;font-family:'Lora',serif;font-size:22px;padding:0 18px}
+.memcard .mdate{position:relative;color:rgba(255,255,255,.75);font-size:13px;padding:4px 18px 12px}
+.memcard .tags{position:relative;display:flex;gap:8px;padding:0 18px 18px;flex-wrap:wrap}
+.memcard .tag{font-size:12px;font-weight:700;color:#fff;background:rgba(255,255,255,.22);padding:6px 14px;border-radius:999px;backdrop-filter:blur(3px)}
+.row{display:flex;gap:10px;padding:0 14px 14px}
+.row .chip2{flex:1;text-align:center;background:#fff;border-radius:999px;padding:9px 0;font-size:12.5px;color:#666}
+.bottom-dark{margin:0 14px 20px;background:#1B2430;color:#fff;border-radius:14px;text-align:center;padding:14px 0;font-weight:800;font-size:14px;letter-spacing:.06em}
+
+/* 心情柱状图 */
+.mood{flex:1;display:flex;flex-direction:column;background:linear-gradient(175deg,#FCE9D4,#F7C579 80%)}
+.mood .face{width:96px;height:96px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:52px;margin:34px auto 6px;box-shadow:0 10px 24px rgba(120,70,20,.18)}
+.mood .label{text-align:center;font-weight:800;font-size:20px;color:var(--ink);padding-bottom:18px}
+.mood .stats{flex:1;background:#fff;border-radius:26px 26px 0 0;padding:20px 18px}
+.mood .stats h4{font-size:14px;color:#333}
+.bars{display:flex;gap:9px;align-items:flex-end;height:150px;margin-top:14px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;justify-content:flex-end;height:100%}
+.bar i{width:100%;border-radius:10px;display:block}
+.bar em{font-style:normal;font-size:10.5px;color:#999}
+.mood-tab{position:relative;text-align:center;margin:-34px auto 10px;width:44px;height:44px;border-radius:50%;background:#14100E;color:#fff;display:grid;place-items:center;font-size:18px;border:4px solid #fff}
+
+/* —— CTA 渐变大卡（模式⑦） —— */
+.cta-card{max-width:1160px;margin:20px auto 90px;padding:76px 32px;border-radius:36px;text-align:center;
+  background:linear-gradient(120deg,#FDF0E0,#F3ECFE 55%,#FDE7E0);
+  animation:gradientMove 14s ease-in-out infinite;background-size:200% 200%}
+.cta-card h2{font-family:'Lora',serif;font-weight:600;font-size:clamp(30px,4vw,44px);color:var(--ink-title)}
+.cta-card p{max-width:620px;margin:18px auto 34px;font-size:18px;line-height:1.65}
+.cta-card .pill{width:min(640px,100%);justify-content:center}
+
+/* —— 滚动叙事节（模式⑧：吸附分步） —— */
+.story{scroll-snap-type:y mandatory;height:100vh;overflow-y:scroll}
+.snap{scroll-snap-align:start;min-height:100vh;display:grid;place-items:center;position:relative}
+.snap .aurora{position:absolute;inset:0;z-index:0;opacity:.9;
+  background:conic-gradient(from 180deg at 30% 40%,#8C60FF33,#FF6EB42E,#FF9D5C2E,#7E9B5B2A,#8C60FF33);
+  filter:blur(60px);animation:gradientMove 16s ease-in-out infinite;background-size:200% 200%}
+.snap .card{position:relative;z-index:1;background:#fff;border-radius:28px;padding:56px 48px;max-width:520px;margin:24px;
+  box-shadow:0 30px 70px rgba(20,10,40,.18);text-align:center}
+.snap .card .ico{width:96px;height:96px;border-radius:50%;background:#F6F4FB;display:grid;place-items:center;font-size:44px;margin:0 auto 26px}
+.snap .card h3{font-family:'Lora',serif;font-weight:600;font-size:30px;color:var(--ink-title);margin-bottom:14px}
+.snap .card p{line-height:1.7;color:#5c5c5c}
+.snap .down{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);z-index:1;font-size:24px;color:#888;animation:bob 1.6s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,8px)}}
+
+footer{border-top:1px solid #eee;padding:44px 24px;text-align:center;font-size:14px;color:#8a8a8a}
+footer .brand{display:inline-block;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<div class="hero-wrap">
+  <div class="hero-bg"></div>
+  <nav class="nav">
+    <a class="brand" href="#">暖伴</a>
+    <div class="nav-links"><a href="#features">功能</a><a href="#story">如何使用</a><a href="#join">加入</a></div>
+    <a class="pill pill-white" href="#join">⌂ 下载应用</a>
+  </nav>
+
+  <section class="hero">
+    <h1>把家的故事，<br>好好收藏、慢慢重温</h1>
+    <p>一张照片、一段声音、一句原话，都值得留给以后。家人一起记录、核对、回望，AI 陪伴始终温和在场。</p>
+    <a class="pill pill-dark" href="#join">下载应用</a>
+    <div class="hero-note">✳ &nbsp;无需付费即可开始 · 家人共同维护</div>
+  </section>
+</div>
+
+<!-- 卖点区 1：左文右机（转轮选择器） -->
+<section class="split" id="features">
+  <div>
+    <div class="appicon">💜</div>
+    <h2>被理解，一直在。</h2>
+    <p class="lead">它知道家里每个人的故事。聊起往事时，回答会引用你们核对过的记忆，附上原文出处——温和，但不编造。</p>
+  </div>
+  <div class="phone"><div class="notch"></div><div class="screen sunset">
+    <div class="wheel"><span>30</span><span>31</span><span class="on">32</span><span>33</span><span>34</span></div>
+    <div class="cta-bar"><button class="pill pill-dark">继续 →</button></div>
+  </div></div>
+</section>
+
+<!-- 卖点区 2：聊天（交换左右列） -->
+<section class="split">
+  <div class="phone lavbg"><div class="notch"></div><div class="screen">
+    <div class="chat">
+      <div class="msg them"><span class="avatar">爸</span>今天降温了，记得穿那件厚外套。</div>
+      <div class="msg me"><span class="mini">我</span>好嘞，周末回家吃饭吗？</div>
+      <div class="msg them"><span class="avatar">爸</span>回！你妈说想包饺子了。</div>
+    </div>
+    <div class="chips"><span class="chip hot">好啊</span><span class="chip">想吃什么馅</span><span class="chip">下周再回</span></div>
+    <div class="inputbar"><span>🎙️</span><div class="field">说点什么…</div><div class="send">➤</div></div>
+  </div></div>
+  <div>
+    <div class="appicon">🛡️</div>
+    <h2>家的语气，原样保存。</h2>
+    <p class="lead">语音、照片、视频都可以存进记忆库，发布前由家人一起核对。日常聊天像发消息一样自然，建议回复就在输入框旁边。</p>
+  </div>
+</section>
+
+<!-- 卖点区 3：记忆卡 + 心情统计 -->
+<section class="split">
+  <div>
+    <div class="appicon">📖</div>
+    <h2>每段记忆，都有出处。</h2>
+    <p class="lead">故事叠印在照片上，人物、地点、年份一目了然；家人的心情一周一记，回望时连"那天很开心"都看得见。</p>
+  </div>
+  <div class="phone lavbg"><div class="notch"></div><div class="screen">
+    <div class="memcard">
+      <div class="mtitle">全家去西湖的那个夏天</div>
+      <div class="mdate">1995 · 杭州</div>
+      <div class="tags"><span class="tag">旅行</span><span class="tag">全家福</span></div>
+    </div>
+    <div class="row"><div class="chip2">📍 杭州 · 西湖</div><div class="chip2">📅 1995 年夏</div></div>
+    <div class="bottom-dark">继续</div>
+  </div></div>
+</section>
+
+<!-- 滚动叙事：分步 + 极光背景 -->
+<div class="story" id="story">
+  <section class="snap"><div class="aurora"></div>
+    <div class="card"><div class="ico">🏡</div><h3>第一步 · 建一个家</h3><p>邀请家人加入，或先从一个人的记忆小屋开始。每个人都用自己的账号，只看得到发布过的内容。</p></div>
+    <span class="down">⌄</span>
+  </section>
+  <section class="snap"><div class="aurora"></div>
+    <div class="card"><div class="ico">📷</div><h3>第二步 · 记下片刻</h3><p>一句话就能建档，照片、录音随时补。家人一起核对人物与年份，确认后才发布给全家。</p></div>
+    <span class="down">⌄</span>
+  </section>
+  <section class="snap"><div class="aurora"></div>
+    <div class="card"><div class="ico">💬</div><h3>第三步 · 随时聊聊</h3><p>聊今天，也聊旧事。AI 陪伴引用已核对的家庭记忆，回答附带来源，永远是家里的语气。</p></div>
+    <span class="down">⌄</span>
+  </section>
+</div>
+
+<!-- CTA 渐变大卡 -->
+<section class="cta-card" id="join">
+  <h2>第一条回忆，一句话就够。</h2>
+  <p>从「那年夏天我们去了海边」开始，暖伴会陪你们把它变成全家都能回望的故事。</p>
+  <a class="pill pill-white" href="#">开始记录</a>
+</section>
+
+<footer>
+  <span class="brand">暖伴</span><br>
+  设计模式复刻 demo · 所有代码与文案均为原创 · 仅用于设计验证
+</footer>
+
+</body>
+</html>
