@@ -143,3 +143,26 @@
  .cw-send{width:44px;height:44px}
  .cw-history-top>.cw-tool{width:44px;height:44px}
 }
+/* ---------- familia 风格增强（2026-10-26）：暖渐变底 / 用户气泡 / 胶囊 chips ---------- */
+/* 主区暖色渐变：用 color-mix 叠加，日间柔和、夜间自动收敛 */
+.cw-main{background:
+  radial-gradient(900px 420px at 12% 0%, color-mix(in srgb,var(--terracotta) 8%,transparent), transparent 70%),
+  radial-gradient(900px 480px at 88% 100%, color-mix(in srgb,#8C60FF 7%,transparent), transparent 70%),
+  var(--canvas)}
+/* 欢迎语改衬线标题，贴品牌纪念感 */
+.cw-welcome h2{font-family:var(--serif);font-weight:600;letter-spacing:0}
+/* 用户消息：品牌绿气泡（familia 的 iMessage 式右侧气泡） */
+.cw-user-text{background:var(--brand);color:var(--on-brand);border-radius:20px;border-bottom-right-radius:6px;
+  box-shadow:0 4px 14px color-mix(in srgb,var(--brand) 22%,transparent)}
+/* 话题建议：胶囊 chips */
+.cw-starters button{border-radius:999px;background:var(--surface)}
+.cw-starters button:hover{border-color:var(--brand);background:var(--surface)}
+/* 来源引用：胶囊 chip */
+.cw-sources button{border-radius:999px;background:var(--surface)}
+/* 发送键：品牌辉光 */
+.cw-send{box-shadow:0 0 12px color-mix(in srgb,var(--brand) 38%,transparent);transition:box-shadow .16s,background .16s}
+.cw-send:hover:not(:disabled){box-shadow:0 0 20px color-mix(in srgb,var(--brand) 52%,transparent)}
+.cw-send:disabled{box-shadow:none}
+/* 输入区悬浮在渐变上：半透明毛玻璃 */
+.cw-compose-area{background:color-mix(in srgb,var(--surface) 72%,transparent);backdrop-filter:blur(10px)}
+@media(prefers-reduced-motion:reduce){.cw-main{background:var(--canvas)}}
