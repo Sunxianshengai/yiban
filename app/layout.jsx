@@ -6,6 +6,7 @@ import './product.css';
 import './chat-workspace.css';
 import './familia.css';
 import './preview-parity.css';
+import './persona.css';
 import './auth-motion.css';
 
 export const metadata = {
