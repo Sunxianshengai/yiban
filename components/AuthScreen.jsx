@@ -2,10 +2,9 @@
 import {useState} from 'react';
 import Icon from './Icon';
 import {Button,Field} from './UI';
+import AuthMotion from './AuthMotion';
 
-// 登录页：一张安静的照片舞台 + 一句实在的话 + 明确的表单。
-// 按设计方案去掉了轮播金句、鼠标视差拍立得和玻璃拟态卡片——
-// 登录页只需要让人信任并完成登录。
+// 动效只作用于品牌舞台，认证流程和表单保持独立。
 export default function AuthScreen({needsSetup,onComplete,api}) {
   const [mode,setMode]=useState(needsSetup?'setup':'login');
   const [showPassword,setShowPassword]=useState(false);
@@ -20,12 +19,8 @@ export default function AuthScreen({needsSetup,onComplete,api}) {
   };
   const switchMode=next=>{setError('');setMode(next);};
   const isInviteMode=mode==='register'||mode==='admin-register';
-  return <main className="auth-screen">
-    <section className="auth-stage" aria-hidden="true">
-      <div className="auth-brand"><span className="brand-mark"><Icon name="leaf" size={24}/></span><span>忆伴</span></div>
-      <p className="auth-line">让每一次陪伴，<br/>都有回忆可循。</p>
-
-    </section>
+  return <main className="auth-screen auth-motion-page">
+    <AuthMotion/>
     <section className="auth-panel">
       <div className="auth-box">
 
