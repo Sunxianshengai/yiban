@@ -4,6 +4,7 @@ import './globals.css';
 import './credits.css';
 import './product.css';
 import './chat-workspace.css';
+import './familia.css';
 
 export const metadata = {
   title: '忆伴 · 让每一份回忆，都有温度',

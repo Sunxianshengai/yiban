@@ -1,10 +1,10 @@
 import {test,expect} from '@playwright/test';
-import {signInAsNewAdmin} from './helpers.mjs';
+import {signInAsNewAdmin,openCredits} from './helpers.mjs';
 
 test('个人余额、管理员发放与成功回复的消费记录贯通',async({page})=>{
   await signInAsNewAdmin(page,{name:'积分家长',prefix:'credits',credits:0});
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
-  await page.getByRole('button',{name:'积分余额',exact:true}).click();
+  await openCredits(page);
   await expect(page.getByRole('heading',{name:'我的积分',exact:true})).toBeVisible();
   await expect(page.locator('.credits-totals').first()).toContainText('0');
   const user=(await (await page.request.get('/api/auth/status')).json()).user;
@@ -21,7 +21,7 @@ test('个人余额、管理员发放与成功回复的消费记录贯通',async(
   await page.getByRole('button',{name:'发送消息',exact:true}).click();
   await expect(page.locator('.cw-assistant').last()).toBeVisible();
   await expect(page.locator('.credits-balance strong')).toHaveText('49');
-  await page.getByRole('button',{name:'积分余额',exact:true}).click();
+  await openCredits(page);
   await expect(page.locator('.credits-table')).toContainText('消费完成');
   await expect(page.locator('.credits-table')).toContainText('家伴对话');
   await page.screenshot({path:'artifacts/credits-desktop.png',fullPage:true});
@@ -34,7 +34,7 @@ test('查看者只能查看自己的积分，无余额时停止调用；手机�
   const joined=await page.request.post('/api/auth/register',{data:{code:invite.code,name:'积分查看者',email:`credits-viewer-${Date.now()}@yiban.test`,password:'ViewerPassword123!'}});
   expect(joined.status()).toBe(201);
   await page.reload();
-  await page.getByRole('button',{name:'积分余额',exact:true}).click();
+  await openCredits(page);
   await expect(page.getByRole('heading',{name:'我的积分',exact:true})).toBeVisible();
   await expect(page.locator('.credits-grant')).toHaveCount(0);
   const user=(await (await page.request.get('/api/auth/status')).json()).user;
@@ -45,7 +45,7 @@ test('查看者只能查看自己的积分，无余额时停止调用；手机�
   await page.getByRole('button',{name:'发送消息',exact:true}).click();
   await expect(page.locator('.cw-error')).toContainText('积分不足');
   await expect(page.locator('.credits-balance strong')).toHaveText('0');
-  await page.getByRole('button',{name:'积分余额',exact:true}).click();
+  await openCredits(page);
   await page.setViewportSize({width:390,height:844});
   await expect(page.getByRole('heading',{name:'我的积分',exact:true})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);

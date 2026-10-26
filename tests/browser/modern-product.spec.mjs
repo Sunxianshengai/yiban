@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 import fs from 'node:fs';
-import {signInAsNewAdmin} from './helpers.mjs';
+import {signInAsNewAdmin,clickNavItem} from './helpers.mjs';
 
 test.beforeEach(async({page})=>{await signInAsNewAdmin(page,{prefix:'modern',credits:0});});
 const record=page=>page.getByRole('dialog',{name:'记一段回忆'});
@@ -8,9 +8,9 @@ async function openRecord(page){await page.getByRole('button',{name:'记一段�
 
 test('core navigation is focused and family timelines do not require a birth year',async({page})=>{
   const nav=page.locator('.side-nav');
-  await expect(nav.getByRole('button')).toHaveCount(6);
+  await expect(nav.getByRole('button')).toHaveCount(4);
   await expect(nav.getByRole('button',{name:'人生推演'})).toHaveCount(0);
-  await nav.getByRole('button',{name:'家人故事',exact:true}).click();
+  await clickNavItem(page,'家人故事');
   await expect(page.locator('.rail-item').first()).toBeVisible();
   await expect(page.locator('.growth-tabs>button')).toHaveCount(3);
   await page.getByRole('button',{name:'问问家人',exact:true}).click();

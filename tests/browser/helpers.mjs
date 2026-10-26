@@ -63,9 +63,18 @@ export async function fundTestAccount(request,amount=1000) {
   expect(result.status(),'管理员为测试账号发放积分').toBe(201);
 }
 
-// 侧栏承载全部入口（不再有「更多」下拉），测试统一按名称点侧栏按钮。
+// Primary navigation stays focused; auxiliary tools live in the real More menu.
+export async function openMore(page){
+  const desktop=page.locator('.sidebar-bottom').getByRole('button',{name:'更多功能',exact:true});
+  if(await desktop.isVisible())await desktop.click();
+  else{const back=page.getByRole('button',{name:'返回联系页',exact:true});if(await back.isVisible())await back.click();const contact=page.locator('.fa-contact').getByRole('button',{name:'更多功能',exact:true});if(await contact.isVisible())await contact.click();else{const home=page.locator('.fa-home').getByRole('button',{name:'更多功能',exact:true});if(!await home.isVisible())await page.locator('.mobile-nav').getByRole('button',{name:'首页',exact:true}).click();await page.locator('.fa-home').getByRole('button',{name:'更多功能',exact:true}).click();}}
+  await expect(page.getByRole('dialog',{name:'更多功能',exact:true})).toBeVisible();
+}
+export async function openChatSettings(page){await page.getByLabel('对话菜单',{exact:true}).click();await page.getByRole('button',{name:'聊天设置',exact:true}).click();await expect(page.getByRole('dialog',{name:'聊天设置',exact:true})).toBeVisible();}
+export async function openCredits(page){await openMore(page);await page.getByRole('dialog',{name:'更多功能',exact:true}).getByRole('button',{name:'积分余额与消费',exact:true}).click();await expect(page.getByRole('heading',{name:'我的积分',exact:true})).toBeVisible();}
 export async function clickNavItem(page,name){
-  const nav=page.getByRole('navigation');
-  await nav.getByRole('button',{name:new RegExp('^'+name)}).click();
+  const button=page.locator('.side-nav').getByRole('button',{name:new RegExp('^'+name)});
+  if(await button.count()){await button.click();return;}
+  await openMore(page);await page.getByRole('dialog',{name:'更多功能',exact:true}).getByRole('button',{name:name==='家人故事'?'家人故事时间轴':name==='设置'?'账号、外观与设置':name,exact:true}).click();
 }
 

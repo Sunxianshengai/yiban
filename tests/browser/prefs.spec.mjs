@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {signInAsNewAdmin} from './helpers.mjs';
+import {signInAsNewAdmin,openMore} from './helpers.mjs';
 const BASE=process.env.PW_BASE_URL||'http://localhost:3711';
 
 test('偏好变更后字号与主题真正生效',async({browser})=>{
@@ -18,7 +18,7 @@ test('偏好变更后字号与主题真正生效',async({browser})=>{
 
   // 走真实 UI 点选：先夜间主题（等 data-theme 真的翻过来），再特大字号。
   // 特大会让整页以 24px 根字号重排，紧接着的点击必须等重排结束，否则会点偏。
-  await page.getByRole('button',{name:/设置/}).last().click();
+  await openMore(page);await page.getByRole('button',{name:'账号、外观与设置',exact:true}).click();
   await page.waitForTimeout(600);
   await page.getByRole('button',{name:/夜间/}).first().click();
   await expect.poll(async()=>await page.evaluate(()=>document.querySelector('.app-shell')?.dataset.theme),

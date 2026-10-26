@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 import fs from 'node:fs';
-import {cleanupTestMemories,clickNavItem} from './helpers.mjs';
+import {cleanupTestMemories,clickNavItem,fundTestAccount,openMore} from './helpers.mjs';
 
 test.beforeEach(async({page,request})=>{
   const status=await (await request.get('/api/auth/status')).json();
@@ -11,6 +11,7 @@ test.beforeEach(async({page,request})=>{
     const login=await request.post('/api/auth/login',{data:{email:'admin@yiban.test',password:'TestPassword123!'}});
     expect(login.status()).toBe(200);
   }
+  await fundTestAccount(request,1000);
   const dropped=await cleanupTestMemories(request);
   if(dropped) console.log(`清掉 ${dropped} 段上一轮遗留的测试记忆`);
   page.on('dialog',dialog=>dialog.accept());
@@ -107,10 +108,10 @@ test('desktop and mobile layouts, navigation and dialogs render without errors',
   await page.getByRole('navigation').getByRole('button',{name:'首页'}).click();
   await page.getByRole('button',{name:'记一段回忆',exact:true}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
   // 账号入口是常驻的：任何页面都能从顶栏打开「我的账号」面板。
-  await page.getByRole('button',{name:'我的账号'}).click();await expect(page.getByRole('dialog')).toBeVisible();await expect(page.getByRole('dialog')).toContainText('管理登录账号');await page.keyboard.press('Escape');
+  await openMore(page);await page.getByRole('button',{name:'账号、外观与设置',exact:true}).click();await page.locator('.topbar').getByRole('button',{name:'我的账号'}).click();await expect(page.getByRole('dialog')).toBeVisible();await expect(page.getByRole('dialog')).toContainText('管理登录账号');await page.keyboard.press('Escape');
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:'artifacts/忆伴-手机端.png',fullPage:true});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
-  await page.getByRole('button',{name:'我的账号'}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');
+  await openMore(page);await page.getByRole('button',{name:'账号、外观与设置',exact:true}).click();await page.locator('.topbar').getByRole('button',{name:'我的账号'}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   expect(errors).toEqual([]);
 });
