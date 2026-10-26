@@ -1,17 +1,14 @@
 import {test,expect} from '@playwright/test';
+import {mkdirSync} from 'node:fs';
 
-test('login motion can be paused by keyboard and reduced without disabling the form',async({page})=>{
+test('login background has no motion controls, follows system preferences and keeps the form usable',async({page})=>{
   await page.goto('/app/');
-  await expect(page.getByRole('button',{name:'暂停动效',exact:true})).toBeVisible();
-  const pause=page.getByRole('button',{name:'暂停动效',exact:true});
-  await pause.focus();await page.keyboard.press('Enter');
-  await expect(page.getByRole('button',{name:'播放动效',exact:true})).toHaveAttribute('aria-pressed','true');
-  await expect(page.locator('.am-wave').first()).toHaveCSS('animation-play-state','paused');
-  await page.getByRole('button',{name:'播放动效',exact:true}).click();
-  await page.getByRole('button',{name:'减少动态',exact:true}).click();
-  await expect(page.locator('.am-wave').first()).toHaveCSS('animation-name','none');
-  await expect(page.getByLabel('邮箱',{exact:true})).toBeEnabled();
-  await page.getByRole('button',{name:'恢复动态',exact:true}).click();
+  await expect(page.getByLabel('邮箱',{exact:true})).toBeVisible();
+  await expect(page.locator('.am-controls')).toHaveCount(0);
+  await expect(page.locator('.auth-box')).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+  await expect(page.locator('.auth-box')).toHaveCSS('box-shadow','none');
+  mkdirSync('.impeccable/review/login-motion',{recursive:true});
+  await page.screenshot({path:'.impeccable/review/login-motion/unified-desktop.png'});
   await page.emulateMedia({reducedMotion:'reduce'});
   await expect(page.locator('.am-wave').first()).toHaveCSS('animation-name','none');
   await expect(page.locator('.am-orb')).toHaveCSS('animation-name','none');
