@@ -10,13 +10,16 @@ test('core navigation is focused and family timelines do not require a birth yea
   const nav=page.locator('.side-nav');
   await expect(nav.getByRole('button')).toHaveCount(4);
   await expect(nav.getByRole('button',{name:'人生推演'})).toHaveCount(0);
-  await clickNavItem(page,'家人故事');
-  await expect(page.locator('.rail-item').first()).toBeVisible();
-  await expect(page.locator('.growth-tabs>button')).toHaveCount(3);
-  await page.getByRole('button',{name:'问问家人',exact:true}).click();
+  const name=`无出生年家人${Date.now()}`;const member=await(await page.request.post('/api/members',{data:{name,relation:'家人'}})).json();const memory=await(await page.request.post('/api/memories',{data:{title:`时间轴验证${Date.now()}`,year:'2008',people:[name],status:'confirmed'}})).json();
+  try{await page.reload();await clickNavItem(page,'家人故事');await page.locator('.pw-person-selector>summary').click();await page.locator('.person-chips button').filter({hasText:name}).click();
+  await expect(page.locator('.rail-item').filter({hasText:memory.title})).toBeVisible();
+  await expect(page.locator('.growth-tabs>button')).toHaveCount(2);await page.locator('.growth-tabs>.growth-tools>summary').click();
+  await page.locator('.growth-tabs').getByRole('button',{name:'高光时刻',exact:true}).click();
+  await page.locator('.growth-tabs>.growth-tools>summary').click();await page.locator('.highlight-templates .growth-tools>summary').click();
+  await page.locator('.highlight-templates').getByRole('button',{name:'问问家人',exact:true}).click();
   await page.getByRole('button',{name:'记下回答',exact:true}).first().click();
   await expect(record(page).locator('.record-question')).toBeVisible();
-  await expect(record(page).getByLabel('这是谁的记忆')).not.toHaveValue('');
+  await expect(record(page).getByLabel('这是谁的记忆')).not.toHaveValue('');}finally{await page.request.delete(`/api/memories/${memory.id}`);await page.request.delete(`/api/members/${member.id}`);}
 });
 
 test('one sentence publishes without a manually entered title and restores local drafts',async({page})=>{

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {tidyMemory,searchMemories,localOrganize,storyFromMemories} from '../lib/core.mjs';
+import {tidyMemory,searchMemories,localOrganize,storyFromMemories,sanitizePreferences} from '../lib/core.mjs';
 import {seedMemories} from '../lib/seed.mjs';
 
 test('spoken searches find family memories rather than requiring exact titles',()=>{
@@ -22,4 +22,9 @@ test('offline organization and story generation retain supplied facts',()=>{
   assert.equal(result.mode,'local');assert.equal(result.year,'1995');assert.equal(result.story,input.story);assert.deepEqual(result.people,['妈妈']);
   assert.match(storyFromMemories([{...result,location:''}],'旅行'),/我们坐火车去西湖。/);
   const blank=localOrganize({title:'照片',story:'',tags:[]});assert.equal(blank.year,'');assert.equal(blank.people.length,0);
+});
+
+test('system theme persists as an explicit preference while invalid themes fall back',()=>{
+  assert.equal(sanitizePreferences({theme:"system"}).theme,"system");
+  assert.equal(sanitizePreferences({theme:"invalid"}).theme,"day");
 });

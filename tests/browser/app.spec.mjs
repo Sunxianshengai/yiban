@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 import fs from 'node:fs';
-import {cleanupTestMemories,clickNavItem,fundTestAccount,openMore} from './helpers.mjs';
+import {cleanupTestMemories,clickNavItem,fundTestAccount,openMore,chooseSettingsTab} from './helpers.mjs';
 
 test.beforeEach(async({page,request})=>{
   const status=await (await request.get('/api/auth/status')).json();
@@ -18,7 +18,7 @@ test.beforeEach(async({page,request})=>{
   const cookies=(await request.storageState()).cookies;
   await page.context().addCookies(cookies);
   await page.goto('/');
-  await expect(page.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/今天，想和谁聊聊/})).toBeVisible();
 });
 
 test('upload, local organization, publishing, elder feedback and deletion work together',async({page,request})=>{
@@ -26,7 +26,7 @@ test('upload, local organization, publishing, elder feedback and deletion work t
   let id;
   try {
     await page.goto('/');
-    await expect(page.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
+    await expect(page.getByRole('heading',{name:/今天，想和谁聊聊/})).toBeVisible();
     await page.getByRole('button',{name:'记一段回忆',exact:true}).click();
     await page.locator('input[type=file]').setInputFiles({name:'family.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j0WQAAAAASUVORK5CYII=','base64')});
     await expect(page.locator('.toast')).toContainText('素材上传完成');
@@ -98,7 +98,7 @@ test('drafts stay out of search; server validation works',async({request,page})=
 
 test('desktop and mobile layouts, navigation and dialogs render without errors',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('/');await expect(page.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
+  await page.goto('/');await expect(page.getByRole('heading',{name:/今天，想和谁聊聊/})).toBeVisible();
   fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:'artifacts/忆伴-桌面端.png',fullPage:true});
   // 每个导航页都要真的渲染出内容，用统一的 .page-heading 校验。
   for(const name of ['陪伴对话','记忆库','家人故事','家庭成员','设置']){
@@ -108,10 +108,10 @@ test('desktop and mobile layouts, navigation and dialogs render without errors',
   await page.getByRole('navigation').getByRole('button',{name:'首页'}).click();
   await page.getByRole('button',{name:'记一段回忆',exact:true}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
   // 账号入口是常驻的：任何页面都能从顶栏打开「我的账号」面板。
-  await openMore(page);await page.getByRole('button',{name:'账号、外观与设置',exact:true}).click();await page.locator('.topbar').getByRole('button',{name:'我的账号'}).click();await expect(page.getByRole('dialog')).toBeVisible();await expect(page.getByRole('dialog')).toContainText('管理登录账号');await page.keyboard.press('Escape');
+  await openMore(page);await page.getByRole('button',{name:'账号、外观与设置',exact:true}).click();await page.locator('.sidebar-bottom').getByRole('button',{name:'我的账号'}).click();await expect(page.getByRole('dialog')).toBeVisible();await expect(page.getByRole('dialog')).toContainText('管理登录账号');await page.keyboard.press('Escape');
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:'artifacts/忆伴-手机端.png',fullPage:true});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
-  await openMore(page);await page.getByRole('button',{name:'账号、外观与设置',exact:true}).click();await page.locator('.topbar').getByRole('button',{name:'我的账号'}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');
+  await openMore(page);await page.getByRole('button',{name:'账号、外观与设置',exact:true}).click();await chooseSettingsTab(page,'我的账号');await expect(page.getByLabel('我的名字')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   expect(errors).toEqual([]);
 });

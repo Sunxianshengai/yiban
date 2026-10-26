@@ -1,14 +1,15 @@
 'use client';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import Icon from './Icon';
+import StoryPlayer from './StoryPlayer';
 import {Avatar,Button,Cover,Empty,Field} from './UI';
 
 // 全年龄段的核心页：一个人的一辈子怎么排、家里人在同一年各几岁。
 // 六个页签对应方案里的 A(时间轴) E(平行时间轴) B(里程碑) C(童言童语) H(成长对比) D(分龄采访)。
 const LEGACY_TABS=[{id:'timeline',label:'成长时间轴',icon:'clock'},{id:'parallel',label:'那一年',icon:'people'},{id:'highlights',label:'高光时刻',icon:'sparkle'},{id:'milestones',label:'人生里程碑',icon:'check'},{id:'quotes',label:'童言童语',icon:'message'},{id:'growth',label:'成长对比',icon:'arrow'},{id:'interview',label:'分龄采访',icon:'mic'}];
 
-const TABS=LEGACY_TABS.filter(t=>['timeline','parallel','interview'].includes(t.id));
-export default function Growth({api,notify,members,canEdit,onOpenMemory,onRecord,selectedMemberId}) {
+const TABS=[{id:'timeline',label:'故事',icon:'book'},{id:'audio',label:'原声',icon:'volume'}];
+export default function Growth({api,notify,members,canEdit,onOpenMemory,onRecord,selectedMemberId,memories=[]}) {
   const [tab,setTab]=useState('timeline');
   const [meta,setMeta]=useState(null);
   const [memberId,setMemberId]=useState(selectedMemberId||'');
@@ -28,18 +29,19 @@ export default function Growth({api,notify,members,canEdit,onOpenMemory,onRecord
 
   return <div className="growth-page">
     <div className="page-heading"><div><h1>家人故事</h1><p>家里每个人，从出生到现在，一条自己的时间线。</p></div></div>
-    <div className="growth-tabs">{TABS.map(t=><button key={t.id} className={tab===t.id?'selected':''} onClick={()=>setTab(t.id)}><Icon name={t.icon} size={17}/>{t.id==='timeline'?'人生时间轴':t.id==='interview'?'问问家人':t.label}</button>)}<details className="growth-tools"><summary>记录工具</summary><div>{LEGACY_TABS.filter(t=>!['timeline','parallel','interview'].includes(t.id)).map(t=><button key={t.id} onClick={()=>setTab(t.id)}>{t.label}</button>)}</div></details></div>
+    <div className="growth-tabs">{TABS.map(t=><button key={t.id} className={tab===t.id?'selected':''} onClick={()=>setTab(t.id)}><Icon name={t.icon} size={17}/>{t.label}</button>)}<details className="growth-tools"><summary>记录工具</summary><div>{LEGACY_TABS.filter(t=>t.id!=='timeline').map(t=><button key={t.id} onClick={()=>setTab(t.id)}>{t.id==='interview'?'问问家人':t.label}</button>)}</div></details></div>
     <div className="growth-picker">
-      <span>看谁的人生</span>
+      <div className="pw-selected-person"><Avatar name={member?.name||'家人'} src={member?.avatar} size="avatar-xl"/><h2>{member?.name||'选择一位家人'}</h2><p>{member?.relation||'真实家庭成员'}</p></div><details className="pw-person-selector"><summary>切换家人</summary>
       <div className="person-chips">
         {members.map(m=><button key={m.id} className={memberId===m.id?'selected':''} onClick={()=>setMemberId(m.id)}><Avatar name={m.name} color={m.color||'sage'}/>{m.name}<small>{m.birthYear?`${m.birthYear}年生`:'未填出生年'}</small></button>)}
         {!members.length&&<Empty icon="people" title="还没有家人" description="先到「家庭成员」里添加一位，才能排时间轴。"/>}
-      </div>
+      </div></details>
     </div>
 
+    {tab==='audio'&&<div className="pw-audio-list">{memories.filter(memory=>memory.status==='confirmed'&&memory.audio&&memory.people.includes(member?.name)).map(memory=><section className="panel" key={memory.id}><h2>{memory.title}</h2><StoryPlayer memory={memory}/><Button variant="ghost" onClick={()=>onOpenMemory(memory.id)}>查看这段记忆</Button></section>)}{!memories.some(memory=>memory.status==='confirmed'&&memory.audio&&memory.people.includes(member?.name))&&<Empty title="还没有这位家人的原声" description="保存并发布家人录音后，就能在这里回听。"/>}</div>}
     {tab==='timeline'&&<TimelineView member={member} timeline={timeline} loading={loading} stageOf={stageOf} onOpenMemory={onOpenMemory} canEdit={canEdit} api={api} notify={notify}/>}
     {tab==='parallel'&&<ParallelView api={api} notify={notify} members={members} stageOf={stageOf} onOpenMemory={onOpenMemory}/>}
-    {tab==='highlights'&&<HighlightsView api={api} notify={notify} members={members} canEdit={canEdit} onOpenMemory={onOpenMemory}/>}
+    {tab==='highlights'&&<HighlightsView api={api} notify={notify} members={members} canEdit={canEdit} onOpenMemory={onOpenMemory} setTab={setTab} selectedMemberId={memberId}/>}
     {tab==='milestones'&&<MilestonesView api={api} notify={notify} member={member} meta={meta} canEdit={canEdit}/>}
     {tab==='quotes'&&<QuotesView api={api} notify={notify} member={member} members={members} canEdit={canEdit}/>}
     {tab==='growth'&&<GrowthAnswers api={api} notify={notify} member={member} meta={meta} canEdit={canEdit}/>}
@@ -89,7 +91,7 @@ function HintBirthYear({member,api,notify,canEdit}) {
 
 // G 高光时刻：金榜题名、结婚、新生儿这类家里会郑重其事的时刻。
 // 设计原则：模板只给「该填什么」的提示，不替人写内容；一页一主角，仪式感靠排版不靠花哨。
-function HighlightsView({api,notify,members,canEdit,onOpenMemory}) {
+function HighlightsView({api,notify,members,canEdit,onOpenMemory,setTab,selectedMemberId}) {
   const [data,setData]=useState(null);
   const [template,setTemplate]=useState('');
   const [memberId,setMemberId]=useState(selectedMemberId||'');
@@ -117,7 +119,7 @@ function HighlightsView({api,notify,members,canEdit,onOpenMemory}) {
   const nameOf=id=>data?.members?.find(m=>m.id===id)?.name||members.find(m=>m.id===id)?.name||'这位家人';
   return <div className="highlights-view">
     <div className="inline-notice"><Icon name="sparkle"/><span>金榜题名、结婚、迎来新生命……这些日子值得用郑重的方式记下来。选一个模板，按栏位慢慢填。</span></div>
-    {data&&<div className="highlight-templates">{data.templates.map(t=><button key={t.id} className={template===t.id?'selected':''} onClick={()=>{setTemplate(t.id);setFields({});}}><Icon name={t.icon} size={18}/>{t.id==='timeline'?'人生时间轴':t.id==='interview'?'问问家人':t.label}</button>)}<details className="growth-tools"><summary>记录工具</summary><div>{LEGACY_TABS.filter(t=>!['timeline','parallel','interview'].includes(t.id)).map(t=><button key={t.id} onClick={()=>setTab(t.id)}>{t.label}</button>)}</div></details></div>}
+    {data&&<div className="highlight-templates">{data.templates.map(t=><button key={t.id} className={template===t.id?'selected':''} onClick={()=>{setTemplate(t.id);setFields({});}}><Icon name={t.icon} size={18}/>{t.label}</button>)}<details className="growth-tools"><summary>记录工具</summary><div>{LEGACY_TABS.filter(t=>t.id!=='timeline').map(t=><button key={t.id} onClick={()=>setTab(t.id)}>{t.id==='interview'?'问问家人':t.label}</button>)}</div></details></div>}
     {tpl&&<div className="highlight-form">
       <div className="form-grid">
         <Field label="主角"><select value={memberId} onChange={e=>setMemberId(e.target.value)}>{members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Field>

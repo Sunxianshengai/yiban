@@ -21,6 +21,7 @@ export function CreditBalance({api,onOpen}) {
 }
 
 export default function Credits({api,notify,isAdmin}) {
+  const [showGrant,setShowGrant]=useState(false);
   const [wallet,setWallet]=useState(null);
   const [error,setError]=useState('');
   const [offset,setOffset]=useState(0);
@@ -63,11 +64,11 @@ export default function Credits({api,notify,isAdmin}) {
     finally{setBusy(false);}
   };
   return <div className="credits-page">
-    <div className="page-heading"><div><span className="eyebrow">MY CREDITS</span><h1>我的积分</h1><p>积分用于 AI 创作，由管理员发放。新账号从 0 积分开始，管理员使用功能也同样扣费。</p></div><Button variant="secondary" onClick={load}>刷新余额</Button></div>
+    <div className="page-heading"><div><h1>我的积分</h1><p>积分用于 AI 创作，由管理员发放。新账号从 0 积分开始，管理员使用功能也同样扣费。</p></div><div className="pw-credits-heading">{isAdmin&&<Button variant="secondary" onClick={()=>setShowGrant(value=>!value)}>{showGrant?'返回消费记录':'发放积分'}</Button>}<Button variant="ghost" onClick={load}>刷新余额</Button></div></div>
     {error&&<p className="form-error" role="alert">{error}</p>}
-    <div className="credits-totals"><section className="panel"><span>可用积分</span><strong>{wallet?.balance??'—'}</strong></section><section className="panel"><span>冻结积分</span><strong>{wallet?.held??'—'}</strong><small>正在执行的任务，成功结算，失败退回。</small></section></div>
-    <p className="inline-notice">上传、浏览、本地处理及已有结果回放不扣积分。只有新的 AI 生成才计费；系统重试不重复扣费。当前积分不与人民币换算。</p>
-    {isAdmin&&<section className="panel credits-grant"><h2>发放积分</h2><p className="muted">可给自己或其他账号发放；每笔记录发放人、数量和说明。</p><form onSubmit={grant}>
+    <div className="pw-credit-layout"><div className="pw-credit-summary"><div className="credits-totals"><section className="panel"><span>可用积分</span><strong>{wallet?.balance??'—'}</strong></section><section className="panel"><span>冻结积分</span><strong>{wallet?.held??'—'}</strong><small>正在执行的任务，成功结算，失败退回。</small></section></div>
+    <div className="pw-credit-inline"><span>可用 {wallet?.balance??'—'}</span><span>预留 {wallet?.held??'—'}</span></div><p className="inline-notice">上传、浏览、本地处理及已有结果回放不扣积分。只有新的 AI 生成才计费；系统重试不重复扣费。当前积分不与人民币换算。</p>
+    <p className="pw-credit-rule">陪伴对话：成功回复 1 积分，失败或停止退回。</p></div><div className="pw-credit-content">    {isAdmin&&showGrant&&<section className="panel credits-grant"><h2>发放积分</h2><p className="muted">可给自己或其他账号发放；每笔记录发放人、数量和说明。</p><form onSubmit={grant}>
       <div className="form-grid"><Field label="发放给"><select aria-label="发放给" required value={target} onChange={e=>setTarget(e.target.value)}><option value="">请选择账号</option>{accounts.map(a=><option key={a.id} value={a.id}>{a.name} · {a.email}</option>)}</select></Field>
       <Field label="积分数量"><input type="number" min="1" max="1000000" step="1" required value={amount} onChange={e=>setAmount(e.target.value)}/></Field></div>
       <Field label="发放说明"><input maxLength={200} required value={note} onChange={e=>setNote(e.target.value)}/></Field>
@@ -79,6 +80,6 @@ export default function Credits({api,notify,isAdmin}) {
       {wallet&&!wallet.entries.length&&<p>还没有积分记录，请联系管理员发放。</p>}
       <div className="credits-pagination"><Button variant="ghost" disabled={offset===0} onClick={()=>setOffset(Math.max(0,offset-50))}>上一页</Button><span>共 {wallet?.total??0} 条</span><Button variant="ghost" disabled={!wallet||offset+50>=wallet.total} onClick={()=>setOffset(offset+50)}>下一页</Button></div>
     </section>
-    <section className="panel"><h2>试运行价目</h2><div className="credits-price-list">{Object.entries(wallet?.prices||CREDIT_PRICES).map(([key,p])=><div key={key}><span>{p.label}</span><strong>{p.points} 积分 / {p.unit}</strong></div>)}</div><p className="muted">人生推演按开局和每幕计费，结局不额外收费。讲述稿与配音组合按次计费。调用失败或结果无法保存时退回；缓存命中免费。</p></section>
-  </div>;
+    <details className="panel pw-credit-prices"><summary>功能扣费说明</summary><div className="credits-price-list">{Object.entries(wallet?.prices||CREDIT_PRICES).map(([key,p])=><div key={key}><span>{p.label}</span><strong>{p.points} 积分 / {p.unit}</strong></div>)}</div><p className="muted">讲述稿与配音组合按次计费。调用失败或结果无法保存时退回；缓存命中免费。</p></details>
+  </div></div></div>;
 }

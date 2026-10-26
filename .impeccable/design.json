@@ -1,124 +1,344 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-26T03:41:33.867Z",
+  "generatedAt": "2026-10-26T12:04:37.864311+00:00",
   "title": "Design System: 忆伴 · Familia",
   "extensions": {
     "colorMeta": {
       "canvas": {
         "role": "neutral",
         "displayName": "canvas",
-        "canonical": "#F4E9E2"
+        "canonical": "#F4E9E2",
+        "tonalRamp": [
+          "oklch(15.0% 0.0152 54.9)",
+          "oklch(26.4% 0.0152 54.9)",
+          "oklch(37.9% 0.0152 54.9)",
+          "oklch(49.3% 0.0152 54.9)",
+          "oklch(60.7% 0.0152 54.9)",
+          "oklch(72.1% 0.0152 54.9)",
+          "oklch(83.6% 0.0152 54.9)",
+          "oklch(95.0% 0.0152 54.9)"
+        ]
       },
       "surface": {
         "role": "neutral",
         "displayName": "surface",
-        "canonical": "#FFFDFB"
+        "canonical": "#FFFDFB",
+        "tonalRamp": [
+          "oklch(15.0% 0.0034 67.8)",
+          "oklch(26.4% 0.0034 67.8)",
+          "oklch(37.9% 0.0034 67.8)",
+          "oklch(49.3% 0.0034 67.8)",
+          "oklch(60.7% 0.0034 67.8)",
+          "oklch(72.1% 0.0034 67.8)",
+          "oklch(83.6% 0.0034 67.8)",
+          "oklch(95.0% 0.0034 67.8)"
+        ]
       },
       "surface-2": {
         "role": "neutral",
         "displayName": "surface-2",
-        "canonical": "#F2EFEC"
+        "canonical": "#F2EFEC",
+        "tonalRamp": [
+          "oklch(15.0% 0.0052 67.8)",
+          "oklch(26.4% 0.0052 67.8)",
+          "oklch(37.9% 0.0052 67.8)",
+          "oklch(49.3% 0.0052 67.8)",
+          "oklch(60.7% 0.0052 67.8)",
+          "oklch(72.1% 0.0052 67.8)",
+          "oklch(83.6% 0.0052 67.8)",
+          "oklch(95.0% 0.0052 67.8)"
+        ]
       },
       "ink": {
         "role": "neutral",
         "displayName": "ink",
-        "canonical": "#2B241B"
+        "canonical": "#2B241B",
+        "tonalRamp": [
+          "oklch(15.0% 0.0191 73.8)",
+          "oklch(26.4% 0.0191 73.8)",
+          "oklch(37.9% 0.0191 73.8)",
+          "oklch(49.3% 0.0191 73.8)",
+          "oklch(60.7% 0.0191 73.8)",
+          "oklch(72.1% 0.0191 73.8)",
+          "oklch(83.6% 0.0191 73.8)",
+          "oklch(95.0% 0.0191 73.8)"
+        ]
       },
       "ink-2": {
         "role": "neutral",
         "displayName": "ink-2",
-        "canonical": "#493B30"
+        "canonical": "#493B30",
+        "tonalRamp": [
+          "oklch(15.0% 0.0269 60.0)",
+          "oklch(26.4% 0.0269 60.0)",
+          "oklch(37.9% 0.0269 60.0)",
+          "oklch(49.3% 0.0269 60.0)",
+          "oklch(60.7% 0.0269 60.0)",
+          "oklch(72.1% 0.0269 60.0)",
+          "oklch(83.6% 0.0269 60.0)",
+          "oklch(95.0% 0.0269 60.0)"
+        ]
       },
       "muted": {
         "role": "neutral",
         "displayName": "muted",
-        "canonical": "#6F6258"
+        "canonical": "#6F6258",
+        "tonalRamp": [
+          "oklch(15.0% 0.0228 59.8)",
+          "oklch(26.4% 0.0228 59.8)",
+          "oklch(37.9% 0.0228 59.8)",
+          "oklch(49.3% 0.0228 59.8)",
+          "oklch(60.7% 0.0228 59.8)",
+          "oklch(72.1% 0.0228 59.8)",
+          "oklch(83.6% 0.0228 59.8)",
+          "oklch(95.0% 0.0228 59.8)"
+        ]
       },
       "faint": {
         "role": "neutral",
         "displayName": "faint",
-        "canonical": "#817269"
+        "canonical": "#817269",
+        "tonalRamp": [
+          "oklch(15.0% 0.0233 53.0)",
+          "oklch(26.4% 0.0233 53.0)",
+          "oklch(37.9% 0.0233 53.0)",
+          "oklch(49.3% 0.0233 53.0)",
+          "oklch(60.7% 0.0233 53.0)",
+          "oklch(72.1% 0.0233 53.0)",
+          "oklch(83.6% 0.0233 53.0)",
+          "oklch(95.0% 0.0233 53.0)"
+        ]
       },
       "brand": {
         "role": "primary",
         "displayName": "brand",
-        "canonical": "#3C1008"
+        "canonical": "#3C1008",
+        "tonalRamp": [
+          "oklch(15.0% 0.0713 32.6)",
+          "oklch(26.4% 0.0713 32.6)",
+          "oklch(37.9% 0.0713 32.6)",
+          "oklch(49.3% 0.0713 32.6)",
+          "oklch(60.7% 0.0713 32.6)",
+          "oklch(72.1% 0.0713 32.6)",
+          "oklch(83.6% 0.0713 32.6)",
+          "oklch(95.0% 0.0713 32.6)"
+        ]
       },
       "brand-strong": {
         "role": "primary",
         "displayName": "brand-strong",
-        "canonical": "#582119"
+        "canonical": "#582119",
+        "tonalRamp": [
+          "oklch(15.0% 0.0834 30.5)",
+          "oklch(26.4% 0.0834 30.5)",
+          "oklch(37.9% 0.0834 30.5)",
+          "oklch(49.3% 0.0834 30.5)",
+          "oklch(60.7% 0.0834 30.5)",
+          "oklch(72.1% 0.0834 30.5)",
+          "oklch(83.6% 0.0834 30.5)",
+          "oklch(95.0% 0.0834 30.5)"
+        ]
       },
       "brand-soft": {
         "role": "neutral",
         "displayName": "brand-soft",
-        "canonical": "#F4E3DA"
+        "canonical": "#F4E3DA",
+        "tonalRamp": [
+          "oklch(15.0% 0.0223 49.9)",
+          "oklch(26.4% 0.0223 49.9)",
+          "oklch(37.9% 0.0223 49.9)",
+          "oklch(49.3% 0.0223 49.9)",
+          "oklch(60.7% 0.0223 49.9)",
+          "oklch(72.1% 0.0223 49.9)",
+          "oklch(83.6% 0.0223 49.9)",
+          "oklch(95.0% 0.0223 49.9)"
+        ]
       },
       "leaf": {
         "role": "neutral",
         "displayName": "leaf",
-        "canonical": "#F2E4DB"
+        "canonical": "#F2E4DB",
+        "tonalRamp": [
+          "oklch(15.0% 0.0196 55.1)",
+          "oklch(26.4% 0.0196 55.1)",
+          "oklch(37.9% 0.0196 55.1)",
+          "oklch(49.3% 0.0196 55.1)",
+          "oklch(60.7% 0.0196 55.1)",
+          "oklch(72.1% 0.0196 55.1)",
+          "oklch(83.6% 0.0196 55.1)",
+          "oklch(95.0% 0.0196 55.1)"
+        ]
       },
       "leaf-deep": {
         "role": "neutral",
         "displayName": "leaf-deep",
-        "canonical": "#EAD0C2"
+        "canonical": "#EAD0C2",
+        "tonalRamp": [
+          "oklch(15.0% 0.0349 50.2)",
+          "oklch(26.4% 0.0349 50.2)",
+          "oklch(37.9% 0.0349 50.2)",
+          "oklch(49.3% 0.0349 50.2)",
+          "oklch(60.7% 0.0349 50.2)",
+          "oklch(72.1% 0.0349 50.2)",
+          "oklch(83.6% 0.0349 50.2)",
+          "oklch(95.0% 0.0349 50.2)"
+        ]
       },
       "border": {
         "role": "neutral",
         "displayName": "border",
-        "canonical": "#DFD5CD"
+        "canonical": "#DFD5CD",
+        "tonalRamp": [
+          "oklch(15.0% 0.0155 61.3)",
+          "oklch(26.4% 0.0155 61.3)",
+          "oklch(37.9% 0.0155 61.3)",
+          "oklch(49.3% 0.0155 61.3)",
+          "oklch(60.7% 0.0155 61.3)",
+          "oklch(72.1% 0.0155 61.3)",
+          "oklch(83.6% 0.0155 61.3)",
+          "oklch(95.0% 0.0155 61.3)"
+        ]
       },
       "border-strong": {
         "role": "neutral",
         "displayName": "border-strong",
-        "canonical": "#C9B8AC"
+        "canonical": "#C9B8AC",
+        "tonalRamp": [
+          "oklch(15.0% 0.0257 57.6)",
+          "oklch(26.4% 0.0257 57.6)",
+          "oklch(37.9% 0.0257 57.6)",
+          "oklch(49.3% 0.0257 57.6)",
+          "oklch(60.7% 0.0257 57.6)",
+          "oklch(72.1% 0.0257 57.6)",
+          "oklch(83.6% 0.0257 57.6)",
+          "oklch(95.0% 0.0257 57.6)"
+        ]
       },
       "on-brand": {
         "role": "neutral",
         "displayName": "on-brand",
-        "canonical": "#FFFDF9"
+        "canonical": "#FFFDF9",
+        "tonalRamp": [
+          "oklch(15.0% 0.0057 84.6)",
+          "oklch(26.4% 0.0057 84.6)",
+          "oklch(37.9% 0.0057 84.6)",
+          "oklch(49.3% 0.0057 84.6)",
+          "oklch(60.7% 0.0057 84.6)",
+          "oklch(72.1% 0.0057 84.6)",
+          "oklch(83.6% 0.0057 84.6)",
+          "oklch(95.0% 0.0057 84.6)"
+        ]
       },
       "terracotta": {
         "role": "primary",
         "displayName": "terracotta",
-        "canonical": "#E7834B"
+        "canonical": "#E7834B",
+        "tonalRamp": [
+          "oklch(15.0% 0.1419 48.3)",
+          "oklch(26.4% 0.1419 48.3)",
+          "oklch(37.9% 0.1419 48.3)",
+          "oklch(49.3% 0.1419 48.3)",
+          "oklch(60.7% 0.1419 48.3)",
+          "oklch(72.1% 0.1419 48.3)",
+          "oklch(83.6% 0.1419 48.3)",
+          "oklch(95.0% 0.1419 48.3)"
+        ]
       },
       "fa-sage": {
         "role": "secondary",
         "displayName": "fa-sage",
-        "canonical": "#93AF5B"
+        "canonical": "#93AF5B",
+        "tonalRamp": [
+          "oklch(15.0% 0.1154 124.4)",
+          "oklch(26.4% 0.1154 124.4)",
+          "oklch(37.9% 0.1154 124.4)",
+          "oklch(49.3% 0.1154 124.4)",
+          "oklch(60.7% 0.1154 124.4)",
+          "oklch(72.1% 0.1154 124.4)",
+          "oklch(83.6% 0.1154 124.4)",
+          "oklch(95.0% 0.1154 124.4)"
+        ]
       },
       "fa-sage-ink": {
         "role": "secondary",
         "displayName": "fa-sage-ink",
-        "canonical": "#33451F"
+        "canonical": "#33451F",
+        "tonalRamp": [
+          "oklch(15.0% 0.0642 129.9)",
+          "oklch(26.4% 0.0642 129.9)",
+          "oklch(37.9% 0.0642 129.9)",
+          "oklch(49.3% 0.0642 129.9)",
+          "oklch(60.7% 0.0642 129.9)",
+          "oklch(72.1% 0.0642 129.9)",
+          "oklch(83.6% 0.0642 129.9)",
+          "oklch(95.0% 0.0642 129.9)"
+        ]
       },
       "error": {
         "role": "neutral",
         "displayName": "error",
-        "canonical": "#A23F32"
+        "canonical": "#A23F32",
+        "tonalRamp": [
+          "oklch(15.0% 0.1342 30.0)",
+          "oklch(26.4% 0.1342 30.0)",
+          "oklch(37.9% 0.1342 30.0)",
+          "oklch(49.3% 0.1342 30.0)",
+          "oklch(60.7% 0.1342 30.0)",
+          "oklch(72.1% 0.1342 30.0)",
+          "oklch(83.6% 0.1342 30.0)",
+          "oklch(95.0% 0.1342 30.0)"
+        ]
       },
       "error-soft": {
         "role": "neutral",
         "displayName": "error-soft",
-        "canonical": "#F6E7E3"
+        "canonical": "#F6E7E3",
+        "tonalRamp": [
+          "oklch(15.0% 0.0173 35.3)",
+          "oklch(26.4% 0.0173 35.3)",
+          "oklch(37.9% 0.0173 35.3)",
+          "oklch(49.3% 0.0173 35.3)",
+          "oklch(60.7% 0.0173 35.3)",
+          "oklch(72.1% 0.0173 35.3)",
+          "oklch(83.6% 0.0173 35.3)",
+          "oklch(95.0% 0.0173 35.3)"
+        ]
       },
       "warn": {
         "role": "neutral",
         "displayName": "warn",
-        "canonical": "#715E38"
+        "canonical": "#715E38",
+        "tonalRamp": [
+          "oklch(15.0% 0.0597 83.8)",
+          "oklch(26.4% 0.0597 83.8)",
+          "oklch(37.9% 0.0597 83.8)",
+          "oklch(49.3% 0.0597 83.8)",
+          "oklch(60.7% 0.0597 83.8)",
+          "oklch(72.1% 0.0597 83.8)",
+          "oklch(83.6% 0.0597 83.8)",
+          "oklch(95.0% 0.0597 83.8)"
+        ]
       },
       "warn-soft": {
         "role": "neutral",
         "displayName": "warn-soft",
-        "canonical": "#F5EFDC"
+        "canonical": "#F5EFDC",
+        "tonalRamp": [
+          "oklch(15.0% 0.0259 92.4)",
+          "oklch(26.4% 0.0259 92.4)",
+          "oklch(37.9% 0.0259 92.4)",
+          "oklch(49.3% 0.0259 92.4)",
+          "oklch(60.7% 0.0259 92.4)",
+          "oklch(72.1% 0.0259 92.4)",
+          "oklch(83.6% 0.0259 92.4)",
+          "oklch(95.0% 0.0259 92.4)"
+        ]
       }
     },
     "typographyMeta": {
       "headline": {
         "displayName": "首页问候",
-        "purpose": "Responsive greeting with 760px mobile override."
+        "purpose": "Desktop responsive companion prompt; mobile 1.15rem inside companion panel."
       },
       "title": {
         "displayName": "创建问题",
@@ -134,7 +354,7 @@
       },
       "wordmark": {
         "displayName": "忆伴字标",
-        "purpose": "Noto Serif SC wordmark."
+        "purpose": "App sans-serif wordmark, weight 800 and tight tracking."
       }
     },
     "shadows": [
@@ -198,6 +418,10 @@
         "value": "760px"
       },
       {
+        "name": "preview-mobile",
+        "value": "768px"
+      },
+      {
         "name": "single-column-record",
         "value": "640px"
       },
@@ -208,15 +432,15 @@
     ],
     "backgrounds": {
       "--fa-warm": {
-        "day": "radial-gradient(ellipse at 7% 24%,#E6D8F0A6,transparent 50%),linear-gradient(174deg,#F4AC96 0%,#F2D5C7 34%,#E7E5DE 68%,#F8F7F5 100%)",
+        "day": "radial-gradient(ellipse at 4% 0%,#E8D0FA 0%,transparent 52%),radial-gradient(ellipse at 95% 8%,#FFE0CC 0%,transparent 58%),linear-gradient(#F9E8E5,#F7F5F3)",
         "night": "radial-gradient(ellipse at 8% 25%,#4A334D99,transparent 55%),linear-gradient(174deg,#613B36,#3A2D32 48%,#241E23)"
       },
       "--fa-coral": {
-        "day": "linear-gradient(174deg,#F88068 0%,#F19776 43%,#E5C4BE 72%,#D7DDF0 100%)",
+        "day": "linear-gradient(145deg,#FA8179 0%,#F7AA93 47%,#E5CCEA 77%,#DDDDF7 100%)",
         "night": "linear-gradient(174deg,#713E38,#553D40 55%,#302D46)"
       },
       "--fa-chat": {
-        "day": "radial-gradient(ellipse at 2% 2%,#E0C9EF 0%,transparent 50%),linear-gradient(150deg,#EFD9E1,#F0D8C8 48%,#E9E9E8 85%)",
+        "day": "radial-gradient(ellipse at 1% 0%,#E4CDF8 0%,transparent 55%),radial-gradient(ellipse at 98% 0%,#FFDFCB 0%,transparent 65%),linear-gradient(#F5E4E4,#F0F0EE)",
         "night": "radial-gradient(ellipse at 5% 0%,#4B354F,transparent 60%),linear-gradient(150deg,#3F303A,#43332E 50%,#28272B)"
       }
     },
@@ -253,7 +477,8 @@
       "controls": "3px solid #8360B1; outline-offset:3px",
       "composer": "2px solid #8360B1; outline-offset:2px"
     },
-    "reducedMotion": "Familia, setup and mood descendants: animation:none; transition:none; scroll-behavior:auto"
+    "reducedMotion": "Familia, setup and mood descendants: animation:none; transition:none; scroll-behavior:auto",
+    "colorRampNote": "Tonal ramps are synthesized OKLCH metadata for the inspector; the CSS palette and DESIGN.md frontmatter remain normative."
   },
   "components": [
     {
@@ -277,8 +502,8 @@
       "kind": "chip",
       "refersTo": "choice",
       "description": "White pill with selected radio mark.",
-      "html": "<button class=\"ds-chip\" aria-pressed=\"true\"><span>姐姐</span><i></i></button>",
-      "css": ".ds-chip{font-family:var(--font-sans,'Urbanist','Noto Sans SC Variable',sans-serif);display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:12px 18px;border:0;border-radius:40px;background:var(--surface,#FFFDFB);color:var(--ink,#2B241B);font-size:1rem;font-weight:600;cursor:pointer}.ds-chip i{margin-left:auto;width:20px;height:20px;box-sizing:border-box;border:1.5px solid var(--border-strong,#C9B8AC);border-radius:50%}.ds-chip[aria-pressed=true] i{border:6px solid var(--brand,#3C1008)}.ds-chip:hover{background:var(--surface-2,#F2EFEC)}.ds-button:focus-visible,.ds-field input:focus-visible,.ds-nav button:focus-visible,.ds-chip:focus-visible,.ds-contact:focus-visible{outline:3px solid #8360B1;outline-offset:3px}"
+      "html": "<button class=\"ds-chip\" aria-pressed=\"true\"><span>一位 AI 家人</span></button>",
+      "css": ".ds-chip{font-family:var(--font-sans,Urbanist,sans-serif);display:flex;align-items:center;justify-content:center;width:100%;min-height:62px;padding:12px 18px;border:0;border-radius:40px;background:var(--surface,#FFFDFB);color:var(--ink,#2B241B);font-size:1rem;cursor:pointer}.ds-chip[aria-pressed=true]{background:var(--brand-soft,#F4E3DA);color:var(--brand,#3C1008);box-shadow:inset 0 0 0 1px var(--brand,#3C1008)}.ds-chip:hover{background:var(--surface-2,#F2EFEC)}.ds-chip:focus-visible{outline:3px solid #8360B1;outline-offset:3px}"
     },
     {
       "name": "Companion Field",
@@ -299,53 +524,55 @@
     {
       "name": "Companion Card",
       "kind": "card",
-      "description": "White companion row with meaningful initial fallback.",
+      "description": "Desktop white companion card; mobile transparent item inside a shared white panel.",
       "html": "<button class=\"ds-contact\"><span class=\"ds-avatar\">姐</span><span><strong>姐姐</strong><small>AI 家人</small></span></button>",
-      "css": ".ds-contact{font-family:var(--font-sans,'Urbanist','Noto Sans SC Variable',sans-serif);display:flex;align-items:center;gap:16px;text-align:left;width:100%;min-height:88px;padding:16px 22px;border:0;border-radius:48px;background:var(--surface,#FFFDFB);color:var(--ink,#2B241B);cursor:pointer}.ds-avatar{display:grid;place-items:center;width:48px;height:48px;border:2px solid #fff;border-radius:50%;background:linear-gradient(135deg,#F2CFB6,#EBE3F5);color:#57372A;font-size:1.25rem;font-weight:650}.ds-contact strong{display:block;font-size:1.12rem;font-weight:750}.ds-contact small{display:block;margin-top:4px;font-size:.85rem;line-height:1.7;color:var(--muted,#6F6258)}.ds-contact:hover{background:color-mix(in srgb,var(--surface,#FFFDFB) 92%,var(--brand-soft,#F4E3DA))}.ds-button:focus-visible,.ds-field input:focus-visible,.ds-nav button:focus-visible,.ds-chip:focus-visible,.ds-contact:focus-visible{outline:3px solid #8360B1;outline-offset:3px}"
+      "css": ".ds-contact{font-family:var(--font-sans,Urbanist,sans-serif);display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;width:100%;min-height:230px;padding:24px 20px;border:0;border-radius:24px;background:var(--surface,#FFFDFB);color:var(--ink,#2B241B);cursor:pointer}.ds-avatar{display:grid;place-items:center;width:88px;height:88px;border:3px solid var(--surface,#FFFDFB);border-radius:50%;background:linear-gradient(135deg,#F2CFB6,#EBE3F5);color:#57372A;font-size:2.4rem}.ds-contact strong{display:block;font-size:1.2rem}.ds-contact small{display:block;margin-top:3px;font-size:.8rem;color:var(--muted,#6F6258)}.ds-contact:hover{background:color-mix(in srgb,var(--surface,#FFFDFB) 92%,var(--brand-soft,#F4E3DA))}.ds-contact:focus-visible{outline:3px solid #8360B1;outline-offset:3px}@media(max-width:768px){.ds-contact{background:none;border-radius:0;min-height:130px;padding:0 5px;gap:9px}.ds-avatar{width:70px;height:70px;font-size:2rem}.ds-contact strong{font-size:1rem}.ds-contact small{font-size:.68rem}}"
     },
     {
       "name": "Conversation Pair",
       "kind": "custom",
       "description": "Sage user message and white assistant, with explicit AI identity.",
-      "html": "<div class=\"ds-conversation\"><p class=\"ds-user\">想聊聊今天。</p><div class=\"ds-assistant\"><small>AI 家伴</small><p>我在听，你想先说哪件事？</p></div></div>",
-      "css": ".ds-conversation{font-family:var(--font-sans,'Urbanist','Noto Sans SC Variable',sans-serif);display:grid;gap:20px;padding:24px;background:var(--fa-chat,linear-gradient(150deg,#EFD9E1,#F0D8C8 48%,#E9E9E8 85%));font-size:1rem;line-height:1.8;color:var(--ink,#2B241B)}.ds-user{justify-self:end;margin:0;padding:15px 20px;border-radius:30px 30px 4px 30px;background:var(--fa-sage,#93AF5B);color:var(--fa-sage-ink,#33451F)}.ds-assistant{padding:18px 20px;border-radius:30px 30px 30px 4px;background:var(--surface,#FFFDFB)}.ds-assistant small{font-size:.75rem;color:var(--muted,#6F6258)}.ds-assistant p{margin:0}"
+      "html": "<div class=\"ds-conversation\"><p class=\"ds-user\">想聊聊今天。</p><div class=\"ds-assistant\"><span class=\"ds-speaker\" aria-label=\"AI 家伴头像\">伴</span><small>AI 家伴</small><p>我在听，你想先说哪件事？</p></div></div>",
+      "css": ".ds-conversation{font-family:var(--font-sans,Urbanist,sans-serif);display:grid;gap:20px;padding:24px;background:var(--fa-chat,linear-gradient(#F5E4E4,#F0F0EE));color:var(--ink,#2B241B)}.ds-user{justify-self:end;margin:0;padding:15px 20px;border-radius:30px 30px 4px 30px;background:var(--fa-sage,#93AF5B);color:var(--fa-sage-ink,#33451F);font-size:1.1rem}.ds-assistant{position:relative;margin-left:52px;padding:18px 22px 14px;border-radius:30px 30px 30px 4px;background:var(--surface,#FFFDFB);font-size:1.125rem;line-height:1.8}.ds-speaker{position:absolute;left:-52px;top:2px;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#F2CFB6,#EBE3F5);color:#57372A}.ds-assistant small{font-size:.75rem;color:var(--muted,#6F6258)}.ds-assistant p{margin:0}@media(max-width:768px){.ds-assistant{margin-left:0;padding:16px 16px 16px 55px;font-size:1rem;line-height:1.75}.ds-speaker{left:12px;top:16px;width:32px;height:32px}.ds-user{font-size:1rem}}"
     }
   ],
   "narrative": {
     "northStar": "Familia App 的亲近陪伴",
-    "overview": "**Creative North Star: \"Familia App 的亲近陪伴\"**\n\n用户已确认用真实 Familia App 复现方向替换原有松绿体系。珊瑚、桃色和淡紫背景承托白色长圆选项、圆形头像与深棕主操作；视觉选择以实际实现为准，不另造概念。依据为 app/familia.css 对基础样式的覆盖及 components/Familia.jsx、components/Chat.jsx。批准稿 public/design-preview/familia-app-replica/index.html 与 .tmp-familia/review/replica-board.jpg 是视觉参照，不是生产用户素材库。\n\n家庭影像与原声保留真实来源，AI 家人始终标明为个人陪伴设定。头像来自有权使用的图片，缺省为姓名首字或 Lucide 人物图标。新流程进入实际家庭记忆、历史会话和积分机制，保留原有权限与设置。\n\n**Key Characteristics:**\n\n- 柔和彩色渐变、白色胶囊和深棕操作。\n- 自托管 Urbanist 配合中文 Noto 无衬线；忆伴字标保留 Noto 中文衬线。\n- 绿色用户气泡与白色助手气泡，身份及来源清楚。\n- 留白、真实状态和可见焦点优先。",
+    "overview": "用户确认的手机端与桌面端整套预览是当前视觉依据：淡紫与桃色柔和铺底，联系人以珊瑚渐变突出人物，白色胶囊承托深棕操作。这里记录已落地的生产界面，不另造视觉概念。样式顺序为基础样式、app/familia.css、最后加载的 app/preview-parity.css；批准图索引见 .impeccable/references/approved-preview/manifest.json。\n\n家庭影像、原声和家庭事实保留真实来源，AI 家人始终标明为个人陪伴设定。用户批准 public/demo/preview 的示意头像、封面和演示合影作为有文字标识的界面回退，真实上传优先；这些资源不能写成真实家庭记忆或模型事实。缺图也可使用姓名首字或 Lucide 人物图标。",
     "keyCharacteristics": [
-      "Coral, peach and lilac gradients with white pills.",
-      "Self-hosted Urbanist and Noto Chinese.",
-      "Dark brown actions; sage user and white assistant messages.",
-      "Owned avatars, explicit AI identity and visible provenance."
+      "柔和彩色渐变、白色胶囊和深棕操作。",
+      "自托管 Urbanist 配合中文 Noto 无衬线，应用字标同用无衬线。",
+      "绿色用户气泡与白色助手气泡，身份及来源清楚。",
+      "留白、真实状态和可见焦点优先。"
     ],
     "rules": [
       {
         "name": "The Semantic Pair Rule",
-        "body": "Contact text inherits ink; sage user bubbles use fa-sage-ink. Preserve theme pairs.",
+        "body": "联系人姓名及说明继承 ink；绿色用户气泡使用 fa-sage-ink。不要把浅色文字重新放在这些正文位置。夜间使用暗紫棕画布、浅桃操作与更深的背景渐变；高对比将辅助文字及边界提升至正文色。新组件复用现有语义属性。",
         "section": "colors"
       },
       {
         "name": "The Root Scale Rule",
-        "body": "Keep rem content and user-selected root sizing.",
+        "body": "延续根字号偏好和 rem 正文。手机聊天输入保留 max(1rem,16px)。页面局部字号不升级为全站固定标题规则。",
         "section": "typography"
       },
       {
         "name": "The Reduced Motion Rule",
-        "body": "Respect reduced-motion settings; local glows do not become universal elevation.",
+        "body": "减少动态设置下，Familia、创建和心情页面关闭动画、过渡与平滑滚动。普通按钮（.16s）和字段焦点（.15s）保留已有状态反馈，不新增通用入场动效。",
         "section": "elevation"
       }
     ],
     "dos": [
-      "Do reproduce the shipped Familia world.",
-      "Do retain night, high contrast, root sizing and reduced motion.",
-      "Do retain AI identity, media provenance, history and credit states."
+      "**Do** 从实际 Familia 实现延续渐变、胶囊、圆头像与棕色操作。",
+      "**Do** 保留夜间、高对比、字号和减少动态偏好。",
+      "**Do** 保留真实内容来源、AI 身份及操作前积分说明。",
+      "**Do** 使用 Lucide 与可访问名称，头像使用获权图片或有意义的首字。"
     ],
     "donts": [
-      "Do not use reference people as production profiles.",
-      "Do not present browser speech or saved video as live calls.",
-      "Do not invent mood records or diagnostic meaning."
+      "**Don't** 将标识为示意的头像、封面或演示合影写成真实家庭资料，或覆盖真实上传。",
+      "**Don't** 把 AI 家人当真实家庭成员，或将影像回看标成实时视频通话。",
+      "**Don't** 用浅色文字破坏联系人正文与用户气泡的颜色配对。",
+      "**Don't** 将年龄轮、心情弧线或描述柔光推广到所有页面。"
     ]
   }
 }

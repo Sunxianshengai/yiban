@@ -65,12 +65,14 @@ export async function fundTestAccount(request,amount=1000) {
 
 // Primary navigation stays focused; auxiliary tools live in the real More menu.
 export async function openMore(page){
+  const homeBack=page.getByRole('button',{name:'返回首页',exact:true});
+  if(await homeBack.isVisible())await homeBack.click();
   const desktop=page.locator('.sidebar-bottom').getByRole('button',{name:'更多功能',exact:true});
   if(await desktop.isVisible())await desktop.click();
   else{const back=page.getByRole('button',{name:'返回联系页',exact:true});if(await back.isVisible())await back.click();const contact=page.locator('.fa-contact').getByRole('button',{name:'更多功能',exact:true});if(await contact.isVisible())await contact.click();else{const home=page.locator('.fa-home').getByRole('button',{name:'更多功能',exact:true});if(!await home.isVisible())await page.locator('.mobile-nav').getByRole('button',{name:'首页',exact:true}).click();await page.locator('.fa-home').getByRole('button',{name:'更多功能',exact:true}).click();}}
   await expect(page.getByRole('dialog',{name:'更多功能',exact:true})).toBeVisible();
 }
-export async function openChatSettings(page){await page.getByLabel('对话菜单',{exact:true}).click();await page.getByRole('button',{name:'聊天设置',exact:true}).click();await expect(page.getByRole('dialog',{name:'聊天设置',exact:true})).toBeVisible();}
+export async function openChatSettings(page){const direct=page.locator('.pw-chat-settings');if(await direct.isVisible()){await direct.click();}else{await page.getByLabel('对话菜单',{exact:true}).click();await page.getByRole('button',{name:'聊天设置',exact:true}).click();}await expect(page.getByRole('dialog',{name:'聊天设置',exact:true})).toBeVisible();}
 export async function openCredits(page){await openMore(page);await page.getByRole('dialog',{name:'更多功能',exact:true}).getByRole('button',{name:'积分余额与消费',exact:true}).click();await expect(page.getByRole('heading',{name:'我的积分',exact:true})).toBeVisible();}
 export async function clickNavItem(page,name){
   const button=page.locator('.side-nav').getByRole('button',{name:new RegExp('^'+name)});
@@ -78,3 +80,9 @@ export async function clickNavItem(page,name){
   await openMore(page);await page.getByRole('dialog',{name:'更多功能',exact:true}).getByRole('button',{name:name==='家人故事'?'家人故事时间轴':name==='设置'?'账号、外观与设置':name,exact:true}).click();
 }
 
+
+export async function chooseSettingsTab(page,label){
+  const desktop=page.locator('.pw-settings-nav');
+  if(await desktop.isVisible())await desktop.getByRole('button',{name:label,exact:true}).click();
+  else{const menu=page.locator('.pw-settings-mobile-menu');await menu.locator('summary').click();await menu.getByRole('button',{name:label,exact:true}).click();}
+}

@@ -8,7 +8,7 @@ test('个人余额、管理员发放与成功回复的消费记录贯通',async(
   await expect(page.getByRole('heading',{name:'我的积分',exact:true})).toBeVisible();
   await expect(page.locator('.credits-totals').first()).toContainText('0');
   const user=(await (await page.request.get('/api/auth/status')).json()).user;
-  await page.getByLabel('发放给',{exact:true}).selectOption(user.id);
+  await page.getByRole('button',{name:'发放积分',exact:true}).click();await page.getByLabel('发放给',{exact:true}).selectOption(user.id);
   await page.getByLabel('积分数量',{exact:true}).fill('50');
   await page.getByLabel('发放说明',{exact:true}).fill('浏览器体验额度');
   await page.getByRole('button',{name:'确认发放',exact:true}).click();

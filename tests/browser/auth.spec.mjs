@@ -46,20 +46,19 @@ test('first run, invitations, roles, media authorization and sign out',async({br
   expect((await editor.get(media)).status()).toBe(200);
 
   const page=await browser.newPage();await page.goto('/app');
-  await expect(page.getByRole('heading',{name:'登录家庭空间'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'欢迎回来'})).toBeVisible();
   await page.getByLabel('邮箱').fill('admin@yiban.test');await page.getByLabel('密码').fill('TestPassword123!');
   await page.getByRole('button',{name:'登录',exact:true}).click();
-  await expect(page.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/今天，想和谁聊聊/})).toBeVisible();
   await clickNavItem(page,'设置');
-  await page.getByRole('button',{name:'管理登录账号'}).click();
-  await expect(page.getByRole('dialog')).toContainText('小林');
-  await page.getByRole('button',{name:'关闭窗口'}).click();
+  await page.getByRole('button',{name:'账号与权限'}).click();
+  await expect(page.locator('.account-manager')).toContainText('小林');
   await page.getByRole('button',{name:'退出登录'}).click();
-  await expect(page.getByRole('heading',{name:'登录家庭空间'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'欢迎回来'})).toBeVisible();
   expect((await page.request.get('/api/state')).status()).toBe(401);
   const viewerContext=await browser.newContext({storageState:await viewer.storageState()});
   const viewerPage=await viewerContext.newPage();await viewerPage.goto('/');
-  await expect(viewerPage.getByRole('heading',{name:/欢迎回家/})).toBeVisible();
+  await expect(viewerPage.getByRole('heading',{name:/今天，想和谁聊聊/})).toBeVisible();
   await expect(viewerPage.getByRole('button',{name:'记一段回忆',exact:true})).toBeHidden();
   await viewerPage.getByRole('navigation').getByRole('button',{name:'记忆库'}).click();
   await expect(viewerPage.locator('.memory-card')).not.toHaveCount(0);
