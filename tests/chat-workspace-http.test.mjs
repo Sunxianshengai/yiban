@@ -37,7 +37,7 @@ test('real streamed chunks are persisted as a complete answer and idempotent rep
   await credits.grant({userId:one.id,actorId:one.id,amount:20,note:'隔离测试',requestKey:'chat-test-funding'});
   let calls=0;
   globalThis.fetch=async(_url,request)=>{
-    calls++;assert.equal(JSON.parse(request.body).stream,true);
+    if(!JSON.parse(request.body).stream)return Response.json({choices:[{message:{content:'{"memories":[],"ids":[]}'}}]});calls++;assert.equal(JSON.parse(request.body).stream,true);
     const data=['data: '+JSON.stringify({choices:[{delta:{content:'我在听。'},finish_reason:null}]})+'\n\n','data: '+JSON.stringify({choices:[{delta:{content:'慢慢说。'},finish_reason:'stop'}]})+'\n\n','data: [DONE]\n\n'].join('');
     const bytes=new TextEncoder().encode(data);
     return new Response(new ReadableStream({start(c){for(let i=0;i<bytes.length;i+=7)c.enqueue(bytes.slice(i,i+7));c.close();}}),{headers:{'Content-Type':'text/event-stream'}});
@@ -79,7 +79,7 @@ test('legacy conversation history is imported once without exposing another acco
   assert.equal(await store.get('companion_threads','legacy-mine'),null);
 });
 
-function successModel(capture){globalThis.fetch=async(_url,request)=>{const body=JSON.parse(request.body);capture?.(body);const text=`回复：${body.messages.at(-1).content}`;return new Response(`data: ${JSON.stringify({choices:[{delta:{content:text},finish_reason:'stop'}]})}\n\ndata: [DONE]\n\n`,{headers:{'Content-Type':'text/event-stream'}});};}
+function successModel(capture){globalThis.fetch=async(_url,request)=>{const body=JSON.parse(request.body);if(!body.stream)return Response.json({choices:[{message:{content:'{"memories":[],"ids":[]}'}}]});capture?.(body);const text=`回复：${body.messages.at(-1).content}`;return new Response(`data: ${JSON.stringify({choices:[{delta:{content:text},finish_reason:'stop'}]})}\n\ndata: [DONE]\n\n`,{headers:{'Content-Type':'text/event-stream'}});};}
 async function send(thread,body,key){const response=await call('POST',`threads/${thread.id}/generate`,{body,key});assert.equal(response.status,200);await response.text();return (await call('GET',`threads/${thread.id}`)).json();}
 test('edit and regeneration preserve branches, feedback and billing; selecting a version restores its history',async()=>{
   successModel();const credits=await import('../lib/credits.mjs');const before=await credits.balance(one.id);

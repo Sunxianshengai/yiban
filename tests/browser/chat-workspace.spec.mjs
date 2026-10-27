@@ -7,13 +7,13 @@ test.beforeEach(async({page})=>{await signInAsNewAdmin(page,{prefix:'workspace',
 test('workspace streams, saves history, preserves edited versions, feedback and memory drafts',async({page})=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message));await openChat(page);
   fs.mkdirSync('.impeccable/review',{recursive:true});await page.screenshot({path:'.impeccable/review/chat-desktop-empty.png'});
-  await page.getByRole('button',{name:'你好',exact:true}).click();expect(await page.getByLabel('发送给家伴的消息').inputValue()).not.toBe('');
+  await page.getByLabel('发送给家伴的消息').fill('你好');expect(await page.getByLabel('发送给家伴的消息').inputValue()).toBe('你好');
   await send(page,'今天一起做晚饭\n妈妈教我做菜');
   await expect(page.locator('.cw-assistant')).toContainText('听见了');await expect(page.locator('.cw-user-text')).toHaveText('今天一起做晚饭\n妈妈教我做菜');await expect(page.locator('.credits-balance strong')).toHaveText('19');
-  await page.locator('.cw-assistant').last().getByRole('button',{name:'消息操作',exact:true}).click();await page.getByRole('button',{name:'有帮助',exact:true}).click();await expect(page.getByRole('button',{name:'有帮助',exact:true})).toHaveAttribute('aria-pressed','true');
+  await page.locator('.cw-assistant').last().getByRole('button',{name:'消息操作',exact:true}).click();await page.getByRole('button',{name:'有帮助',exact:true}).click();await page.locator('.cw-assistant').last().getByRole('button',{name:'消息操作',exact:true}).click();await expect(page.getByRole('button',{name:'有帮助',exact:true})).toHaveAttribute('aria-pressed','true');
   await page.getByRole('button',{name:'重新生成',exact:true}).click();await expect(page.getByRole('button',{name:'停止生成',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'发送消息',exact:true})).toBeVisible({timeout:20000});await expect(page.locator('.cw-versions')).toContainText('2 / 2');
-  await page.getByRole('button',{name:'上一个版本',exact:true}).click();await expect(page.getByRole('button',{name:'有帮助',exact:true})).toHaveAttribute('aria-pressed','true');
-  await page.getByRole('button',{name:'编辑消息',exact:true}).click();await page.getByRole('textbox',{name:'编辑消息',exact:true}).fill('爸爸今天讲了一件童年的事');await page.getByRole('button',{name:'保存并重新生成',exact:true}).click();await expect(page.getByRole('button',{name:'发送消息',exact:true})).toBeVisible({timeout:20000});await expect(page.locator('.cw-user-text')).toHaveText('爸爸今天讲了一件童年的事');
+  await page.getByRole('button',{name:'上一个版本',exact:true}).click();await page.locator('.cw-assistant').last().getByRole('button',{name:'消息操作',exact:true}).click();await expect(page.getByRole('button',{name:'有帮助',exact:true})).toHaveAttribute('aria-pressed','true');
+  await page.keyboard.press('Escape');await page.locator('.cw-user').last().getByRole('button',{name:'消息操作',exact:true}).click();await page.getByRole('button',{name:'编辑消息',exact:true}).click();await page.getByRole('textbox',{name:'编辑消息',exact:true}).fill('爸爸今天讲了一件童年的事');await page.getByRole('button',{name:'保存并重新生成',exact:true}).click();await expect(page.getByRole('button',{name:'发送消息',exact:true})).toBeVisible({timeout:20000});await expect(page.locator('.cw-user-text')).toHaveText('爸爸今天讲了一件童年的事');
   await page.screenshot({path:'.impeccable/review/chat-desktop.png'});
   // A general record draft must not overwrite a draft created from chat.
   await page.locator('.cw-assistant').last().getByRole('button',{name:'消息操作',exact:true}).click();await page.getByRole('button',{name:'存为记忆草稿',exact:true}).click();const record=page.getByRole('dialog',{name:'记一段回忆'});await expect(record.getByLabel('这段记忆的故事')).toContainText('爸爸今天');await record.getByRole('button',{name:'稍后继续',exact:true}).click();
@@ -23,7 +23,7 @@ test('workspace streams, saves history, preserves edited versions, feedback and 
 });
 test('stop refunds, menus persist, history can be searched, renamed, archived and deleted',async({page})=>{
   await openChat(page);await openChatSettings(page);await page.getByRole('button',{name:'聊聊回忆',exact:true}).click();await page.getByRole('button',{name:'简洁',exact:true}).click();await page.getByRole('button',{name:'完成',exact:true}).click();
-  await page.getByLabel('发送给家伴的消息').fill('想聊聊全家的旅行');await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect(page.locator('.cw-assistant')).toContainText('家伴');await page.getByRole('button',{name:'停止生成',exact:true}).click();
+  await page.getByLabel('发送给家伴的消息').fill('想聊聊全家的旅行');await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect(page.locator('.cw-assistant')).toContainText('听见了');await page.getByRole('button',{name:'停止生成',exact:true}).click();
   await expect(page.locator('.cw-message-status')).toContainText('已停止');await expect(page.locator('.credits-balance strong')).toHaveText('20');
   await openChatSettings(page);await expect(page.getByRole('button',{name:'聊聊回忆',exact:true})).toHaveAttribute('aria-pressed','true');await expect(page.getByRole('button',{name:'简洁',exact:true})).toHaveAttribute('aria-pressed','true');await page.getByRole('button',{name:'完成',exact:true}).click();
   await page.getByLabel('对话菜单',{exact:true}).click();await page.getByRole('button',{name:'重命名',exact:true}).click();const rename=page.getByRole('dialog',{name:'重命名对话'});await rename.getByLabel('对话名称').fill('全家的旅行');await rename.getByRole('button',{name:'保存',exact:true}).click();

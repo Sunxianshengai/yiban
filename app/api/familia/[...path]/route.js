@@ -1,5 +1,5 @@
 import {sessionFromRequest,sameOrigin} from '../../../../lib/auth.mjs';
-import {listProfiles,createProfile,updateProfile,moodHistory,checkIn} from '../../../../lib/familia-store.mjs';
+import {listProfiles,createProfile,updateProfile,defaultProfile,updateDefaultProfile,moodHistory,checkIn} from '../../../../lib/familia-store.mjs';
 import {listPersonalMemories,createPersonalMemory,changePersonalMemory,forgetPersonalMemory,setPersonalMemoryEnabled} from '../../../../lib/personal-memory.mjs';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -24,7 +24,8 @@ async function handle(request,{params}){
     if(resource==='profiles'&&path.length<=2){
       if(request.method==='GET'&&!id)return json(await listProfiles(user));
       if(request.method==='POST'&&!id)return json(await createProfile(user,await request.json(),request.headers.get('idempotency-key')),{status:201});
-      if(request.method==='PATCH'&&id)return json(await updateProfile(user,id,await request.json()));
+      if(request.method==='GET'&&id==='default')return json({...await defaultProfile(user),id:'default'});
+      if(request.method==='PATCH'&&id)return json(id==='default'?await updateDefaultProfile(user,await request.json()):await updateProfile(user,id,await request.json()));
     }
     return json({error:'接口不存在'},{status:404});
   }catch(error){return json({error:error.message||'请求未能完成'},{status:error.status||400});}

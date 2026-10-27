@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-26T12:04:37.864311+00:00",
+  "generatedAt": "2026-10-27T09:03:01.110425+00:00",
   "title": "Design System: 忆伴 · Familia",
   "extensions": {
     "colorMeta": {
@@ -478,7 +478,139 @@
       "composer": "2px solid #8360B1; outline-offset:2px"
     },
     "reducedMotion": "Familia, setup and mood descendants: animation:none; transition:none; scroll-behavior:auto",
-    "colorRampNote": "Tonal ramps are synthesized OKLCH metadata for the inspector; the CSS palette and DESIGN.md frontmatter remain normative."
+    "colorRampNote": "Tonal ramps are synthesized OKLCH metadata for the inspector; the CSS palette and DESIGN.md frontmatter remain normative.",
+    "companionChat": {
+      "status": "approved production extension",
+      "scope": [
+        "components/Chat.jsx",
+        "components/CompanionDetails.jsx",
+        "app/companion-chat.css"
+      ],
+      "references": [
+        ".impeccable/review/companion-im-preview-v2/desktop-chat.png",
+        ".impeccable/review/companion-im-preview-v2/mobile-chat.png"
+      ],
+      "precedence": "Current companion chat overrides older white/purple chat guidance only within the chat workspace and message portal. Preserve the broader Familia palette and pages.",
+      "tokenSource": "DESIGN.md frontmatter: colors.im-*, typography.im-body / im-mobile-body, rounded.im-*, components.im-*",
+      "cssTokenMapping": {
+        "im-bg": {
+          "default": "{colors.im-bg}",
+          "light": "{colors.im-bg-light}"
+        },
+        "im-surface": {
+          "default": "{colors.im-surface}",
+          "light": "{colors.im-surface-light}"
+        },
+        "im-soft": {
+          "default": "{colors.im-soft}",
+          "light": "{colors.im-soft-light}"
+        },
+        "im-hover": {
+          "default": "{colors.im-hover}",
+          "light": "{colors.im-hover-light}"
+        },
+        "im-ink": {
+          "default": "{colors.im-ink}",
+          "light": "{colors.im-ink-light}"
+        },
+        "im-muted": {
+          "default": "{colors.im-muted}",
+          "light": "{colors.im-muted-light}"
+        },
+        "im-faint": {
+          "default": "{colors.im-faint}",
+          "light": "{colors.im-faint-light}"
+        },
+        "im-border": {
+          "default": "{colors.im-border}",
+          "light": "{colors.im-border-light}"
+        },
+        "im-accent": {
+          "default": "{colors.im-accent}",
+          "light": "{colors.im-accent-light}"
+        },
+        "im-accent-ink": {
+          "default": "{colors.im-accent-ink}",
+          "light": "{colors.im-accent-ink-light}"
+        },
+        "im-user": {
+          "default": "{colors.im-user}",
+          "light": "{colors.im-user-light}"
+        },
+        "im-user-ink": {
+          "default": "{colors.im-user-ink}",
+          "light": "{colors.im-user-ink-light}"
+        },
+        "im-selected": {
+          "default": "{colors.im-selected}",
+          "light": "{colors.im-selected-light}"
+        }
+      },
+      "defaultTheme": "dark",
+      "optionalTheme": "light",
+      "layout": {
+        "height": "100dvh",
+        "desktopColumns": "290px minmax(0,1fr)",
+        "desktopWithDetails": "270px minmax(0,1fr) 330px",
+        "collapsedWithDetails": "minmax(0,1fr) 330px",
+        "tabletContactWidth": "245px",
+        "tabletDetailsWidth": "340px",
+        "desktopHeaderHeight": "88px",
+        "mobileHeaderHeight": "76px",
+        "mobilePanels": "Full-screen contacts/details with return controls",
+        "mobileFeedPadding": "19px 14px 12px"
+      },
+      "breakpoints": [
+        {
+          "name": "companion-tablet",
+          "query": "(max-width:1180px) and (min-width:769px)"
+        },
+        {
+          "name": "companion-mobile",
+          "query": "(max-width:768px)"
+        }
+      ],
+      "shadows": [
+        {
+          "name": "message-popover",
+          "value": "0 14px 40px #0003"
+        },
+        {
+          "name": "tablet-details",
+          "value": "-12px 0 40px #0003"
+        },
+        {
+          "name": "header-menu",
+          "value": "0 14px 35px #0003"
+        }
+      ],
+      "focus": {
+        "outline": "2px solid var(--im-accent)",
+        "outlineOffset": "3px"
+      },
+      "motion": {
+        "switch": "transform .15s ease-out",
+        "reducedMotion": "Disable switch transition and smooth feed scrolling"
+      },
+      "stickers": {
+        "sourceDirectory": "public/companions/xiaoman/",
+        "files": [
+          "greeting.png",
+          "celebrate.png",
+          "thinking.png",
+          "quiet.png"
+        ],
+        "rendering": "Original transparent cutout raster artwork, object-fit:contain; no emoji/icon substitution",
+        "desktopSize": "128px 137px",
+        "mobileSize": "100px 105px"
+      },
+      "interaction": {
+        "messageActions": "Context menu, touch long-press and visible more-button; keyboard focus and Escape dismissal",
+        "details": "Secondary side panel on desktop; full-screen on mobile",
+        "personalMemory": "Secondary page reached through details, with return, settings, source/update and correction controls"
+      },
+      "legacyGuidance": "Existing sidecar global tokens, components and narrative remain the broader Familia baseline; earlier chat gradients, white assistant bubbles and capsule dimensions do not describe this scoped extension."
+    }
   },
   "components": [
     {

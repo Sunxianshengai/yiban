@@ -6,21 +6,23 @@ import {EXAMPLE_PEOPLE,examplePortrait,exampleCover} from '../lib/preview-assets
 import {Avatar,Button,Modal} from './UI';
 import {familiaAPI} from '../lib/familia-client.mjs';
 import {FAMILY_ROLES,RELATIONSHIPS,QUALITIES,MOODS} from '../lib/familia.mjs';
+import {DEFAULT_COMPANION} from '../lib/companion-chat.mjs';
 
 export function useFamilia(accountId){
   const [data,setData]=useState({profiles:[],moods:null,loading:true,error:''});const identity=useRef(accountId);identity.current=accountId;
-  async function reload(){if(!accountId)return;const [profiles,moods]=await Promise.all([familiaAPI('profiles'),familiaAPI('moods')]);if(identity.current===accountId)setData({profiles:profiles.profiles,moods,loading:false,error:''});}
+  async function reload(){if(!accountId)return;const [profiles,moods]=await Promise.all([familiaAPI('profiles'),familiaAPI('moods')]);if(identity.current===accountId)setData({profiles:profiles.profiles,defaultProfile:profiles.defaultProfile,moods,loading:false,error:''});}
   useEffect(()=>{setData({profiles:[],moods:null,loading:Boolean(accountId),error:''});if(accountId)reload().catch(error=>{if(identity.current===accountId)setData(current=>({...current,loading:false,error:error.message}));});},[accountId]);
-  return {...data,reload,rememberProfile:profile=>setData(current=>({...current,profiles:current.profiles.map(previous=>previous.id===profile.id?profile:previous)}))};
+  return {...data,reload,rememberProfile:profile=>setData(current=>profile.id==='default'?{...current,defaultProfile:profile}:{...current,profiles:current.profiles.map(previous=>previous.id===profile.id?profile:previous)})};
 }
 export function PersonaAvatar({profile,large=false}){
+  if(!profile||(!profile.avatar&&profile.role==='friend'))return <span className={`fa-persona-avatar im-persona-avatar ${large?'large':''}`} aria-hidden="true"><img src="/companions/xiaoman/greeting.png" alt=""/></span>;
   const example=!profile?.avatar&&examplePortrait(profile?.role);
   return <span className={`fa-persona-avatar ${large?'large':''}`} aria-hidden="true">{profile?.avatar?<img src={profile.avatar} alt=""/>:example?<><NextImage src={example} alt="" width={256} height={256}/><small className="pw-avatar-label">示意</small></>:<span>{profile?.name.slice(0,1)||'伴'}</span>}</span>;
 }
-export function FamiliaHome({state,profiles,moods,onProfile,onCreate,onMood,onRecord,onLibrary,onMore,error,onRetry}){
+export function FamiliaHome({state,profiles,defaultProfile=DEFAULT_COMPANION,moods,onProfile,onCreate,onMood,onRecord,onLibrary,onMore,error,onRetry}){
   const current=MOODS.find(mood=>mood.value===moods?.today?.value);
   const featured=state.memories.find(memory=>memory.cover&&memory.status==='confirmed');
-  const choices=[{id:'default',name:'家伴',qualities:[],isDefault:true},...profiles,...EXAMPLE_PEOPLE.filter(example=>!profiles.some(profile=>profile.role===example.role))];
+  const choices=[{...defaultProfile,id:'default',isDefault:true},...profiles,...EXAMPLE_PEOPLE.filter(example=>!profiles.some(profile=>profile.role===example.role))];
   return <div className="fa-home"><header className="fa-home-heading"><div><span className="fa-wordmark">忆伴</span><p>和家人一起，让回忆一直在。</p></div><button className="fa-round" aria-label="更多功能" onClick={onMore}><Icon name="more"/></button></header>
     {error&&<div className="fa-inline-error" role="alert">{error}<button onClick={onRetry}>重新连接</button></div>}
     <section className="pw-home-companions"><h1>今天，想和谁聊聊？</h1><div className="fa-profile-list">{choices.map(profile=><button className="fa-profile-row" key={profile.id} onClick={()=>onProfile(profile.isDefault?null:profile)}><PersonaAvatar profile={profile.isDefault?null:profile}/><span><strong>{profile.name}</strong><small>{profile.isDefault?'AI 陪伴':profile.illustrative?'AI 示意角色':'AI 家人'}</small><p>{profile.isDefault?'从家里的回忆，聊到今天的小事':profile.qualities.map(id=>QUALITIES.find(quality=>quality.id===id)?.label).slice(0,3).join(' · ')||'以你喜欢的方式，听你说说话'}</p></span></button>)}</div><button className="fa-add-person" onClick={onCreate}><Icon name="plus"/>添加一位 AI 家人</button></section>

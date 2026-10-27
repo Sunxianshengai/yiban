@@ -131,10 +131,23 @@ function narration(messages) {
 
 function answer(messages) {
   const system = systemOf(messages);
+  if(system.includes('私有记忆相关性选择器')){
+    const input=JSON.parse(lastUser(messages));
+    return JSON.stringify({ids:(input.记忆||[]).filter(item=>/喝点|喝什么|茶/.test(input.当前表达)&&item.text.includes('茉莉')).map(item=>item.id).slice(0,6)});
+  }
   if(system.includes('个人长期记忆筛选器')){
     const input=JSON.parse(lastUser(messages));
-    return JSON.stringify({memories:String(input.用户本轮自述).includes('我每周六去上陶艺课。')?[{quote:'我每周六去上陶艺课。',category:'event'}]:[]});
+    const text=String(input.用户本轮自述),items=[];
+    if(text.includes('我每周六去上陶艺课。'))items.push({quote:'我每周六去上陶艺课。',category:'event'});
+    if(text.includes('我喜欢茉莉花茶，不喝咖啡。'))items.push({quote:'我喜欢茉莉花茶，不喝咖啡。',category:'preference',kind:'preference',topic:'饮品'});
+    if(text.includes('我明天要去面试。'))items.push({quote:'我明天要去面试。',category:'event',kind:'plan',topic:'面试'});
+    if(text.includes('面试已经结束了，比预想顺利。'))items.push({quote:'面试已经结束了，比预想顺利。',category:'event',kind:'event',topic:'面试',replaces:(input.已有记忆||[]).filter(item=>item.topic==='面试'&&item.kind==='plan').map(item=>item.id)});
+    if(text.includes('以后先听我说，不用急着分析。'))items.push({quote:'以后先听我说，不用急着分析。',category:'boundary',kind:'boundary',topic:'倾听方式'});
+    return JSON.stringify({memories:items.slice(0,2)});
   }
+  if(lastUser(messages)==='[test:companion-bubbles]')return '先听你说。\n---\n今天不用急着复盘。\n---\n[[sticker:greeting]]';
+  if(lastUser(messages)==='[test:slow]')return '我先慢慢说一段还没有完成的回应。'.repeat(18)+'\n---\n[[sticker:celebrate]]';
+  if(/喝点什么/.test(lastUser(messages))&&system.includes('我喜欢茉莉花茶'))return '你不是喜欢茉莉花茶嘛。\n---\n泡一杯，慢慢喝。\n---\n[[sticker:quiet]]';
   if (/家庭记忆的转述者|第一人称口述/.test(system)) return narration(messages);
   if (/整理这段家庭记忆|家庭记忆整理助手/.test(system)) return organize(messages);
   if (/家庭故事编辑/.test(system)) return story(messages);

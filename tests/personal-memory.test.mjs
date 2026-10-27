@@ -67,7 +67,7 @@ test('bounded retrieval favors pinned records, matches Chinese and English and e
 test('confirmed user message becomes cross-session context; edits, off switch and deletion affect next generation with billing intact',async()=>{
   await credits.grant({userId:owner.id,actorId:owner.id,amount:10,note:'隔离测试',requestKey:'fund-memory'});
   let prompts=[];
-  globalThis.fetch=async(_url,request)=>{prompts.push(JSON.parse(request.body).messages);return new Response(`data: ${JSON.stringify({choices:[{delta:{content:'愿意慢慢听你说。'},finish_reason:'stop'}]})}\n\ndata: [DONE]\n\n`,{headers:{'Content-Type':'text/event-stream'}});};
+  globalThis.fetch=async(_url,request)=>{if(!JSON.parse(request.body).stream)return Response.json({choices:[{message:{content:'{"memories":[],"ids":[]}'}}]});prompts.push(JSON.parse(request.body).messages);return new Response(`data: ${JSON.stringify({choices:[{delta:{content:'愿意慢慢听你说。'},finish_reason:'stop'}]})}\n\ndata: [DONE]\n\n`,{headers:{'Content-Type':'text/event-stream'}});};
   async function thread(){return (await call('chat','POST','threads',{body:{options:{profileId:profile.id,memoryMode:'off'}}})).json();}
   async function generate(t,text,key){const response=await call('chat','POST',`threads/${t.id}/generate`,{body:{text},key});assert.equal(response.status,200);await response.text();return(await call('chat','GET',`threads/${t.id}`)).json();}
   const initial=await thread();const conversation=await generate(initial,'我周三参加陶艺课。','first-memory-chat');
@@ -92,6 +92,7 @@ test('automatic mode extracts original user text only, records provenance and ch
   let extractionCalls=0;
   globalThis.fetch=async(_url,request)=>{
     const body=JSON.parse(request.body);
+    if(!body.stream&&body.messages[0].content.includes('相关性选择器'))return Response.json({choices:[{message:{content:'{"ids":[]}'}}]});
     if(!body.stream){extractionCalls++;assert.match(body.messages[0].content,/连续原文/);return Response.json({choices:[{message:{content:JSON.stringify({memories:[{quote:'我喜欢茉莉花茶，不喝咖啡。',category:'preference'},{quote:'这是模型编造的话',category:'about'}]})}}]});}
     return new Response(`data: ${JSON.stringify({choices:[{delta:{content:'下次也可以聊聊茶。'},finish_reason:'stop'}]})}\n\ndata: [DONE]\n\n`,{headers:{'Content-Type':'text/event-stream'}});
   };
@@ -128,7 +129,7 @@ test('memory and pin limits hold under concurrent writes; failed replies do not 
   await repository.createPersonalMemory(owner,isolated.id,{text:'最后一条'},'last');
   await assert.rejects(repository.createPersonalMemory(owner,isolated.id,{text:'超出容量'},'over'),/最多保存 100/);
   assert.equal((await repository.listPersonalMemories(owner,isolated.id)).items.length,100);
-  let extractions=0;globalThis.fetch=async(_url,request)=>{if(!JSON.parse(request.body).stream)extractions++;return new Response('unavailable',{status:503});};
+  let extractions=0;globalThis.fetch=async(_url,request)=>{if(!JSON.parse(request.body).stream&&JSON.parse(request.body).messages[0].content.includes('筛选器'))extractions++;return new Response('unavailable',{status:503});};
   const t=await(await call('chat','POST','threads',{body:{options:{}}})).json();
   await(await call('chat','POST',`threads/${t.id}/generate`,{body:{text:'我喜欢晚饭后散步。'},key:'auto-reply-failed'})).text();
   const history=await(await call('chat','GET',`threads/${t.id}`)).json();assert.equal(history.messages.at(-1).status,'failed');assert.equal(extractions,0);assert.deepEqual(await credits.balance(owner.id),{balance:3,held:0});

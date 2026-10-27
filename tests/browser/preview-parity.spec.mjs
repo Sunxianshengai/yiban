@@ -29,15 +29,15 @@ for(const [device,width,height] of [['desktop',1440,960],['mobile',390,844]]){
     for(const [name,role,age] of [['爸爸','father',36],['外婆','grandmother',68]]){
       const response=await page.request.post('/api/familia/profiles',{headers:{'Idempotency-Key':`parity-${role}-${Date.now()}`},data:{name,role,age,qualities:['patient']}});expect(response.status()).toBe(201);
     }
-    const member=await(await page.request.post('/api/members',{data:{name:'林桂兰',relation:'外婆',birthYear:'1958'}})).json();
+    const member=await(await page.request.post('/api/members',{data:{name:`林桂兰${Date.now()}`,relation:'外婆',birthYear:'1958'}})).json();
     const uploaded=await(await page.request.post('/api/upload',{multipart:{file:{name:'preview.jpg',mimeType:'image/jpeg',buffer:fs.readFileSync('public/auth-bg/hands-photos.jpg')}}})).json();
     expect(uploaded.url).toBeTruthy();
-    const memory=await(await page.request.post('/api/memories',{data:{title:'外婆的桂花糕',story:'2008 年，外婆在院子里教我们做桂花糕。',year:'2008',theme:'家人',cover:uploaded.url,status:'confirmed',people:[member.name],tags:['桂花糕']}})).json();
+    const memory=await(await page.request.post('/api/memories',{data:{title:`外婆的桂花糕 ${Date.now()}`,story:'2008 年，外婆在院子里教我们做桂花糕。',year:'2008',theme:'家人',cover:uploaded.url,status:'confirmed',people:[member.name],tags:['桂花糕']}})).json();
     expect(memory.id).toBeTruthy();
     try{
       await page.request.post('/api/familia/moods',{data:{value:4,note:'今天和家人聊了聊。'}});await page.reload();await expect(page.locator('.fa-profile-row')).toHaveCount(3);await shot('home');
       await openMore(page);await shot('more');await page.getByRole('button',{name:'关闭窗口',exact:true}).click();
-      await page.locator('.fa-profile-row').first().click();await expect(page.locator('.fa-contact h1')).toHaveText('家伴');await shot('contact');
+      await page.locator('.fa-profile-row').first().click();await expect(page.locator('.fa-contact h1')).toHaveText('小满');await shot('contact');
       await page.getByRole('button',{name:/^聊天/}).click();await expect(page.getByLabel('发送给家伴的消息')).toBeEnabled();await page.getByLabel('发送给家伴的消息').fill('今天想聊聊外婆的桂花糕。');await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect(page.getByRole('button',{name:'停止生成'})).toBeVisible();await expect(page.getByRole('button',{name:'发送消息',exact:true})).toBeVisible({timeout:20000});await shot('chat');
       if(width<1181){await page.getByRole('button',{name:'展开历史会话',exact:true}).click();await shot('history');await page.keyboard.press('Escape');}else await shot('history');
       await openChatSettings(page);await page.getByRole('button',{name:'温柔',exact:true}).click();await expect(page.getByRole('button',{name:'温柔',exact:true})).toHaveAttribute('aria-pressed','true');await shot('chat-settings');await page.getByRole('button',{name:'完成',exact:true}).click();

@@ -1,7 +1,8 @@
 import {sessionFromRequest,sameOrigin} from '../../../../lib/auth.mjs';
-import {meta,listThreads,createThread,readThread,updateThread,deleteThread,selectBranch,feedback} from '../../../../lib/chat-workspace.mjs';
+import {meta,listThreads,createThread,readThread,updateThread,deleteThread,selectBranch,feedback,interactMessage} from '../../../../lib/chat-workspace.mjs';
 import {all} from '../../../../lib/store.mjs';
 import {prepareGeneration,generationResponse,getJob,stopJob} from '../../../../lib/chat-generation.mjs';
+import {after} from 'next/server';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 export const maxDuration=120;
@@ -14,9 +15,10 @@ async function handle(request,{params}){
     if(method==='GET'&&resource==='memories')return Response.json({memories:(await all('memories')).filter(m=>m.status==='confirmed').map(m=>({id:m.id,title:m.title,year:m.year,cover:m.cover,people:m.people}))});
     if(resource==='jobs'&&id){if(method==='GET')return Response.json(await getJob(user,id));if(method==='POST'&&action==='cancel')return Response.json(await stopJob(user,id));}
     if(resource==='threads'){
+      if(method==='POST'&&id&&action==='interact'){const body=await request.json();return Response.json(await interactMessage(user,id,body.messageId,body));}
       if(method==='POST'&&id&&action==='select'){const body=await request.json();return Response.json(await selectBranch(user,id,body.messageId));}
       if(method==='POST'&&id&&action==='feedback'){const body=await request.json();return Response.json(await feedback(user,id,body.messageId,body.feedback));}
-      if(method==='POST'&&id&&action==='generate'){const prepared=await prepareGeneration(user,id,await request.json(),request.headers.get('idempotency-key'),request.headers.get('x-credit-limit'));return generationResponse(user,prepared,request.signal);}
+      if(method==='POST'&&id&&action==='generate'){const prepared=await prepareGeneration(user,id,await request.json(),request.headers.get('idempotency-key'),request.headers.get('x-credit-limit'));return generationResponse(user,prepared,request.signal,{schedule:after});}
       if(method==='GET'&&!id)return Response.json(await listThreads(user,{q:url.searchParams.get('q'),archived:url.searchParams.get('archived')==='true',offset:url.searchParams.get('offset')}));
       if(method==='GET'&&id&&!action)return Response.json(await readThread(user,id));
       if(method==='POST'&&!id)return Response.json(await createThread(user,await request.json()),{status:201});

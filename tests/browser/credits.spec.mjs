@@ -16,7 +16,7 @@ test('个人余额、管理员发放与成功回复的消费记录贯通',async(
   await expect(page.locator('.credits-balance strong')).toHaveText('50');
   await page.getByRole('navigation').getByRole('button',{name:'陪伴对话',exact:true}).click();
   await expect(page.getByRole('region',{name:'聊天工作区'})).toBeVisible();
-  await expect(page.locator('.cw-compose-note')).toContainText('1 积分');
+  await expect(page.locator('.cw-disclaimer')).toContainText('1 积分');
   await page.getByLabel('发送给家伴的消息').fill('今天一家人很开心');
   await page.getByRole('button',{name:'发送消息',exact:true}).click();
   await expect(page.locator('.cw-assistant').last()).toBeVisible();
