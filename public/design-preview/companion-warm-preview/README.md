@@ -39,10 +39,12 @@ Edge (Playwright) 实测 1440×1000／1280×900／1024×768／390×844 四种尺
 
 这些验证只证明预览可运行，不代表用户已批准接入正式应用。
 
-## 若要落地到正式页
+## 已落地（2026-10-27）
 
-需要改的只有三处，不改结构：
+用户看过预览后确认「直接部署」，正式应用已按下面三处改动换肤，提交 `3365c5c`：
 
-1. `app/companion-chat.css:2` 的 `--im-*` token 换成上面的暖色值（`--im-bg` 用 `--fa-chat` 渐变）。
-2. `components/Chat.jsx:36` 的 `chatTheme` 默认值从 `'dark'` 改为 `'light'`，并保留手动切换。
-3. `.cw-header` / `.cw-compose-area` 的直角背景改为 30px 圆角卡片（`app/familia.css:23` 内）。
+1. `app/companion-chat.css:2` 的 `--im-*` token 换成暖色值；`--fa-chat` 作为聊天画布，卡片、气泡、输入区用 `--im-surface` 白卡 + 大圆角 + 无边框阴影。
+2. `components/Chat.jsx:36` 的 `chatTheme` 默认值从 `'dark'` 改为 `'light'`，详情里的「聊天外观」仍可切换并保存。
+3. 深色没有删除：`app/companion-chat.css:3` 保留 `[data-im-theme=dark]` 与 `html[data-theme=night]` 两套暗色 token，夜间模式下聊天区自动收敛到暗紫棕渐变。
+
+真实页面截图见 `.impeccable/review/companion-warm-live/`，复现脚本 `scripts/shoot-warm-live.mjs`。
