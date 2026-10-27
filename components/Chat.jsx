@@ -33,7 +33,7 @@ export default function Chat({accountId='me',accountName='',accountAvatar=null,f
   const[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[historyOpen,setHistoryOpen]=useState(false),[sidebar,setSidebar]=useState(false),[mobile,setMobile]=useState(false),[speech,setSpeech]=useState(openSpeech);
   const[actionMessage,setActionMessage]=useState(null),[dialog,setDialog]=useState(null),[dialogText,setDialogText]=useState(''),[memories,setMemories]=useState([]),[memoryQuery,setMemoryQuery]=useState(''),[selected,setSelected]=useState([]);
   const[personalDialog,setPersonalDialog]=useState(null);
-  const[leftTab,setLeftTab]=useState('contacts'),[panel,setPanel]=useState(null),[menuPosition,setMenuPosition]=useState({left:20,top:160}),[queued,setQueued]=useState([]),[chatTheme,setChatTheme]=useState(()=>storage.get(`yiban:companion-theme:${accountId}`)||'dark');
+  const[leftTab,setLeftTab]=useState('contacts'),[panel,setPanel]=useState(null),[menuPosition,setMenuPosition]=useState({left:20,top:160}),[queued,setQueued]=useState([]),[chatTheme,setChatTheme]=useState(()=>storage.get(`yiban:companion-theme:${accountId}`)||'light');
   const queuedRef=useRef([]),queueCancel=useRef(null),submitRef=useRef(null);
   queuedRef.current=queued;
   const closePanel=useCallback(()=>setPanel(null),[]);

@@ -24,32 +24,32 @@ colors:
   error-soft: "#F6E7E3"
   warn: "#715E38"
   warn-soft: "#F5EFDC"
-  im-bg: "#141717"
-  im-surface: "#1c2020"
-  im-soft: "#262b2a"
-  im-hover: "#2b322e"
-  im-ink: "#eeeee7"
-  im-muted: "#a5aaa5"
-  im-faint: "#adb5ae"
-  im-border: "#303733"
-  im-accent: "#e7c0a7"
-  im-accent-ink: "#38291e"
-  im-user: "#bfd0ae"
-  im-user-ink: "#263323"
-  im-selected: "#303c32"
-  im-bg-light: "#f6f3ee"
-  im-surface-light: "#fffdfb"
-  im-soft-light: "#eeeae3"
-  im-hover-light: "#e9e7df"
-  im-ink-light: "#2b302a"
-  im-muted-light: "#646e61"
-  im-faint-light: "#646e61"
-  im-border-light: "#e0e2d8"
-  im-accent-light: "#764b3b"
-  im-accent-ink-light: "#fff8f1"
-  im-user-light: "#dce9c8"
-  im-user-ink-light: "#35452a"
-  im-selected-light: "#e7eddf"
+  im-bg: "#F4E9E2"
+  im-surface: "#FFFDFB"
+  im-soft: "#F2EFEC"
+  im-hover: "#F7F0EA"
+  im-ink: "#2B241B"
+  im-muted: "#6F6258"
+  im-faint: "#72645A"
+  im-border: "#DFD5CD"
+  im-accent: "#3C1008"
+  im-accent-ink: "#FFFDF9"
+  im-user: "#93AF5B"
+  im-user-ink: "#2F3F1C"
+  im-selected: "#F4E3DA"
+  im-bg-night: "#141717"
+  im-surface-night: "#1c2020"
+  im-soft-night: "#262b2a"
+  im-hover-night: "#2b322e"
+  im-ink-night: "#eeeee7"
+  im-muted-night: "#a5aaa5"
+  im-faint-night: "#adb5ae"
+  im-border-night: "#303733"
+  im-accent-night: "#e7c0a7"
+  im-accent-ink-night: "#38291e"
+  im-user-night: "#bfd0ae"
+  im-user-ink-night: "#263323"
+  im-selected-night: "#303c32"
 typography:
   headline:
     fontFamily: "Urbanist, Noto Sans SC Variable, PingFang SC, Microsoft YaHei, sans-serif"
@@ -201,7 +201,7 @@ surface 承载白色选项、面板和助手气泡；surface-2 用于输入和�
 
 ### 当前陪伴聊天扩展
 
-默认为炭灰与深绿的低刺激私聊界面。`im-bg` 是对话画布，`im-surface` 承载联系人、详情和输入容器，`im-soft` 承载助手气泡和输入底色，`im-selected` 标识选中的联系人。桃色 `im-accent` 用于发送、焦点和少量操作提示；鼠尾草绿 `im-user` 必须配对 `im-user-ink`。正文、说明和细边界分别使用 `im-ink`、`im-muted`／`im-faint`、`im-border`。可选浅色外观使用对应的 `-light` token；深色为聊天初始默认，可在详情中切换并保存。
+暖色是陪伴聊天的默认外观，与首页共用同一套画布与卡片语言：`--fa-chat` 作为聊天画布，`im-bg` 与首页 `canvas` 同值，`im-surface` 承载联系人卡片、顶栏、详情面板与输入胶囊，`im-soft` 承载助手气泡与搜索底色，`im-selected` 标识选中的联系人。品牌砖红 `im-accent` 用于发送、焦点和少量操作提示；鼠尾草绿 `im-user` 必须配对 `im-user-ink`。正文、说明和细边界分别使用 `im-ink`、`im-muted`／`im-faint`、`im-border`。深色外观保留为可选，使用 `-night` token，同时由 `html[data-theme=night]` 自动接管，在详情中切换并保存。
 
 **The Companion Scope Rule.** `im-` token 仅属于当前聊天工作区及其消息浮层；聊天激活时的全局导航配色覆盖仅服务于该场景。全站原有 brand、渐变、白色卡片及其他页面仍保持原定义。
 
@@ -301,7 +301,7 @@ surface 承载白色选项、面板和助手气泡；surface-2 用于输入和�
 - **Do** 保留真实内容来源、AI 身份及操作前积分说明。
 - **Do** 使用 Lucide 与可访问名称，头像使用获权图片或有意义的首字。
 
-- **Do** 在当前陪伴聊天内使用 `im-` token 及批准的深色默认／可选浅色外观，其他 Familia 页面继续使用既有身份。
+- **Do** 在当前陪伴聊天内使用 `im-` token 及批准的暖色默认／可选深色外观，其他 Familia 页面继续使用既有身份。
 - **Do** 将个人记忆作为详情中的次级入口，并保留可见的消息更多按钮。
 
 ### Don't:
