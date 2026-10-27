@@ -1,4 +1,6 @@
 import {test,expect} from '@playwright/test';
+
+test.use({launchOptions:{args:['--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream','--autoplay-policy=no-user-gesture-required']}});
 import {signInAsNewAdmin} from './helpers.mjs';
 test('multiline input, IME composition and per-account drafts behave like a chat workspace',async({page})=>{
   await signInAsNewAdmin(page,{prefix:'chat-input',credits:5});await page.locator('.side-nav').getByRole('button',{name:'陪伴对话'}).click();
@@ -69,4 +71,19 @@ test('emoji picker inserts, remembers favorites and reactions accept more emojis
   await page.locator('.cw-message').last().locator('.pw-message-more').click();
   await page.getByRole('button',{name:'回应🎉'}).click();
   await expect(page.locator('.im-message-reactions')).toContainText('🎉');
+});
+test('voice messages record, upload, play and survive a reload',async({page})=>{
+  await signInAsNewAdmin(page,{prefix:'chat-voice',credits:5});await page.locator('.side-nav').getByRole('button',{name:'陪伴对话'}).click();
+  const hold=page.getByLabel('按住说话');
+  await hold.hover();await page.mouse.down();
+  await expect(page.locator('.im-recording')).toBeVisible();
+  await page.waitForTimeout(900);
+  await page.mouse.up();
+  await expect(page.locator('.im-recording-uploading')).toBeVisible();
+  await expect(page.locator('.cw-message .im-voice').first()).toBeVisible({timeout:20000});
+  await expect(page.getByRole('button',{name:'发送消息',exact:true})).toBeVisible({timeout:20000});
+  await page.locator('.im-voice-play').first().click();
+  await expect(page.locator('.im-voice-playing').first()).toBeVisible();
+  await page.reload();await page.locator('.side-nav').getByRole('button',{name:'陪伴对话'}).click();
+  await expect(page.locator('.im-voice').first()).toBeVisible({timeout:20000});
 });

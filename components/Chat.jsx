@@ -26,6 +26,18 @@ function CodeBlock({children,...props}){
   return <div className="cw-code"><button type="button" onClick={async()=>{try{await navigator.clipboard.writeText(ref.current?.textContent||'');setCopied(true);}catch{setCopied(false);}}}>{copied?'已复制':'复制代码'}</button><pre {...props} ref={ref}>{children}</pre></div>;
 }
 function RichText({text}){return <div className="cw-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{pre:CodeBlock,a:({node,...props})=><a {...props} target="_blank" rel="noopener noreferrer"/>,img:({alt})=><span>[图片：{alt||'外部图片'}]</span>}}>{text}</ReactMarkdown></div>;}
+// 原声语音气泡：真实时长 + 录音时的波形峰值（0-1023），一次只播一条。
+function VoiceBubble({audio}){
+  const[playing,setPlaying]=useState(false);const element=useRef(null);
+  const peaks=audio?.peaks?.length?audio.peaks:Array.from({length:28},(_,index)=>180+((index*97)%320));
+  function toggle(){const node=element.current;if(!node)return;if(playing){node.pause();return;}document.querySelectorAll('.im-voice audio').forEach(other=>{if(other!==node)other.pause();});node.play().catch(()=>setPlaying(false));}
+  return <div className={`im-voice ${playing?'im-voice-playing':''}`}>
+    <button type="button" className="im-voice-play" aria-label={playing?'暂停语音':'播放语音'} onClick={toggle}><Icon name={playing?'pause':'play'} size={16}/></button>
+    <span className="im-voice-wave" aria-hidden="true">{peaks.slice(0,44).map((value,index)=><i key={index} style={{height:`${Math.max(14,Math.round(value/10.24))}%`}}/>)}</span>
+    <small>{Math.round(audio?.duration||0)}″</small>
+    <audio ref={element} src={audio?.url} preload="metadata" onPlay={()=>setPlaying(true)} onPause={()=>setPlaying(false)} onEnded={()=>setPlaying(false)}/>
+  </div>;
+}
 // 逐条露出：按当前已露出的条数，算出下一条还需要等多久。
 // 只在「正在生成的最后一条消息」上生效；刷新页面或生成结束后直接显示全文。
 function usePacedReveal(message,generating,revealed,setRevealed){
@@ -58,6 +70,67 @@ export default function Chat({accountId='me',accountName='',accountAvatar=null,f
   // 聊天图片：选图立即上传，全部就绪后随消息一起发；最多 4 张，10 MB 内。
   const[images,setImages]=useState([]);const imagesRef=useRef([]);useEffect(()=>{imagesRef.current=images;},[images]);
   const[viewer,setViewer]=useState(null);
+  // 按住说话：MediaRecorder 录音 → 上传 → 随消息带原声。上滑取消；最长 5 分钟自动停。
+  const[recording,setRecording]=useState(null);const recorderRef=useRef(null);const holdActive=useRef(false);
+  async function startRecording(){
+    if(recording||isBusy||loading||archivedThread)return;
+    try{
+      window.speechSynthesis?.cancel();
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      const context=new (window.AudioContext||window.webkitAudioContext)();
+      const source=context.createMediaStreamSource(stream);const analyser=context.createAnalyser();analyser.fftSize=256;source.connect(analyser);
+      const media=new MediaRecorder(stream);const chunks=[];const samples=[];
+      media.ondataavailable=event=>{if(event.data.size)chunks.push(event.data);};
+      media.onstop=()=>commitRecording(chunks,media);
+      media.start(250);
+      recorderRef.current={media,stream,context,analyser,samples,startedAt:Date.now(),cancelled:false};
+      setRecording({phase:'recording',startedAt:Date.now(),elapsed:0,samples});
+    }catch{setError('未能开启麦克风，请检查浏览器权限');}
+  }
+  function sampleRecording(){
+    const current=recorderRef.current;if(!current)return;
+    const elapsed=(Date.now()-current.startedAt)/1000;
+    if(elapsed>=300){finishRecording();return;}
+    const buffer=new Uint8Array(current.analyser.frequencyBinCount);current.analyser.getByteTimeDomainData(buffer);
+    let sum=0;for(const value of buffer){const offset=(value-128)/128;sum+=offset*offset;}
+    current.samples.push(Math.round(Math.min(1,Math.sqrt(sum/buffer.length)*3)*1023));
+    setRecording(state=>state?{...state,elapsed,samples:current.samples}:state);
+  }
+  function finishRecording(){
+    const current=recorderRef.current;if(!current)return;
+    if(current.media.state!=='inactive')current.media.stop();
+    current.stream.getTracks().forEach(track=>track.stop());
+    current.context.close().catch(()=>{});
+  }
+  function cancelRecording(){const current=recorderRef.current;if(current)current.cancelled=true;finishRecording();}
+  async function commitRecording(chunks,media){
+    const current=recorderRef.current;recorderRef.current=null;
+    const elapsed=(Date.now()-current.startedAt)/1000;
+    setRecording(null);
+    if(current.cancelled)return;
+    if(elapsed<0.7){setError('按住的时间太短了，再长一点');return;}
+    // 波形下采样到 44 个峰值，存进消息，播放器直接复用（Element Web 同款决策）。
+    const samples=current.samples.length?current.samples:[Math.round(elapsed*30)];
+    const bucket=Math.max(1,Math.ceil(samples.length/44));
+    const peaks=[];for(let index=0;index<samples.length;index+=bucket){const slice=samples.slice(index,index+bucket);peaks.push(Math.round(slice.reduce((sum,value)=>sum+value,0)/slice.length));}
+    const type=(media.mimeType||'audio/webm').split(';')[0];
+    const extension=type==='audio/mp4'?'m4a':type==='audio/ogg'?'ogg':'webm';
+    setRecording({phase:'uploading'});
+    try{
+      const result=await uploadMedia(api,new File(chunks,`语音消息.${extension}`,{type}),{remoteStorage,maxBytes:10*1024*1024});
+      setRecording(null);
+      submitRef.current({text:draft.trim(),audio:{url:result.url,duration:elapsed,peaks}});
+      setDraft('');
+    }catch(failure){setRecording(null);setError(failure.message||'语音没能发出去，请再试一次');}
+  }
+  useEffect(()=>{
+    if(!recording||recording.phase!=='recording')return;
+    const sampler=setInterval(sampleRecording,120);
+    function move(event){if(event.clientY<innerHeight*0.72)setRecording(state=>state&&state.phase==='recording'?{...state,phase:'cancelling'}:state);else setRecording(state=>state&&state.phase==='cancelling'?{...state,phase:'recording'}:state);}
+    function up(){window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);holdActive.current=false;const state=recorderRef.current;if(state?.cancelled)cancelRecording();else finishRecording();}
+    window.addEventListener('pointermove',move);window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);
+    return()=>{clearInterval(sampler);window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);};
+  },[recording?.phase]);
   // emoji 表情：最近使用/收藏存在本机账号命名空间里，点一下插入输入框。
   const[emojiData,setEmojiData]=useState(()=>loadEmojiData(storage,accountId));
   useEffect(()=>{setEmojiData(loadEmojiData(storage,accountId));},[accountId]);
@@ -157,12 +230,13 @@ export default function Chat({accountId='me',accountName='',accountAvatar=null,f
     // 只有普通发送进 outbox；编辑/重新生成/换种说法走各自的消息状态，不在这条链路上。
     const outboxText=payload.texts?payload.texts.map(item=>item.trim()).join('\n'):String(payload.text||'').trim();
     const payloadImages=Array.isArray(payload.images)?payload.images:[];
-    const trackable=(!payload.action||payload.action==='send')&&!payload.stickerId&&(Boolean(outboxText)||payloadImages.length>0);
+    const payloadAudio=payload.audio&&typeof payload.audio.url==='string'?payload.audio:null;
+    const trackable=(!payload.action||payload.action==='send')&&!payload.stickerId&&(Boolean(outboxText)||payloadImages.length>0||Boolean(payloadAudio));
     // 引用回复：普通发送时把当前引用条带进 payload；服务端受理后清掉引用条。
     if(trackable&&replyRef.current)payload={replyTo:replyRef.current.id,...payload};
     try{
       if(!id){const thread=await chatAPI('threads',{method:'POST',body:{options:settings}});id=thread.id;activeRef.current=id;setActive(id);storage.set(prefix+'active',id);setView({thread,messages:[],allMessages:[]});}
-      if(trackable)updateOutbox(id,items=>[...items.filter(item=>item.key!==key),{key,text:outboxText,images:payloadImages,status:'sending',payload:{...payload},threadId:id,createdAt:Date.now()}]);
+      if(trackable)updateOutbox(id,items=>[...items.filter(item=>item.key!==key),{key,text:outboxText,images:payloadImages,audio:payloadAudio,status:'sending',payload:{...payload},threadId:id,createdAt:Date.now()}]);
       const request={key,payload,threadId:id};setPending(request);storage.set(prefix+'pending',JSON.stringify(request));
       const response=await fetch(`/api/chat/threads/${id}/generate`,{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':key,'X-Credit-Limit':String(meta.price)},body:JSON.stringify(payload),signal:controller.signal});
       if(!response.ok){const result=await response.json();throw Object.assign(new Error(result.error||'发送失败，请重试'),result);}
@@ -283,7 +357,7 @@ export default function Chat({accountId='me',accountName='',accountAvatar=null,f
           {messages.map(message=>{const user=message.role==='user',siblings=(view.allMessages||[]).filter(m=>m.role===message.role&&m.parentId===message.parentId),version=siblings.findIndex(m=>m.id===message.id),generating=message.status==='generating'||(job?.messageId===message.id&&!ended(job));const sticker=user&&stickerById(message.stickerId);const parts=message.parts?.length?message.parts:[{type:'text',text:message.text}];
             return <article key={message.id} id={'chat-message-'+message.id} className={`cw-message ${user?'cw-user':'cw-assistant'} ${actionMessage===message.id?'pw-actions-open':''}`} tabIndex={0} aria-label={user?'你的消息':'家伴的回复'} onContextMenu={event=>openActions(message,event)} onPointerDown={event=>{if(event.pointerType==='touch'){const rect=event.currentTarget.getBoundingClientRect();longPress.current=setTimeout(()=>openActions(message,{currentTarget:{getBoundingClientRect:()=>rect}}),500);}}} onPointerUp={()=>clearTimeout(longPress.current)} onPointerCancel={()=>clearTimeout(longPress.current)} onPointerMove={()=>clearTimeout(longPress.current)} onKeyDown={event=>{if(event.key==='Escape')setActionMessage(null);if(event.key==='F10'&&event.shiftKey)openActions(message,event);}}>
               <div className="im-message-avatar">{user?(accountAvatar?<img src={accountAvatar} alt=""/>:<span>{accountName?.slice(0,1)||'我'}</span>):<PersonaAvatar profile={currentPersona}/>}</div>
-              <div className="im-message-body">{edit===message.id?<div className="cw-edit-message"><textarea aria-label="编辑消息" value={editText} maxLength={8000} onChange={e=>setEditText(e.target.value)}/><small>保留原版本，成功回复 {meta?.price} 积分。</small><div><Button variant="ghost" onClick={()=>setEdit(null)}>取消</Button><Button disabled={isBusy||!editText.trim()} onClick={()=>generate({action:'edit',messageId:message.id,text:editText})}>保存并重新生成</Button></div></div>:sticker?<div className="im-sticker"><img src={sticker.src} alt={sticker.label}/></div>:<>{message.replyTo&&<button type="button" className="im-quote-block" aria-label="跳到被引用的消息" onClick={()=>document.getElementById('chat-message-'+message.replyTo.messageId)?.scrollIntoView({block:'center'})}><Icon name="back" size={12}/><span>{message.replyTo.excerpt}</span></button>}{message.images?.length?<div className={`im-images im-images-${message.images.length}`}>{message.images.map((image,index)=><button type="button" key={image.url} className="im-image-thumb" aria-label={`查看第 ${index+1} 张图片`} onClick={()=>setViewer({images:message.images,index})}><img src={image.url} alt="" loading="lazy"/></button>)}</div>:null}{visibleParts(message).map((part,index)=>part.type==='sticker'&&stickerById(part.stickerId)?<div className="im-sticker" key={index}><img src={stickerById(part.stickerId).src} alt={stickerById(part.stickerId).label}/></div>:part.type==='text'&&part.text?<div className={`im-bubble ${user?'cw-user-text':''}`} key={index}>{user?part.text:<RichText text={part.text}/>}</div>:null)}{(!message.text&&!parts.some(p=>p.type==='sticker')||generating&&visibleParts(message).length<parts.length)&&generating&&<p className="cw-thinking" role="status"><span/>{displayName}正在回应…</p>}</>}
+              <div className="im-message-body">{edit===message.id?<div className="cw-edit-message"><textarea aria-label="编辑消息" value={editText} maxLength={8000} onChange={e=>setEditText(e.target.value)}/><small>保留原版本，成功回复 {meta?.price} 积分。</small><div><Button variant="ghost" onClick={()=>setEdit(null)}>取消</Button><Button disabled={isBusy||!editText.trim()} onClick={()=>generate({action:'edit',messageId:message.id,text:editText})}>保存并重新生成</Button></div></div>:sticker?<div className="im-sticker"><img src={sticker.src} alt={sticker.label}/></div>:<>{message.replyTo&&<button type="button" className="im-quote-block" aria-label="跳到被引用的消息" onClick={()=>document.getElementById('chat-message-'+message.replyTo.messageId)?.scrollIntoView({block:'center'})}><Icon name="back" size={12}/><span>{message.replyTo.excerpt}</span></button>}{message.audio?<VoiceBubble audio={message.audio}/>:null}{message.images?.length?<div className={`im-images im-images-${message.images.length}`}>{message.images.map((image,index)=><button type="button" key={image.url} className="im-image-thumb" aria-label={`查看第 ${index+1} 张图片`} onClick={()=>setViewer({images:message.images,index})}><img src={image.url} alt="" loading="lazy"/></button>)}</div>:null}{visibleParts(message).map((part,index)=>part.type==='sticker'&&stickerById(part.stickerId)?<div className="im-sticker" key={index}><img src={stickerById(part.stickerId).src} alt={stickerById(part.stickerId).label}/></div>:part.type==='text'&&part.text?<div className={`im-bubble ${user?'cw-user-text':''}`} key={index}>{user?part.text:<RichText text={part.text}/>}</div>:null)}{(!message.text&&!parts.some(p=>p.type==='sticker')||generating&&visibleParts(message).length<parts.length)&&generating&&<p className="cw-thinking" role="status"><span/>{displayName}正在回应…</p>}</>}
                 {!user&&Boolean(message.sources?.length)&&<div className="cw-sources">{message.sources.map(source=><button key={source.id} onClick={()=>onOpenMemory?.(source.id)}><Icon name="book" size={13}/>{source.title}<Icon name="arrow" size={12}/></button>)}</div>}
                 {!user&&['failed','stopped'].includes(message.status)&&<p className="cw-message-status"><Icon name="info" size={13}/>{message.status==='stopped'?'已停止':'回复未完成'} · 积分已退回</p>}
                 {(message.reaction||message.favorite)&&<div className="im-message-reactions">{message.reaction&&<button aria-label="取消表情回应" onClick={()=>interaction(message,{reaction:null})}>{message.reaction}</button>}{message.favorite&&<span><Icon name="star" size={12}/>已收藏</span>}</div>}
@@ -293,7 +367,7 @@ export default function Chat({accountId='me',accountName='',accountAvatar=null,f
             </article>;})}
         </div>}
         {outbox.map(item=>(!item.threadId||item.threadId===active||(!active&&item.threadId===activeRef.current))?<article key={item.key} className={`cw-message cw-user im-outbox ${item.status==='sending'?'im-outbox-sending':'im-outbox-failed'}`} aria-label={item.status==='sending'?'消息发送中':'消息发送失败'}>
-          <div className="im-message-body">{item.images?.length?<div className="im-images im-images-1">{item.images.map(image=><button type="button" key={image.url} className="im-image-thumb" aria-label="查看图片" onClick={()=>setViewer({images:item.images,index:0})}><img src={image.url} alt=""/></button>)}</div>:null}<div className="im-bubble cw-user-text">{item.text}</div>
+          <div className="im-message-body">{item.audio?<VoiceBubble audio={item.audio}/>:null}{item.images?.length?<div className="im-images im-images-1">{item.images.map(image=><button type="button" key={image.url} className="im-image-thumb" aria-label="查看图片" onClick={()=>setViewer({images:item.images,index:0})}><img src={image.url} alt=""/></button>)}</div>:null}<div className="im-bubble cw-user-text">{item.text}</div>
             {item.status==='sending'?<p className="cw-message-status" role="status"><span className="spinner" aria-hidden="true"/>发送中…</p>:<p className="cw-message-status im-send-failed"><Icon name="info" size={13}/>发送失败，没有发出这条消息<button onClick={()=>retryOutbox(item)} disabled={isBusy}>重试</button><button onClick={()=>discardOutbox(item)} disabled={isBusy}>存回草稿</button></p>}
           </div>
         </article>:null)}
@@ -309,8 +383,12 @@ export default function Chat({accountId='me',accountName='',accountAvatar=null,f
             {item.status==='failed'&&<><span className="im-attach-note im-attach-error">{item.error||'上传失败'}</span><button type="button" className="im-attach-retry" onClick={()=>retryImage(item)}>重试</button></>}
             <button type="button" className="im-attach-remove" aria-label="移除图片" onClick={()=>removeImage(item.id)}><Icon name="close" size={12}/></button>
           </div>)}</div>}
-          <div className="im-composer-tools"><button type="button" className="cw-tool" aria-label="表情" onClick={()=>setDialog({type:'stickers'})}><Icon name="smile" size={21}/></button><button type="button" className="cw-tool" aria-label="打开语音输入" onClick={()=>setSpeech(true)}><Icon name="mic" size={21}/></button><button type="button" className="cw-tool pw-composer-memory" aria-label="选择家庭记忆" onClick={openMemories}><Icon name="book" size={20}/></button>{api&&<button type="button" className="cw-tool" aria-label="发送图片" onClick={()=>albumInput.current?.click()}><Icon name="grid" size={20}/></button>}<input ref={albumInput} type="file" hidden accept="image/jpeg,image/png,image/webp" multiple onChange={event=>{addImages(event.target.files);event.target.value='';}}/></div>
-          <textarea ref={input} aria-label="发送给家伴的消息" placeholder={meta?.ai.ready?`和${displayName}说说话…`:'服务尚未开启'} value={draft} maxLength={8000} rows={1} disabled={!meta?.ai.ready||loading} onChange={event=>setDraft(event.target.value)} onPaste={event=>{const files=[...(event.clipboardData?.files||[])];if(files.some(file=>file.type.startsWith('image/'))){event.preventDefault();addImages(files);}}} onKeyDown={event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent.isComposing){event.preventDefault();enqueue();}}}/>
+          {recording&&<div className={`im-recording im-recording-${recording.phase}`} role="status">
+            {recording.phase==='uploading'?<><span className="spinner" aria-hidden="true"/><span>语音正在发送…</span></>
+             :<><span className="im-recording-dot" aria-hidden="true"/><span className="im-voice-wave im-voice-live" aria-hidden="true">{(recording.samples||[]).slice(-44).map((value,index)=><i key={index} style={{height:`${Math.max(14,Math.round(value/10.24))}%`}}/>)}</span><strong>{Math.floor(recording.elapsed)}″</strong><em>{recording.phase==='cancelling'?'松开手指取消发送':'松开发送 · 上滑取消'}</em></>}
+          </div>}
+          <div className="im-composer-tools"><button type="button" className="cw-tool" aria-label="表情" onClick={()=>setDialog({type:'stickers'})}><Icon name="smile" size={21}/></button><button type="button" className="cw-tool im-hold-talk" aria-label="按住说话" disabled={isBusy||!meta?.ai.ready||loading||archivedThread||Boolean(recording)} onPointerDown={event=>{event.preventDefault();startRecording();}} onContextMenu={event=>event.preventDefault()}><Icon name="mic" size={21}/></button><button type="button" className="cw-tool" aria-label="打开语音输入" onClick={()=>setSpeech(true)}><Icon name="message" size={20}/></button><button type="button" className="cw-tool pw-composer-memory" aria-label="选择家庭记忆" onClick={openMemories}><Icon name="book" size={20}/></button>{api&&<button type="button" className="cw-tool" aria-label="发送图片" onClick={()=>albumInput.current?.click()}><Icon name="grid" size={20}/></button>}<input ref={albumInput} type="file" hidden accept="image/jpeg,image/png,image/webp" multiple onChange={event=>{addImages(event.target.files);event.target.value='';}}/></div>
+          <textarea ref={input} aria-label="发送给家伴的消息" placeholder={meta?.ai.ready?`和${displayName}说说话…`:'服务尚未开启'} value={draft} maxLength={8000} rows={1} disabled={!meta?.ai.ready||loading||Boolean(recording)} onChange={event=>setDraft(event.target.value)} onPaste={event=>{const files=[...(event.clipboardData?.files||[])];if(files.some(file=>file.type.startsWith('image/'))){event.preventDefault();addImages(files);}}} onKeyDown={event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent.isComposing){event.preventDefault();enqueue();}}}/>
           {isBusy&&!draft.trim()&&!images.length?<button type="button" className="cw-send cw-stop" aria-label="停止生成" onClick={stop} disabled={!job||job.status==='committing'}><Icon name="stop" size={18}/></button>:<button type="submit" className="cw-send" aria-label="发送消息" disabled={(!draft.trim()&&!images.length)||!meta?.ai.ready||loading||images.some(entry=>entry.status!=='ready')}><span>发送</span><Icon name="send" size={18}/></button>}
           <div className="cw-compose-note"><span><Icon name="lock" size={11}/>只属于这段聊天</span><span>Enter 发送 · Shift + Enter 换行</span></div>
         </form>}
