@@ -7,6 +7,12 @@
       "skillPath": "skills/engineering/ask-matt/SKILL.md",
       "computedHash": "9eead017d1708983aea08e98edc915defe7bf23719ac053ca98ab53dc518bd52"
     },
+    "awesome-design-md": {
+      "source": "taffy-owo/codex-skill-awesome-design-md",
+      "sourceType": "github",
+      "skillPath": "awesome-design-md/SKILL.md",
+      "computedHash": "a12d4ccf5a3e2997b5cd7ff7d476a018ac380975a66f33dc8f5bf62a6fa9b55f"
+    },
     "chief-of-staff": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -198,6 +204,18 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/wayfinder/SKILL.md",
       "computedHash": "1160b9561238f91ba9eb6bb655eb7e3eb4cc571ffcc5477b9d45095a4cca40bf"
+    },
+    "webaudio-guide": {
+      "source": "kunitoki/sonic-skills",
+      "sourceType": "github",
+      "skillPath": "skills/webaudio-guide/SKILL.md",
+      "computedHash": "cfc3455af8a02aad544aa13d7cad716d8ff25d13fd58339dba6a3d69b468c4a0"
+    },
+    "webaudio-review": {
+      "source": "kunitoki/sonic-skills",
+      "sourceType": "github",
+      "skillPath": "skills/webaudio-review/SKILL.md",
+      "computedHash": "ae0c48bb8fc0c91bd5a3f24c944855cb460cabb218e2bfa35b1e2de3bd7ed48a"
     },
     "wizard": {
       "source": "mattpocock/skills",
