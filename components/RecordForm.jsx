@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
-import {uploadPresigned as uploadToBlob} from '@vercel/blob/client';
+import {uploadMedia} from '../lib/upload-client.mjs';
 import Icon from './Icon';
 import {Button,Field,Cover} from './UI';
 import {THEMES} from '../lib/core.mjs';
@@ -17,9 +17,7 @@ export default function RecordForm({initial,starter,accountId,onSave,onCancel,ap
   useEffect(()=>{alive.current=true;if(!initial){let draft=null;try{draft=readDraft(localStorage,draftAccountId);}catch{}if(draft){setForm({...empty,...draft});setRestored(true);}}setReady(true);return()=>{if(!initial&&accountId&&!saved.current){try{if(hasDraftContent(currentForm.current))localStorage.setItem(draftKey(draftAccountId),JSON.stringify({form:currentForm.current,savedAt:Date.now()}));else localStorage.removeItem(draftKey(draftAccountId));}catch{}}alive.current=false;if(recorder.current?.state==='recording')recorder.current.stop();stream.current?.getTracks().forEach(t=>t.stop());};},[]);
   useEffect(()=>{if(!ready||initial||!accountId||saved.current)return;if(!hasDraftContent(form)){try{localStorage.removeItem(draftKey(draftAccountId));}catch{}setDraftStatus('');return;}setDraftStatus('正在保存到此设备…');const timer=setTimeout(()=>{try{localStorage.setItem(draftKey(draftAccountId),JSON.stringify({form,savedAt:Date.now()}));setDraftStatus('草稿已保存在此设备 · 7 天内可继续');}catch{setDraftStatus('此设备无法保存草稿，请及时保存');}},500);return()=>clearTimeout(timer);},[form,ready,accountId,initial]);
   const storeFile=async file=>{
-    if(!file.size||file.size>50*1024*1024)throw new Error('请选择 50 MB 以内的素材文件');let result;
-    if(remoteStorage){const extension={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','audio/mpeg':'mp3','audio/wav':'wav','audio/x-wav':'wav','audio/mp4':'m4a','audio/ogg':'ogg','audio/webm':'webm','video/mp4':'mp4','video/webm':'webm'}[file.type];if(!extension)throw new Error('不支持的素材格式');const blob=await uploadToBlob(`yiban/${crypto.randomUUID()}.${extension}`,file,{access:'private',handleUploadUrl:'/api/upload/token',contentType:file.type,multipart:file.size>5*1024*1024});result={...(await api('/upload/complete',{method:'POST',body:JSON.stringify({pathname:blob.pathname})})),type:file.type};}
-    else{const data=new FormData();data.append('file',file);result=await api('/upload',{method:'POST',body:data});}
+    const result=await uploadMedia(api,file,{remoteStorage,maxBytes:50*1024*1024});
     const key=result.type.startsWith('image/')?'cover':result.type.startsWith('audio/')?'audio':'video';if(alive.current)setForm(f=>({...f,[key]:result.url,...(key==='cover'?{assetType:'photo'}:{}),...(key==='audio'?{clearAudio:false}:{}),...(key==='video'?{clearVideo:false}:{})}));
   };
   const upload=async event=>{const file=event.target.files?.[0];if(!file)return;setBusy('upload');try{await storeFile(file);notify('素材上传完成');}catch(e){notify(e.message,'error');}finally{setBusy('');event.target.value='';}};

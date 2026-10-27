@@ -40,3 +40,18 @@ test('quote reply keeps the referenced message attached across reloads',async({p
   const quoted=page.locator('.cw-user').last();await expect(quoted.locator('.im-quote-block')).toContainText('你猜我今天做了什么');
   await page.reload();await page.locator('.side-nav').getByRole('button',{name:'陪伴对话'}).click();await expect(page.locator('.im-quote-block').first()).toContainText('你猜我今天做了什么',{timeout:20000});
 });
+const TINY_PNG=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==','base64');
+test('image messages upload, render in chat and survive a reload',async({page})=>{
+  await signInAsNewAdmin(page,{prefix:'chat-image',credits:5});await page.locator('.side-nav').getByRole('button',{name:'陪伴对话'}).click();
+  const send=page.getByRole('button',{name:'发送消息',exact:true});
+  await page.locator('input[type=file]').first().setInputFiles({name:'cat.png',mimeType:'image/png',buffer:TINY_PNG});
+  await expect(page.locator('.im-attach')).toHaveCount(1);await expect(send).toBeEnabled();
+  await page.getByLabel('发送给家伴的消息').fill('看看这只猫');await send.click();
+  await expect(page.locator('.im-images').first()).toBeVisible({timeout:20000});
+  await expect(page.locator('.cw-user-text').last()).toHaveText('看看这只猫');
+  await page.reload();await page.locator('.side-nav').getByRole('button',{name:'陪伴对话'}).click();
+  await expect(page.locator('.im-images').first()).toBeVisible({timeout:20000});
+  await page.locator('.im-image-thumb').first().click();
+  await expect(page.locator('.im-lightbox')).toBeVisible();await expect(page.locator('.im-lightbar')).toContainText('1 / 1');
+  await page.getByRole('button',{name:'关闭大图'}).click();await expect(page.locator('.im-lightbox')).toHaveCount(0);
+});
