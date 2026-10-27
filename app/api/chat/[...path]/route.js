@@ -1,5 +1,5 @@
 import {sessionFromRequest,sameOrigin} from '../../../../lib/auth.mjs';
-import {meta,listThreads,createThread,readThread,updateThread,deleteThread,selectBranch,feedback,interactMessage} from '../../../../lib/chat-workspace.mjs';
+import {meta,listThreads,createThread,readThread,updateThread,deleteThread,selectBranch,feedback,interactMessage,threadGreeting,newThreadGreeting} from '../../../../lib/chat-workspace.mjs';
 import {all} from '../../../../lib/store.mjs';
 import {prepareGeneration,generationResponse,getJob,stopJob} from '../../../../lib/chat-generation.mjs';
 import {after} from 'next/server';
@@ -20,6 +20,8 @@ async function handle(request,{params}){
       if(method==='POST'&&id&&action==='feedback'){const body=await request.json();return Response.json(await feedback(user,id,body.messageId,body.feedback));}
       if(method==='POST'&&id&&action==='generate'){const prepared=await prepareGeneration(user,id,await request.json(),request.headers.get('idempotency-key'),request.headers.get('x-credit-limit'));return generationResponse(user,prepared,request.signal,{schedule:after});}
       if(method==='GET'&&!id)return Response.json(await listThreads(user,{q:url.searchParams.get('q'),archived:url.searchParams.get('archived')==='true',offset:url.searchParams.get('offset')}));
+      if(method==='GET'&&id&&action==='greeting')return Response.json(await threadGreeting(user,id));
+      if(method==='GET'&&id==='greeting')return Response.json(await newThreadGreeting(user,{memoryMode:url.searchParams.get('memoryMode')}));
       if(method==='GET'&&id&&!action)return Response.json(await readThread(user,id));
       if(method==='POST'&&!id)return Response.json(await createThread(user,await request.json()),{status:201});
       if(method==='PATCH'&&id&&!action)return Response.json(await updateThread(user,id,await request.json()));

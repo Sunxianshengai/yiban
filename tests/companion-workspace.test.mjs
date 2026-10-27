@@ -76,3 +76,25 @@ test('deferred memory runs after a completed response, without blocking or billi
   const before=await credits.balance(user.id),prepared=await prepareGeneration(user,thread.id,{text:'我最近在学木工。'},'background-example',1);const response=generationResponse(user,prepared,undefined,{schedule:task=>tasks.push(task)});await response.text();
   assert.equal(tasks.length,1);assert.equal((await memory.listPersonalMemories(user,null)).items.some(item=>item.text==='我最近在学木工。'),false);await tasks[0]();assert.equal((await memory.listPersonalMemories(user,null)).items.some(item=>item.text==='我最近在学木工。'),true);assert.equal((await credits.balance(user.id)).balance,before.balance-1);
 });
+
+// 主动开口：只给空会话发一张卡片，说过话就不再多嘴，且卡片必须说得出出处。
+test('opening suggestions stay on empty threads and cite a real memory or anniversary',async()=>{
+  const {put}=await import('../lib/store.mjs');
+  const fresh=(await call('chat','POST','threads',{body:{options:{memoryMode:'auto'}}})).json();
+  const thread=await fresh;
+  await put('memories',{id:'greet-memory',familyId:'family',title:'外公的旧自行车',year:'2998',status:'confirmed',people:[],tags:[],theme:'家人',story:'',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+  const cited=await(await call('chat','GET',`threads/${thread.id}/greeting`)).json();
+  assert.equal(cited.greeting.source,'memory');assert.equal(cited.greeting.ref,'greet-memory');assert.match(cited.greeting.text,/外公的旧自行车/);assert.match(cited.greeting.text,/2998年/);
+  // memoryMode=off 的会话不引用任何家庭记忆，退回通用寒暄。
+  const quiet=await(await call('chat','POST','threads',{body:{options:{memoryMode:'off'}}})).json();
+  assert.equal((await(await call('chat','GET',`threads/${quiet.id}/greeting`)).json()).greeting.source,'default');
+  globalThis.fetch=async(_url,req)=>{const body=JSON.parse(req.body);if(body.stream)return stream('我在。');if(body.messages[0].content.includes('相关性选择器'))return jsonModel({ids:[]});return jsonModel({memories:[]});};
+  await send(thread,{text:'今天有点累。'},'greeting-after-talk');
+  assert.deepEqual(await(await call('chat','GET',`threads/${thread.id}/greeting`)).json(),{greeting:null});
+  assert.equal((await call('chat','GET','threads/not-mine/greeting')).status>=400,true);
+  // 还没建会话时也要能拿到建议，且 memoryMode=off 时不引用记忆。
+  const draft=await(await call('chat','GET','threads/greeting?memoryMode=auto')).json();
+  assert.equal(draft.greeting.source,'memory');assert.equal(draft.greeting.ref,'greet-memory');
+  assert.equal((await(await call('chat','GET','threads/greeting?memoryMode=off')).json()).greeting.source,'default');
+  assert.equal((await(await call('chat','GET','threads/greeting?memoryMode=bogus')).json()).greeting.source,'memory');
+});
