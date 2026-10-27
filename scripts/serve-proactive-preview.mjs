@@ -1,0 +1,6 @@
+import http from 'node:http';
+import {readFile,stat} from 'node:fs/promises';
+import path from 'node:path';
+const root=path.resolve('.'),publicRoot=path.join(root,'public');
+const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.png':'image/png','.woff2':'font/woff2','.ttf':'font/ttf','.json':'application/json'};
+http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost');let pathname=decodeURIComponent(url.pathname);let file=path.resolve(pathname.startsWith('/node_modules/')?root:publicRoot,'.'+pathname);const allowedRoot=pathname.startsWith('/node_modules/')?path.join(root,'node_modules','@fontsource-variable','noto-sans-sc'):publicRoot;if(file!==allowedRoot&&!file.startsWith(allowedRoot+path.sep))throw new Error('not allowed');if((await stat(file)).isDirectory())file=path.join(file,'index.html');res.setHeader('Content-Type',mime[path.extname(file)]||'application/octet-stream');res.setHeader('Cache-Control','no-store');res.end(await readFile(file));}catch{res.writeHead(404);res.end('Not found');}}).listen(3849,'127.0.0.1',()=>console.log('Proactive contact preview: http://127.0.0.1:3849/design-preview/proactive-contact-preview/'));
