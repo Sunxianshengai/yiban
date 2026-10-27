@@ -13,3 +13,18 @@ test('downstream errors refund credits; markdown is readable and unsafe HTML can
   await page.getByLabel('发送给家伴的消息').fill('[test:markdown]');await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect(page.getByRole('button',{name:'发送消息',exact:true})).toBeVisible({timeout:20000});
   const reply=page.locator('.cw-assistant').last();await expect(reply.locator('h2')).toHaveText('一段故事');await expect(reply.locator('table')).toBeVisible();await expect(reply.locator('pre')).toContainText('console.log');expect(await page.evaluate(()=>window.chatUnsafeExecuted)).toBeUndefined();
 });
+test('failed sends stay visible with retry and can return to the draft box',async({page})=>{
+  await signInAsNewAdmin(page,{prefix:'chat-outbox',credits:5});await page.locator('.side-nav').getByRole('button',{name:'陪伴对话'}).click();
+  const input=page.getByLabel('发送给家伴的消息');
+  // 第一次发送：直接断网，消息应留在失败气泡里，不悄悄回输入框。
+  await page.route('**/api/chat/threads/**/generate',route=>route.abort('failed'));
+  await input.fill('这条消息网络不太好');await page.getByRole('button',{name:'发送消息',exact:true}).click();
+  const failed=page.locator('.im-outbox-failed');await expect(failed).toContainText('这条消息网络不太好');await expect(failed).toContainText('发送失败');
+  // 存回草稿：文本回到输入框，气泡消失。
+  await failed.getByRole('button',{name:'存回草稿'}).click();await expect(input).toHaveValue('这条消息网络不太好');await expect(page.locator('.im-outbox')).toHaveCount(0);
+  // 再发一次仍失败，然后恢复网络重试成功：气泡消失，消息成为真正的聊天记录。
+  await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect(page.locator('.im-outbox-failed')).toBeVisible();
+  await page.unroute('**/api/chat/threads/**/generate');
+  await page.locator('.im-send-failed').getByRole('button',{name:'重试'}).click();
+  await expect(page.locator('.cw-user-text')).toHaveText('这条消息网络不太好',{timeout:20000});await expect(page.locator('.im-outbox')).toHaveCount(0);
+});

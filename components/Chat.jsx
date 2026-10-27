@@ -51,6 +51,14 @@ export default function Chat({accountId='me',accountName='',accountAvatar=null,f
   const presenceAt=useRef(0);
 
   const[edit,setEdit]=useState(null),[editText,setEditText]=useState(''),[jump,setJump]=useState(false),[speaking,setSpeaking]=useState(null),[pending,setPending]=useState(null);
+  // 发送可靠性：还没被服务端确认的用户消息放在 outbox 里，逐条显示「发送中／失败可重试」。
+  // 与服务端的 requestKey 去重配合——重试复用同一个 key，不会重复扣积分或发出两条消息。
+  const[outbox,setOutbox]=useState([]);
+  function loadOutbox(id){try{const parsed=JSON.parse(storage.get(prefix+'outbox:'+(id||'new'))||'[]');return Array.isArray(parsed)?parsed.filter(item=>item&&item.key&&typeof item.text==='string'&&item.payload):[];}catch{return[];}}
+  function updateOutbox(id,update){setOutbox(current=>{const next=update(current);storage.set(prefix+'outbox:'+(id||'new'),JSON.stringify(next));return next;});}
+  // 重新打开会话时对账：文本已经在服务端消息里的直接清掉（避免和服务端消息重复显示），
+  // 剩下的一律按失败处理，让用户决定重试还是存回草稿。
+  function reconcileOutbox(id,messages){const stored=loadOutbox(id);if(!stored.length)return;const texts=new Set(messages.filter(m=>m.role==='user').map(m=>m.text));updateOutbox(id,()=>stored.filter(item=>item.status==='failed'||!texts.has(item.text)).map(item=>item.status==='failed'?item:{...item,status:'failed'}));}
   // 多条消息的呈现节奏：服务端一次给出全部段落，这里逐条露出，
   // 让「一句话一条消息」看起来像人在打字，而不是一次性刷屏。
   const[revealed,setRevealed]=useState({}),[greeting,setGreeting]=useState(null),revealTimer=useRef(null);
@@ -75,12 +83,13 @@ export default function Chat({accountId='me',accountName='',accountAvatar=null,f
   async function loadThread(id){
     if(queuedRef.current.length)return;
     const ticket=++sequence.current;activeRef.current=id;setActive(id);setView(null);setJob(null);setPending(null);setEdit(null);setError('');setHistoryOpen(false);setLoading(true);nearBottom.current=true;
+    setOutbox([]);
     storage.set(prefix+'active',id||'');setDraft(storage.get(prefix+'draft:'+id)||'');
-    try{const result=await chatAPI(`threads/${id}`);if(mounted.current&&sequence.current===ticket){setView(result);setSettings(result.thread.options);setJob(result.job);}}
+    try{const result=await chatAPI(`threads/${id}`);if(mounted.current&&sequence.current===ticket){setView(result);setSettings(result.thread.options);setJob(result.job);reconcileOutbox(id,result.messages||[]);}}
     catch(e){if(mounted.current&&sequence.current===ticket)setError(e.message);}finally{if(mounted.current&&sequence.current===ticket)setLoading(false);}
   }
   async function reloadThread(id){const result=await chatAPI(`threads/${id}`);if(mounted.current&&activeRef.current===id){setView(result);setSettings(result.thread.options);setJob(result.job);}return result;}
-  function newChat(nextProfileId=currentProfileId){sequence.current++;activeRef.current=null;setActive(null);setView(null);setJob(null);setSettings({...DEFAULTS,profileId:typeof nextProfileId==='string'?nextProfileId:null});setDraft(storage.get(prefix+'draft:new')||'');setError('');setEdit(null);setPending(null);setLoading(false);setHistoryOpen(false);storage.set(prefix+'active','');requestAnimationFrame(()=>input.current?.focus());}
+  function newChat(nextProfileId=currentProfileId){sequence.current++;activeRef.current=null;setActive(null);setView(null);setJob(null);setSettings({...DEFAULTS,profileId:typeof nextProfileId==='string'?nextProfileId:null});setDraft(storage.get(prefix+'draft:new')||'');setError('');setEdit(null);setPending(null);setOutbox([]);setLoading(false);setHistoryOpen(false);storage.set(prefix+'active','');requestAnimationFrame(()=>input.current?.focus());}
   useEffect(()=>{
     mounted.current=true;
     (async()=>{try{const [info,result]=await Promise.all([chatAPI('meta'),chatAPI('threads')]);if(!mounted.current)return;setMeta(info);setThreads(result.threads);setHasMore(result.hasMore);const deep=new URLSearchParams(location.search).get('chat');const saved=deep||storage.get(prefix+'active');if(saved){const previous=await chatAPI(`threads/${saved}`);if(forceProfile&&(previous.thread.options.profileId??null)!==(profileId??null)){const matching=result.threads.find(thread=>(thread.options.profileId??null)===(profileId??null));if(matching)await loadThread(matching.id);else newChat(profileId);}else await loadThread(saved);}else{setDraft(storage.get(prefix+'draft:new')||'');setLoading(false);}}catch(e){if(mounted.current){setError(e.message);setLoading(false);}}})();
@@ -117,11 +126,17 @@ export default function Chat({accountId='me',accountName='',accountAvatar=null,f
   async function generate(payload,retry){
     if(isBusy||loading||archivedThread)return;setError('');setBusy(true);nearBottom.current=true;setJump(false);
     let id=activeRef.current,key=retry?.key||crypto.randomUUID(),started=false;const text=payload.text||payload.texts?.join('\n')||'';const controller=new AbortController();connection.current=controller;
+    // 只有普通发送进 outbox；编辑/重新生成/换种说法走各自的消息状态，不在这条链路上。
+    const outboxText=payload.texts?payload.texts.map(item=>item.trim()).join('\n'):String(payload.text||'').trim();
+    const trackable=(!payload.action||payload.action==='send')&&Boolean(outboxText)&&!payload.stickerId;
     try{
       if(!id){const thread=await chatAPI('threads',{method:'POST',body:{options:settings}});id=thread.id;activeRef.current=id;setActive(id);storage.set(prefix+'active',id);setView({thread,messages:[],allMessages:[]});}
+      if(trackable)updateOutbox(id,items=>[...items.filter(item=>item.key!==key),{key,text:outboxText,status:'sending',payload:{...payload},threadId:id,createdAt:Date.now()}]);
       const request={key,payload,threadId:id};setPending(request);storage.set(prefix+'pending',JSON.stringify(request));
       const response=await fetch(`/api/chat/threads/${id}/generate`,{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':key,'X-Credit-Limit':String(meta.price)},body:JSON.stringify(payload),signal:controller.signal});
       if(!response.ok){const result=await response.json();throw Object.assign(new Error(result.error||'发送失败，请重试'),result);}
+      // 服务端已经受理（用户消息已入库），outbox 条目由服务端消息接管显示。
+      if(trackable)updateOutbox(id,items=>items.filter(item=>item.key!==key));
       for await(const frame of readSSE(response.body)){
         if(!mounted.current)break;const data=JSON.parse(frame.data);
         if(frame.event==='start'){
@@ -138,10 +153,25 @@ export default function Chat({accountId='me',accountName='',accountAvatar=null,f
       if(!mounted.current)return;
       if(e.name!=='AbortError')setError(e.message);
       if(id){try{const result=await reloadThread(id);if(result.job&&!ended(result.job))setPending(null);}catch{}}
-      if(!started){setDraft(current=>[text,...queuedRef.current,current].filter(Boolean).join('\n').slice(0,8000));setQueued([]);}
+      if(!started){
+        if(trackable)updateOutbox(id,items=>items.map(item=>item.key===key?{...item,status:'failed'}:item));
+        else setDraft(current=>[text,...queuedRef.current,current].filter(Boolean).join('\n').slice(0,8000));
+        setQueued([]);
+      }
     }finally{if(mounted.current){setBusy(false);connection.current=null;window.dispatchEvent(new Event('credits-changed'));}}
   }
   async function stop(){if(!job)return;try{const result=await chatAPI(`jobs/${job.id}/cancel`,{method:'POST',body:{}});setJob(result);if(result.status==='cancelling')connection.current?.abort();}catch(e){setError(e.message);}}
+  async function retryOutbox(item){
+    if(isBusy||loading)return;setError('');
+    updateOutbox(item.threadId||activeRef.current,items=>items.map(entry=>entry.key===item.key?{...entry,status:'sending'}:entry));
+    await generate(item.payload,{key:item.key});
+  }
+  // 失败的消息可以退回输入框当作草稿，由用户改完再发，避免丢字。
+  function discardOutbox(item){
+    updateOutbox(item.threadId||activeRef.current,items=>items.filter(entry=>entry.key!==item.key));
+    setDraft(current=>[item.text,current].filter(Boolean).join('\n').slice(0,8000));
+    requestAnimationFrame(()=>input.current?.focus());
+  }
   async function selectVersion(id){try{const result=await chatAPI(`threads/${active}/select`,{method:'POST',body:{messageId:id}});setView(result);setJob(result.job);}catch(e){setError(e.message);}}
   async function copy(text){try{await navigator.clipboard.writeText(text);notify?.('已复制');}catch{setError('浏览器无法复制，请选中文字后复制');}}
   async function feedback(message,value){try{const updated=await chatAPI(`threads/${active}/feedback`,{method:'POST',body:{messageId:message.id,feedback:message.feedback===value?null:value}});setView(current=>({...current,messages:current.messages.map(m=>m.id===message.id?updated:m)}));}catch(e){setError(e.message);}}
@@ -226,6 +256,11 @@ export default function Chat({accountId='me',accountName='',accountAvatar=null,f
               </div>
             </article>;})}
         </div>}
+        {outbox.map(item=>(!item.threadId||item.threadId===active||(!active&&item.threadId===activeRef.current))?<article key={item.key} className={`cw-message cw-user im-outbox ${item.status==='sending'?'im-outbox-sending':'im-outbox-failed'}`} aria-label={item.status==='sending'?'消息发送中':'消息发送失败'}>
+          <div className="im-message-body"><div className="im-bubble cw-user-text">{item.text}</div>
+            {item.status==='sending'?<p className="cw-message-status" role="status"><span className="spinner" aria-hidden="true"/>发送中…</p>:<p className="cw-message-status im-send-failed"><Icon name="info" size={13}/>发送失败，没有发出这条消息<button onClick={()=>retryOutbox(item)} disabled={isBusy}>重试</button><button onClick={()=>discardOutbox(item)} disabled={isBusy}>存回草稿</button></p>}
+          </div>
+        </article>:null)}
         {queued.length>0&&<div className="im-queued" aria-label="待发送消息">{queued.map((text,index)=><p key={index}>{text}<small>{isBusy?'正在停止上一轮…':'即将发送'}</small></p>)}</div>}
       </div>
       <div className="cw-compose-area">{jump&&<button className="cw-jump" onClick={()=>{nearBottom.current=true;feed.current.scrollTo({top:feed.current.scrollHeight,behavior:'smooth'});setJump(false);}}><Icon name="down" size={16}/>回到最新消息</button>}
