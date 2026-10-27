@@ -39,6 +39,28 @@ test('typing, changed settings, deleted evidence and new human input invalidate 
 test('foreign partner callbacks and fabricated source quotes never become outreach',async()=>{
  const f=await fixture();await store.put('chat_callbacks',{...f.callback,personaId:'other-profile'});assert.equal((await p.runForSetting(f.settings,{time,model})).status,'skipped');await store.put('chat_callbacks',{...f.callback,quote:'用户没说过的安排'});assert.equal((await p.runForSetting(f.settings,{time,model})).status,'skipped');
 });
+test('selected conversation branches exclude edited-away evidence and context',async()=>{
+ const f=await fixture(),thread=await store.get('chat_threads',f.threadId),old=await store.get('chat_messages',f.userId);
+ await store.put('chat_messages',{...old,id:'edited-'+f.userId,text:'面试已经取消，不要再提。'});await store.put('chat_messages',{id:'edited-answer-'+f.userId,userId:f.user.id,threadId:f.threadId,role:'assistant',text:'好，不再提。',status:'completed',parentId:'edited-'+f.userId,createdAt:new Date(time-2*hour).toISOString()});await store.put('chat_threads',{...thread,headId:'edited-answer-'+f.userId});let called=false;
+ assert.equal((await p.runForSetting(f.settings,{time,model:async()=>{called=true;return model();}})).status,'skipped');assert.equal(called,false);
+});
+test('explicit contact boundaries and completed topics are honored independently of model compliance',async()=>{
+ const f=await fixture();await p.recordContactIntent(f.user,null,'不要主动联系我。',f.threadId);assert.equal((await p.readSettings(f.user)).enabled,false);
+ const g=await fixture();await p.recordContactIntent(g.user,null,'面试已经取消了，不再问这件事。',g.threadId);assert.equal((await store.get('chat_callbacks',g.callback.id)).status,'used');
+ for(const text of ['晚点聊','今天安静一会儿','我先忙，晚点再聊。']){const h=await fixture();await p.recordContactIntent(h.user,null,text,h.threadId);assert.ok((await p.readSettings(h.user)).pausedUntil>Date.now());}
+});
+test('quiet hours and persona revisions are revalidated after the model returns',async()=>{
+ const f=await fixture();assert.equal((await p.runForSetting(f.settings,{time,clock:()=>Date.parse('2026-10-27T15:00:00Z'),model})).status,'retry');
+ const g=await fixture();assert.equal((await p.runForSetting(g.settings,{time,model:async()=>{const persona=await store.get('companion_defaults',g.user.id);await store.put('companion_defaults',{...persona,name:'新的名字'});return model();}})).status,'retry');
+});
+test('archived companions are skipped and cannot poison later push recipients',async()=>{
+ const f=await fixture(),archived={id:'archived-'+f.user.id,userId:f.user.id,name:'旧伙伴',archived:true};await store.put('companion_profiles',archived);
+ assert.equal((await p.runForSetting({...f.settings,profileId:archived.id},{time,model})).status,'skipped');
+ const g=await fixture();await p.runForSetting(g.settings,{time,model});const token=await auth.createSession(g.user.id),binding=push.sessionHash(new Request('http://localhost',{headers:{cookie:'yiban_session='+token}}));
+ await store.put('notification_subscriptions',{id:'push-good',userId:g.user.id,sessionHash:binding,subscription:{endpoint:'unused'}});
+ await store.put('notification_outbox',{id:'poison',jobId:'poison-job',userId:f.user.id,profileId:archived.id,messageId:'unused',status:'pending',attempts:0,createdAt:new Date(time).toISOString()});await store.put('proactive_jobs',{id:'poison-job',threadId:f.threadId});
+ process.env.WEB_PUSH_PUBLIC_KEY='test';process.env.WEB_PUSH_PRIVATE_KEY='test';let calls=0;await push.flushPush({time,send:async()=>{calls++;}});assert.equal(calls,1);assert.equal((await store.get('notification_outbox','poison')).status,'suppressed');
+});
 test('scheduler authorization, settings revisions and reason access use real HTTP boundaries',async()=>{
  const f=await fixture(),token=await auth.createSession(f.user.id);const call=(method,endpoint,body,extra={})=>route[method](new Request('http://localhost/api/proactive/'+endpoint,{method,headers:{origin:'http://localhost',cookie:'yiban_session='+token,...extra},...(body?{body:JSON.stringify(body)}:{})}),{params:Promise.resolve({path:endpoint.split('/')} )});
  assert.equal((await call('POST','run',{})).status,401);assert.equal((await call('GET','settings')).status,200);assert.equal((await call('PATCH','settings',{expectedRevision:0,enabled:false})).status,409);assert.equal((await call('GET','reason/not-mine')).status,404);assert.equal((await call('POST','activity',{profileId:'not-owned'})).status,404);

@@ -1,8 +1,9 @@
 import {timingSafeEqual} from 'node:crypto';
 import {sessionFromRequest,sameOrigin} from '../../../../lib/auth.mjs';
-import {readSettings,updateSettings,activity,reasonFor,dismissReason,runProactiveTick} from '../../../../lib/proactive-contact.mjs';
+import {readSettings,updateSettings,activity,accountState,reasonFor,dismissReason,runProactiveTick} from '../../../../lib/proactive-contact.mjs';
 import {pushConfig,subscribe,unsubscribe,deviceState,delivery,flushPush} from '../../../../lib/proactive-push.mjs';
 import {get,compareAndPut} from '../../../../lib/store.mjs';
+import {probeDocuments} from '../../../../lib/document-transaction.mjs';
 export const runtime='nodejs';export const dynamic='force-dynamic';export const maxDuration=120;
 async function handle(request,{params}){
  try{
@@ -11,12 +12,13 @@ async function handle(request,{params}){
    const expected=process.env.PROACTIVE_CRON_SECRET,actual=request.headers.get('authorization')?.replace(/^Bearer /,'');
    if(!expected||!actual||Buffer.byteLength(actual)!==Buffer.byteLength(expected)||!timingSafeEqual(Buffer.from(actual),Buffer.from(expected)))return Response.json({error:'未授权'},{status:401});
    if(request.method!=='POST')return Response.json({error:'请使用 POST'},{status:405});
+   if(url.searchParams.get('probe')==='transactions')return Response.json(await probeDocuments());
    const result=await runProactiveTick();return Response.json({...result,push:await flushPush()});
   }
   const user=await sessionFromRequest(request);if(!user)return Response.json({error:'请先登录'},{status:401});
   if(request.method!=='GET'&&!sameOrigin(request))return Response.json({error:'请求来源无效'},{status:403});
   const body=request.method==='GET'?{}:await request.json(),profileId=body.profileId??url.searchParams.get('profileId')??null;
-  if(resource==='settings'){if(request.method==='GET')return Response.json({...await readSettings(user,profileId),schedulerReady:Boolean(process.env.PROACTIVE_CRON_SECRET),heartbeat:(await get('proactive_runner','runner'))?.lastRunAt||null});if(request.method==='PATCH')return Response.json(await updateSettings(user,profileId,body));}
+  if(resource==='settings'){if(request.method==='GET'){const setting=await readSettings(user,profileId),state=await accountState(user),reply=Math.max(state.replies?.[setting.id]||0,setting.resumeAt||0);return Response.json({...setting,waitingForReply:state.sent.filter(s=>s.profileId===profileId&&s.at>reply).length>=2,schedulerReady:Boolean(process.env.PROACTIVE_CRON_SECRET),heartbeat:(await get('proactive_runner','runner'))?.lastRunAt||null});}if(request.method==='PATCH')return Response.json(await updateSettings(user,profileId,body));}
   if(resource==='activity'&&request.method==='POST')return Response.json(await activity(user,{profileId,typing:body.typing===true}));
   if(resource==='device'){if(request.method==='GET')return Response.json(await deviceState(user,request));if(request.method==='POST')return Response.json(await subscribe(user,request,body));if(request.method==='DELETE')return Response.json(await unsubscribe(user,request));}
   if(resource==='reason'&&id){if(request.method==='GET')return Response.json(await reasonFor(user,id));if(request.method==='POST')return Response.json(await dismissReason(user,id));}
