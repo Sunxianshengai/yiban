@@ -10,16 +10,13 @@ import {PersonaAvatar,SpeechComposer} from './Familia';
 import {CreditBalance} from './Credits';
 import PersonalMemory from './PersonalMemory';
 import CompanionDetails from './CompanionDetails';
+import {chatAPI} from '../lib/chat-client.mjs';
 import {DEFAULT_COMPANION,COMPANION_STICKERS,stickerById,partDelayMs} from '../lib/companion-chat.mjs';
 async function walletAPI(path){const response=await fetch('/api'+path,{cache:'no-store'});const data=await response.json();if(!response.ok)throw new Error(data.error);return data;}
 
 const DEFAULTS={mode:'daily',tone:'natural',memoryMode:'off',memoryIds:[]};
 const ended=job=>!job||['completed','failed','stopped'].includes(job.status);
 const storage={get(key){try{return localStorage.getItem(key);}catch{return null;}},set(key,value){try{localStorage.setItem(key,value);}catch{}}};
-async function chatAPI(path,options={}){
-  const response=await fetch(`/api/chat/${path}`,{...options,headers:{'Content-Type':'application/json',...options.headers},body:options.body===undefined?undefined:JSON.stringify(options.body)});
-  const data=await response.json();if(!response.ok)throw Object.assign(new Error(data.error||'暂时无法连接，请重试'),data);return data;
-}
 function Tool({label,icon,onClick,disabled,pressed}){return <button type="button" className="cw-tool" title={label} aria-label={label} aria-pressed={pressed} onClick={onClick} disabled={disabled}><Icon name={icon} size={17}/><span className="pw-tool-caption">{label==='复制消息'?'复制':label==='重新生成'?'重新生成':label==='朗读回复'?'朗读':label}</span></button>;}
 function CodeBlock({children,...props}){
   const ref=useRef(null);const[copied,setCopied]=useState(false);
@@ -161,11 +158,22 @@ export default function Chat({accountId='me',accountName='',accountAvatar=null,f
   useEffect(()=>()=>{if(queuedRef.current.length)storage.set(prefix+'draft:'+(activeRef.current||'new'),queuedRef.current.join('\n'));},[accountId]);
   // 空会话时取一张开场建议卡（纪念日 / 家庭记忆 / 默认寒暄），只填进输入框，不替用户发出去。
   // 还没建会话也算空会话——开口建议不该要求先建一个空对话。
+  // 空会话时取一张开场建议卡：隔了一阵回来它先开口；否则按纪念日/记忆给一句。
+  // 都只填进输入框，不替用户发出去。
   useEffect(()=>{
     if(messages.length){setGreeting(null);return;}
     let cancelled=false;
     const endpoint=active?`threads/${active}/greeting`:`threads/greeting?memoryMode=${encodeURIComponent(settings.memoryMode||'auto')}`;
-    chatAPI(endpoint).then(result=>{if(!cancelled)setGreeting(result.greeting||null);}).catch(()=>{if(!cancelled)setGreeting(null);});
+    chatAPI('knock').then(async result=>{
+      const knock=result?.knock;
+      if(cancelled)return;
+      if(knock)return setGreeting({text:knock.text,source:'knock',knock});
+      const fallback=await chatAPI(endpoint);
+      if(!cancelled)setGreeting(fallback.greeting||null);
+    }).catch(async()=>{
+      try{const fallback=await chatAPI(endpoint);if(!cancelled)setGreeting(fallback.greeting||null);}
+      catch{if(!cancelled)setGreeting(null);}
+    });
     return()=>{cancelled=true;};
   },[active,messages.length,settings.memoryMode]);
   useEffect(()=>{if(!actionMessage)return;const el=document.querySelector('.im-message-popover'),previous=document.activeElement;el?.querySelector('button')?.focus();function key(event){if(event.key==='Escape'){event.preventDefault();setActionMessage(null);}if(event.key==='Tab'&&el){const list=[...el.querySelectorAll('button:not(:disabled)')];if(event.shiftKey&&document.activeElement===list[0]){event.preventDefault();list.at(-1)?.focus();}else if(!event.shiftKey&&document.activeElement===list.at(-1)){event.preventDefault();list[0]?.focus();}}}document.addEventListener('keydown',key);return()=>{document.removeEventListener('keydown',key);previous?.isConnected&&previous.focus();};},[actionMessage]);
@@ -191,7 +199,7 @@ export default function Chat({accountId='me',accountName='',accountAvatar=null,f
     <section ref={mainRef} className="cw-main" aria-label="聊天工作区">
       <header className="cw-header"><div className="cw-header-left"><button className="cw-tool cw-back" aria-label="返回联系页" onClick={()=>onBack?.(persona)}><Icon name="back" size={23}/></button><button className="im-chat-person" onClick={()=>setPanel('details')} aria-label="打开联系人详情"><PersonaAvatar profile={currentPersona}/><span><h1 title={heading}>{displayName}</h1><small>AI 伙伴</small></span></button></div><div className="cw-header-actions"><button className="pw-chat-settings" onClick={()=>setDialog({type:'options'})} disabled={isBusy}>聊天设置<Icon name="down" size={15}/></button><button className="cw-tool cw-voice-action" aria-label="语音输入" onClick={()=>setSpeech(true)}><Icon name="phone" size={22}/></button><button ref={historyToggle} className="cw-tool cw-history-toggle" aria-label="展开历史会话" aria-controls="chat-history" aria-expanded={mobile?historyOpen:sidebar} onClick={()=>{setLeftTab('history');if(mobile)setHistoryOpen(value=>!value);else setSidebar(true);}}><Icon name="message" size={22}/></button><details className="cw-menu"><summary aria-label="对话菜单"><Icon name="more"/></summary><div><button onClick={()=>{setPanel('details');document.querySelector('.cw-header .cw-menu')?.removeAttribute('open');}}><Icon name="user" size={16}/>聊天详情</button><button onClick={()=>{setPanel('memory');document.querySelector('.cw-header .cw-menu')?.removeAttribute('open');}}><Icon name="leaf" size={16}/>对我的了解</button><button disabled={isBusy} onClick={()=>{setDialog({type:'options'});document.querySelector('.cw-header .cw-menu')?.removeAttribute('open');}}><Icon name="settings" size={16}/>聊天设置</button><button disabled={isBusy||Boolean(queued.length)} aria-label="新对话" onClick={()=>newChat()}><Icon name="plus" size={16}/>换个话题</button>{active&&<><button disabled={isBusy} onClick={()=>{setDialogText(heading);setDialog({type:'rename'});}}><Icon name="edit" size={16}/>重命名</button><button disabled={isBusy} onClick={()=>threadAction('archive')}><Icon name="archive" size={16}/>{archivedThread?'恢复对话':'归档对话'}</button><button disabled={isBusy} onClick={()=>setDialog({type:'delete'})}><Icon name="trash" size={16}/>删除对话</button></>}</div></details></div></header>
       <div className="cw-feed" ref={feed} onScroll={()=>{const element=feed.current;nearBottom.current=element.scrollHeight-element.scrollTop-element.clientHeight<100;setJump(!nearBottom.current);}}>
-        {loading?<div className="cw-loading" role="status"><span className="spinner"/>正在打开对话…</div>:messages.length===0?<div className="cw-welcome"><PersonaAvatar profile={currentPersona} large/><h2>和{displayName}聊聊</h2><p>从今天的小事开始，不用想好怎么开口。</p>{greeting&&<button type="button" className="cw-greeting" onClick={()=>{setDraft(greeting.text);requestAnimationFrame(()=>input.current?.focus());}}><Icon name={greeting.source==='anniversary'?'star':greeting.source==='memory'?'book':'message'} size={16}/><span>{greeting.text}</span><em>{greeting.source==='anniversary'?'今天':'要不要聊聊'}</em></button>}<small>自动记忆可在“对我的了解”中关闭、检查或修改。</small></div>:<div className="cw-message-list" role="log" aria-label="聊天消息">
+        {loading?<div className="cw-loading" role="status"><span className="spinner"/>正在打开对话…</div>:messages.length===0?<div className="cw-welcome"><PersonaAvatar profile={currentPersona} large/><h2>和{displayName}聊聊</h2><p>从今天的小事开始，不用想好怎么开口。</p>{greeting&&<button type="button" className={`cw-greeting${greeting.source==='knock'?' cw-greeting-knock':''}`} onClick={()=>{setDraft(greeting.text);requestAnimationFrame(()=>input.current?.focus());}}><Icon name={greeting.source==='anniversary'?'star':greeting.source==='memory'?'book':greeting.source==='knock'?'clock':'message'} size={16}/><span>{greeting.text}</span><em>{greeting.source==='anniversary'?'今天':greeting.source==='knock'?'它在等你':'要不要聊聊'}</em></button>}<small>自动记忆可在“对我的了解”中关闭、检查或修改。</small></div>:<div className="cw-message-list" role="log" aria-label="聊天消息">
           <div className="im-date-divider">{new Date(messages[0].createdAt).toLocaleDateString('zh-CN',{month:'long',day:'numeric'})}</div>
           {messages.map(message=>{const user=message.role==='user',siblings=(view.allMessages||[]).filter(m=>m.role===message.role&&m.parentId===message.parentId),version=siblings.findIndex(m=>m.id===message.id),generating=message.status==='generating'||(job?.messageId===message.id&&!ended(job));const sticker=user&&stickerById(message.stickerId);const parts=message.parts?.length?message.parts:[{type:'text',text:message.text}];
             return <article key={message.id} className={`cw-message ${user?'cw-user':'cw-assistant'} ${actionMessage===message.id?'pw-actions-open':''}`} tabIndex={0} aria-label={user?'你的消息':'家伴的回复'} onContextMenu={event=>openActions(message,event)} onPointerDown={event=>{if(event.pointerType==='touch'){const rect=event.currentTarget.getBoundingClientRect();longPress.current=setTimeout(()=>openActions(message,{currentTarget:{getBoundingClientRect:()=>rect}}),500);}}} onPointerUp={()=>clearTimeout(longPress.current)} onPointerCancel={()=>clearTimeout(longPress.current)} onPointerMove={()=>clearTimeout(longPress.current)} onKeyDown={event=>{if(event.key==='Escape')setActionMessage(null);if(event.key==='F10'&&event.shiftKey)openActions(message,event);}}>

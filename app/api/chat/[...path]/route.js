@@ -3,6 +3,7 @@ import {meta,listThreads,createThread,readThread,updateThread,deleteThread,selec
 import {all} from '../../../../lib/store.mjs';
 import {prepareGeneration,generationResponse,getJob,stopJob} from '../../../../lib/chat-generation.mjs';
 import {after} from 'next/server';
+import {listCallbacks,setEnabled,forgetCallback,knockState} from '../../../../lib/chat-callbacks.mjs';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 export const maxDuration=120;
@@ -12,6 +13,13 @@ async function handle(request,{params}){
     if(request.method!=='GET'&&!sameOrigin(request))return Response.json({error:'请求来源无效'},{status:403});
     const {path}=await params;const [resource,id,action]=path;const url=new URL(request.url),method=request.method;
     if(method==='GET'&&resource==='meta')return Response.json(meta());
+    if(resource==='callbacks'){
+      // 主动开口的线头：只属于本人，与家庭记忆库无关。
+      if(method==='GET')return Response.json(await listCallbacks(user));
+      if(method==='POST'&&id&&action==='forget')return Response.json(await forgetCallback(user,id));
+      if(method==='POST'&&!id){const body=await request.json();return Response.json(await setEnabled(user,body.enabled));}
+    }
+    if(method==='GET'&&resource==='knock')return Response.json(await knockState(user));
     if(method==='GET'&&resource==='memories')return Response.json({memories:(await all('memories')).filter(m=>m.status==='confirmed').map(m=>({id:m.id,title:m.title,year:m.year,cover:m.cover,people:m.people}))});
     if(resource==='jobs'&&id){if(method==='GET')return Response.json(await getJob(user,id));if(method==='POST'&&action==='cancel')return Response.json(await stopJob(user,id));}
     if(resource==='threads'){

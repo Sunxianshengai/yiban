@@ -66,3 +66,11 @@
 .im-sticker-picker{grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:10px;max-height:min(56vh,430px);overflow:auto;padding:2px 2px 4px;overscroll-behavior:contain;scrollbar-width:thin}.im-sticker-picker button{padding:8px;border-radius:14px}.im-sticker-picker img{height:70px}.im-sticker-picker span{font-size:.75rem;margin-top:5px}
 
 @media(max-width:768px){.im-sticker-picker{max-height:none;grid-template-columns:repeat(auto-fill,minmax(84px,1fr))}.im-sticker-picker img{height:66px}}
+/* 它会主动提起的事：和「对我的了解」并列，但数据完全不共通 */
+.im-knock-group{margin-top:26px;padding-top:20px;border-top:1px solid var(--im-border)}
+.im-knock-group>p{position:relative;padding-right:52px}
+.im-knock-switch{margin-bottom:14px}
+.im-forget{position:absolute;right:0;top:0;border:0;background:none;color:var(--im-faint);font-size:.6875rem;padding:2px 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.im-forget:hover{color:var(--im-accent)}
+.im-forget:disabled{opacity:.5;cursor:default}
+@media(max-width:768px){.im-knock-group>p{font-size:.875rem}.im-forget{font-size:.75rem}}
