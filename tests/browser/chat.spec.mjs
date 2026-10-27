@@ -55,3 +55,18 @@ test('image messages upload, render in chat and survive a reload',async({page})=
   await expect(page.locator('.im-lightbox')).toBeVisible();await expect(page.locator('.im-lightbar')).toContainText('1 / 1');
   await page.getByRole('button',{name:'关闭大图'}).click();await expect(page.locator('.im-lightbox')).toHaveCount(0);
 });
+test('emoji picker inserts, remembers favorites and reactions accept more emojis',async({page})=>{
+  await signInAsNewAdmin(page,{prefix:'chat-emoji',credits:5});await page.locator('.side-nav').getByRole('button',{name:'陪伴对话'}).click();
+  await page.getByLabel('表情').click();
+  await page.getByRole('tab',{name:'Emoji'}).click();
+  await page.getByLabel('插入 👍').first().click();
+  await expect(page.getByLabel('发送给家伴的消息')).toHaveValue('👍');
+  await page.getByLabel('插入 🎉').first().click({button:'right'});
+  await expect(page.locator('.im-emoji-faved')).toHaveCount(1);
+  await page.getByRole('button',{name:'关闭窗口'}).click();
+  await page.getByRole('button',{name:'发送消息',exact:true}).click();
+  await expect(page.locator('.cw-user-text').last()).toHaveText('👍',{timeout:20000});
+  await page.locator('.cw-message').last().locator('.pw-message-more').click();
+  await page.getByRole('button',{name:'回应🎉'}).click();
+  await expect(page.locator('.im-message-reactions')).toContainText('🎉');
+});
