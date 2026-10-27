@@ -45,6 +45,13 @@ test('default companion personality is per account and editing it preserves the 
   assert.equal((await memory.listPersonalMemories(user,null)).mode,'auto');
 });
 
+test('one-off style requests are rejected even when the extractor mislabels them as durable boundaries',async()=>{
+  const temporary='今天只是做上线检查，简短聊两句就好。',durable='以后先听我说，不用急着分析。';
+  globalThis.fetch=async(_url,req)=>{const body=JSON.parse(req.body);if(body.stream)return stream('好的。');if(body.messages[0].content.includes('相关性选择器'))return jsonModel({ids:[]});return jsonModel({memories:[{quote:temporary,category:'boundary',kind:'boundary'},{quote:durable,category:'boundary',kind:'boundary'}]});};
+  await send(await newThread(),{text:temporary+durable},'one-off-boundary');
+  const saved=await memory.listPersonalMemories(user,null);assert.equal(saved.items.some(item=>item.text===temporary),false);assert.equal(saved.items.some(item=>item.text===durable),true);
+});
+
 test('semantic retrieval is scoped and expired plans are excluded even when the model selects them',async()=>{
   const saved=await memory.createPersonalMemory(user,null,{text:'我习惯傍晚沿河跑步。',category:'preference'},'semantic-example');
   const state=await memory.listPersonalMemories(user,null);const raw=(await store.all('personal_memory_scopes')).find(item=>item.userId===user.id&&item.profileId===null);await store.put('personal_memory_scopes',{...raw,items:[...raw.items,{id:'expired-plan',text:'明天去面试',category:'event',kind:'plan',createdAt:'2020-01-01T00:00:00Z',updatedAt:'2020-01-01T00:00:00Z',expiresAt:'2020-01-02T00:00:00Z'}]});
