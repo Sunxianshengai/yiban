@@ -28,3 +28,15 @@ test('failed sends stay visible with retry and can return to the draft box',asyn
   await page.locator('.im-send-failed').getByRole('button',{name:'重试'}).click();
   await expect(page.locator('.cw-user-text')).toHaveText('这条消息网络不太好',{timeout:20000});await expect(page.locator('.im-outbox')).toHaveCount(0);
 });
+test('quote reply keeps the referenced message attached across reloads',async({page})=>{
+  await signInAsNewAdmin(page,{prefix:'chat-quote',credits:5});await page.locator('.side-nav').getByRole('button',{name:'陪伴对话'}).click();
+  await page.getByLabel('发送给家伴的消息').fill('你猜我今天做了什么');await page.getByRole('button',{name:'发送消息',exact:true}).click();
+  await expect(page.getByRole('button',{name:'发送消息',exact:true})).toBeVisible({timeout:20000});
+  await page.locator('.cw-message').first().locator('.pw-message-more').click();
+  await page.getByRole('button',{name:'引用回复'}).click();
+  await expect(page.locator('.im-reply-chip')).toContainText('你猜我今天做了什么');
+  await page.getByLabel('发送给家伴的消息').fill('就是这件事！');await page.getByRole('button',{name:'发送消息',exact:true}).click();
+  await expect(page.locator('.im-reply-chip')).toHaveCount(0);
+  const quoted=page.locator('.cw-user').last();await expect(quoted.locator('.im-quote-block')).toContainText('你猜我今天做了什么');
+  await page.reload();await page.locator('.side-nav').getByRole('button',{name:'陪伴对话'}).click();await expect(page.locator('.im-quote-block').first()).toContainText('你猜我今天做了什么',{timeout:20000});
+});
