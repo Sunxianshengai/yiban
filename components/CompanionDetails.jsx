@@ -6,7 +6,7 @@ import {familiaAPI} from '../lib/familia-client.mjs';
 import {chatAPI} from '../lib/chat-client.mjs';
 
 function Row({icon,children,hint,onClick}){return <button className="im-detail-row" onClick={onClick}><Icon name={icon} size={18}/><span>{children}</span>{hint&&<small>{hint}</small>}<Icon name="chevron" size={17}/></button>;}
-export default function CompanionDetails({profile,profileId,type='details',onClose,onMemory,onPersona,onHistory,onNew,onCredits,onTheme,theme,mobile=false}){
+export default function CompanionDetails({profile,profileId,type='details',onClose,onMemory,onPersona,onHistory,onNew,onCredits,onProactive,onTheme,theme,mobile=false}){
   const [screen,setScreen]=useState(type),[state,setState]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState('');const ref=useRef(null);
   const [knock,setKnock]=useState(null);
   const endpoint='personal-memories'+(profileId?'?profileId='+encodeURIComponent(profileId):'');
@@ -49,7 +49,7 @@ export default function CompanionDetails({profile,profileId,type='details',onClo
       <p className="im-panel-note"><Icon name="lock" size={13}/>仅你与{profile.name}使用，不与其他伙伴或家人共享。<br/>自动整理可能遗漏或记错，可随时修改。保存不额外扣积分。</p>
     </>:<>
       <div className="im-profile-intro"><PersonaAvatar profile={profile} large/><h2>{profile.name}</h2><span>AI 伙伴 · 不代表真实人物</span><p>{profile.description||'按你喜欢的方式，听你说说话。'}</p></div>
-      <section className="im-detail-section"><Row icon="leaf" hint="个人记忆" onClick={()=>setScreen('memory')}><strong>对我的了解</strong><em>喜好、近况和舒服的相处方式</em></Row><Row icon="settings" onClick={onPersona}>人格与表达</Row></section>
+      <section className="im-detail-section"><Row icon="leaf" hint="个人记忆" onClick={()=>setScreen('memory')}><strong>对我的了解</strong><em>喜好、近况和舒服的相处方式</em></Row><Row icon="settings" onClick={onPersona}>人格与表达</Row><Row icon="bell" onClick={onProactive}>主动联系</Row></section>
       <section className="im-detail-section"><h3>这段聊天</h3><Row icon="search" onClick={onHistory}>查找聊天记录</Row><Row icon="message" onClick={onNew}>换个话题</Row></section>
       <section className="im-detail-section"><Row icon="moon" hint={theme==='dark'?'深色':'浅色'} onClick={onTheme}>聊天外观</Row><Row icon="coins" onClick={onCredits}>积分与消费</Row></section>
       <p className="im-panel-note">日常回应会按内容分条，一轮成功回复只扣一次积分。停止或失败退回。语音入口使用设备语音输入与朗读。</p>

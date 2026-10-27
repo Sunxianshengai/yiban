@@ -103,6 +103,7 @@ export default function Page() {
   const handleSave=async(form)=>{await request(form.id?`/memories/${form.id}`:'/memories',{method:form.id?'PATCH':'POST',body:JSON.stringify(form)});await refresh();close();notify(form.status==='confirmed'?'记忆已发布，家人都可以查看':'记忆已保存为待确认');};
   const perform=async(action,message)=>{setBusy(true);try{await action();await refresh();notify(message);close();}catch(e){notify(e.message,'error');}finally{setBusy(false);}};
   const openAccounts=()=>setModal({type:'accounts'});
+  useEffect(()=>{if(loaded&&state.account?.id&&new URLSearchParams(location.search).get('chat')){setExplicitCompanion(false);setPage('companion');}},[loaded,state.account?.id]);
   const signOut=async()=>{try{await request('/auth/logout',{method:'POST',body:'{}'});setState(initialState);setModal(null);setPage('home');setNeedsSetup(false);}catch(e){notify(e.message,'error');}};
 
   // 全站字号缩放：由 applyFontScale() 直接写 <html> 的内联 font-size。

@@ -135,6 +135,7 @@ function answer(messages) {
     const input=JSON.parse(lastUser(messages));
     return JSON.stringify({ids:(input.记忆||[]).filter(item=>/喝点|喝什么|茶/.test(input.当前表达)&&item.text.includes('茉莉')).map(item=>item.id).slice(0,6)});
   }
+  if(system.includes('准备主动发起一次自然聊天'))return JSON.stringify({send:true,text:'下午的面试，结束了吗？\n---\n想说的时候，我听你聊聊。'});
   if(system.includes('个人长期记忆筛选器')){
     const input=JSON.parse(lastUser(messages));
     const text=String(input.用户本轮自述),items=[];
