@@ -131,6 +131,10 @@ function narration(messages) {
 
 function answer(messages) {
   const system = systemOf(messages);
+  if(system.includes('个人长期记忆筛选器')){
+    const input=JSON.parse(lastUser(messages));
+    return JSON.stringify({memories:String(input.用户本轮自述).includes('我每周六去上陶艺课。')?[{quote:'我每周六去上陶艺课。',category:'event'}]:[]});
+  }
   if (/家庭记忆的转述者|第一人称口述/.test(system)) return narration(messages);
   if (/整理这段家庭记忆|家庭记忆整理助手/.test(system)) return organize(messages);
   if (/家庭故事编辑/.test(system)) return story(messages);

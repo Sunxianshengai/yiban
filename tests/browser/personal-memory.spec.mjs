@@ -1,0 +1,31 @@
+import {test,expect} from '@playwright/test';
+import fs from 'node:fs';
+import {signInAsNewAdmin} from './helpers.mjs';
+const folder='.impeccable/review/personal-memory';
+for(const [device,width,height] of [['desktop',1440,1080],['mobile',390,844]]){
+  test(`${device}: personal memories support manual confirmation, automatic mode, sources, privacy and management`,async({page})=>{
+    test.setTimeout(90000);page.setDefaultTimeout(10000);await page.setViewportSize({width,height});await signInAsNewAdmin(page,{prefix:'personal-memory',name:'界面预览测试账号',credits:10});fs.mkdirSync(folder,{recursive:true});
+    const errors=[];page.on('pageerror',error=>errors.push(error.message));
+    const profile=await(await page.request.post('/api/familia/profiles',{headers:{'Idempotency-Key':'memory-preview-'+Date.now()},data:{name:'爸爸',role:'father',age:56,qualities:['patient','empathetic'],description:'演示设定，仅用于本地界面预览'}})).json();
+    const endpoint='/api/familia/personal-memories?profileId='+encodeURIComponent(profile.id);
+    const create=async(text,category,pinned=false)=>expect((await page.request.post(endpoint,{headers:{'Idempotency-Key':crypto.randomUUID()},data:{text,category,pinned}})).status()).toBe(201);
+    await page.reload();await page.locator('.fa-profile-row').filter({hasText:'爸爸'}).filter({hasText:'AI 家人'}).click();await page.locator('.fa-contact').getByRole('button',{name:'更多功能',exact:true}).click();await page.getByRole('button',{name:'个人记忆',exact:true}).click();
+    const manager=page.getByRole('dialog',{name:'个人记忆',exact:true});await expect(manager.getByRole('button',{name:/手动记忆/})).toHaveAttribute('aria-pressed','true');await expect(manager.getByText('从一件小事开始记住你',{exact:true})).toBeVisible();
+    const shot=async name=>{const dismiss=page.getByRole('button',{name:'关闭提示',exact:true});if(await dismiss.isVisible())await dismiss.click();await expect(manager.locator('.pm-loading')).toHaveCount(0);await page.evaluate(()=>document.fonts.ready);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`${folder}/${device}-${name}.png`,animations:'disabled'});};
+    await shot('empty');
+    await create('我更喜欢你先听我说完，再一起想办法。','boundary',true);await create('我喜欢茉莉花茶，不太喝咖啡。','preference');await create('最近在学做陶器，周末想留一点时间给自己。','event');
+    await manager.getByRole('button',{name:'关闭窗口',exact:true}).click();await page.locator('.fa-contact').getByRole('button',{name:'更多功能',exact:true}).click();await page.getByRole('button',{name:'个人记忆',exact:true}).click();await expect(manager.locator('.pm-entries article')).toHaveCount(3);await shot('manual');
+    await manager.getByRole('button',{name:/自动记忆/}).click();await expect(manager.getByRole('button',{name:/自动记忆/})).toHaveAttribute('aria-pressed','true');await shot('automatic');
+    await manager.getByRole('button',{name:'编辑记忆：我更喜欢你先听我说完，再一起想办法。',exact:true}).click();await manager.getByLabel('希望记住的内容').fill('先听我说完，少一些建议，也不用急着安慰。');await shot('edit');
+    await page.route('**/api/familia/personal-memories/*',route=>route.request().method()==='PATCH'?route.fulfill({status:503,json:{error:'暂时无法保存，请重试'}}):route.continue());await manager.getByRole('button',{name:'保存记忆',exact:true}).click();await expect(manager.getByRole('alert')).toContainText('暂时无法保存');await expect(manager.getByLabel('希望记住的内容')).toHaveValue('先听我说完，少一些建议，也不用急着安慰。');await page.unroute('**/api/familia/personal-memories/*');await manager.getByRole('button',{name:'保存记忆',exact:true}).click();await expect(manager.locator('.pm-edit')).toHaveCount(0);
+    await manager.getByRole('switch',{name:'在对话中参考个人记忆'}).click();await expect(manager.getByRole('switch')).toHaveAttribute('aria-checked','false');await manager.getByRole('switch').click();await expect(manager.getByRole('switch')).toHaveAttribute('aria-checked','true');
+    await manager.getByLabel('搜索个人记忆').fill('茉莉');await expect(manager.locator('.pm-entries article')).toHaveCount(1);await manager.getByLabel('搜索个人记忆').fill('');
+    if(device==='mobile'){await page.evaluate(()=>document.documentElement.style.fontSize='24px');await shot('large-text');await page.evaluate(()=>document.documentElement.style.fontSize='');}
+    await manager.getByRole('button',{name:'关闭窗口',exact:true}).click();await page.locator('.fa-contact-actions').getByRole('button',{name:/聊天/}).click();await expect(page.getByLabel('发送给家伴的消息')).toBeEnabled();
+    await page.getByLabel('发送给家伴的消息').fill('我每周六去上陶艺课。');await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect(page.getByRole('button',{name:'停止生成',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'发送消息',exact:true})).toBeVisible({timeout:30000});await expect(page.getByRole('button',{name:/已自动记住 1 件事/})).toBeVisible();await expect(page.getByRole('button',{name:/参考 1 条个人记忆/})).toBeVisible();
+    await page.screenshot({path:`${folder}/${device}-chat.png`,animations:'disabled'});
+    await page.locator('.cw-user').getByRole('button',{name:'消息操作',exact:true}).click();await page.getByRole('button',{name:'记住这件事',exact:true}).click();await expect(manager.getByLabel('希望记住的内容')).toHaveValue('我每周六去上陶艺课。');await manager.getByLabel('希望记住的内容').fill('周六的陶艺课，是我留给自己的时间。');await manager.locator('.pm-edit').scrollIntoViewIfNeeded();await shot('confirm');await manager.getByRole('button',{name:'查看来源消息',exact:true}).click();await expect(manager.locator('blockquote')).toHaveText('我每周六去上陶艺课。');await manager.getByRole('button',{name:'保存记忆',exact:true}).click();await expect(manager.locator('.pm-edit')).toHaveCount(0);
+    expect((await(await page.request.get('/api/credits/balance')).json()).balance).toBe(9);
+    await manager.getByRole('button',{name:'编辑记忆：周六的陶艺课，是我留给自己的时间。',exact:true}).click();await manager.getByRole('button',{name:'删除这条记忆',exact:true}).click();await expect(manager.locator('.pm-delete')).toContainText('原聊天记录仍会保留');await manager.getByRole('button',{name:'确认删除',exact:true}).click();await expect(manager.locator('.pm-edit')).toHaveCount(0);await manager.getByRole('button',{name:'关闭窗口',exact:true}).click();await expect(page.locator('.cw-user-text')).toHaveText('我每周六去上陶艺课。');expect(errors).toEqual([]);
+  });
+}

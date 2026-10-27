@@ -8,6 +8,7 @@ import './familia.css';
 import './preview-parity.css';
 import './persona.css';
 import './auth-motion.css';
+import './personal-memory.css';
 
 export const metadata = {
   title: '忆伴 · 让每一份回忆，都有温度',
