@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {CALLBACK_KINDS,extractCallbacks,listCallbacks,callbackForPrompt,consumeCallback,knockState,setEnabled,callbackPrompt} from '../lib/chat-callbacks.mjs';
+import {CALLBACK_KINDS,extractCallbacks,listCallbacks,callbackForPrompt,consumeCallback,knockState,setEnabled,callbackPrompt,resolveCallbacksByText} from '../lib/chat-callbacks.mjs';
 
 const user={id:'user-1'};
 const other={id:'user-2'};
@@ -70,4 +70,17 @@ test('kind 表驱动到期与寿命，不写死散落常量',()=>{
   for(const [key,value] of Object.entries(CALLBACK_KINDS)){
     assert.ok(value.dueHours>0&&value.lifeHours>value.dueHours,`${key} 的到期必须早于失效`);
   }
+});
+
+test('resolveCallbacksByText closes threads the user says are finished',async()=>{
+  const user={id:'resolve-user'};
+  const created=await extractCallbacks(user,{text:'明天要去体检，有点紧张',personaId:null,threadId:'t1',messageId:'m1'});
+  assert.equal(created.status,'created');
+  const before=await resolveCallbacksByText(user,'体检完啦，一切正常',{threadId:'t1'});
+  assert.equal(before.resolved,1);
+  assert.ok(before.hooks.includes('去体检'));
+  const again=await resolveCallbacksByText(user,'体检完啦',{threadId:'t1'});
+  assert.equal(again.resolved,0,'已关的话头不会重复关');
+  const unrelated=await resolveCallbacksByText(user,'项目黄了，难受',{threadId:'t1'});
+  assert.equal(unrelated.resolved,0,'话头关键词没出现就不误伤');
 });
