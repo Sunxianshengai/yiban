@@ -41,10 +41,12 @@ test('日间/夜间主题作用于全站',async({browser})=>{
   expect(day.sidebarBg).not.toBe(night.sidebarBg);
   expect(day.bodyBg).not.toBe(night.bodyBg);
   expect(day.brand).not.toBe(night.brand);
-  // 日间品牌是深松绿 #2E5147（rgb(46,81,71)）；夜间主操作是浅薄荷 #A5C7B4
-  expect(day.brand.toLowerCase()).toBe('#2e5147');
-  expect(night.brand.toLowerCase()).toBe('#a5c7b4');
-  // 品牌徽标的底色也跟着换：日间深绿底，夜间浅薄荷底
+  // 暖色改版（familia.css）后：日间品牌是深可可 #3C1008，夜间主操作是浅杏 #F1C5AE。
+  // 注意 familia.css 的 :root 与 html[data-theme=night] 在层叠里覆盖 globals.css 的旧值，
+  // 所以这里断言的是实际生效的那一组，而不是设计系统初版的深松绿/浅薄荷。
+  expect(day.brand.toLowerCase()).toBe('#3c1008');
+  expect(night.brand.toLowerCase()).toBe('#f1c5ae');
+  // 品牌徽标的底色也跟着换：日间深底，夜间浅底
   const lum=s=>{const [r,g,b]=s.match(/\d+(?:\.\d+)?/g)?.slice(0,3).map(Number)||[0,0,0];return 0.2126*r+0.7152*g+0.0722*b;};
   expect(lum(day.brandMark)).toBeLessThan(lum(night.brandMark));
   await ctx.close();

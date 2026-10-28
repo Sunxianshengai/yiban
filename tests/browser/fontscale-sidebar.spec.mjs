@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {signInAsNewAdmin} from './helpers.mjs';
+import {signInAsNewAdmin,openSettings} from './helpers.mjs';
 const BASE='http://localhost:3711';
 
 // 回归：字号切档必须真的改变全站文字，且特大档下侧栏文字不能顶出侧栏
@@ -7,8 +7,7 @@ test('字号档位生效 + 特大档顶栏不溢出',async({browser})=>{
   const ctx=await browser.newContext({baseURL:BASE,viewport:{width:1440,height:1000}});
   const page=await ctx.newPage();
   await signInAsNewAdmin(page,{name:'字号测试',prefix:'fs'});
-  await page.getByRole('button',{name:/设置/}).first().click();
-  await page.waitForTimeout(1200);
+  await openSettings(page);
 
   // 注意：用 `.option-pill` 文本定位时「大」会同时匹配「大」和「最大」，取 first 就是「大」
   const expected={标准:16,偏大:18.4,大:20.8,特大:24};

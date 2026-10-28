@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {signInAsNewAdmin} from './helpers.mjs';
+import {signInAsNewAdmin,openSettings} from './helpers.mjs';
 const BASE=process.env.PW_BASE_URL||'http://localhost:3711';
 
 // 压力测试：连续快速切换字号（比自动保存的 700ms 更快），
@@ -9,8 +9,7 @@ test('快速连点字号不回退、终态正确',async({browser})=>{
   const page=await ctx.newPage();
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await signInAsNewAdmin(page,{name:'连点测试',prefix:'rp'});
-  await page.getByRole('button',{name:/设置/}).first().click();
-  await page.waitForTimeout(1500);
+  await openSettings(page);
 
   const pill=label=>page.locator('.option-pill').filter({hasText:new RegExp(`^${label}$`)}).first();
   const rootPx=()=>page.evaluate(()=>parseFloat(getComputedStyle(document.documentElement).fontSize));
@@ -36,8 +35,7 @@ test('快速连点字号不回退、终态正确',async({browser})=>{
   console.log('刷新后字号',afterReload);
   expect(Math.abs(afterReload-24)).toBeLessThan(0.2);
 
-  await page.getByRole('button',{name:/设置/}).first().click();
-  await page.waitForTimeout(1200);
+  await openSettings(page);
   const selected=await page.locator('.option-pill.selected').first().textContent();
   console.log('设置页选中档位:',selected);
   expect(selected.trim()).toBe('特大');

@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {signInAsNewAdmin} from './helpers.mjs';
+import {signInAsNewAdmin,openSettings} from './helpers.mjs';
 const BASE=process.env.PW_BASE_URL||'http://localhost:3711';
 
 // 回归：切换字号后不允许回退到上一个档位。
@@ -11,8 +11,7 @@ test('切换字号全过程不回退到旧档位',async({browser})=>{
   const page=await ctx.newPage();
   page.on('pageerror',e=>console.log('PAGE ERROR',e.message));
   await signInAsNewAdmin(page,{name:'回退测试',prefix:'fb'});
-  await page.getByRole('button',{name:/设置/}).first().click();
-  await page.waitForTimeout(1500);
+  await openSettings(page);
 
   // 在页面里装一个观察器，记录根字号每一次变化的时间与数值（含旧值）
   await page.evaluate(()=>{

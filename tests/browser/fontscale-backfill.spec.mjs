@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {signInAsNewAdmin} from './helpers.mjs';
+import {signInAsNewAdmin,openSettings} from './helpers.mjs';
 const BASE=process.env.PW_BASE_URL||'http://localhost:3711';
 
 // 精确复现旧 bug 的触发路径：先存好一个档位 → 切到另一个档位 → 等保存回填。
@@ -9,8 +9,7 @@ test('保存回填阶段不把新字号覆盖回旧值',async({browser})=>{
   const ctx=await browser.newContext({baseURL:BASE,viewport:{width:1440,height:1000}});
   const page=await ctx.newPage();
   await signInAsNewAdmin(page,{name:'回填测试',prefix:'bf'});
-  await page.getByRole('button',{name:/设置/}).first().click();
-  await page.waitForTimeout(1500);
+  await openSettings(page);
 
   const pill=label=>page.locator('.option-pill').filter({hasText:new RegExp(`^${label}$`)}).first();
 

@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {signInAsNewAdmin} from './helpers.mjs';
+import {signInAsNewAdmin,openSettings} from './helpers.mjs';
 const BASE='http://localhost:3711';
 
 test('字号档位对全站文字的实际影响',async({browser})=>{
@@ -24,8 +24,7 @@ test('字号档位对全站文字的实际影响',async({browser})=>{
     };
   });
 
-  await page.getByRole('button',{name:/设置/}).first().click();
-  await page.waitForTimeout(500);
+  await openSettings(page);
   const optSampler=async()=>await page.evaluate(()=>{
     const pick=s=>{const e=document.querySelector(s);return e?parseFloat(getComputedStyle(e).fontSize):null;};
     return {optPill:pick('.option-pill'),panelP:pick('.personalize-panel>p'),hint:pick('.settings-hint'),label:pick('.field label'),input:pick('input')};

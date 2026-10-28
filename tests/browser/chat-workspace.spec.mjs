@@ -18,6 +18,9 @@ test('workspace streams, saves history, preserves edited versions, feedback and 
   // A general record draft must not overwrite a draft created from chat.
   await page.locator('.cw-assistant').last().getByRole('button',{name:'消息操作',exact:true}).click();await page.getByRole('button',{name:'存为记忆草稿',exact:true}).click();const record=page.getByRole('dialog',{name:'记一段回忆'});await expect(record.getByLabel('这段记忆的故事')).toContainText('爸爸今天');await record.getByRole('button',{name:'稍后继续',exact:true}).click();
   await page.reload();await page.locator('.side-nav').getByRole('button',{name:'陪伴对话',exact:true}).click();await expect(page.locator('.cw-user-text')).toHaveText('爸爸今天讲了一件童年的事');
+  // 撤回/删除单条消息：菜单入口，删除后气泡与状态标记一起消失，刷新后仍保持删除。
+  await page.locator('.cw-user').last().getByRole('button',{name:'消息操作',exact:true}).click();await page.getByRole('button',{name:'删除消息',exact:true}).click();await expect(page.locator('.cw-user-text')).toHaveCount(0);
+  await page.reload();await page.locator('.side-nav').getByRole('button',{name:'陪伴对话',exact:true}).click();await expect(page.locator('.cw-user-text')).toHaveCount(0);
   await page.getByLabel('发送给家伴的消息').fill('尚未发送的个人草稿');await page.reload();await page.locator('.side-nav').getByRole('button',{name:'陪伴对话',exact:true}).click();await expect(page.getByLabel('发送给家伴的消息')).toHaveValue('尚未发送的个人草稿');
   expect(errors).toEqual([]);
 });

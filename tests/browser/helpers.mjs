@@ -81,6 +81,13 @@ export async function clickNavItem(page,name){
 }
 
 
+// 「设置」现在不在主导航里（NAV_GROUPS 只保留首页/记忆库/陪伴对话/家庭成员），
+// 入口统一收进「更多功能」弹层。字号/主题这类用例都要先落到显示与阅读这一页。
+export async function openSettings(page){
+  await clickNavItem(page,'设置');
+  await expect(page.locator('.personalize-panel')).toBeVisible({timeout:30000});
+}
+
 export async function chooseSettingsTab(page,label){
   const desktop=page.locator('.pw-settings-nav');
   if(await desktop.isVisible())await desktop.getByRole('button',{name:label,exact:true}).click();
