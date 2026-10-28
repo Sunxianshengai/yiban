@@ -87,3 +87,15 @@ test('voice messages record, upload, play and survive a reload',async({page})=>{
   await page.reload();await page.locator('.side-nav').getByRole('button',{name:'陪伴对话'}).click();
   await expect(page.locator('.im-voice').first()).toBeVisible({timeout:20000});
 });
+test('expression directions appear in settings and persist per thread',async({page})=>{
+  await signInAsNewAdmin(page,{prefix:'chat-tone',credits:5});await page.locator('.side-nav').getByRole('button',{name:'陪伴对话'}).click();
+  const openSettings=async()=>{await page.getByLabel('对话菜单').click();await page.getByRole('button',{name:'聊天设置'}).last().click();};
+  await openSettings();await expect(page.getByRole('button',{name:'俏皮'})).toBeVisible();await expect(page.getByRole('button',{name:'安静'})).toBeVisible();
+  await page.getByRole('button',{name:'俏皮'}).click();await page.getByRole('button',{name:'完成'}).click();
+  await page.getByLabel('发送给家伴的消息').fill('简短点跟我说说今天');await page.getByRole('button',{name:'发送消息',exact:true}).click();
+  await expect(page.locator('.cw-user-text').last()).toHaveText('简短点跟我说说今天',{timeout:20000});
+  await expect(page.getByRole('button',{name:'发送消息',exact:true})).toBeVisible({timeout:20000});
+  await page.reload();await page.locator('.side-nav').getByRole('button',{name:'陪伴对话'}).click();
+  await expect(page.locator('.cw-user-text').last()).toHaveText('简短点跟我说说今天',{timeout:20000});
+  await openSettings();await expect(page.getByRole('button',{name:'俏皮'})).toHaveAttribute('aria-pressed','true');
+});

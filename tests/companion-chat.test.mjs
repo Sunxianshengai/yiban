@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {parseCompanionReply,COMPANION_STICKERS,companionReplyProtocol,partDelayMs,proactiveOpener,stickerById} from '../lib/companion-chat.mjs';
+import {parseCompanionReply,COMPANION_STICKERS,companionReplyProtocol,partDelayMs,proactiveOpener,stickerById,detectDirectives} from '../lib/companion-chat.mjs';
 
 test('semantic bubbles survive every chunk boundary without exposing control lines',()=>{
   const text='昨晚的开场白，用上没？\n---\n先歇着。\n---\n[[sticker:greeting]]';
@@ -46,4 +46,24 @@ test('proactive opener degrades from anniversary to memory to plain greeting',()
   const memory=proactiveOpener({anniversaries:[],memories:[{id:'m1',title:'那年夏天',year:1998}],today:day});
   assert.equal(memory.source,'memory');assert.match(memory.text,/1998年/);assert.match(memory.text,/那年夏天/);
   const bare=proactiveOpener({today:day});assert.equal(bare.source,'default');assert.equal(bare.ref,null);
+});
+test('detectDirectives only fires on explicit per-turn requests',()=>{
+  assert.deepEqual(detectDirectives('今天好累，不想动'),[]);
+  assert.deepEqual(detectDirectives('简短点跟我说'),['这轮只回一句，不展开、不追问']);
+  assert.ok(detectDirectives('别发表情了，认真点').includes('这轮不要发任何表情或贴纸'));
+  assert.ok(detectDirectives('发语音给我听').some(item=>item.includes('语音')));
+  assert.ok(detectDirectives('别开玩笑了').some(item=>item.includes('收起玩笑')));
+});
+
+test('reply protocol carries directives and media honesty per turn',()=>{
+  const withDirectives=companionReplyProtocol({allowedStickers:[],directives:['这轮只回一句，不展开、不追问']});
+  assert.match(withDirectives,/用户本轮的明确要求/);
+  assert.match(withDirectives,/只对本轮生效/);
+  const withImages=companionReplyProtocol({allowedStickers:[],hasImages:true});
+  assert.match(withImages,/看不了图片内容/);
+  const withAudio=companionReplyProtocol({allowedStickers:[],hasAudio:true});
+  assert.match(withAudio,/听不了语音内容/);
+  const plain=companionReplyProtocol({allowedStickers:['nod']});
+  assert.match(plain,/开场白：那我走/);
+  assert.doesNotMatch(plain,/用户本轮的明确要求/);
 });
