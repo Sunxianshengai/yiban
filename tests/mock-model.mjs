@@ -23,6 +23,7 @@ const lastUser = messages => textOf([...messages].reverse().find(item => item.ro
 
 /** 从系统提示里认出这次是谁在说话。 */
 function speakerOf(system) {
+  const persona=system.match(/\"称呼\":\"([^\"]+)\"/);if(persona)return persona[1];
   const quoted = system.match(/「([^」]{1,12})」/);
   if (quoted) return quoted[1];
   if (/家伴/.test(system)) return '家伴';
@@ -146,6 +147,7 @@ function answer(messages) {
     if(text.includes('以后先听我说，不用急着分析。'))items.push({quote:'以后先听我说，不用急着分析。',category:'boundary',kind:'boundary',topic:'倾听方式'});
     return JSON.stringify({memories:items.slice(0,2)});
   }
+  if(lastUser(messages).includes('今天有点累，想听你说一句晚安。'))return '嗯，今天就先歇到这里。\n---\n晚安，明天再慢慢聊。';
   if(lastUser(messages)==='[test:companion-bubbles]')return '先听你说。\n---\n今天不用急着复盘。\n---\n[[sticker:greeting]]';
   if(lastUser(messages)==='[test:slow]')return '我先慢慢说一段还没有完成的回应。'.repeat(18)+'\n---\n[[sticker:celebrate]]';
   if(/喝点什么/.test(lastUser(messages))&&system.includes('我喜欢茉莉花茶'))return '你不是喜欢茉莉花茶嘛。\n---\n泡一杯，慢慢喝。\n---\n[[sticker:quiet]]';

@@ -52,7 +52,7 @@ export default function CompanionDetails({profile,profileId,type='details',onClo
       <section className="im-detail-section"><Row icon="leaf" hint="个人记忆" onClick={()=>setScreen('memory')}><strong>对我的了解</strong><em>喜好、近况和舒服的相处方式</em></Row><Row icon="settings" onClick={onPersona}>人格与表达</Row><Row icon="bell" onClick={onProactive}>主动联系</Row></section>
       <section className="im-detail-section"><h3>这段聊天</h3><Row icon="search" onClick={onHistory}>查找聊天记录</Row><Row icon="message" onClick={onNew}>换个话题</Row></section>
       <section className="im-detail-section"><Row icon="moon" hint={theme==='dark'?'深色':'浅色'} onClick={onTheme}>聊天外观</Row><Row icon="coins" onClick={onCredits}>积分与消费</Row></section>
-      <p className="im-panel-note">日常回应会按内容分条，一轮成功回复只扣一次积分。停止或失败退回。语音入口使用设备语音输入与朗读。</p>
+      <p className="im-panel-note">日常回应会按内容分条，一轮成功回复只扣一次积分。停止或失败退回。可发送语音消息，识别结果可以展开查看。</p>
     </>}{error&&<p className="im-panel-error" role="alert">{error}<button onClick={()=>{setScreen('details');setTimeout(()=>setScreen('memory'),0);}}>重新读取</button></p>}</div>
   </aside>;
 }

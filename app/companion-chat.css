@@ -130,4 +130,15 @@
 .im-forget{position:absolute;right:0;top:0;border:0;background:none;color:var(--im-faint);font-size:.6875rem;padding:2px 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .im-forget:hover{color:var(--im-accent)}
 .im-forget:disabled{opacity:.5;cursor:default}
+.im-library-results{max-height:52vh;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:4px;margin-top:16px}
+.im-library-results>button{display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:left;border:0;border-radius:12px;background:var(--surface);color:var(--ink);padding:14px;cursor:pointer}
+.im-library-results>button:hover{background:var(--surface-2)}
+.im-library-results>button>span{display:flex;flex-direction:column;gap:6px;min-width:0}
+.im-library-results strong{font-size:.875rem}.im-library-results small{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.875rem;line-height:1.7}.im-library-results em{font-size:.75rem;color:var(--muted);font-style:normal}
+.im-transcript{font-size:.8125rem;line-height:1.7;color:var(--im-muted);max-width:48ch}.im-transcript summary{cursor:pointer;padding:8px 0}.im-transcript p{margin:4px 0;white-space:pre-wrap}.im-transcript small{font-size:.6875rem}
+.im-memory-confirm{max-width:min(440px,100%);padding:16px;border:1px solid var(--im-border);border-radius:12px;color:var(--im-ink);background:var(--im-surface);font-size:.8125rem;line-height:1.7}
+.im-memory-confirm>p{margin:6px 0 12px;color:var(--im-muted)}.im-memory-confirm label{display:block;margin:10px 0}.im-memory-confirm select,.im-memory-confirm textarea{display:block;width:100%;max-width:100%;margin-top:6px;background:var(--im-soft);border:1px solid var(--im-border);border-radius:8px;padding:10px;color:var(--im-ink);font:inherit}.im-memory-confirm>div{display:flex;gap:12px;flex-wrap:wrap}
+.im-memory-confirm button,.im-workspace .cw-message-status>button{border:0;background:transparent;color:var(--im-accent);font:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:6px 2px}.im-memory-confirm button:disabled{opacity:.5;cursor:default}
+.im-workspace .cw-message.im-found .im-message-body{outline:2px solid var(--im-accent);outline-offset:5px;border-radius:12px}
+@media(max-width:768px){.im-memory-confirm{width:100%;font-size:.875rem}.im-memory-confirm select,.im-memory-confirm textarea{font-size:max(1rem,16px)}.im-library-results>button{padding:12px 6px;min-height:64px}}
 @media(max-width:768px){.im-knock-group>p{font-size:.875rem}.im-forget{font-size:.75rem}}

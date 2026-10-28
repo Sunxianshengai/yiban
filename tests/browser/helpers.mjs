@@ -65,9 +65,11 @@ export async function fundTestAccount(request,amount=1000) {
 
 // Primary navigation stays focused; auxiliary tools live in the real More menu.
 export async function openMore(page){
+  await expect(page.locator('.app-shell')).toBeVisible();
   const homeBack=page.getByRole('button',{name:'返回首页',exact:true});
   if(await homeBack.isVisible())await homeBack.click();
   const desktop=page.locator('.sidebar-bottom').getByRole('button',{name:'更多功能',exact:true});
+  if((page.viewportSize()?.width||0)>768)await expect(desktop).toBeVisible();
   if(await desktop.isVisible())await desktop.click();
   else{const back=page.getByRole('button',{name:'返回联系页',exact:true});if(await back.isVisible())await back.click();const contact=page.locator('.fa-contact').getByRole('button',{name:'更多功能',exact:true});if(await contact.isVisible())await contact.click();else{const home=page.locator('.fa-home').getByRole('button',{name:'更多功能',exact:true});if(!await home.isVisible())await page.locator('.mobile-nav').getByRole('button',{name:'首页',exact:true}).click();await page.locator('.fa-home').getByRole('button',{name:'更多功能',exact:true}).click();}}
   await expect(page.getByRole('dialog',{name:'更多功能',exact:true})).toBeVisible();
