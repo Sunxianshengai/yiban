@@ -305,23 +305,26 @@ export async function GET(request,{params}) {
       if(!media)return json({error:'素材不存在'},404);
       const ext=path.extname(file);
       const types={'.jpg':'image/jpeg','.png':'image/png','.webp':'image/webp','.mp3':'audio/mpeg','.wav':'audio/wav','.m4a':'audio/mp4','.ogg':'audio/ogg','.webm':'video/webm','.mp4':'video/mp4'};
-      const headers={'Content-Type':media.contentType||types[ext],'X-Content-Type-Options':'nosniff','Cache-Control':'private, max-age=3600','Accept-Ranges':'bytes'};
+      // 上传时登记的 contentType 最可信：同是 .webm，录音是 audio/webm，视频才是 video/webm。
+      const headers={'Content-Type':upload?.contentType||media.contentType||types[ext],'X-Content-Type-Options':'nosniff','Cache-Control':'private, max-age=3600','Accept-Ranges':'bytes'};
       const range=request.headers.get('range');
-      if(range) {
+      if(range&&media.size) {
         // 流式 Range：只截取请求的区间，不把整段视频读进内存。
+        // Content-Range 必须带总长度（RFC 7233）：`bytes 0-/*` 是非法值，
+        // 浏览器会直接判加载失败（MEDIA_ERR_SRC_NOT_SUPPORTED），语音消息就栽在这里。
         const match=/^bytes=(\d+)-(\d*)$/.exec(range);
-        if(!match) return new Response(null,{status:416,headers:{'Content-Range':'bytes */*'}});
+        if(!match) return new Response(null,{status:416,headers:{'Content-Range':`bytes */${media.size}`}});
         const start=Number(match[1]);
-        const endHeader=match[2]?Number(match[2]):null;
-        if(endHeader!==null&&endHeader<start) return new Response(null,{status:416,headers:{'Content-Range':'bytes */*'}});
+        const end=Math.min(match[2]?Number(match[2]):media.size-1,media.size-1);
+        if(start>end||start>=media.size) return new Response(null,{status:416,headers:{'Content-Range':`bytes */${media.size}`}});
         // 起点越界：流读完即空 → 回 416（浏览器会当作「区间不可满足」处理）。
         // 探针读一块再封成新流：probe reader 与 body reader 必须是同一个 reader，
         // 各调一次 getReader() 会得到两个独立读取位置（第二遍从头读导致死锁/断流）。
-        const reader=streamSlice(media.data,start,endHeader).getReader();
+        const reader=streamSlice(media.data,start,end).getReader();
         const probe=await reader.read();
-        if(probe.done&&start>0) return new Response(null,{status:416,headers:{'Content-Range':'bytes */*'}});
+        if(probe.done&&start>0) return new Response(null,{status:416,headers:{'Content-Range':`bytes */${media.size}`}});
         const body=new ReadableStream({start(c){if(!probe.done)c.enqueue(probe.value);},async pull(c){const r=await reader.read();if(r.done){c.close();return;}c.enqueue(r.value);},cancel(){reader.cancel().catch(()=>{});}});
-        return new Response(body,{status:206,headers:{...headers,'Content-Range':`bytes ${start}-/*`}});
+        return new Response(body,{status:206,headers:{...headers,'Content-Range':`bytes ${start}-${end}/${media.size}`,'Content-Length':String(end-start+1)}});
       }
       return new Response(media.data,{headers});
     }
