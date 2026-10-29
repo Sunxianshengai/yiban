@@ -149,6 +149,8 @@ function answer(messages) {
   }
   if(lastUser(messages).includes('今天有点累，想听你说一句晚安。'))return '嗯，今天就先歇到这里。\n---\n晚安，明天再慢慢聊。';
   if(lastUser(messages)==='[test:companion-bubbles]')return '先听你说。\n---\n今天不用急着复盘。\n---\n[[sticker:greeting]]';
+  if(lastUser(messages)==='[test:long-bubble]')return '你刚刚说下午一直在开会，结束后还要继续处理手上的工作。今天的事情一件接着一件，难怪你到现在都觉得脑子有点转不动。我倒是更想听听，你今天有没有碰到一件让你稍微开心一点的小事。要是没有也没关系，我们就换个轻松的话题随便聊聊。';
+  if(lastUser(messages)==='[test:many-bubbles]')return ['第一条。','第二条。','第三条。','第四条。','第五条。','第六条。'].join('\n---\n');
   if(lastUser(messages)==='[test:slow]')return '我先慢慢说一段还没有完成的回应。'.repeat(18)+'\n---\n[[sticker:celebrate]]';
   if(/喝点什么/.test(lastUser(messages))&&system.includes('我喜欢茉莉花茶'))return '你不是喜欢茉莉花茶嘛。\n---\n泡一杯，慢慢喝。\n---\n[[sticker:quiet]]';
   if (/家庭记忆的转述者|第一人称口述/.test(system)) return narration(messages);
