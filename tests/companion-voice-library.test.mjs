@@ -24,8 +24,8 @@ globalThis.fetch=async(url,options={})=>{
     if(input.action==='list_voice')return Response.json({output:{voice_list:[{voice_id:'qwen-audio-3.1-tts-plus-'+input.prefix+'-recovered'}]}});
     return Response.json({output:{status:'OK'}});
   }
-  if(raw.endsWith('/SpeechSynthesizer')){if(ttsFailure)return new Response('',{status:503});const body=JSON.parse(options.body);assert.equal(body.model,'qwen-audio-3.1-tts-plus');return Response.json({output:{audio:{url:ttsExternal?'https://untrusted.test/record.wav':'http://127.0.0.1:3988/result.wav'}}});}
-  if(raw==='http://127.0.0.1:3988/result.wav'){assert.equal(options.headers?.Authorization,undefined);const streaming=Buffer.from(wav);streaming.writeUInt32LE(0x7fffffff,4);streaming.writeUInt32LE(0x7fffffff,40);return new Response(streaming,{headers:{'Content-Type':'audio/wav'}});}
+  if(raw.endsWith('/SpeechSynthesizer')){if(ttsFailure)return new Response('',{status:503});const body=JSON.parse(options.body);assert.equal(body.model,'qwen-audio-3.1-tts-plus');return Response.json({output:{audio:{url:ttsExternal?'https://untrusted.test/record.wav':'http://dashscope-result-bj.oss-cn-beijing.aliyuncs.com/result.wav'}}});}
+  if(raw==='https://dashscope-result-bj.oss-cn-beijing.aliyuncs.com/result.wav'){assert.equal(options.headers?.Authorization,undefined);const streaming=Buffer.from(wav);streaming.writeUInt32LE(0x7fffffff,4);streaming.writeUInt32LE(0x7fffffff,40);return new Response(streaming,{headers:{'Content-Type':'audio/wav'}});}
   throw Error('unexpected external request');
 };
 after(async()=>{globalThis.fetch=realFetch;(await store.creditStorage()).db.close();rmSync(directory,{recursive:true,force:true});});
