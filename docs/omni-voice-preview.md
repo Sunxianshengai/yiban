@@ -4,9 +4,9 @@
 
 ## 环境与凭据
 
-只在 Vercel Preview（或 YIBAN_DATA_ENV=test 的本地隔离环境）设置 OMNI_CALL_PREVIEW_ENABLED=1。Production 始终拒绝真实通话。配置 QWEN_OMNI_API_KEY，或复用 QWEN_VOICE_API_KEY。仅服务器向固定的千问 WebRTC SDP 端点发送密钥，不把密钥返回浏览器。
+只在 Vercel Preview（或 YIBAN_DATA_ENV=test 的本地隔离环境）设置 OMNI_CALL_PREVIEW_ENABLED=1。正式站必须额外配置 OMNI_CALL_ENABLED=1；预览开关不能启用正式站。配置 QWEN_OMNI_API_KEY，或复用 QWEN_VOICE_API_KEY。仅服务器向固定的千问 WebRTC SDP 端点发送密钥，不把密钥返回浏览器。
 
-模型为 qwen3.8-omni-flash-realtime。OMNI_CALL_VOICES_JSON 是已有音色的服务器登记表，字段为 ownerId、id、name、model；仅返回当前用户且模型匹配的音色。TTS Plus 音色不能直接用于 Omni。无专属音色时提供 Tina。
+模型为 qwen3.8-omni-flash-realtime。OMNI_CALL_VOICES_JSON 是已有音色的服务器登记表，字段为 ownerId、id、name、model；仅返回当前用户且模型匹配的音色。可用 ownerRole: "platform-owner" 代替 ownerId，仅向已认证的平台所有者开放预置私有音色；普通家庭管理员无权使用。TTS Plus 音色不能直接用于 Omni。无专属音色时提供 Tina。
 
 ## 数据与行为
 

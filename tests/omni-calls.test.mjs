@@ -40,6 +40,12 @@ test('voice registry is owner and model bound; production remains disabled even 
  assert.deepEqual(omni.voicesFor(a,{OMNI_CALL_VOICES_JSON:registry}).map(v=>v.id),['Tina','owner-voice']);
  assert.equal(omni.omniRuntime({VERCEL:'1',VERCEL_ENV:'production',OMNI_CALL_PREVIEW_ENABLED:'1',OMNI_CALL_MOCK:'1'}).enabled,false);
  assert.equal(omni.omniRuntime({VERCEL:'1',VERCEL_ENV:'preview',OMNI_CALL_MOCK:'1'}).mock,false);
+ assert.equal(omni.omniRuntime({VERCEL:'1',VERCEL_ENV:'production',OMNI_CALL_ENABLED:'1'}).enabled,true);
+ assert.equal(omni.omniRuntime({VERCEL:'1',VERCEL_ENV:'preview',OMNI_CALL_ENABLED:'1'}).enabled,false);
+ assert.equal(omni.omniRuntime({YIBAN_DATA_ENV:'test',OMNI_CALL_ENABLED:'1'}).enabled,false);
+ const ownerRegistry=JSON.stringify([{ownerRole:'platform-owner',id:'private-owner-voice',model:omni.OMNI_MODEL}]);
+ assert.deepEqual(omni.voicesFor(a,{OMNI_CALL_VOICES_JSON:ownerRegistry}).map(v=>v.id),['Tina','private-owner-voice']);
+ assert.deepEqual(omni.voicesFor(b,{OMNI_CALL_VOICES_JSON:ownerRegistry}).map(v=>v.id),['Tina']);
  assert.throws(()=>omni.callSession({style:'unknown'},'Tina'),/语气/);assert.throws(()=>omni.callSession({vad:'manual'},'Tina'),/接话/);assert.throws(()=>omni.callSession({silence:2000},'Tina'),/停顿/);
 });
 test('real SDP proxy uses server credentials only and upstream failures release the call slot',async()=>{
