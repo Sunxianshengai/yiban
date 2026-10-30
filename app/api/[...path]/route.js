@@ -1,3 +1,7 @@
+import {resetFingerprint} from '../../../lib/reset-plan.mjs';
+import {scopedRoute} from '../../../lib/request-scope.mjs';
+import {dataEnvironment} from '../../../lib/data-environment.mjs';
+import {myFamilies,createFamily,switchFamily,removeFamilyAccount} from '../../../lib/families.mjs';
 import { NextResponse } from 'next/server';
 
 // 检查某个媒体文件名是否被任何记忆的 cover/audio/video 引用。
@@ -51,7 +55,7 @@ import {CONCERNS,TONES,KINDS,ROLES,MAX_TEXT as ROLE_MAX_TEXT,sanitizeRole,roleOp
 import {PERSONAS,RELATIONS,MAX_MESSAGES,MAX_NOTES,MAX_TEXT,sanitizeCompanion,openingLine,retrieveMemories,buildMessages,localNotes} from '../../../lib/companion.mjs';
 import {voiceConfigured,enrollVoice,synthesizeVoice,cacheKey} from '../../../lib/voice.mjs';
 import {generateNarration,pickNarrator,narrationKey,videoKey,buildVideoPrompt,videoConfigured,createVideoTask,fetchVideoTask,clampResolution,clampSeconds,MAX_SCRIPT,MAX_IMAGE_BYTES,VIDEO_RESOLUTIONS,VIDEO_DEFAULT_RESOLUTION,VIDEO_DEFAULT_SECONDS} from '../../../lib/narrate.mjs';
-import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,publicUser,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
+import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,publicUser,platformOwner,platformAccount,joinFamilyInvite,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
 import {FONT_SCALES,sanitizePreferences} from '../../../lib/core.mjs';
 import {STAGES,MILESTONES,INTERVIEW,GROWTH_QUESTIONS,HIGHLIGHT_TEMPLATES,buildTimeline,buildParallel,milestoneProgress,sanitizeQuote,sanitizeBirthYear,sanitizeHighlight} from '../../../lib/lifestage.mjs';
 import * as credits from '../../../lib/credits.mjs';
@@ -94,6 +98,7 @@ const allowed={ 'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp','aud
 const validBlobPath=pathname=>typeof pathname==='string'&&/^yiban\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.(jpg|png|webp|mp3|wav|m4a|ogg|webm|mp4)$/.test(pathname);
 // 记忆上挂的素材地址必须和 /api/media 网关的文件名规则同构：
 // 旧正则只认十六进制 uuid，会把系统生成的 voice-*.mp3 这类名字判成「不合法」。
+async function assertFamilyMedia(url,user){const file=path.basename(url),upload=await get('uploads',file);if(!upload||(!upload.shared&&upload.userId!==user.id&&!await hasMemoryMediaRef(file,true)))throw Object.assign(Error('素材不存在或无权使用'),{status:404});}
 const MEDIA_PATH_RE=/^\/api\/media\/[A-Za-z0-9_-]+\.(jpg|png|webp|mp3|wav|m4a|ogg|webm|mp4)$/;
 // 按量计费 / 模型接口的每用户速率限制（内存版，单实例内有效）。
 // Vercel 多实例下各实例各算各的，精确限流要换共享存储；对原型而言这足够把
@@ -108,11 +113,12 @@ function rateLimit(name,id,limit,windowMs=60*60*1000) {
   if(bucket.count>limit) {const e=new Error(`这个功能一小时内使用次数已达上限，请稍后再试`);e.status=429;throw e;}
 }
 
-export async function GET(request,{params}) {
+async function GETHandler(request,{params}) {
   const {path:parts}=await params;
   try {
-    if(parts[0]==='auth'&&parts[1]==='status') return json({needsSetup:!(await hasAdmin()),user:await sessionFromRequest(request),remoteStorage:usesRemoteStorage});
+    if(parts[0]==='auth'&&parts[1]==='status') return json({environment:dataEnvironment(),maintenance:process.env.YIBAN_MAINTENANCE_MODE==='1',resetTarget:process.env.YIBAN_MAINTENANCE_MODE==='1'&&process.env.DATABASE_URL?resetFingerprint(new URL(process.env.DATABASE_URL).hostname+new URL(process.env.DATABASE_URL).pathname):undefined,needsSetup:!(await hasAdmin()),user:await sessionFromRequest(request),remoteStorage:usesRemoteStorage});
     const auth=await guard(request);if(auth.error)return auth.error;
+    if(parts[0]==='auth'&&parts[1]==='families')return json(await myFamilies(auth.user));
     if(parts[0]==='credits') {
       if(parts[1]==='balance')return json(await credits.balance(auth.user.id));
       const offset=Math.max(0,Math.floor(Number(new URL(request.url).searchParams.get('offset'))||0));
@@ -332,7 +338,7 @@ export async function GET(request,{params}) {
   } catch(e) {return bad(e,parts[0]==='media'?404:500);}
 }
 
-export async function POST(request,context) {
+async function POSTHandler(request,context) {
   try {
     const originError=ensureOrigin(request);if(originError)return originError;
     const user=await sessionFromRequest(request);
@@ -388,6 +394,7 @@ async function handlePost(request,{params},billing) {
     if(parts[0]==='auth') {
       if(parts[1]==='setup') {
         const body=await request.json();
+        if(process.env.VERCEL&&(!process.env.YIBAN_SETUP_TOKEN||body.setupToken!==process.env.YIBAN_SETUP_TOKEN))return forbidden();
         if(await hasAdmin())return forbidden();
         const user=await createUser(body,'admin');
         return setSessionCookie(json({user},201),await createSession(user.id),request);
@@ -423,16 +430,19 @@ async function handlePost(request,{params},billing) {
       }
     }
     const auth=await guard(request);if(auth.error)return auth.error;
+    if(parts[0]==='auth'&&parts[1]==='families'){const body=await request.json();return json(await createFamily(auth.user,body.name),201);}
+    if(parts[0]==='auth'&&parts[1]==='family-join'){const body=await request.json();return json(await joinFamilyInvite(auth.user,body.code));}
+    if(parts[0]==='auth'&&parts[1]==='family-switch'){const body=await request.json();return json(await switchFamily(auth.user,body.familyId));}
     if(parts[0]==='credits'&&parts[1]==='grant') {
-      if(auth.user.role!=='admin')return forbidden();
+      if(!await platformOwner(auth.user))return forbidden();
       const body=await request.json();
-      if(!await get('users',String(body.userId||'')))return json({error:'账号不存在'},404);
+      if(!await platformAccount(auth.user,String(body.userId||'')))return json({error:'账号不存在'},404);
       return json(await credits.grant({userId:body.userId,actorId:auth.user.id,amount:body.amount,note:body.note,
         requestKey:request.headers.get('idempotency-key')||randomUUID()}),201);
     }
     if(parts[0]==='auth'&&parts[1]==='invite') {
       if(auth.user.role!=='admin')return forbidden();
-      const body=await request.json();return json(await issueInvite(body.role));
+      const body=await request.json();return json(await issueInvite(body.role,auth.user.familyId));
     }
     // 写操作统一按白名单放行「任何已登录用户都能用」的接口，其余一律要求 editor。
     // 反过来写（黑名单列 editor 接口）会让以后新增的接口默认对所有登录用户开放，
@@ -474,10 +484,12 @@ async function handlePost(request,{params},billing) {
       return json({url:`/api/media/${name}`,type:file.type,name:file.name});
     }
     const body=await request.json();
+    if(body.memberId&&['stage','highlights'].includes(parts[0])&&!await get('members',String(body.memberId)))return json({error:'家人不存在'},404);
+    if(body.subjectId&&parts[0]==='memories'&&!await get('members',String(body.subjectId)))return json({error:'家人不存在'},404);
     if(parts[0]==='comments') {
       const memory=await get('memories',body.memoryId);if(!memory) throw new Error('记忆不存在');
       const comment=String(body.text||'').trim().slice(0,1000);if(!comment) throw new Error('请输入留言');
-      const activity={id:randomUUID(),familyId:'family',userId:auth.user.id,actorName:auth.user.name,type:'comment',text:`给「${memory.title}」留下了留言`,comment,memoryId:memory.id,createdAt:new Date().toISOString()};
+      const activity={id:randomUUID(),familyId:auth.user.familyId,userId:auth.user.id,actorName:auth.user.name,type:'comment',text:`给「${memory.title}」留下了留言`,comment,memoryId:memory.id,createdAt:new Date().toISOString()};
       return json(await put('activity',activity),201);
     }
     if(parts[0]==='memories') {
@@ -486,10 +498,11 @@ async function handlePost(request,{params},billing) {
       memory.recorderId=auth.user.id;memory.recorderName=auth.user.name;
       for(const key of ['cover','audio','video']) if(body[key]) {
         if(!MEDIA_PATH_RE.test(body[key])) throw new Error('素材地址不合法');
+        await assertFamilyMedia(body[key],auth.user);
         memory[key]=body[key];
       }
       if(memory.cover) memory.assetType='photo';
-      memory.id=randomUUID();memory.familyId='family';memory.createdAt=new Date().toISOString();memory.updatedAt=memory.createdAt;memory.isDemo=false;
+      memory.id=randomUUID();memory.familyId=auth.user.familyId;memory.createdAt=new Date().toISOString();memory.updatedAt=memory.createdAt;memory.isDemo=false;
       await put('memories',memory);await log('created',`添加了记忆「${memory.title}」`,memory.id);
       return json(memory,201);
     }
@@ -498,6 +511,7 @@ async function handlePost(request,{params},billing) {
       // 用 aiReady() 判断而不是 AI_API_KEY：模型可能通过 DEEPSEEK_API_KEY 等
       // 预设服务商配置，只查一个变量会让这类部署静默退化成纯文本整理。
       if(body.cover&&/^\/api\/media\/[a-f0-9-]+\.(jpg|png|webp)$/.test(body.cover)&&aiReady()) {
+        await assertFamilyMedia(body.cover,auth.user);
         const name=path.basename(body.cover);
         const media=await readMediaBuffer(name,(await get('uploads',name))?.blobUrl);
         if(!media)throw new Error('图片素材不存在');
@@ -512,7 +526,7 @@ async function handlePost(request,{params},billing) {
     // 真正要花钱的（声音复刻、图生视频）仍然单独要求 editor。
     if(parts[0]==='stage') {
       if(parts[1]==='milestones') {
-        const memberId=String(body.memberId||'');if(!memberId) throw new Error('先选一位家人');
+        const memberId=String(body.memberId||'');if(!memberId||!await get('members',memberId)) throw new Error('先选一位家人');
         const key=String(body.key||'');
         if(!MILESTONES.some(m=>m.key===key)) throw new Error('没有这个里程碑');
         const old=await get('milestones',memberId)||{id:memberId,done:[]};
@@ -522,7 +536,7 @@ async function handlePost(request,{params},billing) {
         return json({...milestoneProgress(done),memberId});
       }
       if(parts[1]==='quotes') {
-        const quote={...sanitizeQuote(body),id:randomUUID(),familyId:'family',userId:auth.user.id,createdAt:new Date().toISOString()};
+        const quote={...sanitizeQuote(body),id:randomUUID(),familyId:auth.user.familyId,userId:auth.user.id,createdAt:new Date().toISOString()};
         await put('quotes',quote);
         await log('quote',`记下了一句童言童语`);
         return json(quote,201);
@@ -530,7 +544,7 @@ async function handlePost(request,{params},billing) {
       if(parts[1]==='answers') {
         const key=String(body.key||'');if(!GROWTH_QUESTIONS.some(q=>q.key===key)) throw new Error('没有这个问题');
         const answer=String(body.answer||'').trim().slice(0,300);if(!answer) throw new Error('先写下答案');
-        const record={id:randomUUID(),familyId:'family',memberId:String(body.memberId||''),key,answer,
+        const record={id:randomUUID(),familyId:auth.user.familyId,memberId:String(body.memberId||''),key,answer,
           year:/^\d{4}$/.test(String(body.year||''))?String(body.year):new Date().getFullYear().toString(),
           createdAt:new Date().toISOString()};
         await put('answers',record);return json(record,201);
@@ -538,7 +552,7 @@ async function handlePost(request,{params},billing) {
     }
     if(parts[0]==='highlights') {
       // G 高光时刻：一次郑重其事的记录，值得单独存、单独展示。
-      const highlight={...sanitizeHighlight(body),id:randomUUID(),familyId:'family',userId:auth.user.id,createdAt:new Date().toISOString()};
+      const highlight={...sanitizeHighlight(body),id:randomUUID(),familyId:auth.user.familyId,userId:auth.user.id,createdAt:new Date().toISOString()};
       // 挂上主图：允许从已有记忆里选一段（存 memoryId），前端只展示已确认的记忆作候选。
       if(body.memoryId) {
         const memory=await get('memories',String(body.memoryId));
@@ -568,7 +582,7 @@ async function handlePost(request,{params},billing) {
       const memories=retrieveMemories(confirmed,raw,3);
       let thread=body.threadId?await get('companion_threads',String(body.threadId)):null;
       if(thread&&thread.userId!==auth.user.id) return forbidden();
-      if(!thread) thread={id:randomUUID(),familyId:'family',userId:auth.user.id,messages:[],notes:[],createdAt:new Date().toISOString()};
+      if(!thread) thread={id:randomUUID(),familyId:auth.user.familyId,userId:auth.user.id,messages:[],notes:[],createdAt:new Date().toISOString()};
       // 不再有本地兜底：模型没答上来就如实报错，绝不拿模板话冒充它。
       await billing.reserve(auth.user.id,'companion');
       const reply=await chatWithCompanion(buildMessages(companion,{history:thread.messages,text:raw,memories,notes:thread.notes}));
@@ -621,7 +635,7 @@ async function handlePost(request,{params},billing) {
       const now=new Date().toISOString();
       const messages=[...history,{role:'user',text:raw,at:now},{role:'role',text:answer.text,at:now,mode:answer.mode}];
       const trimmed=messages.length>MAX_MESSAGES?messages.slice(-MAX_MESSAGES):messages;
-      const updated={...(thread||{id:`${auth.user.id}:${setting.roleId}`,familyId:'family',userId:auth.user.id,createdAt:now}),roleId:setting.roleId,toneId:setting.toneId,name:setting.name,useMemories:setting.useMemories,messages:trimmed,updatedAt:now};
+      const updated={...(thread||{id:`${auth.user.id}:${setting.roleId}`,familyId:auth.user.familyId,userId:auth.user.id,createdAt:now}),roleId:setting.roleId,toneId:setting.toneId,name:setting.name,useMemories:setting.useMemories,messages:trimmed,updatedAt:now};
       await put('role_threads',updated);
       return json({
         messages:trimmed.slice(-2),setting,threadId:updated.id,
@@ -641,7 +655,7 @@ async function handlePost(request,{params},billing) {
       const name=String(body.name||'').trim().slice(0,30);if(!name) throw new Error('请填写成员姓名');
       // birthYear 是全年龄段功能的地基：有了它才能算「那年你几岁」。
       const birthYear=sanitizeBirthYear(body.birthYear);
-      const member={id:randomUUID(),familyId:'family',name,relation:String(body.relation||'家人').slice(0,30),role:'家庭成员',color:'sage',birthYear};
+      const member={id:randomUUID(),familyId:auth.user.familyId,name,relation:String(body.relation||'家人').slice(0,30),role:'家庭成员',color:'sage',birthYear};
       await put('members',member);return json(member,201);
     }
     if(parts[0]==='anniversaries') {
@@ -649,7 +663,7 @@ async function handlePost(request,{params},billing) {
       if(!title||!/^\d{2}-\d{2}$/.test(date)) throw new Error('请填写名称并选择日期');
       const [month,day]=date.split('-').map(Number);const d=new Date(2024,month-1,day);
       if(d.getMonth()!==month-1||d.getDate()!==day) throw new Error('日期不合法');
-      return json(await put('anniversaries',{id:randomUUID(),familyId:'family',title,date,memoryIds:[]}));
+      return json(await put('anniversaries',{id:randomUUID(),familyId:auth.user.familyId,title,date,memoryIds:[]}));
     }
     if(parts[0]==='voice'&&parts[1]==='enroll') {
       if(!voiceConfigured())return json({error:'未配置声音合成服务，请联系管理员'},503);
@@ -780,7 +794,7 @@ async function handlePost(request,{params},billing) {
   }catch(e){return bad(e);}
 }
 
-export async function PATCH(request,{params}) {
+async function PATCHHandler(request,{params}) {
   const {path:parts}=await params;
   try {
     const originError=ensureOrigin(request);if(originError)return originError;
@@ -822,6 +836,7 @@ export async function PATCH(request,{params}) {
       const updated={...old,...tidyMemory(body,old),updatedAt:new Date().toISOString()};
       for(const key of ['cover','audio','video']) if(body[key] && body[key]!==old[key]) {
         if(!MEDIA_PATH_RE.test(body[key])) throw new Error('素材地址不合法');
+        await assertFamilyMedia(body[key],auth.user);
         updated[key]=body[key];
       }
       if(updated.cover?.startsWith('/api/media/')) updated.assetType='photo';
@@ -842,13 +857,13 @@ export async function PATCH(request,{params}) {
     if(parts[0]==='settings') {
       const old=await get('settings','family');
       const update={...old,familyName:String(body.familyName??old.familyName).trim().slice(0,60)||old.familyName,fontSize:['large','extra'].includes(body.fontSize)?body.fontSize:old.fontSize,highContrast:Boolean(body.highContrast??old.highContrast),autoPlay:Boolean(body.autoPlay??old.autoPlay),speechRate:Math.min(1.2,Math.max(0.5,Number(body.speechRate??old.speechRate)||0.85))};
-      return json(await put('settings',update));
+      const result=await put('settings',update);const family=await get('families',auth.user.familyId);if(family)await put('families',{...family,name:update.familyName});return json(result);
     }
     return json({error:'接口不存在'},404);
   }catch(e){return bad(e);}
 }
 
-export async function DELETE(request,{params}) {
+async function DELETEHandler(request,{params}) {
   const {path:parts}=await params;
   try {
     const originError=ensureOrigin(request);if(originError)return originError;
@@ -856,9 +871,7 @@ export async function DELETE(request,{params}) {
       const auth=await guard(request);if(auth.error)return auth.error;
       if(auth.user.role!=='admin')return forbidden();
       const target=await get('users',parts[2]);if(!target)return json({error:'账号不存在'},404);
-      if(target.role==='admin')throw new Error('不能删除管理员账号');
-      for(const session of await all('sessions'))if(session.userId===target.id)await remove('sessions',session.id);
-      await remove('users',target.id);return json({ok:true});
+      return json(await removeFamilyAccount(auth.user,target.id));
     }
     const auth=await guard(request,'editor');if(auth.error)return auth.error;
     if(!['memories','members','anniversaries','quotes','answers','highlights'].includes(parts[0])) return json({error:'接口不存在'},404);
@@ -874,3 +887,5 @@ export async function DELETE(request,{params}) {
     return json({ok:true});
   }catch(e){return bad(e);}
 }
+
+export const GET=scopedRoute(GETHandler),POST=scopedRoute(POSTHandler),PATCH=scopedRoute(PATCHHandler),DELETE=scopedRoute(DELETEHandler);

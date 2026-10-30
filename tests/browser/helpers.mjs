@@ -35,6 +35,7 @@ export async function modelReady(request){
 export async function signInAsNewAdmin(page,{name='测试家长',prefix='u',credits=1000}={}){
   const req=page.request;
   const status=await (await req.get('/api/auth/status')).json();
+  expect(['test','development','preview'],'禁止在正式站创建测试账号').toContain(status.environment);
   if(status.needsSetup){
     const setup=await req.post('/api/auth/setup',{data:ROOT_ADMIN});
     expect(setup.status(),'首次 setup 应成功').toBe(201);
@@ -59,8 +60,11 @@ export async function signInAsNewAdmin(page,{name='测试家长',prefix='u',cred
 // Explicit test funding; production signup never grants credits automatically.
 export async function fundTestAccount(request,amount=1000) {
   const status=await (await request.get('/api/auth/status')).json();
-  const result=await request.post('/api/credits/grant',{data:{userId:status.user.id,amount,note:'隔离浏览器测试额度'}});
-  expect(result.status(),'管理员为测试账号发放积分').toBe(201);
+  expect(['test','development','preview'],'禁止测试脚本操作正式积分').toContain(status.environment);
+  const owner=status.user.platformRole==='owner';
+  if(!owner){const login=await request.post('/api/auth/login',{data:{email:ROOT_ADMIN.email,password:ROOT_ADMIN.password}});expect(login.status()).toBe(200);}
+  try{const result=await request.post('/api/credits/grant',{data:{userId:status.user.id,amount,note:'隔离浏览器测试额度'}});expect(result.status(),'平台管理员发放测试积分').toBe(201);}
+  finally{if(!owner){const login=await request.post('/api/auth/login',{data:{email:status.user.email,password:'TestPassword123!'}});expect(login.status()).toBe(200);}}
 }
 
 // Primary navigation stays focused; auxiliary tools live in the real More menu.

@@ -1,3 +1,4 @@
+import {scopedRoute} from '../../../../lib/request-scope.mjs';
 import {sessionFromRequest,sameOrigin} from '../../../../lib/auth.mjs';
 import {meta,listThreads,createThread,readThread,updateThread,deleteThread,selectBranch,feedback,interactMessage,deleteMessage,threadGreeting,newThreadGreeting} from '../../../../lib/chat-workspace.mjs';
 import {all} from '../../../../lib/store.mjs';
@@ -48,4 +49,5 @@ async function handle(request,{params}){
     return Response.json({error:'接口不存在'},{status:404});
   }catch(error){return Response.json({error:error.message||'请求未能完成',...(error.code?{code:error.code}:{}),...(error.jobId?{jobId:error.jobId}:{})},{status:error.status||400});}
 }
-export {handle as GET,handle as POST,handle as PATCH,handle as DELETE};
+const scoped=scopedRoute(handle);
+export {scoped as GET,scoped as POST,scoped as PATCH,scoped as DELETE};

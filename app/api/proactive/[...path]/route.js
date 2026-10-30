@@ -1,3 +1,4 @@
+import {scopedRoute} from '../../../../lib/request-scope.mjs';
 import {timingSafeEqual} from 'node:crypto';
 import {sessionFromRequest,sameOrigin} from '../../../../lib/auth.mjs';
 import {readSettings,updateSettings,activity,accountState,reasonFor,dismissReason,runProactiveTick} from '../../../../lib/proactive-contact.mjs';
@@ -31,4 +32,5 @@ async function handle(request,{params}){
   return Response.json({error:'接口不存在'},{status:404});
  }catch(error){return Response.json({error:error.message||'请求失败'},{status:error.status||400});}
 }
-export {handle as GET,handle as POST,handle as PATCH,handle as DELETE};
+const scoped=scopedRoute(handle);
+export {scoped as GET,scoped as POST,scoped as PATCH,scoped as DELETE};

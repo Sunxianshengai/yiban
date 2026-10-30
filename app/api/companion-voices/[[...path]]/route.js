@@ -1,3 +1,4 @@
+import {scopedRoute} from '../../../../lib/request-scope.mjs';
 import {sessionFromRequest,sameOrigin} from '../../../../lib/auth.mjs';
 import {listCompanionVoices,createCompanionVoice,refreshCompanionVoice,changeCompanionVoice,deleteCompanionVoice,previewCompanionVoice,saveCompanionAudio} from '../../../../lib/companion-voice-library.mjs';
 import {inspectVoiceWav} from '../../../../lib/voice-audio.mjs';
@@ -24,4 +25,5 @@ async function handle(request,{params}){
     return json({error:'接口不存在'},404);
   }catch(error){return json({error:error.message||'声音操作未能完成'},error.status||400);}
 }
-export {handle as GET,handle as POST,handle as PATCH,handle as DELETE};
+const scoped=scopedRoute(handle);
+export {scoped as GET,scoped as POST,scoped as PATCH,scoped as DELETE};

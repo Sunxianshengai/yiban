@@ -19,6 +19,7 @@ data/
 *.db
 *.sqlite
 test-results/
+test-results-*/
 playwright-report/
 artifacts/
 
@@ -38,3 +39,5 @@ public/perf-screenshots/
 # 本地代理技能与评审截图，不进仓库
 .agents/
 .impeccable/
+.test-runs/
+.next-test/
