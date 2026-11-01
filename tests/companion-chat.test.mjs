@@ -88,6 +88,6 @@ test('reply protocol carries directives and media honesty per turn',()=>{
   const withAudio=companionReplyProtocol({allowedStickers:[],hasAudio:true});
   assert.match(withAudio,/听不了语音内容/);
   const plain=companionReplyProtocol({allowedStickers:['nod']});
-  assert.match(plain,/开场白：那我走/);
+  assert.match(plain,/有兴趣、主动问、能聊下去/);
   assert.doesNotMatch(plain,/用户本轮的明确要求/);
 });

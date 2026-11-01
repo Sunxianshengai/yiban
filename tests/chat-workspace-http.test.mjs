@@ -38,6 +38,11 @@ test('real streamed chunks are persisted as a complete answer and idempotent rep
   let calls=0;
   globalThis.fetch=async(_url,request)=>{
     if(!JSON.parse(request.body).stream)return Response.json({choices:[{message:{content:'{"memories":[],"ids":[]}'}}]});calls++;assert.equal(JSON.parse(request.body).stream,true);
+    const prompt=JSON.parse(request.body).messages[0].content;
+    assert.match(prompt,/有兴趣、主动问、能聊下去/);
+    assert.match(prompt,/不在问句里塞入虚构的后续/);
+    assert.match(prompt,/好滴呢/);
+    assert.doesNotMatch(prompt,/开场白：那我走/);
     const data=['data: '+JSON.stringify({choices:[{delta:{content:'我在听。'},finish_reason:null}]})+'\n\n','data: '+JSON.stringify({choices:[{delta:{content:'慢慢说。'},finish_reason:'stop'}]})+'\n\n','data: [DONE]\n\n'].join('');
     const bytes=new TextEncoder().encode(data);
     return new Response(new ReadableStream({start(c){for(let i=0;i<bytes.length;i+=7)c.enqueue(bytes.slice(i,i+7));c.close();}}),{headers:{'Content-Type':'text/event-stream'}});
