@@ -29,6 +29,22 @@ test('dense daily replies fall back to whole sentences without losing content',(
   assert.deepEqual(parseCompanionReply('哈哈哈好哒。',{final:true,splitLongText:true}).parts,[{type:'text',text:'哈哈哈好哒。'}]);
 });
 
+test('short sentences and unpunctuated lines get individual bubbles with exactly one required sticker',()=>{
+  const raw='哦哦，原来这样。你准备什么时候去？\n我刚才理解错了\n那就按你说的来';
+  const options={final:true,splitLongText:true,requireSticker:true,allowedStickers:['nod','laugh']};
+  const parsed=parseCompanionReply(raw,options);
+  assert.deepEqual(parsed.parts.map(p=>p.type==='text'?p.text:p.stickerId),['哦哦，原来这样。','你准备什么时候去？','我刚才理解错了','那就按你说的来','nod']);
+  assert.equal(parsed.text,raw); // splitting is presentation, not a rewritten transcript
+  for(const controls of ['\n[[sticker:nod]]','\n[[sticker:unknown]]','\n[[sticker:nod]]\n[[sticker:laugh]]']){
+    assert.equal(parseCompanionReply(raw+controls,options).parts.filter(p=>p.type==='sticker').length,1);
+  }
+  assert.equal(parseCompanionReply('',options).parts.length,0);
+  assert.equal(parseCompanionReply('[[sticker:unknown]]',options).parts.length,0);
+  assert.equal(parseCompanionReply(raw,{...options,final:false}).parts.filter(p=>p.type==='sticker').length,0);
+  assert.equal(parseCompanionReply(raw,{...options,allowStickers:false}).parts.filter(p=>p.type==='sticker').length,0);
+  assert.equal(parseCompanionReply(raw,{...options,allowedStickers:[]}).parts.filter(p=>p.type==='sticker').length,0);
+});
+
 test('daily fallback keeps quotes, inline code and structured content intact',()=>{
   const quote='“'+('先把这一段完整的话听完。不要在引号中间拆开。').repeat(4)+'”';
   const parsed=parseCompanionReply('他说：'+quote+'接下来才是我的回应。',{final:true,splitLongText:true});

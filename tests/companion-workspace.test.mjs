@@ -25,7 +25,7 @@ test('real multi-bubble and sticker replies persist, cool down, replay and bill 
   const thread=await newThread();const first=await send(thread,{texts:['面试结束了。','先别分析，我想歇会儿。']},'im-first');
   assert.equal(first.messages[0].parts.length,2);assert.equal(first.messages[1].parts.length,3);assert.equal(first.messages[1].parts[2].stickerId,'greeting');assert.doesNotMatch(first.messages[1].text,/sticker|---/);assert.match(systems[0],/小满/);assert.match(systems[0],/尊重用户的节奏/);assert.match(systems[0],/不假定|不编造/);
   await(await call('chat','POST',`threads/${thread.id}/generate`,{body:{texts:['面试结束了。','先别分析，我想歇会儿。']},key:'im-first'})).text();assert.equal(normalCalls,1);
-  const second=await send(thread,{text:'嗯，歇一会儿。'},'im-second');assert.equal(second.messages.at(-1).parts.some(part=>part.type==='sticker'),false);assert.deepEqual(await credits.balance(user.id),{balance:28,held:0});
+  const second=await send(thread,{text:'嗯，歇一会儿。'},'im-second');assert.equal(second.messages.at(-1).parts.filter(part=>part.type==='sticker').length,1);assert.notEqual(second.messages.at(-1).parts.find(part=>part.type==='sticker').stickerId,'greeting');assert.deepEqual(await credits.balance(user.id),{balance:28,held:0});
   assert.equal((await call('chat','POST',`threads/${thread.id}/generate`,{body:{stickerId:'https://bad.invalid/x'},key:'bad-sticker'})).status,400);
   assert.equal((await call('chat','POST',`threads/${thread.id}/generate`,{body:{stickerId:'quiet',texts:['夹带内容']},key:'bad-combination'})).status,400);
 });
@@ -119,4 +119,14 @@ test('imported stickers can be sent and generated, persist through reload, and r
   await send(thread,{stickerId:sticker.id},'imported-sticker-once');
   assert.equal(requests,1);assert.equal((await credits.balance(user.id)).balance,before.balance-1);
   assert.equal((await call('chat','GET',`threads/${thread.id}`,{as:'other'})).status,404);
+});
+
+test('a completed marker-free answer gets separate sentence bubbles and a persisted fallback sticker, explicit opt-out wins',async()=>{
+  globalThis.fetch=async(_url,req)=>JSON.parse(req.body).stream?stream('哦哦，原来这样。你准备什么时候去？\n好滴呢\n那就这样'):jsonModel({memories:[],ids:[]});
+  const thread=await newThread();const first=await send(thread,{text:'想和你聊聊'},'mandatory-sticker');
+  const reply=first.messages.at(-1);
+  assert.equal(reply.parts.filter(part=>part.type==='sticker').length,1);
+  assert.deepEqual(reply.parts.filter(part=>part.type==='text').map(part=>part.text),['哦哦，原来这样。','你准备什么时候去？','好滴呢','那就这样']);
+  const next=await send(thread,{text:'这轮别发表情'},'mandatory-sticker-optout');
+  assert.equal(next.messages.at(-1).parts.some(part=>part.type==='sticker'),false);
 });

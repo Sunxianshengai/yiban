@@ -19,7 +19,7 @@ import ProactiveSettings,{proactiveAPI} from './ProactiveSettings';
 import {chatAPI} from '../lib/chat-client.mjs';
 import {uploadMedia} from '../lib/upload-client.mjs';
 import {EMOJI_CATEGORIES,loadEmojiData,recordEmoji,toggleFavorite,recentEmojis} from '../lib/emoji.mjs';
-import {DEFAULT_COMPANION,COMPANION_STICKERS,stickerById,partDelayMs} from '../lib/companion-chat.mjs';
+import {DEFAULT_COMPANION,COMPANION_STICKERS,stickerById,partDelayMs,conversationBubbles} from '../lib/companion-chat.mjs';
 async function walletAPI(path){const response=await fetch('/api'+path,{cache:'no-store'});const data=await response.json();if(!response.ok)throw new Error(data.error);return data;}
 
 const DEFAULTS={mode:'daily',tone:'natural',memoryMode:'off',memoryIds:[]};
@@ -362,7 +362,8 @@ export default function Chat({accountId='me',accountName='',accountAvatar=null,f
   const visibleParts=message=>{
     if(message.role==='assistant'&&(isGenerating(message)||['failed','stopped'].includes(message.status)))return[];
     const parts=message.parts?.length?message.parts:[{type:'text',text:message.text}];
-    return message===liveMessage&&message.role==='assistant'?parts.slice(0,liveShown):parts;
+    const shown=message===liveMessage&&message.role==='assistant'?parts.slice(0,liveShown):parts;
+    return message.role==='assistant'&&settings.mode==='daily'?shown.flatMap(part=>part.type==='text'?conversationBubbles(part.text).map(text=>({...part,text})):part):shown;
   };
   const contacts=[{...defaultProfile,id:null},...profiles];
   const timeLabel=value=>value?new Date(value).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}):'';
