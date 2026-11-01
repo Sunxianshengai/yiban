@@ -57,7 +57,7 @@ export async function signInAsNewAdmin(page,{name='测试家长',prefix='u',cred
   return email;
 }
 
-// Explicit test funding; production signup never grants credits automatically.
+// Explicit test funding; the isolated server disables welcome promotions to test exact balances.
 export async function fundTestAccount(request,amount=1000) {
   const status=await (await request.get('/api/auth/status')).json();
   expect(['test','development','preview'],'禁止测试脚本操作正式积分').toContain(status.environment);

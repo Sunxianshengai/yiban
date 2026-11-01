@@ -1,3 +1,4 @@
+import {ensureWelcomeCredits} from '../../../lib/welcome-credits.mjs';
 import {resetFingerprint} from '../../../lib/reset-plan.mjs';
 import {scopedRoute} from '../../../lib/request-scope.mjs';
 import {dataEnvironment} from '../../../lib/data-environment.mjs';
@@ -397,6 +398,7 @@ async function handlePost(request,{params},billing) {
         if(process.env.VERCEL&&(!process.env.YIBAN_SETUP_TOKEN||body.setupToken!==process.env.YIBAN_SETUP_TOKEN))return forbidden();
         if(await hasAdmin())return forbidden();
         const user=await createUser(body,'admin');
+        await ensureWelcomeCredits(user.id);
         return setSessionCookie(json({user},201),await createSession(user.id),request);
       }
       if(parts[1]==='login') {
@@ -412,6 +414,7 @@ async function handlePost(request,{params},billing) {
           loginKey();
           throw e;
         }
+        await ensureWelcomeCredits(user.id);
         return setSessionCookie(json({user}),await createSession(user.id),request);
       }
       if(parts[1]==='register') {
@@ -423,6 +426,7 @@ async function handlePost(request,{params},billing) {
         // 任何匿名访客开了一条「自己注册成管理员」的路。首个管理员只走 /auth/setup。
         if(!code) throw new Error('请填写家庭邀请码');
         const user=await acceptInvite(code,body);
+        await ensureWelcomeCredits(user.id);
         return setSessionCookie(json({user},201),await createSession(user.id),request);
       }
       if(parts[1]==='logout') {
