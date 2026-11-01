@@ -142,3 +142,6 @@
 .im-workspace .cw-message.im-found .im-message-body{outline:2px solid var(--im-accent);outline-offset:5px;border-radius:12px}
 @media(max-width:768px){.im-memory-confirm{width:100%;font-size:.875rem}.im-memory-confirm select,.im-memory-confirm textarea{font-size:max(1rem,16px)}.im-library-results>button{padding:12px 6px;min-height:64px}}
 @media(max-width:768px){.im-knock-group>p{font-size:.875rem}.im-forget{font-size:.75rem}}
+
+.im-sticker-search{display:flex;align-items:center;gap:12px;margin:4px 0 16px;font-size:.8125rem;color:var(--muted)}.im-sticker-search input{min-width:0;flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);color:var(--ink);font:inherit}.im-sticker-search input:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+@media(max-width:768px){.im-sticker-search input{font-size:16px}}

@@ -146,6 +146,7 @@ export default function Chat({accountId='me',accountName='',accountAvatar=null,f
   },[Boolean(recording&&['recording','cancelling'].includes(recording.phase))]);
   useEffect(()=>{const release=()=>{holdActive.current=false;};window.addEventListener('pointerup',release);window.addEventListener('pointercancel',release);return()=>{window.removeEventListener('pointerup',release);window.removeEventListener('pointercancel',release);cancelRecording();};},[]);
   // emoji 表情：最近使用/收藏存在本机账号命名空间里，点一下插入输入框。
+  const[stickerSearch,setStickerSearch]=useState('');
   const[emojiData,setEmojiData]=useState(()=>loadEmojiData(storage,accountId));
   useEffect(()=>{setEmojiData(loadEmojiData(storage,accountId));},[accountId]);
   function insertEmoji(emoji){setEmojiData(recordEmoji(storage,accountId,emoji));setDraft(current=>`${current}${emoji}`.slice(0,8000));requestAnimationFrame(()=>input.current?.focus());}
@@ -435,8 +436,8 @@ export default function Chat({accountId='me',accountName='',accountAvatar=null,f
         {emojiData.favs.length>0&&<div className="im-emoji-section"><h4>收藏</h4>{emojiData.favs.map(emoji=><button key={emoji} type="button" className="im-emoji-cell" aria-label={`插入 ${emoji}`} onClick={()=>insertEmoji(emoji)}>{emoji}</button>)}</div>}
         {EMOJI_CATEGORIES.slice(1).map(category=><div className="im-emoji-section" key={category.label}><h4>{category.label}</h4>{category.emojis.map(emoji=><button key={emoji} type="button" className={`im-emoji-cell${emojiData.favs.includes(emoji)?' im-emoji-faved':''}`} aria-label={`插入 ${emoji}`} title={emojiData.favs.includes(emoji)?'右键取消收藏':'右键收藏'} onClick={()=>insertEmoji(emoji)} onContextMenu={event=>{event.preventDefault();setEmojiData(toggleFavorite(storage,accountId,emoji));}}>{emoji}</button>)}</div>)}
         <p className="fa-dialog-hint">点击插入输入框；右键（长按）收藏或取消收藏。</p>
-      </div>:<div className="im-sticker-picker">{COMPANION_STICKERS.filter(s=>s.group!=='portrait').map(sticker=><button key={sticker.id} aria-label={`发送表情：${sticker.label}`} disabled={isBusy||!meta?.ai.ready||archivedThread} onClick={()=>{setDialog(null);generate({stickerId:sticker.id});}}><img src={sticker.src} alt=""/><span>{sticker.label}</span></button>)}</div>}
-      {dialog.tab!=='emoji'&&<p className="fa-dialog-hint">原创插画表情。发送后，伙伴会按语境回应；成功回复 {meta?.price||1} 积分。</p>}
+      </div>:<><label className="im-sticker-search">搜索表情<input type="search" value={stickerSearch} onChange={event=>setStickerSearch(event.target.value)} placeholder="笑、吃饭、收到…"/></label><div className="im-sticker-picker">{COMPANION_STICKERS.filter(s=>s.group!=='portrait'&&(!stickerSearch.trim()||[s.label,...s.tags].join(' ').includes(stickerSearch.trim()))).map(sticker=><button key={sticker.id} aria-label={`发送表情：${sticker.label}`} disabled={isBusy||!meta?.ai.ready||archivedThread} onClick={()=>{setDialog(null);generate({stickerId:sticker.id});}}><img src={sticker.src} alt="" loading="lazy" decoding="async"/><span>{sticker.label}</span></button>)}</div>{!COMPANION_STICKERS.some(s=>s.group!=='portrait'&&[s.label,...s.tags].join(' ').includes(stickerSearch.trim()))&&<p role="status" className="fa-dialog-hint">没有找到对应表情，换个词试试。</p>}</>}
+      {dialog.tab!=='emoji'&&<p className="fa-dialog-hint">聊天表情。发送后，伙伴会按语境回应；成功回复 {meta?.price||1} 积分。</p>}
     </Modal>}
     {library&&<ChatLibrary mode={library.mode} source={library.source} active={active} onClose={()=>setLibrary(null)} onLocate={(id,messageId)=>loadThread(id,messageId)}/>}
     {callOpen&&<CompanionCall key={currentProfileId||'default'} profile={currentPersona} profileId={currentProfileId||'default'} onClose={()=>setCallOpen(false)}/>}

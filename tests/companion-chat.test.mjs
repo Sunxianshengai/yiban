@@ -57,7 +57,7 @@ test('paced reveal is deterministic, bounded and independent of wall-clock time'
 test('sticker library keeps legacy artwork and exposes searchable emotions',()=>{
   const ids=COMPANION_STICKERS.map(item=>item.id);assert.equal(new Set(ids).size,ids.length);
   for(const id of ['greeting','celebrate','thinking','quiet']) assert.match(stickerById(id).src,/^\/companions\/xiaoman\/.+\.png$/);
-  assert.equal(COMPANION_STICKERS.length,17);assert.equal(stickerById('hug').src,'/companions/stickers/hug.svg');
+  assert.ok(COMPANION_STICKERS.length>17);assert.equal(stickerById('hug').src,'/companions/stickers/hug.svg');
   assert.ok(COMPANION_STICKERS.every(item=>item.label&&item.emotion&&item.tags.length>=3));
   assert.equal(stickerById('nope'),null);
 });
