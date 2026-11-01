@@ -56,7 +56,7 @@ import {CONCERNS,TONES,KINDS,ROLES,MAX_TEXT as ROLE_MAX_TEXT,sanitizeRole,roleOp
 import {PERSONAS,RELATIONS,MAX_MESSAGES,MAX_NOTES,MAX_TEXT,sanitizeCompanion,openingLine,retrieveMemories,buildMessages,localNotes} from '../../../lib/companion.mjs';
 import {voiceConfigured,enrollVoice,synthesizeVoice,cacheKey} from '../../../lib/voice.mjs';
 import {generateNarration,pickNarrator,narrationKey,videoKey,buildVideoPrompt,videoConfigured,createVideoTask,fetchVideoTask,clampResolution,clampSeconds,MAX_SCRIPT,MAX_IMAGE_BYTES,VIDEO_RESOLUTIONS,VIDEO_DEFAULT_RESOLUTION,VIDEO_DEFAULT_SECONDS} from '../../../lib/narrate.mjs';
-import {accountRole,acceptInvite,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,publicUser,platformOwner,platformAccount,joinFamilyInvite,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
+import {accountRole,acceptInvite,registerNewFamily,authenticate,clearSessionCookie,createSession,createUser,hasAdmin,issueInvite,listAccounts,publicUser,platformOwner,platformAccount,joinFamilyInvite,revokeSession,sameOrigin,sessionFromRequest,setSessionCookie} from '../../../lib/auth.mjs';
 import {FONT_SCALES,sanitizePreferences} from '../../../lib/core.mjs';
 import {STAGES,MILESTONES,INTERVIEW,GROWTH_QUESTIONS,HIGHLIGHT_TEMPLATES,buildTimeline,buildParallel,milestoneProgress,sanitizeQuote,sanitizeBirthYear,sanitizeHighlight} from '../../../lib/lifestage.mjs';
 import * as credits from '../../../lib/credits.mjs';
@@ -422,10 +422,8 @@ async function handlePost(request,{params},billing) {
         const body=await request.json();
         const code=String(body.code||'').trim();
         // 邀请码自带角色：管理员邀请码建管理员，编辑/查看者邀请码按原角色加入。
-        // 注意这里**不能**在没有邀请码时直接 createUser(...,'admin')：那等于给
-        // 任何匿名访客开了一条「自己注册成管理员」的路。首个管理员只走 /auth/setup。
-        if(!code) throw new Error('请填写家庭邀请码');
-        const user=await acceptInvite(code,body);
+        // 留空创建全新的独立家庭，只有家庭管理员权限；平台拥有者仍只由首次 setup 建立。
+        const user=code?await acceptInvite(code,body):await registerNewFamily(body);
         await ensureWelcomeCredits(user.id);
         return setSessionCookie(json({user},201),await createSession(user.id),request);
       }
@@ -831,6 +829,7 @@ async function PATCHHandler(request,{params}) {
       const name=String(body.name||'').trim().slice(0,30);
       if(!name) throw new Error('请输入名字');
       const target=await get('users',parts[2]);if(!target)return json({error:'账号不存在'},404);
+      if(await platformOwner(target)&&!await platformOwner(auth.user))return forbidden();
       const updated={...target,name};
       await put('users',updated);
       return json({user:publicUser(updated)});

@@ -38,7 +38,7 @@ export default function Credits({api,notify,isAdmin}) {
   },[api,offset]);
   useEffect(()=>{load();},[load]);
   useEffect(()=>{
-    if(isAdmin)api('/auth/accounts').then(data=>setAccounts(data.accounts)).catch(e=>setError(e.message));
+    if(isAdmin)api('/platform').then(data=>setAccounts(data.accounts)).catch(e=>setError(e.message));
   },[api,isAdmin]);
   const grant=async e=>{
     e.preventDefault();if(busy)return;
