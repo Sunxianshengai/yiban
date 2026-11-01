@@ -680,8 +680,14 @@ async function handlePost(request,{params},billing) {
       if(typeof audioUrl==='string'&&audioUrl.startsWith('/api/media/')) {
         const name=audioUrl.split('/').pop();
         const upload=await get('uploads',name);
-        if(!upload?.blobUrl) throw new Error('声音复刻需要 Vercel Blob 存储支持；请确认已连接 Blob 后重试。');
-        source=upload.blobUrl;
+        if(!upload||(!upload.shared&&upload.userId!==auth.user.id))return forbidden();
+        // 本地文件和私有 Blob 都不能由服务商直接拉取，鉴权读取后以内联音频提交。
+        const media=await readMediaBuffer(name,upload.blobUrl);
+        if(!media?.data?.length)throw new Error('录音读取失败，请重新上传');
+        if(media.data.length>10*1024*1024)throw new Error('复刻录音不能超过 10MB，请缩短后重新上传');
+        const contentType=upload.contentType||media.contentType||'audio/wav';
+        if(!/^audio\/[a-z0-9.+-]+$/i.test(contentType))throw new Error('请选择有效的音频文件');
+        source=`data:${contentType};base64,${media.data.toString('base64')}`;
       }
       await billing.reserve(auth.user.id,'voice_enroll');
       const result=await enrollVoice({memberId,audioUrl:source,consent});
