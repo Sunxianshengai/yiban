@@ -9,7 +9,7 @@
 3. Windows 另开终端执行 `npm run electron`，登录后点“放到桌面”。开发地址默认 `http://localhost:3000`，其他地址通过 `YIBAN_DESKTOP_URL` 设置。
 4. 托盘提供显示、隐藏、打开忆伴与退出。启用桌宠后，关闭主窗口会隐藏到托盘。
 
-现有安装包命令仍为 `npm run desktop:pack`。线上桌面版使用 `electron/desktop-config.json` 中的地址，需要先部署包含本次 `/pet`、API 与 public 素材的网页版本。本次没有部署或发布安装包。
+现有安装包命令仍为 `npm run desktop:pack`。线上桌面版使用 `electron/desktop-config.json` 中的地址，需要先部署包含本次 `/pet`、API 与 public 素材的网页版本。网页部署不会自动发布 Windows 安装包。
 
 ## 行为约定
 
