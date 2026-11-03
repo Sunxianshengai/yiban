@@ -2,6 +2,8 @@ const { app, BrowserWindow, dialog, shell } = require('electron');
 const path = require('node:path');
 
 const config = require('./desktop-config.json');
+const {createPetManager}=require('./pet-manager.cjs');
+let mainWindow=null,petManager=null;
 
 function getAppUrl() {
   if (!app.isPackaged) {
@@ -58,12 +60,12 @@ async function createWindow() {
   const { session } = require('electron');
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
     const requestsAudio = permission === 'media' && details.mediaTypes?.includes('audio');
-    callback(requestsAudio && isTrustedOrigin(details.requestingUrl || webContents.getURL()));
+    callback((requestsAudio || permission === 'notifications') && isTrustedOrigin(details.requestingUrl || webContents.getURL()));
   });
 
   session.defaultSession.setPermissionCheckHandler((webContents, permission, requestingUrl, details) => {
     const requestsAudio = permission === 'media' && details?.mediaType === 'audio';
-    return requestsAudio && isTrustedOrigin(requestingUrl || webContents?.getURL());
+    return (requestsAudio || permission === 'notifications') && isTrustedOrigin(requestingUrl || webContents?.getURL());
   });
 
   const window = new BrowserWindow({
@@ -73,11 +75,16 @@ async function createWindow() {
     minHeight: 680,
     autoHideMenuBar: true,
     webPreferences: {
+      preload:path.join(__dirname,'pet-preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
     },
   });
+  mainWindow=window;
+  if(!petManager)petManager=createPetManager({appUrl,getMainWindow:()=>mainWindow});
+  window.on('close',event=>{if(petManager.shouldKeepRunning()){event.preventDefault();window.hide();}});
+  window.on('closed',()=>{mainWindow=null;});
 
   window.webContents.setWindowOpenHandler(({ url }) => {
     openExternal(url);

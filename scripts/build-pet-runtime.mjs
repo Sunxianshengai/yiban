@@ -1,0 +1,5 @@
+import {build} from 'esbuild';
+await build({stdin:{contents:`export {makePetUI} from './vendor/dsh-pet/src/client/pet.ts'; export {createPetCard} from './vendor/dsh-pet/src/client/pet/card/pet-card.ts'; export {injectPetCss} from './vendor/dsh-pet/src/client/pet/css.ts'; export {flattenConfigPets} from './vendor/dsh-pet/src/shared/config.ts'; export {readSay,readSleep,readWorkStatus,readAnim,readBalance} from './vendor/dsh-pet/src/shared/state.ts'; export {makePetConfigSection} from './vendor/dsh-pet/src/client/settings.ts'; export {zh} from './vendor/dsh-pet/src/client/settings/locales/zh.ts'; export {setClickSoundEnabled} from './vendor/dsh-pet/src/client/pet/click-sound.ts'; export {fontStackOf} from './vendor/dsh-pet/src/shared/fonts.ts'; export {petBridge} from './vendor/dsh-pet/src/client/settings/bridge.ts';`,resolveDir:process.cwd(),loader:'ts'},bundle:true,format:'esm',platform:'browser',target:'es2022',outfile:'public/pet-runtime/upstream.mjs',legalComments:'inline',external:['react','react-dom','react/jsx-runtime'],minify:false});
+
+import {copyFileSync} from 'node:fs';
+copyFileSync('vendor/dsh-pet/LICENSE','public/pet-runtime/LICENSE.txt');

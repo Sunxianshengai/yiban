@@ -11,6 +11,8 @@ import './auth-motion.css';
 import './personal-memory.css';
 import './companion-chat.css';
 import './proactive-contact.css';
+import './pet/pet.css';
+import './pet/upstream-theme.css';
 
 export const metadata = {
   manifest:'/manifest.webmanifest',

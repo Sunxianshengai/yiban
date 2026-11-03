@@ -1,0 +1,32 @@
+/* The upstream components consume DSH host aliases. Scope their host palette
+   through the alias names; do not recolor or rewrite the vendored controls. */
+:root{
+ --dsw-alias-bg-layer-1:#fff;
+ --dsw-alias-bg-layer-2:#f7f7f9;
+ --dsw-alias-bg-mask:#17182260;
+ --dsw-alias-border-l1:#e7e7ed;
+ --dsw-alias-border-l2:#d9dbe3;
+ --dsw-alias-label-primary:#262733;
+ --dsw-alias-label-secondary:#565969;
+ --dsw-alias-label-tertiary:#686c7e;
+ --dsw-alias-label-caption:#686c7e;
+ --dsw-alias-label-dimmed:#9295a5;
+ --dsw-alias-state-business-primary:#4d6bfe;
+ --dsw-alias-state-error-primary:#b53542;
+ --dsw-alias-state-error-secondary:#fff0f1;
+ --dsw-alias-state-success-primary:#21824e;
+ --dsw-alias-button-info-fill:#4d6bfe;
+ --dsw-alias-button-info-hover:#3c54d5;
+ --dsw-alias-interactive-bg-hover:#f1f3f8;
+ --dsw-alias-interactive-bg-active:#e9edff;
+ --dsw-alias-tooltip-bg:#272936;
+ --dsw-static-neutral-00:#fff;
+ --dsw-focus-ring-color:#4d6bfe35;
+ --dsw-elevation-prominent:0 8px 28px #151b3029;
+ --dsw-radius-md:10px;
+ --dsw-radius-sm:6px;
+ --dsh-pet-font-family:system-ui,"Microsoft YaHei",sans-serif;
+}
+.dsh-pet-cfg__inp:focus-visible{outline:2px solid #4d6bfe;outline-offset:2px}
+.pet-hub-panel :is(input,textarea){caret-color:#4d6bfe}
+.pet-hub-panel ::selection{background:#dfe6ff;color:#262733}
