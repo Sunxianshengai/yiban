@@ -1,6 +1,8 @@
 import {sessionFromRequest,sameOrigin} from '../../../../lib/auth.mjs';
 import {petConfig,savePetConfig,petSnapshot,writePetLeaf,petBalance,petChat,petThread,petSleep,petWhisper,petTodos,PET_ACTIONS,PetError,petTick,petChatEvent} from '../../../../lib/pet-service.mjs';
 import {after} from 'next/server';
+import {scopedRoute} from '../../../../lib/request-scope.mjs';
+import {withUserScope} from '../../../../lib/access-scope.mjs';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 export const maxDuration=120;
@@ -15,7 +17,7 @@ async function handle(request,{params}){
   if(resource==='config'&&id==='meta')return json({user:'忆伴 · 当前账号桌宠设置',default:'内置瞌睡小羊',animations:'原创角色素材',todos:'本人待办',storage:[]});
   if(resource==='models')return json({providers:[]});
   if(resource==='voice'&&id==='voices')return json({voices:[{id:'device-default',name:'设备默认声音',tag:'本地朗读'}],message:'语音沿用伙伴音色与本设备朗读设置'});
-  if(resource==='tick'&&method==='POST'){after(()=>petTick(user).catch(e=>console.error('[pet tick]',e.message)));return json({ok:true});}
+  if(resource==='tick'&&method==='POST'){after(()=>withUserScope(user,()=>petTick(user)).catch(e=>console.error('[pet tick]',e.message)));return json({ok:true});}
   if(resource==='event'&&method==='POST'){const body=await input();if(typeof body.jobId!=='string')throw new PetError('Invalid job');return json(await petChatEvent(user,body.jobId));}
   if(resource==='state')return json(await petSnapshot(user));
   if(resource==='catalog')return json({actions:PET_ACTIONS,profile:'sleepy-sheep',source:'dsh-pet',sourceCommit:'31aa345b11a18fc16d5fd35c42b8b9441071170e'});
@@ -37,4 +39,5 @@ async function handle(request,{params}){
   return json({ok:false,error:'桌宠接口不存在',message:'这项能力请在忆伴主聊天中使用'},404);
  }catch(e){return json({ok:false,error:e.message,message:e.message,reason:'bad-request'},e.status||400);}
 }
-export {handle as GET,handle as POST,handle as PUT,handle as PATCH,handle as DELETE};
+const scoped=scopedRoute(handle);
+export {scoped as GET,scoped as POST,scoped as PUT,scoped as PATCH,scoped as DELETE};

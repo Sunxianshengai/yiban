@@ -13,6 +13,9 @@ import './companion-chat.css';
 import './proactive-contact.css';
 import './pet/pet.css';
 import './pet/upstream-theme.css';
+import './companion-voice.css';
+import './data-isolation.css';
+import './omni-call.css';
 
 export const metadata = {
   manifest:'/manifest.webmanifest',

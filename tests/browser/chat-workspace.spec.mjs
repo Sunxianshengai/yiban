@@ -4,7 +4,7 @@ import {signInAsNewAdmin,openChatSettings} from './helpers.mjs';
 async function openChat(page){await page.locator('.side-nav').getByRole('button',{name:'陪伴对话',exact:true}).click();await expect(page.getByLabel('发送给家伴的消息')).toBeEnabled();}
 async function send(page,text){await page.getByLabel('发送给家伴的消息').fill(text);await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect(page.getByRole('button',{name:'停止生成',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'发送消息',exact:true})).toBeVisible({timeout:20000});}
 test.beforeEach(async({page})=>{await signInAsNewAdmin(page,{prefix:'workspace',credits:20});});
-test('workspace streams, saves history, preserves edited versions, feedback and memory drafts',async({page})=>{
+test('workspace delivers replies, saves history, preserves edited versions, feedback and memory drafts',async({page})=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message));await openChat(page);
   fs.mkdirSync('.impeccable/review',{recursive:true});await page.screenshot({path:'.impeccable/review/chat-desktop-empty.png'});
   await page.getByLabel('发送给家伴的消息').fill('你好');expect(await page.getByLabel('发送给家伴的消息').inputValue()).toBe('你好');
@@ -26,7 +26,7 @@ test('workspace streams, saves history, preserves edited versions, feedback and 
 });
 test('stop refunds, menus persist, history can be searched, renamed, archived and deleted',async({page})=>{
   await openChat(page);await openChatSettings(page);await page.getByRole('button',{name:'聊聊回忆',exact:true}).click();await page.getByRole('button',{name:'简洁',exact:true}).click();await page.getByRole('button',{name:'完成',exact:true}).click();
-  await page.getByLabel('发送给家伴的消息').fill('想聊聊全家的旅行');await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect(page.locator('.cw-assistant')).toContainText('听见了');await page.getByRole('button',{name:'停止生成',exact:true}).click();
+  await page.getByLabel('发送给家伴的消息').fill('想聊聊全家的旅行');await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect(page.locator('.cw-header [role="status"]')).toContainText('对方正在输入');await expect(page.locator('.cw-assistant .im-bubble')).toHaveCount(0);await page.getByRole('button',{name:'停止生成',exact:true}).click();
   await expect(page.locator('.cw-message-status')).toContainText('已停止');await expect(page.locator('.credits-balance strong')).toHaveText('20');
   await openChatSettings(page);await expect(page.getByRole('button',{name:'聊聊回忆',exact:true})).toHaveAttribute('aria-pressed','true');await expect(page.getByRole('button',{name:'简洁',exact:true})).toHaveAttribute('aria-pressed','true');await page.getByRole('button',{name:'完成',exact:true}).click();
   await page.getByLabel('对话菜单',{exact:true}).click();await page.getByRole('button',{name:'重命名',exact:true}).click();const rename=page.getByRole('dialog',{name:'重命名对话'});await rename.getByLabel('对话名称').fill('全家的旅行');await rename.getByRole('button',{name:'保存',exact:true}).click();

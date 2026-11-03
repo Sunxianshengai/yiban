@@ -18,12 +18,14 @@ const stream=value=>new Response(`data: ${JSON.stringify({choices:[{delta:{conte
 async function send(thread,body,key){const response=await call('chat','POST',`threads/${thread.id}/generate`,{body,key});assert.equal(response.status,200);await response.text();return(await call('chat','GET',`threads/${thread.id}`)).json();}
 await credits.grant({userId:user.id,actorId:user.id,amount:30,note:'隔离测试',requestKey:'im-fund'});
 
+// Registered imports use the same owned, billed and replay-safe message path.
+
 test('real multi-bubble and sticker replies persist, cool down, replay and bill once per turn',async()=>{
   let normalCalls=0,systems=[];globalThis.fetch=async(_url,req)=>{const body=JSON.parse(req.body);if(!body.stream)return jsonModel({memories:[],ids:[]});normalCalls++;systems.push(body.messages[0].content);return stream('先听你说。\n---\n不急着复盘。\n---\n[[sticker:greeting]]');};
   const thread=await newThread();const first=await send(thread,{texts:['面试结束了。','先别分析，我想歇会儿。']},'im-first');
   assert.equal(first.messages[0].parts.length,2);assert.equal(first.messages[1].parts.length,3);assert.equal(first.messages[1].parts[2].stickerId,'greeting');assert.doesNotMatch(first.messages[1].text,/sticker|---/);assert.match(systems[0],/小满/);assert.match(systems[0],/尊重用户的节奏/);assert.match(systems[0],/不假定|不编造/);
   await(await call('chat','POST',`threads/${thread.id}/generate`,{body:{texts:['面试结束了。','先别分析，我想歇会儿。']},key:'im-first'})).text();assert.equal(normalCalls,1);
-  const second=await send(thread,{text:'嗯，歇一会儿。'},'im-second');assert.equal(second.messages.at(-1).parts.some(part=>part.type==='sticker'),false);assert.deepEqual(await credits.balance(user.id),{balance:28,held:0});
+  const second=await send(thread,{text:'嗯，歇一会儿。'},'im-second');assert.equal(second.messages.at(-1).parts.filter(part=>part.type==='sticker').length,1);assert.notEqual(second.messages.at(-1).parts.find(part=>part.type==='sticker').stickerId,'greeting');assert.deepEqual(await credits.balance(user.id),{balance:28,held:0});
   assert.equal((await call('chat','POST',`threads/${thread.id}/generate`,{body:{stickerId:'https://bad.invalid/x'},key:'bad-sticker'})).status,400);
   assert.equal((await call('chat','POST',`threads/${thread.id}/generate`,{body:{stickerId:'quiet',texts:['夹带内容']},key:'bad-combination'})).status,400);
 });
@@ -97,4 +99,34 @@ test('opening suggestions stay on empty threads and cite a real memory or annive
   assert.equal(draft.greeting.source,'memory');assert.equal(draft.greeting.ref,'greet-memory');
   assert.equal((await(await call('chat','GET','threads/greeting?memoryMode=off')).json()).greeting.source,'default');
   assert.equal((await(await call('chat','GET','threads/greeting?memoryMode=bogus')).json()).greeting.source,'memory');
+});
+
+test('imported stickers can be sent and generated, persist through reload, and replay without extra billing',async()=>{
+  const {IMPORTED_STICKERS}=await import('../lib/imported-stickers.mjs');
+  const sticker=IMPORTED_STICKERS.find(item=>item.label==='好呀');
+  let requests=0;
+  globalThis.fetch=async(_url,req)=>{
+    const body=JSON.parse(req.body);
+    if(!body.stream)return jsonModel({memories:[],ids:[]});
+    requests++;assert.ok(body.messages[0].content.includes(sticker.id));
+    return stream(`[[sticker:${sticker.id}]]`);
+  };
+  const thread=await newThread(),before=await credits.balance(user.id);
+  const first=await send(thread,{stickerId:sticker.id},'imported-sticker-once');
+  assert.equal(first.messages[0].stickerId,sticker.id);
+  assert.deepEqual(first.messages[1].parts,[{type:'sticker',stickerId:sticker.id}]);
+  assert.equal(first.messages[1].status,'completed');
+  await send(thread,{stickerId:sticker.id},'imported-sticker-once');
+  assert.equal(requests,1);assert.equal((await credits.balance(user.id)).balance,before.balance-1);
+  assert.equal((await call('chat','GET',`threads/${thread.id}`,{as:'other'})).status,404);
+});
+
+test('a completed marker-free answer gets separate sentence bubbles and a persisted fallback sticker, explicit opt-out wins',async()=>{
+  globalThis.fetch=async(_url,req)=>JSON.parse(req.body).stream?stream('哦哦，原来这样。你准备什么时候去？\n好滴呢\n那就这样'):jsonModel({memories:[],ids:[]});
+  const thread=await newThread();const first=await send(thread,{text:'想和你聊聊'},'mandatory-sticker');
+  const reply=first.messages.at(-1);
+  assert.equal(reply.parts.filter(part=>part.type==='sticker').length,1);
+  assert.deepEqual(reply.parts.filter(part=>part.type==='text').map(part=>part.text),['哦哦，原来这样。','你准备什么时候去？','好滴呢','那就这样']);
+  const next=await send(thread,{text:'这轮别发表情'},'mandatory-sticker-optout');
+  assert.equal(next.messages.at(-1).parts.some(part=>part.type==='sticker'),false);
 });

@@ -1,0 +1,10 @@
+'use client';
+import {useEffect,useState} from 'react';
+import {Button,Field} from './UI';
+import Icon from './Icon';
+export default function FamilySpaces({api,notify}){
+  const [families,setFamilies]=useState(null),[name,setName]=useState(''),[code,setCode]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
+  useEffect(()=>{let alive=true;api('/auth/families').then(value=>{if(alive)setFamilies(value.families);}).catch(failure=>{if(alive)setError(failure.message);});return()=>{alive=false;};},[api]);
+  async function change(endpoint,body){if(busy)return;setBusy(true);setError('');try{await api(endpoint,{method:'POST',body:JSON.stringify(body)});notify('家庭空间已更新');window.location.reload();}catch(failure){setError(failure.message);setBusy(false);}}
+  return <section className="panel family-spaces"><h2><Icon name="home"/>我的家庭空间</h2><p className="muted">家庭资料只向对应家庭成员开放。私人聊天、伴侣设定和积分仍属于你本人。</p>{error&&<p role="alert" className="form-error">{error}</p>}{families?<div className="family-spaces-list">{families.map(family=><div key={family.id}><span><strong>{family.name}</strong><small>{family.active?'当前家庭':family.role==='admin'?'家庭管理员':'家庭成员'}</small></span><Button variant="secondary" disabled={busy||family.active} onClick={()=>change('/auth/family-switch',{familyId:family.id})}>{family.active?'使用中':'切换'}</Button></div>)}</div>:<p role="status">正在读取家庭空间…</p>}<div className="family-spaces-actions"><form onSubmit={event=>{event.preventDefault();change('/auth/families',{name});}}><Field label="新家庭名称"><input value={name} onChange={event=>setName(event.target.value)} maxLength={60} required disabled={busy}/></Field><Button type="submit" disabled={busy||!name.trim()}>创建独立家庭</Button></form><form onSubmit={event=>{event.preventDefault();change('/auth/family-join',{code});}}><Field label="加入其他家庭的邀请码"><input value={code} onChange={event=>setCode(event.target.value)} maxLength={12} required disabled={busy}/></Field><Button type="submit" variant="secondary" disabled={busy||!code.trim()}>加入家庭</Button></form></div><small className="muted">切换、创建或加入后会重新打开应用，请先保存正在编辑的内容。</small></section>;
+}

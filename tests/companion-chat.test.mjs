@@ -13,9 +13,49 @@ test('semantic bubbles survive every chunk boundary without exposing control lin
 test('reply controls never split code fences or turn arbitrary URLs into media',()=>{
   const code='```md\n---\n[[sticker:greeting]]\n```';assert.equal(parseCompanionReply(code,{final:true,allowedStickers:['greeting']}).parts.length,1);
   const rejected=parseCompanionReply('你好\n---\n[[sticker:unknown]]\n---\n[[sticker:greeting]]',{final:true,allowedStickers:[]});assert.deepEqual(rejected.parts,[{type:'text',text:'你好'}]);
-  const capped=parseCompanionReply(Array.from({length:8},(_,i)=>`第${i}条`).join('\n---\n')+'\n---\n[[sticker:greeting]]\n---\n[[sticker:quiet]]',{final:true,allowedStickers:['greeting','quiet']});assert.equal(capped.parts.filter(p=>p.type==='text').length,4);assert.equal(capped.parts.filter(p=>p.type==='sticker').length,1);assert.match(capped.text,/第7条/);
+  const separated=parseCompanionReply(Array.from({length:8},(_,i)=>`第${i}条`).join('\n---\n')+'\n---\n[[sticker:greeting]]\n---\n[[sticker:quiet]]',{final:true,allowedStickers:['greeting','quiet']});assert.equal(separated.parts.filter(p=>p.type==='text').length,8);assert.equal(separated.parts.filter(p=>p.type==='sticker').length,1);assert.match(separated.text,/第7条/);
   assert.ok(COMPANION_STICKERS.every(item=>item.src.startsWith('/companions/')&&!item.src.includes('..')));
   assert.match(companionReplyProtocol({allowedStickers:[]}),/不要发送图片表情/);
+});
+
+test('dense daily replies fall back to whole sentences without losing content',()=>{
+  const raw='你刚刚说下午一直在开会，结束后还要继续处理手上的工作。今天的事情一件接着一件，难怪你到现在都觉得脑子有点转不动。我倒是更想听听，你今天有没有碰到一件让你稍微开心一点的小事。要是没有也没关系，我们就换个轻松的话题随便聊聊。';
+  const parsed=parseCompanionReply(raw,{final:true,splitLongText:true});
+  assert.ok(parsed.parts.length>1);
+  assert.equal(parsed.parts.map(part=>part.text).join(''),raw);
+  assert.ok(parsed.parts.every(part=>part.text.endsWith('。')&&Array.from(part.text).length<=64));
+  assert.equal(parseCompanionReply(raw,{splitLongText:true}).parts.length,1);
+  assert.equal(parseCompanionReply(raw,{final:true,splitLongText:false}).parts.length,1);
+  assert.deepEqual(parseCompanionReply('哈哈哈好哒。',{final:true,splitLongText:true}).parts,[{type:'text',text:'哈哈哈好哒。'}]);
+});
+
+test('short sentences and unpunctuated lines get individual bubbles with exactly one required sticker',()=>{
+  const raw='哦哦，原来这样。你准备什么时候去？\n我刚才理解错了\n那就按你说的来';
+  const options={final:true,splitLongText:true,requireSticker:true,allowedStickers:['nod','laugh']};
+  const parsed=parseCompanionReply(raw,options);
+  assert.deepEqual(parsed.parts.map(p=>p.type==='text'?p.text:p.stickerId),['哦哦，原来这样。','你准备什么时候去？','我刚才理解错了','那就按你说的来','nod']);
+  assert.equal(parsed.text,raw); // splitting is presentation, not a rewritten transcript
+  for(const controls of ['\n[[sticker:nod]]','\n[[sticker:unknown]]','\n[[sticker:nod]]\n[[sticker:laugh]]']){
+    assert.equal(parseCompanionReply(raw+controls,options).parts.filter(p=>p.type==='sticker').length,1);
+  }
+  assert.equal(parseCompanionReply('',options).parts.length,0);
+  assert.equal(parseCompanionReply('[[sticker:unknown]]',options).parts.length,0);
+  assert.equal(parseCompanionReply(raw,{...options,final:false}).parts.filter(p=>p.type==='sticker').length,0);
+  assert.equal(parseCompanionReply(raw,{...options,allowStickers:false}).parts.filter(p=>p.type==='sticker').length,0);
+  assert.equal(parseCompanionReply(raw,{...options,allowedStickers:[]}).parts.filter(p=>p.type==='sticker').length,0);
+});
+
+test('daily fallback keeps quotes, inline code and structured content intact',()=>{
+  const quote='“'+('先把这一段完整的话听完。不要在引号中间拆开。').repeat(4)+'”';
+  const parsed=parseCompanionReply('他说：'+quote+'接下来才是我的回应。',{final:true,splitLongText:true});
+  assert.ok(parsed.parts.some(part=>part.text.includes(quote)));
+  for(const raw of [
+    '```js\n'+('console.log("hello");\n').repeat(8)+'```',
+    '| 年份 | 回忆 |\n| --- | --- |\n'+('| 2008 | 那个夏天的故事 |\n').repeat(8),
+    '1. '+('请先保留这个列表项目的完整内容。').repeat(5)+'\n2. 然后处理第二步。',
+    '> '+('这是一段完整的引用，不应该按普通聊天拆开。').repeat(5),
+    '`'+('first(); second(); ').repeat(8)+'`',
+  ])assert.equal(parseCompanionReply(raw,{final:true,splitLongText:true}).parts.length,1);
 });
 
 // 逐条露出的节奏必须是纯函数：同一条回复重放，停顿不能变。
@@ -33,7 +73,7 @@ test('paced reveal is deterministic, bounded and independent of wall-clock time'
 test('sticker library keeps legacy artwork and exposes searchable emotions',()=>{
   const ids=COMPANION_STICKERS.map(item=>item.id);assert.equal(new Set(ids).size,ids.length);
   for(const id of ['greeting','celebrate','thinking','quiet']) assert.match(stickerById(id).src,/^\/companions\/xiaoman\/.+\.png$/);
-  assert.equal(COMPANION_STICKERS.length,17);assert.equal(stickerById('hug').src,'/companions/stickers/hug.svg');
+  assert.ok(COMPANION_STICKERS.length>17);assert.equal(stickerById('hug').src,'/companions/stickers/hug.svg');
   assert.ok(COMPANION_STICKERS.every(item=>item.label&&item.emotion&&item.tags.length>=3));
   assert.equal(stickerById('nope'),null);
 });
@@ -65,5 +105,6 @@ test('reply protocol carries directives and media honesty per turn',()=>{
   assert.match(withAudio,/听不了语音内容/);
   const plain=companionReplyProtocol({allowedStickers:['nod']});
   assert.match(plain,/幽默应符合当前人格/);
+  assert.match(plain,/有兴趣、主动问、能聊下去/);
   assert.doesNotMatch(plain,/用户本轮的明确要求/);
 });

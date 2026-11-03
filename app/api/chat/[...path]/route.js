@@ -1,3 +1,4 @@
+import {scopedRoute} from '../../../../lib/request-scope.mjs';
 import {sessionFromRequest,sameOrigin} from '../../../../lib/auth.mjs';
 import {meta,listThreads,createThread,readThread,updateThread,deleteThread,selectBranch,feedback,interactMessage,deleteMessage,threadGreeting,newThreadGreeting} from '../../../../lib/chat-workspace.mjs';
 import {all} from '../../../../lib/store.mjs';
@@ -7,6 +8,7 @@ import {retryCompanionVoice} from '../../../../lib/companion-voice.mjs';
 import {retryMedia} from '../../../../lib/chat-media.mjs';
 import {prepareGeneration,generationResponse,getJob,stopJob} from '../../../../lib/chat-generation.mjs';
 import {after} from 'next/server';
+import {avoidMessageExpression} from '../../../../lib/chat-expression-feedback.mjs';
 import {listCallbacks,setEnabled,forgetCallback,knockState} from '../../../../lib/chat-callbacks.mjs';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -23,11 +25,12 @@ async function handle(request,{params}){
       if(method==='POST'&&id&&action==='forget')return Response.json(await forgetCallback(user,id));
       if(method==='POST'&&!id){const body=await request.json();return Response.json(await setEnabled(user,body.enabled));}
     }
-    if(method==='GET'&&resource==='knock')return Response.json(await knockState(user));
+    if(method==='GET'&&resource==='knock')return Response.json(await knockState(user,{profileId:url.searchParams.get('profileId')||null}));
     if(method==='GET'&&resource==='memories')return Response.json({memories:(await all('memories')).filter(m=>m.status==='confirmed').map(m=>({id:m.id,title:m.title,year:m.year,cover:m.cover,people:m.people}))});
     if(resource==='jobs'&&id){if(method==='GET')return Response.json(await getJob(user,id));if(method==='POST'&&action==='cancel')return Response.json(await stopJob(user,id));}
     if(method==='GET'&&resource==='messages')return Response.json(await findChatMessages(user,{q:url.searchParams.get('q'),favorites:url.searchParams.get('favorites')==='true',offset:url.searchParams.get('offset')}));
     if(resource==='threads'){
+      if(method==='POST'&&id&&action==='avoid-expression')return Response.json(await avoidMessageExpression(user,id,await request.json()));
       if(method==='POST'&&id&&action==='media-retry'){const body=await request.json();return Response.json(await retryMedia(user,id,body.messageId));}
       if(method==='POST'&&id&&action==='memory-action'){const body=await request.json();return Response.json(await confirmMemoryAction(user,id,body.messageId,body));}
       if(method==='POST'&&id&&action==='voice-retry'){const body=await request.json();return Response.json(await retryCompanionVoice(user,id,body.messageId));}
@@ -48,4 +51,5 @@ async function handle(request,{params}){
     return Response.json({error:'接口不存在'},{status:404});
   }catch(error){return Response.json({error:error.message||'请求未能完成',...(error.code?{code:error.code}:{}),...(error.jobId?{jobId:error.jobId}:{})},{status:error.status||400});}
 }
-export {handle as GET,handle as POST,handle as PATCH,handle as DELETE};
+const scoped=scopedRoute(handle);
+export {scoped as GET,scoped as POST,scoped as PATCH,scoped as DELETE};

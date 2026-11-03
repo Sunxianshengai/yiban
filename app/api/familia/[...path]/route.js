@@ -1,3 +1,4 @@
+import {scopedRoute} from '../../../../lib/request-scope.mjs';
 import {sessionFromRequest,sameOrigin} from '../../../../lib/auth.mjs';
 import {listProfiles,createProfile,updateProfile,defaultProfile,updateDefaultProfile,moodHistory,checkIn} from '../../../../lib/familia-store.mjs';
 import {listPersonalMemories,createPersonalMemory,changePersonalMemory,forgetPersonalMemory,setPersonalMemoryEnabled} from '../../../../lib/personal-memory.mjs';
@@ -30,4 +31,5 @@ async function handle(request,{params}){
     return json({error:'接口不存在'},{status:404});
   }catch(error){return json({error:error.message||'请求未能完成'},{status:error.status||400});}
 }
-export {handle as GET,handle as POST,handle as PATCH,handle as DELETE};
+const scoped=scopedRoute(handle);
+export {scoped as GET,scoped as POST,scoped as PATCH,scoped as DELETE};
