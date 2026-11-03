@@ -6,21 +6,23 @@
 ## 1. 开通与拿 Key
 1. 登录 https://dashscope.console.aliyun.com/ 开通「语音合成 / 声音复刻」。
 2. 在「API-KEY 管理」创建密钥，得到 `DASHSCOPE_API_KEY`。
-3. 记录你复刻任务所在**工作空间**的专属域名前缀（默认华北2-北京：
-   `cn-beijing.maas.aliyuncs.com`）。如果你用的是其它区域的 Workspace，
-   把该前缀填到 `DASHSCOPE_WORKSPACE_ID`。
+3. 可选：记录北京地域的**业务空间 ID**，填到 `DASHSCOPE_WORKSPACE_ID`。
+   此变量只填写 ID，不填写域名；未配置时使用 `dashscope.aliyuncs.com` 公共网关。
+   当前实现的专属域名仅支持北京地域。
 
 ## 2. 配置环境变量
 在 `.env.local`（本地）或 Vercel 项目环境变量（线上）加入：
 
 ```
 DASHSCOPE_API_KEY=sk-xxxxxxxx
-# 可选：声音复刻专属域名前缀，缺省 cn-beijing.maas.aliyuncs.com
-DASHSCOPE_WORKSPACE_ID=cn-beijing.maas.aliyuncs.com
+# 可选：北京地域业务空间 ID（不是域名）
+# DASHSCOPE_WORKSPACE_ID=你的业务空间ID
 ```
 
-> 还需已连接 Vercel Blob（`BLOB_*`），因为复刻需要一段可远程拉取的录音 URL，
-> 合成结果也会缓存进 Blob 以省计费。
+> 录音可保存在本地或私有 Vercel Blob。后端鉴权读取后，将音频以 Base64 Data URI
+> 提交给复刻服务，不要求样本公开可访问。线上部署仍需连接 Blob 保存媒体。
+> 请求遵循[官方 HTTP API](https://help.aliyun.com/zh/model-studio/voice-clone-design-http-api)：
+> `model: voice-enrollment`、`input.action: create_voice`，成功结果读取 `output.voice_id`。
 
 ## 3. 使用流程（页面内）
 1. 家属端「我的家人」→ 点成员卡上的 **复刻我的声音**。
