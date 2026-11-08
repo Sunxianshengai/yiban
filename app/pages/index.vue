@@ -19,7 +19,18 @@ onMounted(async () => {
     const d = new Date(tb[0].dateOfJournal)
     throwbackLabel.value = `${d.getFullYear()} · ${new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric' }).format(d)}`
   }
+  // first media thumbnail per entry (Journey View shows thumbnails)
+  const media = await useEntries().allMedia()
+  const map: Record<number, string> = {}
+  for (const m of media) {
+    if (m.jId != null && m.blob && m.mimeType.startsWith('image/') && map[m.jId] == null) {
+      map[m.jId] = URL.createObjectURL(m.blob)
+    }
+  }
+  thumbs.value = map
 })
+
+const thumbs = ref<Record<number, string>>({})
 
 // sort menu — faithful to menu-sort.png: "Entry Date" (with direction arrow) / "Last Modified"
 const sortMenuOpen = ref(false)
@@ -164,6 +175,7 @@ async function onTrash() {
       >
         <div class="date">{{ rowDate(e) }}</div>
         <div class="preview">{{ e.previewText || 'No additional text' }}</div>
+        <img v-if="thumbs[e.id!]" :src="thumbs[e.id!]" class="jr-row-thumb" />
         <div class="meta">
           <span v-if="e.weatherIcon" :title="`${e.weatherDescription || ''} ${e.weatherDegreeC ?? ''}°C`">{{ WEATHER_EMOJI[e.weatherIcon] || '☁️' }} {{ e.weatherDegreeC != null ? e.weatherDegreeC + '°C' : '' }}</span>
           <span v-if="e.address" :title="e.address">📍</span>

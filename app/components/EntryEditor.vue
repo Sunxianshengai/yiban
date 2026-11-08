@@ -21,7 +21,7 @@ const hasContent = ref(false)
 const date = ref(props.initialDate ? new Date(props.initialDate) : new Date())
 
 const meta = ref<Partial<EntryV2>>({ ...props.initialMeta })
-const openPop = ref<'style' | 'insert' | 'color' | 'loc' | 'weather' | 'mood' | 'activity' | 'tags' | null>(null)
+const openPop = ref<'style' | 'insert' | 'color' | 'loc' | 'weather' | 'mood' | 'activity' | 'tags' | 'templates' | null>(null)
 
 const MOODS = ['excited', 'happy', 'calm', 'so-so', 'tired', 'sad', 'angry', 'anxious']
 const ACTIVITIES = ['still', 'walking', 'running', 'cycling', 'driving', 'flying']
@@ -34,6 +34,27 @@ const weatherBusy = ref(false)
 const placeQuery = ref('')
 const placeHits = ref<{ address: string; lat: number; lng: number }[]>([])
 const placeBusy = ref(false)
+const templates = ref<{ id?: number; name: string; content: string }[]>([])
+const touched = ref(false)
+
+async function loadTemplates() {
+  const { miscDb } = await import('~/utils/db')
+  templates.value = (await miscDb.templates.toArray()).map((t) => ({ id: t.id, name: t.name, content: t.content }))
+}
+function openTemplates() {
+  openPop.value = 'templates'
+  loadTemplates()
+}
+function insertTemplate(t: { content: string }) {
+  const html = t.content?.trim() || ''
+  if (area.value && !area.value.innerHTML.replace(/<p><br><\/p>|<br>/g, '').trim()) {
+    area.value.innerHTML = html
+  } else {
+    document.execCommand('insertHTML', false, html + '<p><br></p>')
+  }
+  recount()
+  openPop.value = null
+}
 
 const dateLabel = computed(() =>
   new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date.value).replace(' at ', ' At '),
@@ -261,7 +282,12 @@ const stagedIds = ref<number[]>([])
 async function save() {
   const { createEntry, updateEntry, attachMedia } = useEntries()
   let text = area.value?.innerHTML || ''
-  if (text === '<p><br></p>' || text === '<div><br></div>') text = ''
+  // strip the placeholder node if it is still in the DOM (never focused)
+  const div = document.createElement('div')
+  div.innerHTML = text
+  div.querySelector('.jr-editor-placeholder')?.remove()
+  text = div.innerHTML
+  if (text === '<p><br></p>' || text === '<div><br></div>' || text === '<p></p>') text = ''
   if (!text.trim() && !staged.value.length) { emit('done'); return }
 
   const savedIds: number[] = []
@@ -317,16 +343,20 @@ async function save() {
       </div>
     </div>
 
-    <div class="jr-editor-body">
+    <div class="jr-editor-body" style="position:relative">
+      <div v-if="!touched && !hasContent" class="jr-editor-ph">
+        Start writing or choose a <button class="jr-template-chip" @click.stop="openTemplates"><JrIcon :path="mdiBookOpenOutline" :size="13" /> Template</button> .
+      </div>
       <div
         ref="area"
         class="jr-editor-area"
         contenteditable="true"
         :spellcheck="spellcheck"
-        @input="recount(); saveSel()"
+        @input="recount(); saveSel(); touched = true"
         @keydown="onAreaKeydown"
         @keyup="saveSel"
         @mouseup="saveSel"
+        @mousedown="touched = true"
       />
     </div>
 
@@ -337,6 +367,14 @@ async function save() {
         <button class="tb" @click="openPop = null"><JrIcon :path="mdiClose" :size="16" /></button>
       </div>
 
+      <template v-if="openPop === 'templates'">
+        <div v-if="!templates.length" class="jr-muted" style="font-size:13px;padding:6px 12px 10px">
+          No custom templates yet. Save one from an entry's ⋯ menu.
+        </div>
+        <button v-for="t in templates" :key="t.id" class="jr-pop-item" @click="insertTemplate(t)">
+          {{ t.name }}
+        </button>
+      </template>
       <template v-if="openPop === 'style'">
         <button class="jr-pop-item" @click="setBlock('p')">Body</button>
         <button class="jr-pop-item" @click="setBlock('h1')">Heading 1</button>

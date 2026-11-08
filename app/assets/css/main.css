@@ -453,3 +453,9 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
 .jr-stories-card h2 { font-size: 26px; margin: 0 0 14px; }
 .jr-stories-card p { font-size: 15px; color: #c8d4d9; line-height: 1.6; }
 .jr-sc-hint { display: block; margin-top: 26px; font-size: 11px; color: #5f7078; }
+.jr-row-thumb { width: 100%; max-height: 130px; object-fit: cover; border-radius: 8px; margin-top: 8px; display: block; }
+.jr-editor-ph {
+  position: absolute; left: 44px; top: 8px;
+  color: #b9c6cb; font-size: 16px; pointer-events: none; z-index: 2;
+}
+.jr-editor-ph .jr-template-chip { pointer-events: auto; vertical-align: baseline; }

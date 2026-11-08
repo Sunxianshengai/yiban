@@ -150,6 +150,47 @@ async function restore(t: import('~/utils/db').TrashRow) {
   await loadTrash()
 }
 
+/** Importer: own JSON, Day One JSON, generic entries[] (Journey v1/v2 export shape). */
+function importAny() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.json,application/json'
+  input.onchange = async () => {
+    const file = input.files?.[0]
+    if (!file) return
+    busy.value = 'importing'
+    try {
+      const data = JSON.parse(await file.text())
+      const { parseImport } = await import('~/utils/importers')
+      const { kind, entries } = parseImport(data)
+      const dbi = (await import('~/utils/db')).db
+      let n = 0
+      for (const r of entries) {
+        const now = new Date()
+        await dbi.entriesV2.add({
+          linkedAccountId: '',
+          text: r.text,
+          previewText: htmlToPreview(r.text),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+          dateOfJournal: r.date,
+          dateModified: now,
+          synced: 0,
+          type: 'journal',
+          favourite: r.favourite ? 1 : 0,
+          ...computeTokens(r.date),
+        })
+        n++
+      }
+      importMsg.value = `Imported ${n} entr${n === 1 ? 'y' : 'ies'} (${kind}). Day One photo attachments and Evernote/Daylio/Apple Journal: pending (matrix).`
+      await useEntries().refresh()
+    } catch (err) {
+      importMsg.value = `Import failed: ${(err as Error).message}`
+    }
+    busy.value = ''
+  }
+  input.click()
+}
+
 async function wipeAll() {
   if (!confirm('Delete ALL local entries? This cannot be undone.')) return
   await (await import('~/utils/db')).db.entriesV2.clear()
@@ -264,7 +305,7 @@ async function wipeAll() {
         <div class="jr-data-row">
           <button class="jr-btn" @click="exportZip"><JrIcon :path="mdiDownload" :size="17" /> Export backup (ZIP)</button>
           <button class="jr-btn" @click="exportJson"><JrIcon :path="mdiDownload" :size="17" /> JSON</button>
-          <button class="jr-btn" :disabled="busy === 'importing'" @click="importJson"><JrIcon :path="mdiUpload" :size="17" /> {{ busy === 'importing' ? 'Importing…' : 'Import' }}</button>
+          <button class="jr-btn" :disabled="busy === 'importing'" @click="importAny"><JrIcon :path="mdiUpload" :size="17" /> {{ busy === 'importing' ? 'Importing…' : 'Import (own/Day One/Journey JSON)' }}</button>
         </div>
         <p v-if="importMsg" class="jr-import-msg">{{ importMsg }}</p>
         <div class="jr-set-label" style="margin-top:18px">Trash</div>
