@@ -62,10 +62,40 @@ export interface TemplateRow {
   updatedAt: Date
 }
 
+export interface MediaFileV2 {
+  id?: number
+  externalId?: string
+  linkedAccountId: string
+  jId?: number
+  fileMetadataDate?: Date
+  createdAt: Date
+  fileName: string
+  mimeType: string
+  ext: string
+  position: number
+  alias?: string
+  uploaded: number
+  /** Non-indexed payload (declared schema lists indexes only; Dexie permits extra fields). */
+  blob?: Blob
+}
+
+export interface TrashRow extends TrashV2 {
+  /** Non-indexed full entry snapshot so restore can re-add the entry (deviation noted in feature matrix). */
+  snapshot?: EntryV2
+}
+
+export interface PlaceRow {
+  id?: number
+  address: string
+  lat: number
+  lng: number
+}
+
 class JourneyReplicaDB extends Dexie {
   entriesV2!: Table<EntryV2, number>
-  trashesV2!: Table<TrashV2, number>
+  trashesV2!: Table<TrashRow, number>
   tagWordsV2!: Table<TagWordV2, number>
+  mediaFilesV2!: Table<MediaFileV2, number>
   templates!: Table<TemplateRow, number>
 
   constructor() {
@@ -90,6 +120,7 @@ export const db = new JourneyReplicaDB()
 /** Misc DB (places/templates), per original. */
 class MiscDB extends Dexie {
   templates!: Table<TemplateRow, number>
+  places!: Table<PlaceRow, number>
   constructor() {
     super('Misc')
     this.version(1).stores({

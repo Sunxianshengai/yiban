@@ -1,15 +1,32 @@
 <script setup lang="ts">
-import { mdiBookmark, mdiHistory, mdiSortVariant, mdiCloudUploadOutline, mdiImageOutline, mdiBookOutline, mdiCloudOutline } from '@mdi/js'
+import { mdiBookmark, mdiHistory, mdiSortVariant, mdiCloudUploadOutline, mdiImageOutline } from '@mdi/js'
 import type { EntryV2 } from '~/utils/db'
 
-const { entries, refresh, toggleFavourite, duplicateEntry, saveAsTemplate, moveToTrash } = useEntries()
+const { entries, refresh, toggleFavourite, duplicateEntry, saveAsTemplate, moveToTrash, throwbacks, hydrateMediaHtml } = useEntries()
 
 const editorOpen = ref(false)
 const editing = ref<EntryV2 | null>(null)
 const selected = ref<EntryV2 | null>(null)
+const throwbackList = ref<EntryV2[]>([])
+const throwbackLabel = ref('No throwback today')
+
+onMounted(async () => {
+  const tb = await throwbacks()
+  throwbackList.value = tb
+  if (tb.length) {
+    const d = new Date(tb[0].dateOfJournal)
+    throwbackLabel.value = `${d.getFullYear()} · ${new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric' }).format(d)}`
+  }
+})
 
 const today = new Date()
 const todayLabel = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(today)
+
+async function selectEntry(e: EntryV2) {
+  const clone = { ...e }
+  clone.text = await hydrateMediaHtml(clone.text)
+  selected.value = clone
+}
 
 function rowDate(e: EntryV2) {
   const d = new Date(e.dateOfJournal)
@@ -32,6 +49,10 @@ async function onDone() {
   editorOpen.value = false
   editing.value = null
   await refresh()
+  if (selected.value) {
+    const fresh = entries.value.find((x) => x.id === selected.value!.id)
+    if (fresh) await selectEntry(fresh)
+  }
 }
 function onDuplicate() {
   if (selected.value) {
@@ -85,7 +106,7 @@ async function onTrash() {
         <button class="jr-story-card throwback">
           <span class="icon"><JrIcon :path="mdiHistory" :size="22" /></span>
           <span class="t">Throwback</span>
-          <span class="s">No throwback today</span>
+          <span class="s">{{ throwbackLabel }}</span>
         </button>
       </div>
 
@@ -104,7 +125,7 @@ async function onTrash() {
         :key="e.id"
         class="jr-entry"
         :class="{ selected: selected?.id === e.id }"
-        @click="selected = e"
+        @click="selectEntry(e)"
       >
         <div class="date">{{ rowDate(e) }}</div>
         <div class="preview">{{ e.previewText || 'No additional text' }}</div>
@@ -125,14 +146,14 @@ async function onTrash() {
         @save-as-template="onSaveTemplate"
         @trash="onTrash"
       />
+      <EntryEditor
+        v-if="editorOpen"
+        :entry-id="editing?.id"
+        :initial-text="editing?.text"
+        :initial-date="editing ? new Date(editing.dateOfJournal) : undefined"
+        :initial-meta="editing ? { address: editing.address, lat: editing.lat, lng: editing.lng, sentiment: editing.sentiment, activity: editing.activity, weatherIcon: editing.weatherIcon, weatherDegreeC: editing.weatherDegreeC, weatherPlace: editing.weatherPlace, tagWordIds: editing.tagWordIds } : undefined"
+        @done="onDone"
+      />
     </div>
   </div>
-
-  <EntryEditor
-    v-if="editorOpen"
-    :entry-id="editing?.id"
-    :initial-text="editing?.text"
-    :initial-date="editing ? new Date(editing.dateOfJournal) : undefined"
-    @done="onDone"
-  />
 </template>
