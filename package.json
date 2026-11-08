@@ -1,66 +1,17 @@
 {
-  "name": "yiban-memory",
-  "version": "1.0.0",
+  "name": "journey-replica-web",
   "private": true,
-  "description": "忆伴 · 新生杯家庭记忆交互应用",
+  "type": "module",
   "scripts": {
-    "dev": "next dev --hostname 0.0.0.0",
-    "build": "next build",
-    "start": "next start --hostname 0.0.0.0",
-    "electron": "node scripts/start-electron.cjs",
-    "desktop:pack": "electron-builder --win nsis",
-    "test": "node --test tests/*.test.mjs",
-    "test:server": "node scripts/test-server.mjs",
-    "db:environment": "node scripts/database-environment.mjs",
-    "db:reset-plan": "node scripts/reset-business-data.mjs",
-    "test:e2e": "playwright test",
-    "test:e2e:core": "playwright test tests/browser/proactive-contact.spec.mjs tests/browser/companion-im.spec.mjs tests/browser/personal-memory.spec.mjs tests/browser/persona-editor.spec.mjs tests/browser/preview-parity.spec.mjs tests/browser/familia-app.spec.mjs tests/browser/app.spec.mjs tests/browser/chat-workspace.spec.mjs tests/browser/chat.spec.mjs tests/browser/chat-viewer.spec.mjs tests/browser/modern-product.spec.mjs tests/browser/auth.spec.mjs tests/browser/credits.spec.mjs tests/browser/prefs.spec.mjs --project=functional",
-    "pet:build": "node scripts/build-pet-runtime.mjs",
-    "pet:media": "python scripts/prepare-pet-media.py",
-    "prebuild": "node scripts/build-pet-runtime.mjs",
-    "predev": "node scripts/build-pet-runtime.mjs",
-    "test:pet:desktop": "node tests/pet-desktop.smoke.mjs"
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "@fontsource-variable/noto-sans-sc": "^5.3.1",
-    "@fontsource-variable/noto-serif-sc": "^5.3.1",
-    "@neondatabase/serverless": "^1.2.0",
-    "@vercel/blob": "^2.8.2",
-    "lucide-react": "^1.61.0",
-    "next": "16.4.3",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1",
-    "web-push": "^3.6.7"
-  },
-  "devDependencies": {
-    "@electric-sql/pglite": "^0.5.13",
-    "@playwright/test": "1.64.0",
-    "electron": "^44.9.0",
-    "electron-builder": "^26.15.3",
-    "esbuild": "^0.28.2"
-  },
-  "main": "electron/main.cjs",
-  "build": {
-    "appId": "com.yiban.memory",
-    "productName": "忆伴",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "electron/**/*",
-      "public/pets/**/*"
-    ],
-    "win": {
-      "target": "nsis"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    }
-  },
-  "overrides": {
-    "zod": "4.6.7"
+    "@mdi/js": "^7.4.47",
+    "dexie": "^4.2.1",
+    "nuxt": "^4.2.2",
+    "vue": "^3.5.24"
   }
 }

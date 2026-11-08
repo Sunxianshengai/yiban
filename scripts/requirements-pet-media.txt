@@ -1,5 +1,0 @@
-rembg[cpu]
-opencv-python
-Pillow
-numpy
-imageio-ffmpeg
