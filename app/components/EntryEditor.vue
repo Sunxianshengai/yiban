@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { mdiCalendarBlankOutline, mdiMapMarkerOutline, mdiWeatherSunny, mdiEmoticonOutline, mdiRun, mdiTagOutline, mdiFormatSize, mdiPlus, mdiFormatBold, mdiFormatItalic, mdiFormatStrikethrough, mdiFormatUnderline, mdiFormatColorText, mdiFormatAlignLeft, mdiFormatAlignCenter, mdiUndo, mdiRedo, mdiChevronDown, mdiBookOpenOutline, mdiClose, mdiCheck } from '@mdi/js'
+import { mdiCalendarBlankOutline, mdiMapMarkerOutline, mdiWeatherSunny, mdiEmoticonOutline, mdiRun, mdiTagOutline, mdiFormatSize, mdiPlus, mdiFormatBold, mdiFormatItalic, mdiFormatStrikethrough, mdiFormatUnderline, mdiFormatColorText, mdiFormatAlignLeft, mdiFormatAlignCenter, mdiUndo, mdiRedo, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiBookOpenOutline, mdiClose, mdiCheck, mdiFormatListBulleted, mdiFormatListNumbered, mdiCheckboxMarkedOutline } from '@mdi/js'
 import type { EntryV2, TagWordV2 } from '~/utils/db'
 import { db } from '~/utils/db'
 
 const linkUrl = ref('')
+const spellcheck = ref(localStorage.getItem('jr.spellcheck') !== '0')
+const datePop = ref(false)
+const dpMonth = ref(new Date().getMonth() + 1)
+const dpYear = ref(new Date().getFullYear())
+const dpTime = ref('')
 
 const props = defineProps<{ entryId?: number; initialText?: string; initialDate?: Date; initialMeta?: Partial<EntryV2> }>()
 const emit = defineEmits<{ (e: 'done'): void }>()
@@ -82,6 +87,87 @@ function setBlock(tag: string) {
 function insertHtml(html: string) {
   cmd('insertHTML', html)
   openPop.value = null
+}
+
+/** Task list item (checkbox toggles natively inside contenteditable in Chromium). */
+function insertTaskList() {
+  cmd('insertHTML', '<ul class="jr-task"><li><label><input type="checkbox">Task</label></li></ul><p><br></p>')
+  recount()
+}
+
+/** Markdown auto-convert on space, per official "partial Markdown auto conversion": #-h1..h3, >-quote, -/*-ul, 1.-ol, []-task. */
+function onAreaKeydown(e: KeyboardEvent) {
+  saveSel()
+  if (e.key !== ' ') return
+  const sel = window.getSelection()
+  if (!sel || !sel.isCollapsed) return
+  const node = sel.anchorNode
+  if (!node || !area.value?.contains(node)) return
+  // anchor may be a text node (char offset) or an element (child offset) — handle both
+  let before: string
+  if (node.nodeType === 3) before = (node.textContent || '').slice(0, sel.anchorOffset)
+  else {
+    const kids = Array.from(node.childNodes).slice(0, sel.anchorOffset)
+    before = kids.map((c) => c.textContent || '').join('')
+  }
+  const line = before.split('\n').pop() || ''
+  const rules: [RegExp, string | null, string | undefined][] = [
+    [/^#$/, 'formatBlock', 'h1'],
+    [/^##$/, 'formatBlock', 'h2'],
+    [/^###$/, 'formatBlock', 'h3'],
+    [/^>$/, 'formatBlock', 'blockquote'],
+    [/^[-*]$/, 'insertUnorderedList', undefined],
+    [/^1\.$/, 'insertOrderedList', undefined],
+    [/^\[\]$/, 'task', undefined],
+  ]
+  for (const [re, cmdName, val] of rules) {
+    if (!re.test(line)) continue
+    e.preventDefault()
+    for (let i = 0; i < line.length; i++) document.execCommand('delete')
+    // apply on the LIVE selection — restoring a saved range here would point at deleted nodes
+    if (cmdName === 'task') {
+      // live selection (no restore — saved range points at deleted marker nodes)
+      document.execCommand('insertHTML', false, '<ul class="jr-task"><li><label><input type="checkbox">Task</label></li></ul><p><br></p>')
+    } else {
+      document.execCommand(cmdName, false, val)
+    }
+    recount()
+    return
+  }
+}
+
+function setBlockKeep(tag: string) {
+  restoreSel()
+  document.execCommand('formatBlock', false, tag)
+  recount()
+}
+
+// ---- date picker popover (mini month grid + time) ----
+const dpCells = computed(() => {
+  const first = new Date(dpYear.value, dpMonth.value - 1, 1)
+  const startCol = (first.getDay() + 6) % 7
+  const days = new Date(dpYear.value, dpMonth.value - 1, 0).getDate()
+  const cells: (number | null)[] = Array(startCol).fill(null)
+  for (let d = 1; d <= days; d++) cells.push(d)
+  while (cells.length % 7) cells.push(null)
+  return cells
+})
+const dpLabel = computed(() => new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date(dpYear.value, dpMonth.value - 1, 1)))
+function dpPrev() { if (--dpMonth.value < 1) { dpMonth.value = 12; dpYear.value-- } }
+function dpNext() { if (++dpMonth.value > 12) { dpMonth.value = 1; dpYear.value++ } }
+function openDatePicker() {
+  const d = new Date(date.value)
+  dpMonth.value = d.getMonth() + 1
+  dpYear.value = d.getFullYear()
+  const p = (n: number) => String(n).padStart(2, '0')
+  dpTime.value = `${p(d.getHours())}:${p(d.getMinutes())}`
+  datePop.value = true
+}
+function dpPick(day: number) {
+  if (!day) return
+  const [h, m] = (dpTime.value || '00:00').split(':').map(Number)
+  date.value = new Date(dpYear.value, dpMonth.value - 1, day, h || 0, m || 0)
+  datePop.value = false
 }
 
 function pickFile() {
@@ -170,18 +256,31 @@ async function save() {
 <template>
   <div class="jr-editor">
     <div class="jr-editor-head">
-      <label class="dt">
+      <button class="dt" @click="openDatePicker">
         <JrIcon :path="mdiCalendarBlankOutline" :size="19" />
-        <input v-model="dateLabel" type="text" style="display:none" />
         <span>{{ dateLabel }}</span>
-        <input
-          type="datetime-local"
-          :value="new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16)"
-          style="position:absolute;opacity:0;width:0;height:0"
-          @change="date = new Date(($event.target as HTMLInputElement).value)"
-        />
-      </label>
+        <JrIcon :path="mdiChevronDown" :size="18" />
+      </button>
       <button class="done" @click="save">Done</button>
+      <div v-if="datePop" class="jr-pop jr-dp" @click.stop>
+        <div class="jr-pop-head">
+          <button class="tb" @click="dpPrev"><JrIcon :path="mdiChevronLeft" :size="16" /></button>
+          <span style="flex:1;text-align:center">{{ dpLabel }}</span>
+          <button class="tb" @click="dpNext"><JrIcon :path="mdiChevronRight" :size="16" /></button>
+          <button class="tb" @click="datePop = false"><JrIcon :path="mdiClose" :size="16" /></button>
+        </div>
+        <div class="jr-dp-grid jr-dp-dow"><span v-for="(d, i) in ['M','T','W','T','F','S','S']" :key="i">{{ d }}</span></div>
+        <div class="jr-dp-grid">
+          <button
+            v-for="(c, i) in dpCells" :key="i"
+            class="jr-dp-cell" :class="{ off: !c }"
+            @click="dpPick(c || 0)"
+          >{{ c || '' }}</button>
+        </div>
+        <div class="jr-pop-row" style="margin-top:6px">
+          <input v-model="dpTime" type="time" class="jr-pop-input" />
+        </div>
+      </div>
     </div>
 
     <div class="jr-editor-body">
@@ -189,8 +288,9 @@ async function save() {
         ref="area"
         class="jr-editor-area"
         contenteditable="true"
-        spellcheck="false"
+        :spellcheck="spellcheck"
         @input="recount(); saveSel()"
+        @keydown="onAreaKeydown"
         @keyup="saveSel"
         @mouseup="saveSel"
       />
@@ -306,6 +406,10 @@ async function save() {
       <button class="tb" :disabled="!hasContent" @click="cmd('strikeThrough')"><JrIcon :path="mdiFormatStrikethrough" :size="19" /></button>
       <button class="tb" :disabled="!hasContent" @click="cmd('underline')"><JrIcon :path="mdiFormatUnderline" :size="19" /></button>
       <button class="tb" :disabled="!hasContent" @click="openPop = openPop === 'color' ? null : 'color'"><JrIcon :path="mdiFormatColorText" :size="19" /></button>
+      <div class="sep" />
+      <button class="tb" :disabled="!hasContent" title="Bullet list" @click="cmd('insertUnorderedList')"><JrIcon :path="mdiFormatListBulleted" :size="19" /></button>
+      <button class="tb" :disabled="!hasContent" title="Numbered list" @click="cmd('insertOrderedList')"><JrIcon :path="mdiFormatListNumbered" :size="19" /></button>
+      <button class="tb" :disabled="!hasContent" title="Todo list" @click="insertTaskList()"><JrIcon :path="mdiCheckboxMarkedOutline" :size="19" /></button>
       <div class="sep" />
       <button class="tb" :disabled="!hasContent" @click="cmd('justifyLeft')"><JrIcon :path="mdiFormatAlignLeft" :size="19" /></button>
       <button class="tb" :disabled="!hasContent" @click="cmd('justifyCenter')"><JrIcon :path="mdiFormatAlignCenter" :size="19" /></button>

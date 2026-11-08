@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiBookmark, mdiHistory, mdiSortVariant, mdiCloudUploadOutline, mdiImageOutline } from '@mdi/js'
+import { mdiBookmark, mdiHistory, mdiSortVariant, mdiCloudUploadOutline, mdiImageOutline, mdiCheck, mdiArrowDown, mdiArrowUp } from '@mdi/js'
 import type { EntryV2 } from '~/utils/db'
 
 const { entries, refresh, toggleFavourite, duplicateEntry, saveAsTemplate, moveToTrash, throwbacks, hydrateMediaHtml } = useEntries()
@@ -18,6 +18,26 @@ onMounted(async () => {
     throwbackLabel.value = `${d.getFullYear()} · ${new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric' }).format(d)}`
   }
 })
+
+// sort menu — faithful to menu-sort.png: "Entry Date" (with direction arrow) / "Last Modified"
+const sortMenuOpen = ref(false)
+const sortKey = ref<'entryDate' | 'lastModified'>('entryDate')
+const sortDir = ref<'desc' | 'asc'>('desc')
+const sortedEntries = computed(() => {
+  const list = [...entries.value]
+  list.sort((a, b) => {
+    if (sortKey.value === 'lastModified') return +new Date(b.dateModified) - +new Date(a.dateModified)
+    return sortDir.value === 'desc'
+      ? +new Date(b.dateOfJournal) - +new Date(a.dateOfJournal)
+      : +new Date(a.dateOfJournal) - +new Date(b.dateOfJournal)
+  })
+  return list
+})
+function pickSort(k: 'entryDate' | 'lastModified') {
+  if (k === sortKey.value && k === 'entryDate') sortDir.value = sortDir.value === 'desc' ? 'asc' : 'desc'
+  sortKey.value = k
+  sortMenuOpen.value = false
+}
 
 const today = new Date()
 const todayLabel = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(today)
@@ -112,16 +132,29 @@ async function onTrash() {
 
       <div class="jr-entries-head">
         <span class="label">Entries</span>
-        <button class="sort" title="Sort"><JrIcon :path="mdiSortVariant" :size="20" /></button>
+        <button class="sort" title="Sort" @click="sortMenuOpen = !sortMenuOpen"><JrIcon :path="mdiSortVariant" :size="20" /></button>
+        <div v-if="sortMenuOpen" class="jr-sort-menu">
+          <button @click="pickSort('entryDate')">
+            <JrIcon v-if="sortKey === 'entryDate'" :path="mdiCheck" :size="16" />
+            <span style="width:16px" v-else />
+            <span>Entry Date</span>
+            <JrIcon v-if="sortKey === 'entryDate'" :path="sortDir === 'desc' ? mdiArrowDown : mdiArrowUp" :size="15" />
+          </button>
+          <button @click="pickSort('lastModified')">
+            <JrIcon v-if="sortKey === 'lastModified'" :path="mdiCheck" :size="16" />
+            <span style="width:16px" v-else />
+            <span>Last Modified</span>
+          </button>
+        </div>
       </div>
 
-      <div v-if="!entries.length" class="jr-empty">
+      <div v-if="!sortedEntries.length" class="jr-empty">
         <div class="big"><JrIcon :path="mdiImageOutline" :size="46" /></div>
         No entries to display.
       </div>
 
       <div
-        v-for="e in entries"
+        v-for="e in sortedEntries"
         :key="e.id"
         class="jr-entry"
         :class="{ selected: selected?.id === e.id }"
