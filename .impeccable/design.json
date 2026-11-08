@@ -333,6 +333,116 @@
           "oklch(83.6% 0.0259 92.4)",
           "oklch(95.0% 0.0259 92.4)"
         ]
+      },
+      "cottage-wood": {
+        "role": "neutral",
+        "displayName": "木屋外壳",
+        "canonical": "#3e2a1c"
+      },
+      "cottage-ink": {
+        "role": "neutral",
+        "displayName": "场景深棕文字",
+        "canonical": "#51301d"
+      },
+      "cottage-paper": {
+        "role": "neutral",
+        "displayName": "场景暖象牙纸色",
+        "canonical": "#f5e4cc"
+      },
+      "cottage-header": {
+        "role": "neutral",
+        "displayName": "场景顶栏",
+        "canonical": "rgba(246,238,226,.92)"
+      },
+      "cottage-hotspot": {
+        "role": "neutral",
+        "displayName": "物件与故事入口",
+        "canonical": "#f7e5ccf2"
+      },
+      "cottage-hotspot-hover": {
+        "role": "neutral",
+        "displayName": "物件入口悬停",
+        "canonical": "#fff0d7"
+      },
+      "cottage-dock": {
+        "role": "neutral",
+        "displayName": "底部记录胶囊",
+        "canonical": "#f6e5d0f5"
+      },
+      "cottage-capture": {
+        "role": "primary",
+        "displayName": "场景主要记录入口",
+        "canonical": "#e4c3a1"
+      },
+      "cottage-capture-hover": {
+        "role": "primary",
+        "displayName": "记录入口悬停",
+        "canonical": "#dec09b"
+      },
+      "cottage-panel": {
+        "role": "neutral",
+        "displayName": "阅读与记录面板",
+        "canonical": "#fcf7ed"
+      },
+      "cottage-panel-ink": {
+        "role": "neutral",
+        "displayName": "表单与面板正文",
+        "canonical": "#493326"
+      },
+      "cottage-panel-title": {
+        "role": "neutral",
+        "displayName": "面板衬线标题",
+        "canonical": "#4d3020"
+      },
+      "cottage-muted": {
+        "role": "neutral",
+        "displayName": "面板说明",
+        "canonical": "#7b6451"
+      },
+      "cottage-field": {
+        "role": "neutral",
+        "displayName": "输入字段",
+        "canonical": "#fffdf8"
+      },
+      "cottage-action": {
+        "role": "primary",
+        "displayName": "面板主操作",
+        "canonical": "#795333"
+      },
+      "cottage-action-hover": {
+        "role": "primary",
+        "displayName": "面板主操作悬停",
+        "canonical": "#654328"
+      },
+      "cottage-on-action": {
+        "role": "neutral",
+        "displayName": "主操作文字",
+        "canonical": "#fffaf2"
+      },
+      "cottage-border": {
+        "role": "neutral",
+        "displayName": "搜索与列表边界",
+        "canonical": "#dfd0bb"
+      },
+      "cottage-field-border": {
+        "role": "neutral",
+        "displayName": "输入字段边界",
+        "canonical": "#ddcdb8"
+      },
+      "cottage-focus": {
+        "role": "primary",
+        "displayName": "场景内层焦点",
+        "canonical": "#fff5d4"
+      },
+      "cottage-focus-outer": {
+        "role": "primary",
+        "displayName": "场景外层焦点",
+        "canonical": "#805c3e"
+      },
+      "cottage-panel-focus": {
+        "role": "primary",
+        "displayName": "面板焦点",
+        "canonical": "#95633d"
       }
     },
     "typographyMeta": {
@@ -355,6 +465,54 @@
       "wordmark": {
         "displayName": "忆伴字标",
         "purpose": "App sans-serif wordmark, weight 800 and tight tracking."
+      },
+      "cottage-scene": {
+        "displayName": "小屋场景 UI",
+        "purpose": "Serif scene base for the brand, header and navigation only; object/story entries, sheep status and capture dock override with Noto Sans SC Variable."
+      },
+      "cottage-panel-body": {
+        "displayName": "小屋表单与面板正文",
+        "purpose": "Sans-serif labels, input text, metadata, recording status and account menu."
+      },
+      "cottage-panel-title": {
+        "displayName": "小屋阅读标题",
+        "purpose": "Serif panel title, book title and story heading."
+      },
+      "cottage-hotspot": {
+        "displayName": "小屋物件与继续故事入口",
+        "purpose": "Noto Sans SC Variable, weight 600; approved ivory object/story overlays. Mobile object navigation uses weight 500."
+      },
+      "cottage-sheep-status": {
+        "displayName": "小羊短提示",
+        "purpose": "Noto Sans SC Variable, weight 600; truthful material intake and save feedback."
+      },
+      "cottage-capture-dock": {
+        "displayName": "小屋底部记录入口",
+        "purpose": "Noto Sans SC Variable, weight 500; 23px desktop, 20px compact, 16px mobile."
+      },
+      "cottage-mobile-wordmark": {
+        "displayName": "手机竖屏字标",
+        "purpose": "28px Noto Serif SC Variable; phone portrait only."
+      },
+      "cottage-mobile-subtitle": {
+        "displayName": "手机竖屏品牌副标题",
+        "purpose": "12px Noto Serif SC Variable; hidden at <=360px."
+      },
+      "cottage-mobile-hotspot": {
+        "displayName": "手机竖屏物件与故事标签",
+        "purpose": "13px Noto Sans SC Variable, weight 500; compact pills on real object hotspots."
+      },
+      "cottage-mobile-sheep-status": {
+        "displayName": "手机竖屏小羊提示",
+        "purpose": "12px Noto Sans SC Variable, weight 600."
+      },
+      "cottage-mobile-capture": {
+        "displayName": "手机竖屏记录入口",
+        "purpose": "16px Noto Sans SC Variable, weight 500."
+      },
+      "cottage-narrow-capture": {
+        "displayName": "小尺寸手机记录入口",
+        "purpose": "14px Noto Sans SC Variable, weight 500, at <=360px portrait."
       }
     },
     "shadows": [
@@ -610,6 +768,345 @@
         "personalMemory": "Secondary page reached through details, with return, settings, source/update and correction controls"
       },
       "legacyGuidance": "Existing sidecar global tokens, components and narrative remain the broader Familia baseline; earlier chat gradients, white assistant bubbles and capsule dimensions do not describe this scoped extension."
+    },
+    "memoryCottage": {
+      "status": "approved production scoped extension",
+      "scope": [
+        "components/cottage/CottageHome.jsx",
+        "components/cottage/CottagePanel.jsx",
+        "components/cottage/cottage.css",
+        "components/cottage/cottage-panel.css"
+      ],
+      "reference": ".impeccable/references/memory-cottage/approved.png",
+      "assets": [
+        "public/cottage/room-background.webp",
+        "public/cottage/room-mobile.webp",
+        "public/cottage/sheep-seated.webp",
+        "public/cottage/rain.wav"
+      ],
+      "precedence": "Approved warm photoreal fixed-view rain-window timber study for the active cottage homepage and its panels only. Preserve all other Familia and companion-chat rules.",
+      "visualAuthority": "Warm ivory pill overlays, deep brown type, timber colors, Noto Serif SC Variable brand/header/navigation and Noto Sans SC Variable object/story entries, sheep status and capture dock follow the user-approved image. They are intentional local additions rather than unapproved drift from the earlier app baseline.",
+      "tokenSource": "DESIGN.md frontmatter: colors.cottage-*, typography.cottage-*, rounded.cottage-*, components.cottage-*",
+      "typography": {
+        "sceneFamily": "Noto Serif SC Variable, Songti SC, SimSun, serif",
+        "formFamily": "Noto Sans SC Variable, Microsoft YaHei, sans-serif",
+        "wordmark": "clamp(31px,3vw,47px); 600; 1.3; .01em",
+        "subtitle": "clamp(17px,1.55vw,25px); 1.2; .06em",
+        "navigation": "clamp(16px,1.42vw,23px)",
+        "hotspot": "Noto Sans SC Variable; clamp(16px,1.27vw,22px); 600; 1.2 desktop; 13px / 500 in phone portrait",
+        "sheepStatus": "Noto Sans SC Variable; clamp(15px,1.15vw,19px); 600; 1.5 desktop; 12px in phone portrait",
+        "capture": "Noto Sans SC Variable; 500; 1.35; 23px desktop; 16px at <=900px; 14px at <=360px portrait",
+        "panelBody": "14px / 1.6",
+        "field": "14px / 1.75",
+        "panelTitle": "23px / 1.4 desktop; 21px at <=700px",
+        "bookTitle": "18px; 600",
+        "entryTitle": "15px; 500",
+        "storyHeading": "25px / 1.55 desktop; 23px at <=700px",
+        "storyBody": "15px / 2",
+        "labels": "13px",
+        "metadata": "11px and 12px",
+        "dropStatus": "27px desktop; 21px at <=600px",
+        "mobileScene": "Phone portrait: 28px brand, 12px subtitle (hidden at <=360px), 14px header navigation, 13px object/story labels, 12px sheep status, 16px capture dock (14px at <=360px), 11px helper text",
+        "scopeNote": "Exact local sizes preserve the approved image composition and form hierarchy; they do not establish a new global type ramp.",
+        "overlayFamily": "Noto Sans SC Variable, Microsoft YaHei, sans-serif",
+        "serifRoles": [
+          "Brand wordmark",
+          "Header and navigation",
+          "Panel titles, book titles and story headings"
+        ],
+        "sansRoles": [
+          "Object labels",
+          "Continue-story entry",
+          "Sheep status bubble",
+          "Capture dock and helper text",
+          "Forms, panel body, metadata and account menu"
+        ],
+        "storyEntry": "Noto Sans SC Variable; clamp(16px,1.27vw,22px); 600 desktop; 13px / 500 phone portrait; 14px compact fallback",
+        "compactFallback": "At <=900px outside phone portrait: 30px brand, 15px object navigation, 14px sheep/story status, 16px capture dock"
+      },
+      "paletteAudit": {
+        "sourceFiles": [
+          "components/cottage/cottage.css",
+          "components/cottage/cottage-panel.css"
+        ],
+        "observedLiteralColors": [
+          "#25170e24",
+          "#26190c45",
+          "#26190c50",
+          "#27150b26",
+          "#2a180e",
+          "#2a1b2240",
+          "#2b1b1240",
+          "#38291cdc",
+          "#3b211a24",
+          "#3e2a1c",
+          "#3e2c20",
+          "#493326",
+          "#4c643b",
+          "#4d3020",
+          "#4e32100d",
+          "#4e3322",
+          "#51301d",
+          "#563b29",
+          "#573e2b",
+          "#57402c66",
+          "#57402c99",
+          "#5b402c",
+          "#5d4030",
+          "#614b37",
+          "#64472f",
+          "#654328",
+          "#654a37",
+          "#684b36",
+          "#6c4b31",
+          "#71513e",
+          "#745238",
+          "#795333",
+          "#795641",
+          "#7b6451",
+          "#7c5637",
+          "#7d6653",
+          "#80522e",
+          "#805c3e",
+          "#806954",
+          "#806c57",
+          "#815e3e",
+          "#816c58",
+          "#877055",
+          "#87705a",
+          "#87715b",
+          "#88604c",
+          "#897156",
+          "#8a4430",
+          "#8a6f55",
+          "#8b5833",
+          "#8b6541",
+          "#8b7259",
+          "#8b755e",
+          "#8c735e",
+          "#8d4430",
+          "#8e7a64",
+          "#927b65",
+          "#94644d",
+          "#95633d",
+          "#96704d",
+          "#976333",
+          "#98452f",
+          "#987a60",
+          "#994e35",
+          "#9a734f",
+          "#9d7d5d",
+          "#a4632d",
+          "#a89783",
+          "#a94a36",
+          "#af8055",
+          "#b99366",
+          "#baa28c",
+          "#bca187",
+          "#c88e76",
+          "#c8af91",
+          "#caa582",
+          "#cbb18c",
+          "#cfb18b",
+          "#d9b19a",
+          "#ddc7aa",
+          "#ddcdb8",
+          "#dec09b",
+          "#dfccb2",
+          "#dfd0bb",
+          "#e0d1bb",
+          "#e2d4be",
+          "#e2d5c3",
+          "#e2d6c5",
+          "#e4c3a1",
+          "#e4d5c0",
+          "#e4d8c7",
+          "#e6dac9",
+          "#e9d9c3",
+          "#ead2b43b",
+          "#ead4b5",
+          "#ecddc8",
+          "#edf0e1",
+          "#efe4d4",
+          "#f0e2cc",
+          "#f2e5d2",
+          "#f2e6d4",
+          "#f3e8d6",
+          "#f5e4cc",
+          "#f6e5d0f5",
+          "#f7e5ccf2",
+          "#f7ead6",
+          "#f8efdf",
+          "#fae8cef0",
+          "#fae8cef2",
+          "#fcebd4f5",
+          "#fcf7ed",
+          "#ffe6ba",
+          "#fff0d7",
+          "#fff1db",
+          "#fff1dc9c",
+          "#fff1de",
+          "#fff1e9",
+          "#fff2df8f",
+          "#fff2e9",
+          "#fff3df",
+          "#fff3e0",
+          "#fff5d4",
+          "#fff6e8",
+          "#fffaf1",
+          "#fffaf2",
+          "#fffdf7",
+          "#fffdf8",
+          "#fffef9",
+          "#ffffff40",
+          "rgba(246,238,226,.92)",
+          "rgba(27,19,15,.36)",
+          "rgba(30,18,10,.3)"
+        ],
+        "interpretation": "Observed paper tints, timber text, alpha shadows, focus and status colors are scoped implementation variants of the approved cottage theme. Review future additions against these roles; do not silently generalize these colors or disable the detector."
+      },
+      "layout": {
+        "height": "100svh",
+        "scene": "Desktop landscape scene uses a centered crop; phone portrait uses a separately composed full-height room with normalized object hotspots.",
+        "desktopObjects": [
+          "记忆书架",
+          "时光信匣",
+          "原声回放",
+          "照片故事"
+        ],
+        "compactBreakpoint": "900px",
+        "mobileBreakpoint": "(max-width:600px) and (orientation:portrait)",
+        "mobileObjects": "Four visible real objects with semantic button hotspots normalized to the portrait room; min 44px x 44px touch targets, compact ivory labels; no 2x2 grid in phone portrait.",
+        "captureDock": "Three actions in one row: 放入素材 / 说一段 / 写一句",
+        "desktopPanel": "top 88px; right 30px; bottom 28px; width min(570px,calc(100vw - 48px))",
+        "mobilePanel": "At <=700px: inset 12px, width auto, vertical content scrolling",
+        "photos": "Two columns within the panel",
+        "compactFallback": "At <=900px outside phone portrait: 2x2 compact navigation with icons and 44px-high buttons.",
+        "phonePortrait": {
+          "query": "(max-width:600px) and (orientation:portrait)",
+          "asset": "public/cottage/room-mobile.webp",
+          "assetPixels": {
+            "width": 852,
+            "height": 1846
+          },
+          "aspectRatio": "9:19.5",
+          "stage": {
+            "width": "min(100%,46.15385svh)",
+            "height": "100%",
+            "position": "centered"
+          },
+          "headerHeight": "64px",
+          "hotspotCoordinateBasis": "Percentages of the portrait asset/stage; preserve registration when changing the asset or layout.",
+          "objects": {
+            "books": {
+              "left": "34.3%",
+              "top": "23.7%",
+              "width": "55.7%",
+              "height": "25.3%"
+            },
+            "letters": {
+              "left": "1.7%",
+              "top": "51.8%",
+              "width": "24%",
+              "height": "12%"
+            },
+            "audio": {
+              "left": "63.3%",
+              "top": "51.5%",
+              "width": "16.7%",
+              "height": "14.6%"
+            },
+            "photos": {
+              "left": "79.1%",
+              "top": "57.6%",
+              "width": "20.2%",
+              "height": "12.2%"
+            }
+          },
+          "sheep": {
+            "left": "9%",
+            "top": "62.2%",
+            "width": "42%",
+            "height": "26%",
+            "placement": "Foreground cutout on the empty stool reserved in the background."
+          },
+          "story": {
+            "left": "28.3%",
+            "top": "66%",
+            "width": "49%",
+            "height": "7%"
+          },
+          "captureDock": {
+            "position": "bottom",
+            "bottom": "max(16px,env(safe-area-inset-bottom))",
+            "width": "calc(100% - 24px)",
+            "buttonMinHeight": "44px"
+          }
+        }
+      },
+      "shapes": {
+        "hotspot": "25px",
+        "story": "28px",
+        "dock": "40px",
+        "sheepStatus": "40px 40px 40px 4px",
+        "panel": "18px desktop; 15px mobile",
+        "field": "9px",
+        "primary": "10px",
+        "photo": "4px"
+      },
+      "shadows": [
+        {
+          "name": "object-overlay",
+          "value": "0 3px 14px #3b211a24"
+        },
+        {
+          "name": "capture-dock",
+          "value": "0 5px 28px #26190c45"
+        },
+        {
+          "name": "sheep-status",
+          "value": "0 2px 12px #27150b26"
+        },
+        {
+          "name": "panel",
+          "value": "0 20px 65px rgba(30,18,10,.3)"
+        }
+      ],
+      "focus": {
+        "scene": "3px solid #fff5d4; outline-offset:5px; box-shadow:0 0 0 7px #805c3e",
+        "panel": "2px solid #95633d; outline-offset:3px"
+      },
+      "motion": {
+        "objectHover": "translateY(-3px); .18s",
+        "sheepHover": "rotate(-2deg) translateY(-3px); .3s",
+        "rainSwitch": ".2s",
+        "reducedMotion": "Disable all cottage scene transitions and animations, and panel loading rotation."
+      },
+      "interaction": {
+        "objects": "Semantic labeled buttons; phone portrait taps the visible bookshelf, letter box, gramophone and picture frames; normalized hotspot registration follows room-mobile.webp. Original recordings and uploaded photos only.",
+        "sheep": "Material intake and truthful capture/save feedback; no invented recognition or generated-story completion.",
+        "rain": "User-operated local ambience audio, off until enabled.",
+        "panel": "Modal semantics, background inert, visible close, Escape, focus loop and focus restoration; unsaved/recording leave confirmation."
+      },
+      "productBoundary": {
+        "entryApi": "/api/cottage/entries",
+        "privateCollection": "cottage_entries",
+        "visibility": "Current account only; no automatic family sharing",
+        "recording": "MediaRecorder original audio, up to 180 seconds; preview before saving; no ASR",
+        "letters": "Text entries; no scheduled delivery",
+        "search": "Title/text/book matching over loaded entries"
+      },
+      "rule": {
+        "name": "The Cottage Scope Rule",
+        "body": "小屋的字体、字号、颜色、胶囊与阴影是批准场景的局部规范，优先于其他页面的通用描述。检测器相对旧 Familia 基线报告的 font、font-size、color 与 radius 差异，应按本扩展及 sidecar 的 `extensions.memoryCottage` 核对；不据此把小屋改回 Urbanist、紫桃渐变或聊天气泡，也不把这些局部值推广到全站。CSS 中的纸色明暗、木色文字与阴影透明度变体以对应小屋样式为实现来源。",
+        "section": "colors"
+      },
+      "reviewScreenshots": [
+        ".impeccable/review/memory-cottage/mobile.png",
+        ".impeccable/review/memory-cottage/mobile-320.png",
+        ".impeccable/review/memory-cottage/mobile-360.png",
+        ".impeccable/review/memory-cottage/mobile-430.png"
+      ]
     }
   },
   "components": [
@@ -666,6 +1163,30 @@
       "description": "Sage user message and white assistant, with explicit AI identity.",
       "html": "<div class=\"ds-conversation\"><p class=\"ds-user\">想聊聊今天。</p><div class=\"ds-assistant\"><span class=\"ds-speaker\" aria-label=\"AI 家伴头像\">伴</span><small>AI 家伴</small><p>我在听，你想先说哪件事？</p></div></div>",
       "css": ".ds-conversation{font-family:var(--font-sans,Urbanist,sans-serif);display:grid;gap:20px;padding:24px;background:var(--fa-chat,linear-gradient(#F5E4E4,#F0F0EE));color:var(--ink,#2B241B)}.ds-user{justify-self:end;margin:0;padding:15px 20px;border-radius:30px 30px 4px 30px;background:var(--fa-sage,#93AF5B);color:var(--fa-sage-ink,#33451F);font-size:1.1rem}.ds-assistant{position:relative;margin-left:52px;padding:18px 22px 14px;border-radius:30px 30px 30px 4px;background:var(--surface,#FFFDFB);font-size:1.125rem;line-height:1.8}.ds-speaker{position:absolute;left:-52px;top:2px;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#F2CFB6,#EBE3F5);color:#57372A}.ds-assistant small{font-size:.75rem;color:var(--muted,#6F6258)}.ds-assistant p{margin:0}@media(max-width:768px){.ds-assistant{margin-left:0;padding:16px 16px 16px 55px;font-size:1rem;line-height:1.75}.ds-speaker{left:12px;top:16px;width:32px;height:32px}.ds-user{font-size:1rem}}"
+    },
+    {
+      "name": "Cottage Object Entry",
+      "kind": "button",
+      "refersTo": "cottage-hotspot",
+      "description": "Approved ivory pill overlay with semibold sans-serif UI type for a memory object; local to the cottage.",
+      "html": "<button class=\"ds-cottage-object\">记忆书架</button>",
+      "css": ".ds-cottage-object{font-family:\"Noto Sans SC Variable\",\"Microsoft YaHei\",sans-serif;font-size:18px;font-weight:600;line-height:1.2;padding:8px 16px;min-height:38px;border:1px solid #fff1dc9c;border-radius:25px;background:#f7e5ccf2;color:#51301d;box-shadow:0 3px 14px #3b211a24;cursor:pointer;transition:background .18s,transform .18s}.ds-cottage-object:hover{background:#fff0d7;transform:translateY(-3px)}.ds-cottage-object:focus-visible{outline:3px solid #fff5d4;outline-offset:5px;box-shadow:0 0 0 7px #805c3e}.ds-cottage-object:active{transform:none}@media(prefers-reduced-motion:reduce){.ds-cottage-object{transition:none}}"
+    },
+    {
+      "name": "Cottage Save Button",
+      "kind": "button",
+      "refersTo": "cottage-primary",
+      "description": "Brown save action inside the private memory panel.",
+      "html": "<button class=\"ds-cottage-save\">收进小屋</button>",
+      "css": ".ds-cottage-save{font-family:\"Noto Sans SC Variable\",\"Microsoft YaHei\",sans-serif;font-size:14px;line-height:1.6;font-weight:500;min-height:45px;padding:11px 20px;border:0;border-radius:10px;background:#795333;color:#fffaf2;cursor:pointer}.ds-cottage-save:hover{background:#654328}.ds-cottage-save:focus-visible{outline:2px solid #95633d;outline-offset:3px}.ds-cottage-save:active{background:#654328}.ds-cottage-save:disabled{background:#a89783;opacity:.55;cursor:wait}"
+    },
+    {
+      "name": "Cottage Story Field",
+      "kind": "input",
+      "refersTo": "cottage-field",
+      "description": "Labeled sans-serif text entry on warm paper.",
+      "html": "<label class=\"ds-cottage-field\"><span>想留下的话</span><textarea rows=\"3\" placeholder=\"今天发生了什么？\"></textarea><small>保存在你自己的小屋，仅当前账号可见。</small></label>",
+      "css": ".ds-cottage-field{display:grid;gap:8px;font-family:\"Noto Sans SC Variable\",\"Microsoft YaHei\",sans-serif;color:#684b36;font-size:13px;font-weight:500;line-height:1.6}.ds-cottage-field textarea{font:400 14px/1.75 \"Noto Sans SC Variable\",\"Microsoft YaHei\",sans-serif;min-height:100px;padding:11px 12px;border:1px solid #ddcdb8;border-radius:9px;background:#fffdf8;color:#493326;resize:vertical;caret-color:#8b5833}.ds-cottage-field textarea::placeholder{color:#927b65}.ds-cottage-field textarea:hover{border-color:#cbb18c}.ds-cottage-field textarea:focus-visible{outline:2px solid #95633d;outline-offset:3px}.ds-cottage-field small{font-size:12px;font-weight:400;color:#806c57;line-height:1.8}"
     }
   ],
   "narrative": {
@@ -692,19 +1213,28 @@
         "name": "The Reduced Motion Rule",
         "body": "减少动态设置下，Familia、创建和心情页面关闭动画、过渡与平滑滚动。普通按钮（.16s）和字段焦点（.15s）保留已有状态反馈，不新增通用入场动效。",
         "section": "elevation"
+      },
+      {
+        "name": "The Cottage Scope Rule",
+        "body": "小屋的字体、字号、颜色、胶囊与阴影是批准场景的局部规范，优先于其他页面的通用描述。检测器相对旧 Familia 基线报告的 font、font-size、color 与 radius 差异，应按本扩展及 sidecar 的 `extensions.memoryCottage` 核对；不据此把小屋改回 Urbanist、紫桃渐变或聊天气泡，也不把这些局部值推广到全站。CSS 中的纸色明暗、木色文字与阴影透明度变体以对应小屋样式为实现来源。",
+        "section": "colors"
       }
     ],
     "dos": [
       "**Do** 从实际 Familia 实现延续渐变、胶囊、圆头像与棕色操作。",
       "**Do** 保留夜间、高对比、字号和减少动态偏好。",
       "**Do** 保留真实内容来源、AI 身份及操作前积分说明。",
-      "**Do** 使用 Lucide 与可访问名称，头像使用获权图片或有意义的首字。"
+      "**Do** 使用 Lucide 与可访问名称，头像使用获权图片或有意义的首字。",
+      "**Do** 在记忆小屋内保留批准的雨窗木质书房、品牌与顶栏衬线、入口及短提示无衬线与象牙胶囊；手机竖屏保留同款图片场景及四件实体物品热点，其他窄屏使用紧凑导航回退。",
+      "**Do** 以用户原始照片、录音与文字作为小屋内容，明确显示私人保存与真实处理状态。"
     ],
     "donts": [
       "**Don't** 将标识为示意的头像、封面或演示合影写成真实家庭资料，或覆盖真实上传。",
       "**Don't** 把 AI 家人当真实家庭成员，或将影像回看标成实时视频通话。",
       "**Don't** 用浅色文字破坏联系人正文与用户气泡的颜色配对。",
-      "**Don't** 将年龄轮、心情弧线或描述柔光推广到所有页面。"
+      "**Don't** 将年龄轮、心情弧线或描述柔光推广到所有页面。",
+      "**Don't** 将小羊提示写成真实家人回应、自动转写或自动生成故事；不得用示意房间相框编造用户照片。",
+      "**Don't** 将小屋内容自动发布到家庭空间，或把小屋的场景规则推广到家庭和陪伴工作区。"
     ]
   }
 }

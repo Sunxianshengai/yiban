@@ -11,7 +11,7 @@ import VoiceEnroll from '../../components/VoiceEnroll';
 import Growth from '../../components/Growth';
 import Chat from '../../components/Chat';
 import {FamilyRoster,SettingsWorkspace} from '../../components/PreviewWorkspace';
-import {useFamilia,FamiliaHome,CompanionSetup,ProfileContact,MoodPage} from '../../components/Familia';
+import {useFamilia,CompanionSetup,ProfileContact,MoodPage} from '../../components/Familia';
 import PersonaEditor from '../../components/PersonaEditor';
 import CompanionVoiceSettings from '../../components/CompanionVoiceSettings';
 import PersonalMemory from '../../components/PersonalMemory';
@@ -23,8 +23,9 @@ import PlatformAdmin from '../../components/PlatformAdmin';
 import Credits,{CreditBalance} from '../../components/Credits';
 import {creditQuote} from '../../lib/credit-prices.mjs';
 import PetHost from '../../components/pet/PetHost';
+import CottageHome from '../../components/cottage/CottageHome';
 
-// 功能只保留核心三条线：记忆库（记录/核对）、家人故事（回望）、陪伴对话（日常聊天）。
+// 首页以小屋记录为入口；家庭记忆、家人故事和对话保留各自工作区。
 // 设置页收纳账号、偏好与积分。
 const NAV=[
   {id:'home',icon:'home',label:'首页'},{id:'library',icon:'library',label:'记忆库'},{id:'growth',icon:'clock',label:'家人故事'},
@@ -150,7 +151,7 @@ export default function Page() {
   const navItem=(id)=>{const item=NAV.find(entry=>entry.id===id);return <button key={id} aria-label={item.label} title={item.label} className={`nav-item ${page===id?'active':''}`} aria-current={page===id?'page':undefined} onClick={()=>navigate(id)}><Icon name={item.icon} size={20}/><span>{{library:'记忆',companion:'陪伴',family:'我家'}[id]||item.label}</span>{id==='library'&&<span className="nav-count">{state.memories.length}</span>}</button>;};
   // 手机底部导航：「我家」承载家庭成员页（页内聚合了设置等入口）。
   const mobileNavItem=id=>{const item=NAV.find(entry=>entry.id===id);return <button key={id} aria-label={item.label} className={`mobile-nav-item ${page===id?'active':''}`} aria-current={page===id?'page':undefined} onClick={()=>navigate(id)}><Icon name={item.icon} size={21}/><span>{{library:'记忆',companion:'陪伴',family:'我家'}[id]||item.label}</span></button>;};
-  return <div data-page={page} className={`app-shell familia-app ${page==='companion'?'chat-workspace-active':''} ${['contact','mood'].includes(page)?'fa-focus-page':''}`} data-theme={activeTheme} {...(prefs.highContrast?{['data-contrast']:'high'}:{})}>
+  return <div data-page={page} className={`app-shell familia-app ${page==='home'?'cottage-active':''} ${page==='companion'?'chat-workspace-active':''} ${['contact','mood'].includes(page)?'fa-focus-page':''}`} data-theme={activeTheme} {...(prefs.highContrast?{['data-contrast']:'high'}:{})}>
   <aside className="sidebar">
     <button className="brand" onClick={()=>navigate('home')} aria-label="回到首页"><span className="brand-mark"><Icon name="leaf" size={22}/></span><span>忆伴</span></button>
     <div className="family-switch"><span className="family-house"><Icon name="home" size={16}/></span><div><strong>{state.settings.familyName}{state.account.managingFamilyId?' · 平台管理中':''}</strong></div></div>
@@ -163,7 +164,7 @@ export default function Page() {
     <div className="topbar-actions">{page!=='companion'&&<CreditBalance api={request} onOpen={()=>navigate('credits')}/ >}<button className="topbar-account" aria-label="我的账号" onClick={()=>setModal({type:'account'})}><Avatar name={state.account.name} color={state.account.role==='admin'?'peach':'sage'} src={state.account.avatar}/><span><strong>{state.account.name}</strong><small>{state.account.platformRole==='owner'?'平台管理员':ROLE_LABELS[state.account.role]}</small></span><Icon name="chevron" size={14}/></button></div>
   </header>
   <main className="main-content" data-role={state.account.role}>
-  {page==='home'&&<FamiliaHome state={state} profiles={familia.profiles} defaultProfile={familia.defaultProfile||DEFAULT_COMPANION} moods={familia.moods} error={familia.error} onRetry={()=>familia.reload().catch(e=>notify(e.message,'error'))} onProfile={openProfile} onCreate={()=>setModal({type:'persona'})} onMood={()=>navigate('mood')} onRecord={()=>setModal({type:'upload'})} onLibrary={()=>navigate('library')} onMore={()=>openMore()}/>}
+  {page==='home'&&<CottageHome key={state.account.id} accountId={state.account.id} accountName={state.account.name} onOpenFamily={()=>navigate('library')} onOpenAccount={()=>setModal({type:'account'})} onOpenSettings={()=>navigate('settings')} onOpenMore={()=>openMore()}/>}
 
   {page==='contact'&&<ProfileContact profile={activeProfile||familia.defaultProfile||DEFAULT_COMPANION} onBack={()=>navigate('home')} onChat={()=>beginConversation(false)} onVoice={()=>beginConversation(true)} onVideo={()=>{navigate('library');setMediaFilter('video');}} onSettings={()=>openMore()} onEdit={()=>editPersona(activeProfile?.id||'default')} onCreate={()=>setModal({type:'persona',preset:activeProfile?.illustrative?activeProfile:null})}/>}
   {page==='mood'&&<MoodPage data={familia.moods} onSave={familia.reload} onBack={()=>navigate('home')} notify={notify}/>}
@@ -185,7 +186,7 @@ export default function Page() {
 
 
   {page==='settings'&&<SettingsWorkspace key={settingsTab} initialTab={settingsTab} state={state} api={request} refresh={refresh} notify={notify} savePreferences={savePreferences} applyLocal={applyLocalPrefs} onSignOut={signOut} onBack={()=>navigate('home')} onCredits={()=>navigate('credits')} onPlatform={()=>setModal({type:'platform'})}/ >}
-  <PetHost key={state.account.id} accountId={state.account.id}/>
+  {page!=='home'&&<PetHost key={state.account.id} accountId={state.account.id}/>}
   <footer className="app-footer"><span><Icon name="leaf" size={14}/>忆伴 · 让每一份回忆，都有温度</span><span>家人的故事，由家人共同珍藏</span></footer></main></div>
   <nav className="mobile-nav" aria-label="手机导航">{MOBILE_IDS.map(mobileNavItem)}</nav>
 

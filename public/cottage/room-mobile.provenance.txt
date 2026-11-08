@@ -1,0 +1,36 @@
+Asset: room-mobile.png / room-mobile.webp
+Created: 2026-11-05
+Mode: built-in image_gen__imagegen tool, nontransparent photorealistic-natural image generation/edit.
+Selected generated source: C:/Users/25641/.codex/generated_images/01a1ac55-83f7-7682-87d4-93e1ba75be57/exec-31f47073-438a-4c58-be0c-48346611795e.png
+Source PNG copied unchanged. WebP is a format-only conversion with Pillow, quality=92, method=6. No cropping, compositing, resizing or generated pixel edits outside image_gen.
+Dimensions: 852x1846 px (exact 9:19.5 portrait aspect ratio).
+Reference images: .impeccable/references/memory-cottage/approved.png; public/cottage/room-background.png
+No external deployment, browser, third-party stock or manual painting used.
+
+First generation prompt:
+Use case: photorealistic-natural
+Asset type: production mobile web app room backdrop, tall portrait 9:19.5, ideally 1080x2340 or closest tall portrait.
+Primary request: Recompose the EXACT same warm rainy attic study in the supplied reference images for a portrait mobile viewport. This is one continuous real room photographed from the same front-facing eye-level camera viewpoint as the desktop, NOT a crop of the desktop, NOT panels. Preserve the reference design identity precisely.
+Input images: reference 1 approved interface gives mood/material/object design only; reference 2 is the clean desktop room and must define the room materials, furnishings, photographic style and object forms. Remove all interface content from the first reference.
+Scene/backdrop: richly detailed warm honey-oak ceiling beams and floorboards, rainy twilight large blue window at the left with crisp raindrops, a walnut bookcase on the back wall middle-right with old books and small plants, warm glowing amber lamps, cozy quiet attic study. Natural convincing architectural perspective, immersive luminous photography with detailed realistic wood grain.
+Composition: portrait composition with all FOUR key objects fully inside the frame and clearly identifiable, each distinct at a different depth: (1) classic wooden divided letter box with envelopes mounted by the window, (2) walnut bookcase, (3) brass/gold antique gramophone with scalloped bell on dark rectangular wood base, (4) several sepia photographs in thick wooden standing frames on the right. Also include the same open old scrapbook on the desk.
+Normalized positions in the whole portrait: upper 0-12% mainly quiet wood ceiling and headroom; rain-streaked blue window on left x0-42%, y10-72%; tall walnut bookcase at x43-98%, y18-53%; warm standing lamp on the right around x85%, y28-48%; wooden letter box fully visible on left x3-28%, y54-70%; brass gramophone fully visible on right x64-94%, y49-68%; standing wooden photo frames on right x70-97%, y70-82%; open scrapbook on desk x35-78%, y73-84%; continuous warm wooden desk with front edge near y85%. Empty round wooden stool seat at x25-45%, y83%; keep the area x22-53%, y58-86% unobstructed so an HTML character can sit naturally on the empty stool. Do not put major objects in that reserved area. Bottom y86-100% shows warmly lit wood floorboards and desk/stool legs to serve as quiet background for overlay controls.
+Lighting/mood: same striking warm amber indoor light balanced against cool blue rainy dusk in the reference, delicate photographic shadows, welcoming memory room, highly polished architectural photography. Camera depth and clarity like the reference; no toy proportions.
+Text: NONE. Book spines and scrapbook may show faint nonlegible decorative marks only, no readable text.
+Constraints: no person, no character, no sheep, no UI, no label, no button, no banner, no speech bubble, no icon, no logo, no border, no watermark. Clean image only. Four main objects fully visible and not hidden by desk or each other. Preserve natural scale and front-facing immersive real room; no isometric cutaway, no dollhouse, no cartoon, no illustration, no collage, no 2x2 arrangement.
+
+Selected revision prompt:
+Use case: photorealistic-natural
+Create a revised version of image 1, a production tall smartphone room backdrop. Final canvas must be 1080 px wide by 2340 px tall (9:19.5 portrait). Reference 1 is the edit target. Reference 2 confirms exact material style.
+Keep the SAME realistic warm honey-oak rainy study, identical blue rain window, walnut bookcase, warm lamps, wooden letter box with envelopes, brass scalloped-bell gramophone, standing walnut photo frames, old open scrapbook, desk and empty wooden stool. No humans or sheep. No UI or readable text.
+Change only the arrangement and framing for a better phone composition: remove most of the excessive blank ceiling area; ceiling should end at y=18%, not y=30%. The window extends down the left. The main bookshelf occupies x42-97%, y22-51%. Place letter box on left x3-27%, y54-67%; gramophone on right x64-94%, y52-69%; standing photo frames right x72-98%, y70-80%; open scrapbook desk center x36-76%, y72-83%. The desk top ends at y85%. Put an EMPTY round wooden stool in the left foreground with its seat at x25-45%, y83-85% and stool legs below; leave the space above the stool x23-53%, y59-84% clear because a character will be overlaid there later. The stool must look as though someone can sit beside the desk. Lower 15% shows warm floor and furniture legs. Keep all four main interactive objects entirely visible and well separated. Keep true-to-life relative proportions and warm photographic richness.
+Essential: a single continuous front-facing photograph of this SAME study, intelligently composed in portrait. No isometric, no dollhouse, no four-panel collage, no labels, no text, no icon, no logo, no border, no watermark.
+
+Visual placement notes (normalized coordinates of selected image, approx measured from viewed PNG):
+letterbox bbox [0.017,0.518,0.257,0.638], envelope anchor [0.15,0.57]
+bookcase bbox [0.343,0.237,0.900,0.490], shelves anchor [0.62,0.34]
+gramophone bbox [0.633,0.515,0.800,0.661], horn anchor [0.72,0.558]
+photo frames bbox [0.791,0.576,0.993,0.698], anchor [0.89,0.64]
+open scrapbook bbox [0.283,0.660,0.773,0.729], anchor [0.57,0.696]
+empty stool seat bbox [0.160,0.780,0.450,0.838], seat center [0.304,0.807]
+desk front edge y approximately 0.743; lower furniture/floor suitable for HTML dock.

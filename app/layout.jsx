@@ -19,6 +19,7 @@ import './omni-call.css';
 
 export const metadata = {
   manifest:'/manifest.webmanifest',
+  icons:{icon:'/app-icon.svg'},
   title: '忆伴 · 让每一份回忆，都有温度',
   description: '为每个年龄段的家人保存回忆、讲述故事与日常陪伴。',
 };

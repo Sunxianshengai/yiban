@@ -48,7 +48,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { handleUploadPresigned } from '@vercel/blob/client';
 import { head as headBlob, issueSignedToken } from '@vercel/blob';
-import { all,get,put,remove,log,snapshot,saveMedia,readMedia,readMediaBuffer,deleteMedia,usesRemoteStorage,compareAndPut } from '../../../lib/store.mjs';
+import { all,get,put,remove,log,snapshot,saveMedia,readMedia,readMediaBuffer,deleteMedia,usesRemoteStorage,compareAndPut,insertIfAbsent } from '../../../lib/store.mjs';
 import { fetchAudioBuffer } from '../../../lib/voice.mjs';
 import { tidyMemory, searchMemories } from '../../../lib/core.mjs';
 import {organize,aiReady,aiStatus,chatWithCompanion,chatWithRole} from '../../../lib/ai.mjs';
@@ -357,7 +357,7 @@ async function handlePost(request,{params},billing) {
       const body=await request.json();
       let user=null;
       if(body.type==='blob.generate-presigned-url') {
-        const auth=await guard(request,'editor');if(auth.error)return auth.error;
+        const auth=await guard(request);if(auth.error)return auth.error;
         user=auth.user;
       }
       const result=await handleUploadPresigned({
@@ -366,8 +366,9 @@ async function handlePost(request,{params},billing) {
         getSignedToken:async pathname=>{
           if(!user||!validBlobPath(pathname))throw new Error('上传请求无效');
           const constraints={allowedContentTypes:Object.keys(allowed),maximumSizeInBytes:50*1024*1024};
+          const reserved=await insertIfAbsent('uploads',{id:path.basename(pathname),userId:user.id,blobPath:pathname,blobUrl:null,createdAt:new Date().toISOString()});
+          if(!reserved)throw Object.assign(new Error('这个上传地址已使用，请重新选择素材上传'),{status:409});
           const token=await issueSignedToken({...constraints,pathname,operations:['put'],validUntil:Date.now()+15*60*1000});
-          await put('uploads',{id:path.basename(pathname),userId:user.id,blobPath:pathname,blobUrl:null,createdAt:new Date().toISOString()});
           return {token,urlOptions:{...constraints,addRandomSuffix:false,allowOverwrite:false,tokenPayload:JSON.stringify({userId:user.id})}};
         },
         onUploadCompleted:async({blob,tokenPayload})=>{
@@ -382,7 +383,7 @@ async function handlePost(request,{params},billing) {
     }
     if(parts[0]==='upload'&&parts[1]==='complete') {
       if(!usesRemoteStorage)return json({error:'当前未启用 Vercel Blob'},404);
-      const auth=await guard(request,'editor');if(auth.error)return auth.error;
+      const auth=await guard(request);if(auth.error)return auth.error;
       const {pathname}=await request.json();
       if(!validBlobPath(pathname))throw new Error('上传请求无效');
       const name=path.basename(pathname),upload=await get('uploads',name);
@@ -451,7 +452,7 @@ async function handlePost(request,{params},billing) {
     // 直到有人想起把它加进数组——voice/enroll 就是这样裸奔过的。新接口必须先在这里登记。
     // narrate 对 viewer 开放的是「听」：/narrate/script 写稿+配音只花几毛钱，看的人也该能听。
     // 真正按秒计费的 /narrate/video 在分支里单独再要一次 editor。
-    const openToViewer=['activity','auth','comments','companion','highlights','narrate','role','stage','voice'].includes(parts[0]);
+    const openToViewer=['activity','auth','comments','companion','highlights','narrate','role','stage','voice','upload'].includes(parts[0]);
     if(!openToViewer&&!accountRole(auth.user,'editor'))return forbidden();
     if(parts[0]==='auth'&&parts[1]==='avatar') {
       const form=await request.formData();const file=form.get('file');
