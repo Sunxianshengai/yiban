@@ -72,6 +72,45 @@ function exportJson() {
   a.click()
 }
 
+/** ZIP backup: entries/*.html + media/* + manifest.json (replica format; original ZIP
+ *  layout pending extraction from renderer->main:exportToZip* contracts). */
+async function exportZip() {
+  const { zipSync, strToU8 } = await import('fflate')
+  const { entries, allMedia } = useEntries()
+  const list = entries.value
+  const files: Record<string, Uint8Array | [Uint8Array, { level: number }]> = {}
+  const manifest: any = { format: 'journey-replica-zip', version: 1, exportedAt: new Date().toISOString(), entries: [] }
+  for (const e of list) {
+    const id = e.id!
+    files[`entries/${id}.html`] = strToU8(e.text || '')
+    manifest.entries.push({
+      id,
+      dateOfJournal: new Date(e.dateOfJournal).toISOString(),
+      dateModified: new Date(e.dateModified).toISOString(),
+      previewText: e.previewText,
+      timezone: e.timezone,
+      favourite: e.favourite,
+      type: e.type,
+      address: e.address, lat: e.lat, lng: e.lng,
+      weatherIcon: e.weatherIcon, weatherDegreeC: e.weatherDegreeC, weatherPlace: e.weatherPlace,
+      sentiment: e.sentiment, activity: e.activity,
+      media: [] as string[],
+    })
+  }
+  for (const m of await allMedia()) {
+    if (!m.blob) continue
+    const p = `media/${m.id}-${m.fileName.replace(/[^\w.-]/g, '_')}`
+    files[p] = new Uint8Array(await m.blob.arrayBuffer())
+    manifest.entries.find((x: any) => x.id === m.jId)?.media.push(p)
+  }
+  files['manifest.json'] = strToU8(JSON.stringify(manifest, null, 2))
+  const zipped = zipSync(files as any)
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob([zipped as any], { type: 'application/zip' }))
+  a.download = `journey-backup-${new Date().toISOString().slice(0, 10)}.zip`
+  a.click()
+}
+
 const importMsg = ref('')
 function importJson() {
   const input = document.createElement('input')
@@ -223,7 +262,8 @@ async function wipeAll() {
 
       <div v-else-if="tab === 'data'" class="jr-modal-body">
         <div class="jr-data-row">
-          <button class="jr-btn" @click="exportJson"><JrIcon :path="mdiDownload" :size="17" /> Export backup (JSON)</button>
+          <button class="jr-btn" @click="exportZip"><JrIcon :path="mdiDownload" :size="17" /> Export backup (ZIP)</button>
+          <button class="jr-btn" @click="exportJson"><JrIcon :path="mdiDownload" :size="17" /> JSON</button>
           <button class="jr-btn" :disabled="busy === 'importing'" @click="importJson"><JrIcon :path="mdiUpload" :size="17" /> {{ busy === 'importing' ? 'Importing…' : 'Import' }}</button>
         </div>
         <p v-if="importMsg" class="jr-import-msg">{{ importMsg }}</p>

@@ -23,6 +23,16 @@ const results = computed(() => {
   })
 })
 
+// fileResults: media file-name search (original has /search/fileResults route)
+const fileResults = computed(() =>
+  needle.value ? mediaItems.value.filter((m) => m.fileName.toLowerCase().includes(needle.value)) : [],
+)
+const mediaItems = ref<{ id?: number; fileName: string; mimeType: string; url?: string; jId?: number }[]>([])
+onMounted(async () => {
+  const rows = await useEntries().allMedia()
+  mediaItems.value = rows.map((r) => ({ id: r.id, fileName: r.fileName, mimeType: r.mimeType, jId: r.jId, url: r.blob ? URL.createObjectURL(r.blob) : undefined }))
+})
+
 const selected = ref<EntryV2 | null>(null)
 async function open(e: EntryV2) {
   const clone = { ...e }
@@ -59,6 +69,14 @@ function rowDate(e: EntryV2) {
         <div class="date">{{ rowDate(e) }}</div>
         <div class="preview">{{ e.previewText }}</div>
       </div>
+
+      <template v-if="fileResults.length">
+        <div class="jr-set-label" style="margin-top:20px">File Results</div>
+        <div v-for="m in fileResults" :key="'f' + m.id" class="jr-entry">
+          <div class="date">{{ m.fileName }}</div>
+          <div class="preview">media · attached to entry {{ m.jId }}</div>
+        </div>
+      </template>
     </div>
     <div class="jr-detail-col" style="position:relative;display:flex;flex-direction:column">
       <div v-if="selected" class="jr-detail-body">

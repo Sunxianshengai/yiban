@@ -2,6 +2,7 @@
 import { mdiCalendarBlankOutline, mdiMapMarkerOutline, mdiWeatherSunny, mdiEmoticonOutline, mdiRun, mdiTagOutline, mdiFormatSize, mdiPlus, mdiFormatBold, mdiFormatItalic, mdiFormatStrikethrough, mdiFormatUnderline, mdiFormatColorText, mdiFormatAlignLeft, mdiFormatAlignCenter, mdiUndo, mdiRedo, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiBookOpenOutline, mdiClose, mdiCheck, mdiFormatListBulleted, mdiFormatListNumbered, mdiCheckboxMarkedOutline } from '@mdi/js'
 import type { EntryV2, TagWordV2 } from '~/utils/db'
 import { db } from '~/utils/db'
+import { fetchWeather, searchPlaces, WEATHER_EMOJI } from '~/utils/services'
 
 const linkUrl = ref('')
 const spellcheck = ref(localStorage.getItem('jr.spellcheck') !== '0')
@@ -29,6 +30,10 @@ const MOOD_LABEL: Record<string, string> = { excited: '😆', happy: '😊', cal
 
 const tags = ref<TagWordV2[]>([])
 const tagInput = ref('')
+const weatherBusy = ref(false)
+const placeQuery = ref('')
+const placeHits = ref<{ address: string; lat: number; lng: number }[]>([])
+const placeBusy = ref(false)
 
 const dateLabel = computed(() =>
   new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date.value).replace(' at ', ' At '),
@@ -98,6 +103,19 @@ function insertTaskList() {
 /** Markdown auto-convert on space, per official "partial Markdown auto conversion": #-h1..h3, >-quote, -/*-ul, 1.-ol, []-task. */
 function onAreaKeydown(e: KeyboardEvent) {
   saveSel()
+  // Tab / Shift+Tab adjust list indentation (official desktop behavior [J8])
+  if (e.key === 'Tab') {
+    const sel = window.getSelection()
+    if (sel && area.value?.contains(sel.anchorNode)) {
+      const li = (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement)?.closest('li')
+      if (li) {
+        e.preventDefault()
+        document.execCommand(e.shiftKey ? 'outdent' : 'indent')
+        saveSel()
+        return
+      }
+    }
+  }
   if (e.key !== ' ') return
   const sel = window.getSelection()
   if (!sel || !sel.isCollapsed) return
@@ -199,12 +217,28 @@ const staged = ref<File[]>([])
 
 function useMyLocation() {
   navigator.geolocation?.getCurrentPosition(
-    (p) => {
+    async (p) => {
       meta.value = { ...meta.value, lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6) }
+      weatherBusy.value = true
+      const w = await fetchWeather(meta.value.lat!, meta.value.lng!)
+      if (w) meta.value = { ...meta.value, weatherIcon: w.icon, weatherDegreeC: w.degreeC, weatherDescription: w.description }
+      weatherBusy.value = false
     },
     () => {},
-    { timeout: 5000 },
+    { timeout: 6000 },
   )
+}
+
+async function searchPlace() {
+  if (!placeQuery.value.trim()) return
+  placeBusy.value = true
+  placeHits.value = await searchPlaces(placeQuery.value)
+  placeBusy.value = false
+}
+
+function pickPlace(h: { address: string; lat: number; lng: number }) {
+  meta.value = { ...meta.value, address: h.address, lat: +h.lat.toFixed(6), lng: +h.lng.toFixed(6) }
+  placeHits.value = []
 }
 
 async function ensureTagIfNew() {
@@ -319,6 +353,7 @@ async function save() {
           <button class="jr-pop-item" style="width:auto" @click="insertHtml(`<a href='${linkUrl || '#'}' target='_blank'>${linkUrl || 'link'}</a>`)"><JrIcon :path="mdiCheck" :size="16" /></button>
         </div>
         <button class="jr-pop-item" @click="insertHtml('<table border=\'1\' style=\'border-collapse:collapse\'><tr><th>H</th><th>H</th></tr><tr><td>&nbsp;</td><td>&nbsp;</td></tr></table><p></p>')">Table 2×2</button>
+        <button class="jr-pop-item" @click="insertHtml('<code>code</code>')">Inline code</button>
       </template>
 
       <template v-else-if="openPop === 'color'">
@@ -328,7 +363,16 @@ async function save() {
       </template>
 
       <template v-else-if="openPop === 'loc'">
-        <input v-model="meta.address" placeholder="Place address" class="jr-pop-input" />
+        <div class="jr-pop-row">
+          <input v-model="placeQuery" placeholder="Search places…" class="jr-pop-input" @keydown.enter.prevent="searchPlace" />
+          <button class="jr-pop-item" style="width:auto" @click="searchPlace"><JrIcon :path="mdiCheck" :size="16" /></button>
+        </div>
+        <div v-if="placeHits.length" class="jr-place-hits">
+          <button v-for="h in placeHits" :key="h.address" class="jr-pop-item" @click="pickPlace(h); openPop = null">{{ h.address.slice(0, 70) }}</button>
+        </div>
+        <div class="jr-pop-row">
+          <input v-model="meta.address" placeholder="Place address" class="jr-pop-input" />
+        </div>
         <div class="jr-pop-row">
           <input v-model.number="meta.lat" type="number" step="any" placeholder="lat" class="jr-pop-input" />
           <input v-model.number="meta.lng" type="number" step="any" placeholder="lng" class="jr-pop-input" />
@@ -338,8 +382,11 @@ async function save() {
       </template>
 
       <template v-else-if="openPop === 'weather'">
+        <button class="jr-pop-item" :disabled="weatherBusy" @click="useMyLocation">
+          {{ weatherBusy ? 'Fetching…' : 'Fetch current weather (my location)' }}
+        </button>
         <div class="jr-colors">
-          <button v-for="w in WEATHER_ICONS" :key="w" class="jr-dot jr-wicon" :class="{ on: meta.weatherIcon === w }" @click="meta = { ...meta, weatherIcon: w }">{{ { sun: '☀️', partly: '🌤', cloud: '☁️', fog: '🌫', rain: '🌧', snow: '🌨', storm: '⛈' }[w] }}</button>
+          <button v-for="w in WEATHER_ICONS" :key="w" class="jr-dot jr-wicon" :class="{ on: meta.weatherIcon === w }" @click="meta = { ...meta, weatherIcon: w }">{{ WEATHER_EMOJI[w] }}</button>
         </div>
         <div class="jr-pop-row">
           <input v-model.number="meta.weatherDegreeC" type="number" placeholder="°C" class="jr-pop-input" />

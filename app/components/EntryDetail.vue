@@ -12,6 +12,13 @@ const emit = defineEmits<{
 }>()
 
 const menuOpen = ref(false)
+const tagTitles = ref<Record<number, string>>({})
+onMounted(async () => {
+  const tags = await useEntries().listTags()
+  const m: Record<number, string> = {}
+  for (const t of tags) if (t.id != null) m[t.id] = t.title
+  tagTitles.value = m
+})
 
 const day = computed(() => props.entry ? new Intl.DateTimeFormat('en-US', { day: '2-digit' }).format(props.entry.dateOfJournal) : '')
 const d1 = computed(() => props.entry ? new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(props.entry.dateOfJournal) : '')
@@ -48,6 +55,13 @@ function onMenu(key: typeof menu[number]['key']) {
       <div style="align-self:flex-start" title="Pending upload (local only)">
         <JrIcon :path="mdiCloudUploadOutline" :size="20" style="color:#e05a4e" />
       </div>
+    </div>
+    <div class="jr-detail-chips">
+      <span v-if="entry.sentiment" class="jr-mchip">{{ { excited: '😆', happy: '😊', calm: '😌', 'so-so': '😐', tired: '😪', sad: '😢', angry: '😠', anxious: '😰' }[entry.sentiment] || entry.sentiment }} {{ entry.sentiment }}</span>
+      <span v-if="entry.activity" class="jr-mchip">🏃 {{ entry.activity }}</span>
+      <span v-if="entry.weatherIcon" class="jr-mchip">{{ { sun: '☀️', partly: '🌤', cloud: '☁️', fog: '🌫', rain: '🌧', snow: '🌨', storm: '⛈' }[entry.weatherIcon] }} {{ entry.weatherDegreeC != null ? entry.weatherDegreeC + '°C' : '' }} {{ entry.weatherPlace || entry.weatherDescription || '' }}</span>
+      <span v-if="entry.address" class="jr-mchip" :title="entry.address">📍 {{ entry.address.slice(0, 40) }}</span>
+      <span v-for="t in (entry.tagWordIds || [])" :key="t" class="jr-mchip jr-mtag">#{{ tagTitles[t] || t }}</span>
     </div>
     <div class="jr-detail-content" v-html="entry.text" />
   </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { mdiBookmark, mdiHistory, mdiSortVariant, mdiCloudUploadOutline, mdiImageOutline, mdiCheck, mdiArrowDown, mdiArrowUp } from '@mdi/js'
 import type { EntryV2 } from '~/utils/db'
+import { WEATHER_EMOJI } from '~/utils/services'
 
 const { entries, refresh, toggleFavourite, duplicateEntry, saveAsTemplate, moveToTrash, throwbacks, hydrateMediaHtml } = useEntries()
 
@@ -9,6 +10,7 @@ const editing = ref<EntryV2 | null>(null)
 const selected = ref<EntryV2 | null>(null)
 const throwbackList = ref<EntryV2[]>([])
 const throwbackLabel = ref('No throwback today')
+const storiesOpen = ref(false)
 
 onMounted(async () => {
   const tb = await throwbacks()
@@ -118,12 +120,12 @@ async function onTrash() {
 
       <div class="jr-stories-title">Stories</div>
       <div class="jr-stories">
-        <button class="jr-story-card today">
+        <button class="jr-story-card today" @click="storiesOpen = true">
           <span class="icon"><JrIcon :path="mdiBookmark" :size="22" /></span>
           <span class="t">Today</span>
           <span class="s">{{ todayLabel }}</span>
         </button>
-        <button class="jr-story-card throwback">
+        <button class="jr-story-card throwback" @click="storiesOpen = true">
           <span class="icon"><JrIcon :path="mdiHistory" :size="22" /></span>
           <span class="t">Throwback</span>
           <span class="s">{{ throwbackLabel }}</span>
@@ -163,6 +165,9 @@ async function onTrash() {
         <div class="date">{{ rowDate(e) }}</div>
         <div class="preview">{{ e.previewText || 'No additional text' }}</div>
         <div class="meta">
+          <span v-if="e.weatherIcon" :title="`${e.weatherDescription || ''} ${e.weatherDegreeC ?? ''}°C`">{{ WEATHER_EMOJI[e.weatherIcon] || '☁️' }} {{ e.weatherDegreeC != null ? e.weatherDegreeC + '°C' : '' }}</span>
+          <span v-if="e.address" :title="e.address">📍</span>
+          <span v-if="e.favourite" title="Starred">⭐</span>
           <span v-if="!e.synced" class="jr-status-icon" title="Pending upload">
             <JrIcon :path="mdiCloudUploadOutline" :size="17" />
           </span>
@@ -188,5 +193,7 @@ async function onTrash() {
         @done="onDone"
       />
     </div>
+
+    <StoriesOverlay v-if="storiesOpen" :throwbacks="throwbackList" @close="storiesOpen = false" />
   </div>
 </template>
