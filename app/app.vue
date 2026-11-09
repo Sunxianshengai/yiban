@@ -4,17 +4,20 @@ import { desktopBridge } from '~/utils/desktopBridge'
 const onboarded = ref(true)
 const locked = ref(false)
 const membershipOpen = useMembershipDialog()
-const { theme, fontSize } = useAppearance()
+const { theme, fontSize, colorTheme } = useAppearance()
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)')
 const systemPrefersDark = ref(systemDark.matches)
 function onSystemTheme(event: MediaQueryListEvent) { systemPrefersDark.value = event.matches }
 onMounted(() => systemDark.addEventListener('change', onSystemTheme))
 onBeforeUnmount(() => systemDark.removeEventListener('change', onSystemTheme))
 watchEffect(() => {
-  document.documentElement.dataset.theme = theme.value === 'Dark' || (theme.value === 'System' && systemPrefersDark.value) ? 'dark' : 'light'
+  const dark = theme.value === 'Dark' || (theme.value === 'System' && systemPrefersDark.value)
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+  applyColorTheme(colorTheme.value, dark)
   document.documentElement.style.setProperty('--jr-content-size', { Small: '14px', Medium: '16px', Large: '18px' }[fontSize.value])
   localStorage.setItem('jr.theme', theme.value)
   localStorage.setItem('jr.fontSize', fontSize.value)
+  localStorage.setItem('jr.colorTheme', String(colorTheme.value))
 })
 onMounted(async () => {
   onboarded.value = localStorage.getItem('jr.onboarded') === '1'

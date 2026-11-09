@@ -257,11 +257,19 @@ function onAreaKeydown(e: KeyboardEvent) {
   if (e.key === 'Tab') {
     const sel = window.getSelection()
     if (sel && area.value?.contains(sel.anchorNode)) {
-      const li = (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement)?.closest('li')
+      const li = (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement)?.closest('li') as HTMLElement | null
       if (li) {
         e.preventDefault()
-        document.execCommand(e.shiftKey ? 'outdent' : 'indent')
+        // 原版为规范嵌套 li>ul>li；浏览器原生 indent 会产出 ul>ul 兄弟结构，故手动搬移
+        const moved = e.shiftKey ? unNestListItem(li) : nestListItem(li)
+        if (!moved) document.execCommand(e.shiftKey ? 'outdent' : 'indent')
+        const r = document.createRange()
+        r.selectNodeContents(li)
+        r.collapse(false)
+        sel.removeAllRanges()
+        sel.addRange(r)
         saveSel()
+        recount()
         return
       }
     }
@@ -279,6 +287,18 @@ function onAreaKeydown(e: KeyboardEvent) {
     before = kids.map((c) => c.textContent || '').join('')
   }
   const line = before.split('\n').pop() || ''
+  // 行内代码：`text` 第二个反引号落下时转换（原版 markdown 引擎行为）
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const codeMatch = /`([^`\n]+)`$/.exec(line)
+  if (codeMatch) {
+    e.preventDefault()
+    const dropLen = codeMatch[0].length
+    for (let i = 0; i < dropLen; i++) document.execCommand('delete')
+    // live selection（saved range 指向已删除的标记节点，不可恢复）
+    document.execCommand('insertHTML', false, `<code>${esc(codeMatch[1])}</code>&nbsp;`)
+    recount()
+    return
+  }
   const rules: [RegExp, string | null, string | undefined][] = [
     [/^#$/, 'formatBlock', 'h1'],
     [/^##$/, 'formatBlock', 'h2'],
@@ -308,6 +328,37 @@ function setBlockKeep(tag: string) {
   restoreSel()
   document.execCommand('formatBlock', false, tag)
   recount()
+}
+
+// Tab 缩进：把 li 移入前一项的子列表（规范 li>ul>li 结构）
+function nestListItem(li: HTMLElement): boolean {
+  const prev = li.previousElementSibling as HTMLElement | null
+  if (!prev || prev.tagName !== 'LI') return false
+  let sub = prev.querySelector(':scope > ul, :scope > ol') as HTMLElement | null
+  if (!sub) {
+    sub = document.createElement(li.parentElement?.tagName === 'OL' ? 'ol' : 'ul')
+    prev.appendChild(sub)
+  }
+  sub.appendChild(li)
+  return true
+}
+
+// Shift+Tab：li 提升到父列表中 ownerLi 之后；后续兄弟留在 li 下新子列表
+function unNestListItem(li: HTMLElement): boolean {
+  const parentList = li.parentElement
+  if (!parentList) return false
+  const ownerLi = parentList.closest('li') as HTMLElement | null
+  if (!ownerLi?.parentElement) return false
+  const rest: Element[] = []
+  let n = li.nextElementSibling
+  while (n) { rest.push(n); n = n.nextElementSibling }
+  ownerLi.parentElement.insertBefore(li, ownerLi.nextSibling)
+  if (rest.length) {
+    const sub = document.createElement(parentList.tagName)
+    rest.forEach((el) => sub.appendChild(el))
+    li.appendChild(sub)
+  }
+  return true
 }
 
 // ---- date picker popover (mini month grid + time) ----

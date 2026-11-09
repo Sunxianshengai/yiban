@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { desktopBridge } from '~/utils/desktopBridge'
 import { errorText } from '~/utils/uiText'
+import { JR_THEMES, THEME_IDS } from '~/utils/themesRegistry'
 import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiAccountOutline, mdiShieldKeyOutline, mdiDatabaseOutline, mdiHelpCircleOutline, mdiPalette, mdiRuler, mdiMapMarkerOutline, mdiTranslate, mdiSpellcheck, mdiPuzzleOutline, mdiLockOutline, mdiChevronRight } from '@mdi/js'
 
 const tab = ref<'general' | 'account' | 'security' | 'data' | 'help'>('general')
@@ -23,16 +24,22 @@ const genItems = [
 ] as const
 
 // Appearance — faithful to page-settings.png: circles (1st free teal, rest locked) + Theme/Font/Size dropdowns + lorem preview
-const { theme, fontSize } = useAppearance()
+const { theme, fontSize, colorTheme } = useAppearance()
 const fontFamily = ref(localStorage.getItem('jr.fontFamily') || 'Gotham Rounded')
 const spellcheck = ref(localStorage.getItem('jr.spellcheck') !== '0')
 watchEffect(() => {
   localStorage.setItem('jr.fontFamily', fontFamily.value)
   localStorage.setItem('jr.spellcheck', spellcheck.value ? '1' : '0')
 })
-const circles = ['#00687B', '#f3c4cd', '#e9c562', '#e2a387', '#d98d76', '#93c993', '#79b77f']
+// 14 个圆点 = light0-13 的 primary，逐字来自原版主题注册表（themesRegistry.ts）
+const circles = THEME_IDS.map((id) => JR_THEMES[id].colors.primary)
 const circleLocked = (i: number) => i > 0 // evidence: only the first (teal) circle is unlocked on Free
 const circleNote = ref('')
+function pickCircle(i: number) {
+  if (circleLocked(i)) { circleNote.value = '彩色主题属于会员权益。免费版可使用系统主题。'; return }
+  colorTheme.value = 0
+  circleNote.value = ''
+}
 
 // Security — PIN lock (real, local)
 const pinHash = localStorage.getItem('jr.pinHash') || ''
@@ -175,11 +182,11 @@ async function wipeAll() {
             <div class="jr-circles">
               <button
                 v-for="(c, i) in circles" :key="c"
-                class="jr-circle" :style="{ background: c }"
+                class="jr-circle" :class="{ 'jr-circle-on': i === 0 && colorTheme === 0 }" :style="{ background: c }"
                 :title="circleLocked(i) ? '会员主题' : '系统主题（免费）'"
-                @click="circleLocked(i) ? (circleNote = '彩色主题属于会员权益。免费版可使用系统主题。') : (circleNote = '')"
+                @click="pickCircle(i)"
               >
-                <JrIcon v-if="i === 0" :path="mdiCheck" :size="18" />
+                <JrIcon v-if="i === 0 && colorTheme === 0" :path="mdiCheck" :size="18" />
                 <svg v-else-if="circleLocked(i)" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" opacity="0.55"><path d="M12 17a2 2 0 0 0 2-2 2 2 0 0 0-2-2 2 2 0 0 0-2 2 2 2 0 0 0 2 2m6 3H6a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h1V6a5 5 0 0 1 5-5 5 5 0 0 1 5 5v2h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2m-6-17a3 3 0 0 0-3 3v2h6V6a3 3 0 0 0-3-3z" /></svg>
               </button>
               <button class="jr-circle jr-circle-more"><JrIcon :path="mdiChevronRight" :size="18" /></button>
