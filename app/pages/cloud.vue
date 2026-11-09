@@ -10,23 +10,23 @@ const notice = ref('')
   <div class="jr-modal-mask" @click.self="$router.back()">
     <div class="jr-modal jr-cloud-modal">
       <button class="jr-modal-x" @click="$router.back()"><JrIcon :path="mdiClose" :size="16" /></button>
-      <div class="jr-set-label" style="padding-left:4px">Default Account</div>
+      <div class="jr-set-label" style="padding-left:4px">默认账号</div>
       <div class="jr-cloud-row on">
         <JrIcon :path="mdiLaptop" :size="24" />
-        <span style="font-weight:700">Local</span>
+        <span style="font-weight:700">本机</span>
       </div>
-      <div class="jr-set-label" style="padding-left:4px;margin-top:14px">Other Accounts</div>
-      <button class="jr-cloud-row" @click="notice = 'Journey Cloud Sync / Google Drive need a server adapter — see feature matrix F-021. Endpoints recorded in evidence/derived/contracts.json.'">
+      <div class="jr-set-label" style="padding-left:4px;margin-top:14px">其他账号</div>
+      <button class="jr-cloud-row" @click="notice = '云同步和谷歌云端硬盘暂未接入。'">
         <JrIcon :path="mdiPlusBoxOutline" :size="24" />
-        <span>Add a New Cloud Service</span>
+        <span>添加云服务</span>
       </button>
-      <button class="jr-cloud-row" @click="notice = 'Account, data and cloud management pending server adapters (F-021/F-022).'">
+      <button class="jr-cloud-row" @click="notice = '在线账号与云服务管理暂不可用。'">
         <JrIcon :path="mdiCogOutline" :size="24" />
-        <span>Manage Account, Data &amp; Cloud Services</span>
+        <span>管理账号、数据与云服务</span>
       </button>
       <p v-if="notice" class="jr-import-msg">{{ notice }}</p>
-      <button class="jr-btn jr-btn-primary" style="width:100%;justify-content:center;margin-top:14px" disabled title="Local journal is always current; cloud sync needs server adapters">
-        <JrIcon :path="mdiSync" :size="17" /> Sync All
+      <button class="jr-btn jr-btn-primary" style="width:100%;justify-content:center;margin-top:14px" disabled title="本机日记已是最新状态。云同步暂不可用。">
+        <JrIcon :path="mdiSync" :size="17" /> 全部同步
       </button>
     </div>
   </div>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { mdiSend } from '@mdi/js'
+import { errorText } from '~/utils/uiText'
 
 /**
  * Pal (AI companion) — the original talks to Journey's own server (renderer->main:palRequest IPC,
@@ -22,7 +23,7 @@ const error = ref('')
 async function send() {
   const text = input.value.trim()
   if (!text || sending.value) return
-  if (!endpoint.value) { error.value = 'Configure an AI endpoint below first.'; return }
+  if (!endpoint.value) { error.value = '请先配置下方的服务地址。'; return }
   messages.value.push({ role: 'user', content: text })
   input.value = ''
   sending.value = true
@@ -31,13 +32,13 @@ async function send() {
     const res = await fetch(endpoint.value.replace(/\/$/, '') + '/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey.value}` },
-      body: JSON.stringify({ model: localStorage.getItem('jr.palModel') || 'gpt-4o-mini', messages: [{ role: 'system', content: 'You are Pal, a warm journaling companion. Reflect with the user, ask gentle questions, encourage capturing moments in their journal.' }, ...messages.value] }),
+      body: JSON.stringify({ model: localStorage.getItem('jr.palModel') || 'gpt-4o-mini', messages: [{ role: 'system', content: '你是一位温和的日记伙伴。用简体中文和用户交流，陪他们回顾生活，提出温和的问题，鼓励他们写下值得记住的时刻。' }, ...messages.value] }),
     })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    if (!res.ok) throw new Error(`服务请求失败（HTTP ${res.status}）。`)
     const data = await res.json()
-    messages.value.push({ role: 'assistant', content: data.choices?.[0]?.message?.content || '(empty reply)' })
+    messages.value.push({ role: 'assistant', content: data.choices?.[0]?.message?.content || '（没有收到回复）' })
   } catch (e) {
-    error.value = `Request failed: ${(e as Error).message}`
+    error.value = errorText(e, '请求失败，请检查服务地址和网络。')
   }
   sending.value = false
 }
@@ -47,15 +48,14 @@ watchEffect(() => localStorage.setItem('jr.palModel', palModel.value))
 
 <template>
   <div class="jr-page jr-pal">
-    <h1>Pal</h1>
+    <h1>日记伙伴</h1>
     <div class="jr-pal-thread">
       <div v-if="!messages.length" class="jr-muted" style="margin:auto;text-align:center">
         <p style="font-size:34px">🧸🐑</p>
-        <p>Barry &amp; Sherry are your journaling companions.</p>
+        <p>巴里和雪莉是你的日记伙伴。</p>
         <p class="jr-muted" style="font-size:12.5px;max-width:420px">
-          The original Pal talks to Journey's own servers (palRequest IPC). This replica calls
-          <b>your own OpenAI-compatible endpoint</b> instead — configure it below, or leave it unset
-          (feature stays honestly unavailable, no fake success).
+          连接你配置的
+          <b>兼容 OpenAI 接口的服务</b> 后，即可使用日记伙伴。
         </p>
       </div>
       <div v-for="(m, i) in messages" :key="i" class="jr-pal-msg" :class="m.role">{{ m.content }}</div>
@@ -63,12 +63,12 @@ watchEffect(() => localStorage.setItem('jr.palModel', palModel.value))
     </div>
 
     <div class="jr-pal-config">
-      <input v-model="endpoint" placeholder="Endpoint base URL, e.g. https://api.openai.com/v1" />
-      <input v-model="apiKey" type="password" placeholder="API key (stored locally only)" />
-      <input v-model="palModel" placeholder="model" style="max-width:160px" />
+      <input v-model="endpoint" placeholder="服务地址，例如 https://api.openai.com/v1" />
+      <input v-model="apiKey" type="password" placeholder="接口密钥（仅保存在本机）" />
+      <input v-model="palModel" placeholder="模型名称" style="max-width:160px" />
     </div>
     <form class="jr-pal-input" @submit.prevent="send">
-      <input v-model="input" type="text" placeholder="Say something to your Pal…" />
+      <input v-model="input" type="text" placeholder="和日记伙伴聊聊…" />
       <button class="jr-btn" :disabled="sending"><JrIcon :path="mdiSend" :size="18" /></button>
     </form>
   </div>

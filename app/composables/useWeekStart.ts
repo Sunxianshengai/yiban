@@ -1,7 +1,7 @@
 type WeekStart = 'default' | 'monday' | 'sunday'
 type LocaleWeekInfo = { firstDay: number }
 
-const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 const storageKey = 'jr.firstDayOfWeek'
 
 export function useWeekStart() {
@@ -20,7 +20,7 @@ export function useWeekStart() {
     if (weekStart.value === 'monday') return 1
     if (weekStart.value === 'sunday') return 0
 
-    const locale = new Intl.Locale(navigator.language) as Intl.Locale & {
+    const locale = new Intl.Locale('zh-CN') as Intl.Locale & {
       getWeekInfo?: () => LocaleWeekInfo
       weekInfo?: LocaleWeekInfo
     }

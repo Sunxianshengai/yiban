@@ -17,7 +17,7 @@ async function tryPin() {
     unlocked.value = true
     emit('unlocked')
   } else {
-    err.value = 'Wrong PIN.'
+    err.value = '密码不正确。'
     pin.value = ''
   }
 }
@@ -27,7 +27,7 @@ async function tryPin() {
   <div v-if="!unlocked" class="jr-lock">
     <div class="jr-lock-card">
       <div style="font-size:44px">🔒</div>
-      <h2>Enter PIN</h2>
+      <h2>输入密码</h2>
       <input
         v-model="pin"
         type="password"
@@ -38,7 +38,7 @@ async function tryPin() {
         @keydown.enter="tryPin"
       />
       <p v-if="err" class="jr-lock-err">{{ err }}</p>
-      <button class="jr-btn jr-btn-primary" @click="tryPin">Unlock</button>
+      <button class="jr-btn jr-btn-primary" @click="tryPin">解锁</button>
     </div>
   </div>
 </template>

@@ -6,6 +6,7 @@ import { fetchWeather, searchPlaces, WEATHER_EMOJI } from '~/utils/services'
 import { activities, journalActivity, journalSentiment, sentiments } from '~/utils/journalOptions'
 import { desktopBridge, readEditorMedia } from '~/utils/desktopBridge'
 import type { DesktopMediaReply } from '~/utils/desktopBridge'
+import { countWords, errorText } from '~/utils/uiText'
 
 const linkUrl = ref('')
 const imageUrl = ref('')
@@ -28,7 +29,11 @@ const hasContent = ref(false)
 const date = ref(props.initialDate ? new Date(props.initialDate) : new Date())
 
 const meta = ref<Partial<EntryV2>>({ ...props.initialMeta })
-const openPop = ref<'style' | 'insert' | 'table' | 'color' | 'loc' | 'weather' | 'mood' | 'activity' | 'tags' | 'templates' | null>(null)
+const popoverLabels = {
+  style: '段落样式', insert: '插入', table: '表格', color: '文字颜色', loc: '地点',
+  weather: '天气', mood: '心情', activity: '活动', tags: '标签', templates: '模板',
+}
+const openPop = ref<keyof typeof popoverLabels | null>(null)
 
 const WEATHER_ICONS = ['sun', 'partly', 'cloud', 'fog', 'rain', 'snow', 'storm']
 const selectedMood = computed(() => journalSentiment(meta.value.sentiment)?.value)
@@ -82,7 +87,7 @@ function insertTemplate(t: { content: string }) {
 }
 
 const dateLabel = computed(() =>
-  new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date.value).replace(' at ', ' At '),
+  new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date.value),
 )
 const locLabel = computed(() => meta.value.address || (meta.value.lat != null ? `${meta.value.lat?.toFixed(4)}, ${meta.value.lng?.toFixed(4)}` : ''))
 
@@ -115,8 +120,7 @@ onBeforeUnmount(() => {
 
 function recount() {
   const t = area.value?.innerText || ''
-  const wordsArr = t.trim().split(/\s+/).filter(Boolean)
-  words.value = t.trim() ? wordsArr.length : 0
+  words.value = countWords(t)
   chars.value = t.replace(/\n/g, '').length
   hasContent.value = !!t.trim() || !!area.value?.querySelector('img')
 }
@@ -156,7 +160,7 @@ function insertHtml(html: string) {
 
 /** Task list item (checkbox toggles natively inside contenteditable in Chromium). */
 function insertTaskList() {
-  cmd('insertHTML', '<ul class="jr-task"><li><label><input type="checkbox">Task</label></li></ul><p><br></p>')
+  cmd('insertHTML', '<ul class="jr-task"><li><label><input type="checkbox">待办事项</label></li></ul><p><br></p>')
   recount()
 }
 
@@ -205,7 +209,7 @@ function onAreaKeydown(e: KeyboardEvent) {
     // apply on the LIVE selection — restoring a saved range here would point at deleted nodes
     if (cmdName === 'task') {
       // live selection (no restore — saved range points at deleted marker nodes)
-      document.execCommand('insertHTML', false, '<ul class="jr-task"><li><label><input type="checkbox">Task</label></li></ul><p><br></p>')
+      document.execCommand('insertHTML', false, '<ul class="jr-task"><li><label><input type="checkbox">待办事项</label></li></ul><p><br></p>')
     } else {
       document.execCommand(cmdName, false, val)
     }
@@ -231,7 +235,7 @@ const dpCells = computed(() => {
   while (cells.length % 7) cells.push(null)
   return cells
 })
-const dpLabel = computed(() => new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date(dpYear.value, dpMonth.value - 1, 1)))
+const dpLabel = computed(() => new Intl.DateTimeFormat('zh-CN', { month: 'long', year: 'numeric' }).format(new Date(dpYear.value, dpMonth.value - 1, 1)))
 function dpPrev() { if (--dpMonth.value < 1) { dpMonth.value = 12; dpYear.value-- } }
 function dpNext() { if (++dpMonth.value > 12) { dpMonth.value = 1; dpYear.value++ } }
 function openDatePicker() {
@@ -268,7 +272,7 @@ async function pickDesktopFiles(dropped?: File[]) {
     const reply = dropped
       ? await desktop.pickDroppedFiles(dropped, options)
       : await desktop.invoke<DesktopMediaReply>('pickFiles', {
-        ...options, title: 'Add media', selectBtnLabel: 'Add', filterNameExt: 'Photos, video and audio',
+        ...options, title: '添加媒体', selectBtnLabel: '添加', filterNameExt: '照片、视频和音频',
         exts: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'heic', 'mp3', 'mp4', 'mov', 'wav', 'webp', 'webm'],
       })
     if (reply?.status) {
@@ -277,19 +281,19 @@ async function pickDesktopFiles(dropped?: File[]) {
     } else if (reply?.errorCode === 'unavailable_file_path' && dropped) {
       await addAttachments(dropped)
     } else if (reply?.errorCode) {
-      attachmentNote.value = reply.errorCode === 'exceed_files_count' ? `Each entry can have up to ${attachmentLimit} attachments.`
-        : reply.errorCode === 'exceed_file_size' ? 'One of the attachments exceeds 200 MB.' : 'Could not add the selected files.'
+      attachmentNote.value = reply.errorCode === 'exceed_files_count' ? `每篇日记最多可添加 ${attachmentLimit} 个附件。`
+        : reply.errorCode === 'exceed_file_size' ? '有附件超过 200 MB。' : '无法添加所选文件。'
       openPop.value = null
     }
   } catch (error) {
-    attachmentNote.value = (error as Error).message
+    attachmentNote.value = errorText(error, '无法添加所选文件。')
     openPop.value = null
   } finally { nativePicking.value = false }
 }
 
 function startVoiceNote() {
   if (attachmentCount.value >= attachmentLimit) {
-    attachmentNote.value = `Each entry can have up to ${attachmentLimit} attachments.`
+    attachmentNote.value = `每篇日记最多可添加 ${attachmentLimit} 个附件。`
     openPop.value = null
     return
   }
@@ -327,21 +331,21 @@ async function addAttachments(files: File[], recorded = false, nativeMetadata?: 
   try {
     for (const file of files) {
       if (attachmentCount.value >= attachmentLimit) {
-        errors.push(`Each entry can have up to ${attachmentLimit} attachments.`)
+        errors.push(`每篇日记最多可添加 ${attachmentLimit} 个附件。`)
         break
       }
       if (!/^(image|video|audio)\//.test(file.type) || file.type === 'image/svg+xml' || file.size === 0) {
-        errors.push(`Unsupported attachment: ${file.name}.`)
+        errors.push(`不支持此附件：${file.name}。`)
         continue
       }
       if (file.size > 200 * 1024 * 1024) {
-        errors.push(`${file.name} exceeds 200 MB.`)
+        errors.push(`${file.name} 超过 200 MB。`)
         continue
       }
       if (file.type.startsWith('audio/') && !recorded) {
         const seconds = await readAudioDuration(file)
         if (seconds != null && seconds > 600 && Number.isFinite(seconds)) {
-          errors.push(`${file.name} exceeds 10 minutes.`)
+          errors.push(`${file.name} 超过 10 分钟。`)
           continue
         }
       }
@@ -407,12 +411,12 @@ function onPaste(event: ClipboardEvent) {
 function insertWebMedia(image: boolean) {
   try {
     const url = new URL((image ? imageUrl : linkUrl).value.trim())
-    if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error('Unsupported address.')
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error('不支持此网址。')
     let element: HTMLElement
     if (image) {
       const img = document.createElement('img')
       img.src = url.href
-      img.alt = 'Web image'
+      img.alt = '网络图片'
       element = img
     } else {
       const link = document.createElement('a')
@@ -424,7 +428,7 @@ function insertWebMedia(image: boolean) {
     }
     insertError.value = ''
     insertHtml(element.outerHTML)
-  } catch { insertError.value = 'Enter a valid http or https URL.' }
+  } catch { insertError.value = '请输入有效的 HTTP 或 HTTPS 网址。' }
 }
 
 function openTableMenu(event: MouseEvent) {
@@ -491,7 +495,7 @@ function pickPlace(h: { address: string; lat: number; lng: number }) {
 async function ensureTagIfNew() {
   const t = tagInput.value.trim().toLowerCase()
   if (!t) return
-  if (!/^[\p{L}\p{N}]+$/u.test(t)) { tagError.value = 'Use letters and numbers in a tag.'; return }
+  if (!/^[\p{L}\p{N}]+$/u.test(t)) { tagError.value = '标签只能包含文字或数字。'; return }
   tagError.value = ''
   const tag = await ensureTag(t)
   tags.value = await useEntries().listTags()
@@ -515,7 +519,7 @@ async function save() {
     await saveEntry(props.entryId, empty ? '' : text, date.value, meta.value, staged.value, removedMedia.value)
     emit('done')
   } catch (error) {
-    attachmentNote.value = `Could not save entry: ${(error as Error).message}`
+    attachmentNote.value = errorText(error, '无法保存日记，请重试。')
   } finally {
     saving.value = false
   }
@@ -530,7 +534,7 @@ async function save() {
         <span>{{ dateLabel }}</span>
         <JrIcon :path="mdiChevronDown" :size="18" />
       </button>
-      <button class="done" :disabled="!initialReady || saving || checkingFiles || nativePicking || recordingStatus !== 'idle'" @click="save">{{ saving ? 'Saving…' : 'Done' }}</button>
+      <button class="done" :disabled="!initialReady || saving || checkingFiles || nativePicking || recordingStatus !== 'idle'" @click="save">{{ saving ? '正在保存…' : '完成' }}</button>
       <div v-if="datePop" class="jr-pop jr-dp" @click.stop>
         <div class="jr-pop-head">
           <button class="tb" @click="dpPrev"><JrIcon :path="mdiChevronLeft" :size="16" /></button>
@@ -538,7 +542,7 @@ async function save() {
           <button class="tb" @click="dpNext"><JrIcon :path="mdiChevronRight" :size="16" /></button>
           <button class="tb" @click="datePop = false"><JrIcon :path="mdiClose" :size="16" /></button>
         </div>
-        <div class="jr-dp-grid jr-dp-dow"><span v-for="d in orderedWeekdays" :key="d" :title="d">{{ d[0] }}</span></div>
+        <div class="jr-dp-grid jr-dp-dow"><span v-for="d in orderedWeekdays" :key="d" :title="d">{{ d.slice(-1) }}</span></div>
         <div class="jr-dp-grid">
           <button
             v-for="(c, i) in dpCells" :key="i"
@@ -554,7 +558,7 @@ async function save() {
 
     <div class="jr-editor-body" style="position:relative">
       <div v-if="!touched && !hasContent && !attachmentCount" class="jr-editor-ph">
-        Start writing or choose a <button class="jr-template-chip" @click.stop="openTemplates"><JrIcon :path="mdiBookOpenOutline" :size="13" /> Template</button> .
+        开始写日记，或选择 <button class="jr-template-chip" @click.stop="openTemplates"><JrIcon :path="mdiBookOpenOutline" :size="13" /> 模板</button>。
       </div>
       <div
         ref="area"
@@ -572,87 +576,87 @@ async function save() {
     </div>
 
     <!-- popovers -->
-    <div v-if="attachmentCount || attachmentNote || recordingStatus !== 'idle'" class="jr-attachments" aria-label="Entry attachments">
+    <div v-if="attachmentCount || attachmentNote || recordingStatus !== 'idle'" class="jr-attachments" aria-label="日记附件">
       <div v-if="attachmentCount" class="jr-attachment-list">
         <div v-for="file in activeMedia" :key="file.id" class="jr-attachment">
           <span :title="file.fileName">{{ file.fileName }}</span>
-          <button class="jr-icon-btn" :aria-label="`Remove ${file.fileName}`" @click="removeAttachment(file.id!)"><JrIcon :path="mdiClose" :size="15" /></button>
+          <button class="jr-icon-btn" :aria-label="`移除 ${file.fileName}`" @click="removeAttachment(file.id!)"><JrIcon :path="mdiClose" :size="15" /></button>
         </div>
         <div v-for="(file, index) in staged" :key="index" class="jr-attachment">
           <span :title="file.name">{{ file.name }}</span>
-          <button class="jr-icon-btn" :aria-label="`Remove ${file.name}`" @click="staged = staged.filter((_, i) => i !== index)"><JrIcon :path="mdiClose" :size="15" /></button>
+          <button class="jr-icon-btn" :aria-label="`移除 ${file.name}`" @click="staged = staged.filter((_, i) => i !== index)"><JrIcon :path="mdiClose" :size="15" /></button>
         </div>
       </div>
       <p v-if="attachmentNote" role="status">{{ attachmentNote }}</p>
-      <button v-if="recordingStatus === 'recording'" class="jr-btn jr-danger" @click="voice.stop()">Stop recording</button>
-      <p v-else-if="recordingStatus === 'requesting'" role="status">Requesting microphone access…</p>
-      <p v-else-if="recordingStatus === 'encoding'" role="status">Preparing audio note…</p>
+      <button v-if="recordingStatus === 'recording'" class="jr-btn jr-danger" @click="voice.stop()">停止录音</button>
+      <p v-else-if="recordingStatus === 'requesting'" role="status">正在请求麦克风权限…</p>
+      <p v-else-if="recordingStatus === 'encoding'" role="status">正在处理录音…</p>
     </div>
 
-    <div v-if="photoPrompt" class="jr-pop" role="dialog" aria-label="Photo details">
-      <div class="jr-pop-head">Use details from {{ photoPrompt.name }}?</div>
+    <div v-if="photoPrompt" class="jr-pop" role="dialog" aria-label="照片信息">
+      <div class="jr-pop-head">采用以下照片中的信息 {{ photoPrompt.name }}?</div>
       <label v-if="photoPrompt.date" class="jr-set-check">
-        <input v-model="usePhotoDate" type="checkbox" /> {{ photoPrompt.date.toLocaleString() }}
+        <input v-model="usePhotoDate" type="checkbox" /> 拍摄时间：{{ photoPrompt.date.toLocaleString('zh-CN') }}
       </label>
       <label v-if="photoPrompt.location" class="jr-set-check">
-        <input v-model="usePhotoLocation" type="checkbox" /> {{ photoPrompt.location.lat.toFixed(4) }}, {{ photoPrompt.location.lng.toFixed(4) }}
+        <input v-model="usePhotoLocation" type="checkbox" /> 拍摄地点：{{ photoPrompt.location.lat.toFixed(4) }}，{{ photoPrompt.location.lng.toFixed(4) }}
       </label>
       <div class="jr-pop-row">
-        <button class="jr-btn" @click="photoPrompt = undefined">Keep current</button>
-        <button class="jr-btn jr-btn-primary" @click="applyPhotoMetadata">Use selected details</button>
+        <button class="jr-btn" @click="photoPrompt = undefined">保留当前信息</button>
+        <button class="jr-btn jr-btn-primary" @click="applyPhotoMetadata">使用选中的信息</button>
       </div>
     </div>
 
     <div v-if="openPop" class="jr-pop" @click.stop>
       <div class="jr-pop-head">
-        <span>{{ openPop }}</span>
+        <span>{{ popoverLabels[openPop] }}</span>
         <button class="tb" @click="openPop = null"><JrIcon :path="mdiClose" :size="16" /></button>
       </div>
 
       <template v-if="openPop === 'templates'">
         <div v-if="!templates.length" class="jr-muted" style="font-size:13px;padding:6px 12px 10px">
-          No custom templates yet. Save one from an entry's ⋯ menu.
+          暂无自定义模板。可在日记的「更多」菜单中将它存为模板。
         </div>
         <button v-for="t in templates" :key="t.id" class="jr-pop-item" @click="insertTemplate(t)">
           {{ t.name }}
         </button>
       </template>
       <template v-if="openPop === 'style'">
-        <button class="jr-pop-item" @click="setBlock('p')">Body</button>
-        <button class="jr-pop-item" @click="setBlock('h1')">Heading 1</button>
-        <button class="jr-pop-item" @click="setBlock('h2')">Heading 2</button>
-        <button class="jr-pop-item" @click="setBlock('h3')">Heading 3</button>
-        <button class="jr-pop-item" @click="setBlock('blockquote')">Quote</button>
+        <button class="jr-pop-item" @click="setBlock('p')">正文</button>
+        <button class="jr-pop-item" @click="setBlock('h1')">一级标题</button>
+        <button class="jr-pop-item" @click="setBlock('h2')">二级标题</button>
+        <button class="jr-pop-item" @click="setBlock('h3')">三级标题</button>
+        <button class="jr-pop-item" @click="setBlock('blockquote')">引用</button>
       </template>
 
       <template v-else-if="openPop === 'insert'">
-        <button class="jr-pop-item" @click="insertHtml('<hr>')">Divider</button>
-        <button class="jr-pop-item" @click="pickFile">Photo / Video / Audio</button>
-        <button v-if="voice.available" class="jr-pop-item" :disabled="recordingStatus !== 'idle'" @click="startVoiceNote">Record Audio Note</button>
+        <button class="jr-pop-item" @click="insertHtml('<hr>')">分隔线</button>
+        <button class="jr-pop-item" @click="pickFile">照片、视频或音频</button>
+        <button v-if="voice.available" class="jr-pop-item" :disabled="recordingStatus !== 'idle'" @click="startVoiceNote">录制语音</button>
         <div class="jr-pop-row">
           <input v-model="linkUrl" placeholder="https://…" style="flex:1" />
-          <button class="jr-pop-item" style="width:auto" aria-label="Insert link" @click="insertWebMedia(false)"><JrIcon :path="mdiCheck" :size="16" /></button>
+          <button class="jr-pop-item" style="width:auto" aria-label="插入链接" @click="insertWebMedia(false)"><JrIcon :path="mdiCheck" :size="16" /></button>
         </div>
         <div class="jr-pop-row">
-          <input v-model="imageUrl" aria-label="Image URL" placeholder="Image URL" style="flex:1" />
-          <button class="jr-pop-item" style="width:auto" aria-label="Insert web image" @click="insertWebMedia(true)"><JrIcon :path="mdiCheck" :size="16" /></button>
+          <input v-model="imageUrl" aria-label="图片网址" placeholder="图片网址" style="flex:1" />
+          <button class="jr-pop-item" style="width:auto" aria-label="插入网络图片" @click="insertWebMedia(true)"><JrIcon :path="mdiCheck" :size="16" /></button>
         </div>
         <p v-if="insertError" role="status">{{ insertError }}</p>
-        <button class="jr-pop-item" @click="insertHtml('<table border=\'1\' style=\'border-collapse:collapse\'><tr><th>H</th><th>H</th></tr><tr><td>&nbsp;</td><td>&nbsp;</td></tr></table><p></p>')">Table 2×2</button>
-        <button class="jr-pop-item" @click="insertHtml('<code>code</code>')">Inline code</button>
+        <button class="jr-pop-item" @click="insertHtml('<table border=\'1\' style=\'border-collapse:collapse\'><tr><th>标题</th><th>标题</th></tr><tr><td>&nbsp;</td><td>&nbsp;</td></tr></table><p></p>')">2×2 表格</button>
+        <button class="jr-pop-item" @click="insertHtml('<code>代码</code>')">行内代码</button>
       </template>
 
       <template v-else-if="openPop === 'table'">
-        <button class="jr-pop-item" @click="editTable('addRow')">Add row below</button>
-        <button class="jr-pop-item" @click="editTable('addColumn')">Add column right</button>
-        <button class="jr-pop-item" @click="editTable('removeRow')">Delete row</button>
-        <button class="jr-pop-item" @click="editTable('removeColumn')">Delete column</button>
+        <button class="jr-pop-item" @click="editTable('addRow')">在下方插入一行</button>
+        <button class="jr-pop-item" @click="editTable('addColumn')">在右侧插入一列</button>
+        <button class="jr-pop-item" @click="editTable('removeRow')">删除此行</button>
+        <button class="jr-pop-item" @click="editTable('removeColumn')">删除此列</button>
         <div class="jr-pop-row">
-          <button class="jr-pop-item" @click="editTable('left')">Align left</button>
-          <button class="jr-pop-item" @click="editTable('center')">Center</button>
-          <button class="jr-pop-item" @click="editTable('right')">Align right</button>
+          <button class="jr-pop-item" @click="editTable('left')">左对齐</button>
+          <button class="jr-pop-item" @click="editTable('center')">居中</button>
+          <button class="jr-pop-item" @click="editTable('right')">右对齐</button>
         </div>
-        <button class="jr-pop-item jr-danger" @click="editTable('remove')">Delete table</button>
+        <button class="jr-pop-item jr-danger" @click="editTable('remove')">删除表格</button>
       </template>
 
       <template v-else-if="openPop === 'color'">
@@ -663,33 +667,33 @@ async function save() {
 
       <template v-else-if="openPop === 'loc'">
         <div class="jr-pop-row">
-          <input v-model="placeQuery" placeholder="Search places…" class="jr-pop-input" @keydown.enter.prevent="searchPlace" />
+          <input v-model="placeQuery" placeholder="搜索地点…" class="jr-pop-input" @keydown.enter.prevent="searchPlace" />
           <button class="jr-pop-item" style="width:auto" @click="searchPlace"><JrIcon :path="mdiCheck" :size="16" /></button>
         </div>
         <div v-if="placeHits.length" class="jr-place-hits">
           <button v-for="h in placeHits" :key="h.address" class="jr-pop-item" @click="pickPlace(h); openPop = null">{{ h.address.slice(0, 70) }}</button>
         </div>
         <div class="jr-pop-row">
-          <input v-model="meta.address" placeholder="Place address" class="jr-pop-input" />
+          <input v-model="meta.address" placeholder="地点地址" class="jr-pop-input" />
         </div>
         <div class="jr-pop-row">
-          <input v-model.number="meta.lat" type="number" step="any" placeholder="lat" class="jr-pop-input" />
-          <input v-model.number="meta.lng" type="number" step="any" placeholder="lng" class="jr-pop-input" />
+          <input v-model.number="meta.lat" type="number" step="any" placeholder="纬度" class="jr-pop-input" />
+          <input v-model.number="meta.lng" type="number" step="any" placeholder="经度" class="jr-pop-input" />
         </div>
-        <button class="jr-pop-item" @click="useMyLocation">Use my location</button>
-        <button v-if="meta.address || meta.lat != null" class="jr-pop-item jr-danger" @click="meta = { ...meta, address: undefined, lat: undefined, lng: undefined }; openPop = null">Remove location</button>
+        <button class="jr-pop-item" @click="useMyLocation">使用当前位置</button>
+        <button v-if="meta.address || meta.lat != null" class="jr-pop-item jr-danger" @click="meta = { ...meta, address: undefined, lat: undefined, lng: undefined }; openPop = null">移除地点</button>
       </template>
 
       <template v-else-if="openPop === 'weather'">
         <button class="jr-pop-item" :disabled="weatherBusy" @click="useMyLocation">
-          {{ weatherBusy ? 'Fetching…' : 'Fetch current weather (my location)' }}
+          {{ weatherBusy ? '正在获取…' : '获取当前位置的天气' }}
         </button>
         <div class="jr-colors">
           <button v-for="w in WEATHER_ICONS" :key="w" class="jr-dot jr-wicon" :class="{ on: meta.weatherIcon === w }" @click="meta = { ...meta, weatherIcon: w }">{{ WEATHER_EMOJI[w] }}</button>
         </div>
         <div class="jr-pop-row">
           <input v-model.number="meta.weatherDegreeC" type="number" placeholder="°C" class="jr-pop-input" />
-          <input v-model="meta.weatherPlace" placeholder="Place" class="jr-pop-input" />
+          <input v-model="meta.weatherPlace" placeholder="地点" class="jr-pop-input" />
         </div>
       </template>
 
@@ -697,17 +701,17 @@ async function save() {
         <div class="jr-colors">
           <button v-for="m in sentiments" :key="m.value" class="jr-dot jr-wicon" :class="{ on: selectedMood === m.value }" :title="m.label" :aria-label="m.label" @click="meta.sentiment = m.value"><JrIcon :path="m.icon" :size="20" :style="{ color: m.color }" /></button>
         </div>
-        <button class="jr-pop-item" @click="meta.sentiment = undefined">None</button>
+        <button class="jr-pop-item" @click="meta.sentiment = undefined">无</button>
       </template>
 
       <template v-else-if="openPop === 'activity'">
         <button v-for="a in activities" :key="a.value" class="jr-pop-item" :class="{ 'jr-on': selectedActivity === a.value }" @click="meta.activity = a.value"><JrIcon :path="a.icon" :size="18" /> {{ a.label }}</button>
-        <button class="jr-pop-item" @click="meta.activity = undefined">None</button>
+        <button class="jr-pop-item" @click="meta.activity = undefined">无</button>
       </template>
 
       <template v-else-if="openPop === 'tags'">
         <div class="jr-pop-row" style="margin-bottom:6px">
-          <input v-model="tagInput" placeholder="new tag (no spaces)" class="jr-pop-input" @keydown.enter.prevent="ensureTagIfNew" />
+          <input v-model="tagInput" placeholder="输入新标签（不含空格）" class="jr-pop-input" @keydown.enter.prevent="ensureTagIfNew" />
           <button class="jr-pop-item" style="width:auto" @click="ensureTagIfNew"><JrIcon :path="mdiCheck" :size="16" /></button>
         </div>
         <p v-if="tagError" role="status">{{ tagError }}</p>
@@ -722,29 +726,29 @@ async function save() {
     </div>
 
     <div class="jr-editor-toolbar">
-      <button class="tb" title="Journal"><JrIcon :path="mdiBookOpenOutline" :size="20" /></button>
-      <button class="tb" :class="{ 'jr-open': meta.address || meta.lat != null }" title="Location" @click="openPop = openPop === 'loc' ? null : 'loc'">
+      <button class="tb" title="日记"><JrIcon :path="mdiBookOpenOutline" :size="20" /></button>
+      <button class="tb" :class="{ 'jr-open': meta.address || meta.lat != null }" title="地点" @click="openPop = openPop === 'loc' ? null : 'loc'">
         <JrIcon :path="mdiMapMarkerOutline" :size="20" />
       </button>
-      <button class="tb" :class="{ 'jr-open': meta.weatherIcon }" title="Weather" @click="openPop = openPop === 'weather' ? null : 'weather'">
+      <button class="tb" :class="{ 'jr-open': meta.weatherIcon }" title="天气" @click="openPop = openPop === 'weather' ? null : 'weather'">
         <JrIcon :path="mdiWeatherSunny" :size="20" />
       </button>
-      <button class="tb" :class="{ 'jr-open': meta.sentiment }" title="Mood" @click="openPop = openPop === 'mood' ? null : 'mood'">
+      <button class="tb" :class="{ 'jr-open': meta.sentiment }" title="心情" @click="openPop = openPop === 'mood' ? null : 'mood'">
         <JrIcon :path="mdiEmoticonOutline" :size="20" />
       </button>
-      <button class="tb" :class="{ 'jr-open': meta.activity }" title="Activity" @click="openPop = openPop === 'activity' ? null : 'activity'">
+      <button class="tb" :class="{ 'jr-open': meta.activity }" title="活动" @click="openPop = openPop === 'activity' ? null : 'activity'">
         <JrIcon :path="mdiRun" :size="20" />
       </button>
-      <button class="tb" :class="{ 'jr-open': (meta.tagWordIds || []).length }" title="Tags" @click="openPop = openPop === 'tags' ? null : 'tags'">
+      <button class="tb" :class="{ 'jr-open': (meta.tagWordIds || []).length }" title="标签" @click="openPop = openPop === 'tags' ? null : 'tags'">
         <JrIcon :path="mdiTagOutline" :size="20" />
       </button>
       <div class="sep" />
       <button class="body-btn" @click="openPop = openPop === 'style' ? null : 'style'">
         <JrIcon :path="mdiFormatSize" :size="17" />
-        <span>Body</span>
+        <span>正文</span>
         <JrIcon :path="mdiChevronDown" :size="16" />
       </button>
-      <button class="body-btn" title="Insert" @click="openPop = openPop === 'insert' ? null : 'insert'">
+      <button class="body-btn" title="插入" @click="openPop = openPop === 'insert' ? null : 'insert'">
         <JrIcon :path="mdiPlus" :size="17" />
         <JrIcon :path="mdiChevronDown" :size="16" />
       </button>
@@ -755,9 +759,9 @@ async function save() {
       <button class="tb" :disabled="!hasContent" @click="cmd('underline')"><JrIcon :path="mdiFormatUnderline" :size="19" /></button>
       <button class="tb" :disabled="!hasContent" @click="openPop = openPop === 'color' ? null : 'color'"><JrIcon :path="mdiFormatColorText" :size="19" /></button>
       <div class="sep" />
-      <button class="tb" :disabled="!hasContent" title="Bullet list" @click="cmd('insertUnorderedList')"><JrIcon :path="mdiFormatListBulleted" :size="19" /></button>
-      <button class="tb" :disabled="!hasContent" title="Numbered list" @click="cmd('insertOrderedList')"><JrIcon :path="mdiFormatListNumbered" :size="19" /></button>
-      <button class="tb" :disabled="!hasContent" title="Todo list" @click="insertTaskList()"><JrIcon :path="mdiCheckboxMarkedOutline" :size="19" /></button>
+      <button class="tb" :disabled="!hasContent" title="项目列表" @click="cmd('insertUnorderedList')"><JrIcon :path="mdiFormatListBulleted" :size="19" /></button>
+      <button class="tb" :disabled="!hasContent" title="编号列表" @click="cmd('insertOrderedList')"><JrIcon :path="mdiFormatListNumbered" :size="19" /></button>
+      <button class="tb" :disabled="!hasContent" title="待办列表" @click="insertTaskList()"><JrIcon :path="mdiCheckboxMarkedOutline" :size="19" /></button>
       <div class="sep" />
       <button class="tb" :disabled="!hasContent" @click="cmd('justifyLeft')"><JrIcon :path="mdiFormatAlignLeft" :size="19" /></button>
       <button class="tb" :disabled="!hasContent" @click="cmd('justifyCenter')"><JrIcon :path="mdiFormatAlignCenter" :size="19" /></button>
@@ -765,9 +769,9 @@ async function save() {
       <button class="tb" :disabled="!hasContent" @click="cmd('undo')"><JrIcon :path="mdiUndo" :size="19" /></button>
       <button class="tb" :disabled="!hasContent" @click="cmd('redo')"><JrIcon :path="mdiRedo" :size="19" /></button>
       <button class="words">
-        <span>Words</span><span style="font-weight:700">{{ words }}</span>
+        <span>词数</span><span style="font-weight:700">{{ words }}</span>
         <span>·</span>
-        <span>Characters</span><span style="font-weight:700">{{ chars }}</span>
+        <span>字数</span><span style="font-weight:700">{{ chars }}</span>
       </button>
     </div>
   </div>

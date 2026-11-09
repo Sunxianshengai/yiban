@@ -27,41 +27,41 @@ async function reset() {
 }
 
 function timeLabel(timestamp: number) {
-  return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(timestamp)
+  return new Intl.DateTimeFormat('zh-CN', { hour: 'numeric', minute: '2-digit' }).format(timestamp)
 }
 </script>
 
 <template>
   <section class="jr-odyssey" aria-labelledby="odyssey-title">
     <header class="jr-odyssey-bar">
-      <h1 id="odyssey-title">Journey Odyssey AI</h1>
+      <h1 id="odyssey-title">旅程日记问答</h1>
       <div class="jr-odyssey-menu" @keydown.esc="menuOpen = false">
-        <button type="button" class="jr-odyssey-icon" aria-label="Odyssey options" :aria-expanded="menuOpen" aria-controls="jr-odyssey-options" @click="menuOpen = !menuOpen">
+        <button type="button" class="jr-odyssey-icon" aria-label="日记问答选项" :aria-expanded="menuOpen" aria-controls="jr-odyssey-options" @click="menuOpen = !menuOpen">
           <JrIcon :path="mdiDotsHorizontal" :size="24" />
         </button>
         <div v-show="menuOpen" id="jr-odyssey-options" class="jr-odyssey-options">
-          <a href="https://journey.cloud/gptTerms" target="_blank" rel="noopener noreferrer">Journey Odyssey AI Terms Of Service</a>
+          <a href="https://journey.cloud/gptTerms" target="_blank" rel="noopener noreferrer">日记问答服务条款</a>
           <button v-if="history.length" type="button" @click="reset">
-            <JrIcon :path="mdiTrashCanOutline" :size="17" /> Reset Session
+            <JrIcon :path="mdiTrashCanOutline" :size="17" /> 重置会话
           </button>
         </div>
       </div>
     </header>
 
-    <div ref="thread" class="jr-odyssey-thread" role="log" aria-label="Odyssey conversation">
+    <div ref="thread" class="jr-odyssey-thread" role="log" aria-label="日记问答会话">
       <article class="jr-odyssey-message">
         <div class="jr-odyssey-avatar" aria-hidden="true">
           <span v-for="(active, index) in avatar" :key="index" :class="{ active }" />
         </div>
         <div class="jr-odyssey-bubble">
-          <p>Hello, I am Journey Odyssey AI, your AI journal assistant. Please ask me a question about your journal. Here are some questions to get you started:</p>
+          <p>你好，我是旅程日记问答助手。你可以问我关于自己日记的问题，例如：</p>
           <ul>
-            <li>How many entries did I write in 2023?</li>
-            <li>Tell me one thing I did in 2023.</li>
-            <li>Summarize what I did on Christmas last year.</li>
-            <li>Give me a month-by-month breakdown of my journal entries in Q4 of 2023.</li>
+            <li>我在 2023 年写了多少篇日记？</li>
+            <li>告诉我一件我在 2023 年做过的事。</li>
+            <li>总结一下我去年圣诞节做了什么。</li>
+            <li>按月统计我在 2023 年第四季度写了多少篇日记。</li>
           </ul>
-          <small>Journey Odyssey AI</small>
+          <small>旅程日记问答</small>
         </div>
       </article>
       <article v-for="(timestamp, index) in history" :key="index" class="jr-odyssey-message">
@@ -69,17 +69,17 @@ function timeLabel(timestamp: number) {
           <span v-for="(active, dot) in avatar" :key="dot" :class="{ active }" />
         </div>
         <div class="jr-odyssey-bubble">
-          <p>Please sign in to continue.</p>
-          <p class="jr-odyssey-account">Odyssey requires a Journey account and a supported Journey Sync Drive.</p>
-          <a class="jr-btn jr-btn-primary" href="https://journey.cloud/app/" target="_blank" rel="noopener noreferrer">Sign in on Journey</a>
-          <small>Journey Odyssey AI · {{ timeLabel(timestamp) }}</small>
+          <p>请登录后继续。</p>
+          <p class="jr-odyssey-account">日记问答需要旅程账号和受支持的旅程同步空间。</p>
+          <a class="jr-btn jr-btn-primary" href="https://journey.cloud/app/" target="_blank" rel="noopener noreferrer">前往旅程官网登录</a>
+          <small>旅程日记问答 · {{ timeLabel(timestamp) }}</small>
         </div>
       </article>
     </div>
 
     <form class="jr-odyssey-input" @submit.prevent="ask">
-      <input ref="input" v-model="prompt" type="text" aria-label="Ask about your journal" placeholder="Ask me a question about your journal." :disabled="limitReached" />
-      <button class="jr-btn jr-btn-primary" aria-label="Send question" :disabled="!prompt.trim() || limitReached">
+      <input ref="input" v-model="prompt" type="text" aria-label="询问关于日记的问题" placeholder="问我一个关于日记的问题…" :disabled="limitReached" />
+      <button class="jr-btn jr-btn-primary" aria-label="发送问题" :disabled="!prompt.trim() || limitReached">
         <JrIcon :path="mdiSend" :size="20" />
       </button>
     </form>

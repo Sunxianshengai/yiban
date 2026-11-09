@@ -24,12 +24,12 @@ onBeforeUnmount(() => {
 async function remove(id: number) {
   error.value = ''
   try { await deleteMedia(id); await load() }
-  catch { error.value = 'Could not remove the attachment.' }
+  catch { error.value = '无法移除附件。' }
 }
 
 const shown = computed(() => items.value.filter((i) => filter.value === 'all' || i.mimeType.startsWith(filter.value)))
 function fmt(d?: Date) {
-  return d ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(d) : ''
+  return d ? new Intl.DateTimeFormat('zh-CN', { month: 'short', day: 'numeric', year: 'numeric' }).format(d) : ''
 }
 </script>
 
@@ -41,7 +41,7 @@ function fmt(d?: Date) {
     <p v-if="error" role="status">{{ error }}</p>
     <div v-if="!shown.length" class="jr-empty">
       <div class="big"><JrIcon :path="mdiImageMultipleOutline" :size="46" /></div>
-      No media to display.
+      暂无媒体文件。
     </div>
     <div class="jr-media-grid">
       <div v-for="m in shown" :key="m.id" class="jr-media-card">
@@ -52,7 +52,7 @@ function fmt(d?: Date) {
         <div class="jr-media-meta">
           <NuxtLink class="jr-media-name" :to="{ path: '/', query: { entry: m.jId } }">{{ m.fileName }}</NuxtLink>
           <span class="jr-muted">{{ fmt(m.createdAt) }}</span>
-          <button class="jr-link-danger" @click="remove(m.id!)">Delete</button>
+          <button class="jr-link-danger" @click="remove(m.id!)">删除</button>
         </div>
       </div>
     </div>

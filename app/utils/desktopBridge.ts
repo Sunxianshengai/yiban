@@ -25,9 +25,9 @@ const mediaTypes: Record<string, string> = {
 
 export async function readDesktopMedia(path: string, kind: 'editor' | 'importer', name?: string) {
   const url = new URL(path)
-  if (url.protocol !== 'journey-files:' || url.hostname !== kind) throw new Error('Invalid desktop attachment reference.')
+  if (url.protocol !== 'journey-files:' || url.hostname !== kind) throw new Error('桌面附件地址无效。')
   const response = await fetch(url)
-  if (!response.ok) throw new Error('Could not read the staged attachment.')
+  if (!response.ok) throw new Error('无法读取待添加的附件。')
   const blob = await response.blob()
   const filename = name || decodeURIComponent(url.pathname.split('/').pop() || '')
   const extension = filename.split('.').pop()?.toLowerCase() || ''
@@ -48,9 +48,9 @@ export async function stageDesktopRecording(file: File) {
   const bridge = desktopBridge()
   if (!bridge) return file
   const path = await bridge.invoke<string>('saveRecordedFile', { arrayBuffer: await file.arrayBuffer(), type: file.type })
-  if (!path) throw new Error('Could not stage the audio note.')
+  if (!path) throw new Error('无法准备语音记录。')
   const [recording] = await readEditorMedia(bridge, [path], [file.name])
-  if (!recording) throw new Error('Could not read the audio note.')
+  if (!recording) throw new Error('无法读取语音记录。')
   return recording
 }
 
@@ -61,10 +61,10 @@ export async function saveDesktopDocument(blob: Blob, name: string) {
   const base64 = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result).split(',', 2)[1] || '')
-    reader.onerror = () => reject(new Error('Could not read the export.'))
+    reader.onerror = () => reject(new Error('无法读取导出文件。'))
     reader.readAsDataURL(blob)
   })
   return bridge.invoke<boolean>('exportBase64', {
-    base64, title: 'Export journal', saveBtnLabel: 'Save', filterNameExt: ext.toUpperCase(), ext, name,
+    base64, title: '导出日记', saveBtnLabel: '保存', filterNameExt: ext.toUpperCase(), ext, name,
   })
 }

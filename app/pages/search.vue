@@ -72,8 +72,8 @@ function open(e: EntryV2) {
 }
 function rowDate(e: EntryV2) {
   const d = new Date(e.dateOfJournal)
-  const main = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(d)
-  return `${main} · ${new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(d)}`
+  const main = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(d)
+  return `${main} · ${new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(d)}`
 }
 </script>
 
@@ -82,39 +82,39 @@ function rowDate(e: EntryV2) {
     <div class="jr-list-col">
       <div style="display:flex;align-items:center;gap:10px;margin:22px 0 0">
         <button class="jr-search" style="margin:0;padding:7px 12px;font-size:12px;font-weight:700;letter-spacing:.4px" :aria-expanded="filtersOpen" aria-controls="jr-search-filters" @click="filtersOpen = !filtersOpen">
-          <JrIcon :path="mdiFilterVariant" :size="15" /> FILTERS
+          <JrIcon :path="mdiFilterVariant" :size="15" /> 筛选
         </button>
-        <form class="jr-search" style="margin:0" @submit.prevent="search()"><input v-model="q" type="text" placeholder="Search" aria-label="Search entries" /></form>
+        <form class="jr-search" style="margin:0" @submit.prevent="search()"><input v-model="q" type="text" placeholder="搜索" aria-label="搜索日记" /></form>
       </div>
       <div v-show="filtersOpen" id="jr-search-filters" class="jr-search-filters">
         <details>
-          <summary>Tag</summary>
-          <p v-if="!tags.length" class="jr-muted">No tags</p>
+          <summary>标签</summary>
+          <p v-if="!tags.length" class="jr-muted">暂无标签</p>
           <button v-for="tag in tags" :key="tag.id" type="button" class="jr-pop-item" :class="{ 'jr-on': activeTags.includes(tag.id!) }" :aria-pressed="activeTags.includes(tag.id!)" @click="toggleFilter('tags', tag.id!)">
             <JrIcon :path="mdiTagOutline" :size="17" /> {{ tag.title }}
           </button>
         </details>
         <button type="button" class="jr-pop-item" :class="{ 'jr-on': starredOnly }" :aria-pressed="starredOnly" @click="search({ favourite: starredOnly ? undefined : 'true' })">
-          <JrIcon :path="mdiStarOutline" :size="17" /> Starred
+          <JrIcon :path="mdiStarOutline" :size="17" /> 收藏
         </button>
         <details>
-          <summary>Activity</summary>
+          <summary>活动</summary>
           <button v-for="activity in activities" :key="activity.code" type="button" class="jr-pop-item" :class="{ 'jr-on': activeActivities.includes(activity.code) }" :aria-pressed="activeActivities.includes(activity.code)" @click="toggleFilter('activity', activity.code)">
             <JrIcon :path="activity.icon" :size="17" /> {{ activity.label }}
           </button>
         </details>
         <details>
-          <summary>Sentiment</summary>
+          <summary>心情</summary>
           <button v-for="sentiment in sentiments" :key="sentiment.code" type="button" class="jr-pop-item" :class="{ 'jr-on': activeSentiments.includes(sentiment.code) }" :aria-pressed="activeSentiments.includes(sentiment.code)" @click="toggleFilter('sentiment', sentiment.code)">
             <JrIcon :path="sentiment.icon" :size="17" :style="{ color: sentiment.color }" /> {{ sentiment.label }}
           </button>
         </details>
       </div>
-      <button v-if="hasFilters" class="jr-chip" style="margin-top:12px" @click="search({ tags: undefined, activity: undefined, sentiment: undefined, favourite: undefined })">Clear filters</button>
-      <h1 style="font-size:19px;margin:22px 0 10px">Search Results</h1>
+      <button v-if="hasFilters" class="jr-chip" style="margin-top:12px" @click="search({ tags: undefined, activity: undefined, sentiment: undefined, favourite: undefined })">清除筛选</button>
+      <h1 style="font-size:19px;margin:22px 0 10px">搜索结果</h1>
       <div v-if="!results.length" class="jr-empty">
         <div class="big"><JrIcon :path="q ? mdiImageOutline : mdiBookOutline" :size="46" /></div>
-        No entries to display.
+        暂无日记。
       </div>
       <div v-for="e in results" :key="e.id" class="jr-entry" :class="{ selected: selected?.id === e.id }" @click="open(e)">
         <div class="date">{{ rowDate(e) }}</div>
@@ -122,28 +122,28 @@ function rowDate(e: EntryV2) {
       </div>
 
       <template v-if="fileResults.length">
-        <div class="jr-set-label" style="margin-top:20px">File Results</div>
+        <div class="jr-set-label" style="margin-top:20px">附件结果</div>
         <div v-for="m in fileResults" :key="'f' + m.id" class="jr-entry" @click="selected = entries.find(e => e.id === m.jId) ?? null">
           <div class="date">{{ m.fileName }}</div>
-          <div class="preview">media · attached to entry {{ m.jId }}</div>
+          <div class="preview">媒体附件 · 所属日记 {{ m.jId }}</div>
         </div>
       </template>
     </div>
     <div class="jr-detail-col" style="position:relative;display:flex;flex-direction:column">
       <div v-if="selected" class="jr-detail-body">
         <div class="jr-detail-head">
-          <div class="day">{{ new Intl.DateTimeFormat('en-US', { day: '2-digit' }).format(selected.dateOfJournal) }}</div>
+          <div class="day">{{ new Intl.DateTimeFormat('zh-CN', { day: '2-digit' }).format(selected.dateOfJournal) }}</div>
           <div class="when">
-            <div class="d1">{{ new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(selected.dateOfJournal) }}</div>
-            <div class="d2">{{ new Intl.DateTimeFormat('en-US', { weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(selected.dateOfJournal) }}</div>
+            <div class="d1">{{ new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', year: 'numeric' }).format(selected.dateOfJournal) }}</div>
+            <div class="d2">{{ new Intl.DateTimeFormat('zh-CN', { weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(selected.dateOfJournal) }}</div>
           </div>
         </div>
         <JournalBody :entry="selected" />
-        <NuxtLink class="jr-btn" :to="{ path: '/', query: { entry: selected.id } }">Open in Timeline</NuxtLink>
+        <NuxtLink class="jr-btn" :to="{ path: '/', query: { entry: selected.id } }">在时间线中打开</NuxtLink>
       </div>
       <div v-else class="jr-empty" style="margin:auto">
         <div class="big"><JrIcon :path="mdiBookOutline" :size="46" /></div>
-        No entries selected.
+        请选择一篇日记。
       </div>
     </div>
   </div>

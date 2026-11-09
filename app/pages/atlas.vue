@@ -11,8 +11,8 @@ const minZoom = 3
 const maxZoom = 16
 // MapLibre uses 512px tiles and a default cluster radius of 50px.
 const clusterRadius = 25
-const compactCount = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
-const entryDate = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+const compactCount = new Intl.NumberFormat('zh-CN', { notation: 'compact', maximumFractionDigits: 1 })
+const entryDate = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', year: 'numeric' })
 const located = computed(() => entries.value.filter((entry): entry is LocatedEntry =>
   entry.id != null && typeof entry.lat === 'number' && Math.abs(entry.lat) <= 90
     && typeof entry.lng === 'number' && Math.abs(entry.lng) <= 180,
@@ -97,8 +97,8 @@ function renderMarkers() {
     const count = group.entries.length
     const size = count >= 750 ? 80 : count >= 100 ? 60 : count > 1 ? 40 : 20
     const destinationZoom = count > 1 ? nextClusterZoom(group, zoom) : null
-    const label = destinationZoom != null ? `Zoom in on ${count} entries`
-      : count > 1 ? `Show ${count} entries in this area` : 'Show entry in this area'
+    const label = destinationZoom != null ? `放大查看 ${count} 篇日记`
+      : count > 1 ? `查看此区域的 ${count} 篇日记` : '查看此区域的日记'
     const centerPoint = map.unproject([group.x, group.y], zoom)
     const marker = leaflet.marker(centerPoint, {
       title: label,
@@ -148,8 +148,9 @@ async function renderMap() {
     if (disposed || !mapEl.value) return
     leaflet = L
     map = L.map(mapEl.value, { minZoom, maxZoom, zoomControl: false }).setView([22.5, 114.1], minZoom)
-    L.control.zoom({ position: 'bottomright' }).addTo(map)
-    const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' })
+    L.control.zoom({ position: 'bottomright', zoomInTitle: '放大地图', zoomOutTitle: '缩小地图' }).addTo(map)
+    map.attributionControl.setPrefix(false)
+    const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '<a href="https://www.openstreetmap.org/copyright">© 开放街图贡献者</a>' })
     tiles.on('tileerror', () => { tilesMissing.value = true })
     tiles.on('tileload', () => { tilesMissing.value = false })
     tiles.addTo(map)
@@ -171,35 +172,35 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="jr-content" style="position:relative">
-    <div ref="mapEl" class="jr-atlas-map" aria-label="Atlas map" />
-    <p v-if="tilesMissing && located.length && !areaEntries.length" class="jr-atlas-tile-note" role="status">Map tiles unavailable. Journal locations are still available.</p>
-    <section v-if="areaEntries.length" class="jr-atlas-panel" aria-label="Entries in this area">
+    <div ref="mapEl" class="jr-atlas-map" aria-label="日记地图" />
+    <p v-if="tilesMissing && located.length && !areaEntries.length" class="jr-atlas-tile-note" role="status">地图底图暂时无法加载，仍可查看日记地点。</p>
+    <section v-if="areaEntries.length" class="jr-atlas-panel" aria-label="此区域内的日记">
       <header class="jr-atlas-area-head">
-        <h2>{{ areaEntries.length }} {{ areaEntries.length === 1 ? 'entry' : 'entries' }} in this area</h2>
-        <button class="jr-icon-btn" type="button" aria-label="Close area entries" @click="closeArea"><JrIcon :path="mdiClose" :size="20" /></button>
+        <h2>此区域内有 {{ areaEntries.length }} 篇日记</h2>
+        <button class="jr-icon-btn" type="button" aria-label="关闭区域日记列表" @click="closeArea"><JrIcon :path="mdiClose" :size="20" /></button>
       </header>
       <div v-if="areaEntries.length > 1" class="jr-atlas-area-list">
         <button v-for="entry in areaEntries" :key="entry.id" type="button" class="jr-atlas-area-entry"
           :aria-pressed="selected?.id === entry.id" @click="selected = entry">
           <small>{{ entryDate.format(entry.dateOfJournal) }}</small>
-          {{ entry.previewText || entry.address || 'Entry' }}
+          {{ entry.previewText || entry.address || '日记' }}
         </button>
       </div>
       <template v-if="selected">
         <div class="jr-detail-head">
-          <div class="day">{{ new Intl.DateTimeFormat('en-US', { day: '2-digit' }).format(selected.dateOfJournal) }}</div>
+          <div class="day">{{ new Intl.DateTimeFormat('zh-CN', { day: '2-digit' }).format(selected.dateOfJournal) }}</div>
           <div class="when">
             <div class="d1">{{ entryDate.format(selected.dateOfJournal) }}</div>
             <div class="d2">{{ selected.address || `${selected.lat}, ${selected.lng}` }}</div>
           </div>
         </div>
         <JournalBody :entry="selected" />
-        <NuxtLink class="jr-btn" :to="{ path: '/', query: { entry: selected.id } }">Open in Timeline</NuxtLink>
+        <NuxtLink class="jr-btn" :to="{ path: '/', query: { entry: selected.id } }">在时间线中打开</NuxtLink>
       </template>
     </section>
     <div v-if="mapError || !located.length" class="jr-atlas-hint" role="status">
       <div class="big"><JrIcon :path="mdiImageOutline" :size="42" /></div>
-      {{ mapError ? 'The map could not be opened.' : 'Only entries with a geo-tag appear here. Add a location in the editor (pin icon).' }}
+      {{ mapError ? '无法打开地图。' : '地图仅显示带地点的日记。可在编辑器中添加地点。' }}
     </div>
   </div>
 </template>

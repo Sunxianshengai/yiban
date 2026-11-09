@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { mdiClose } from '@mdi/js'
 import type { EntryV2 } from '~/utils/db'
+import { countWords } from '~/utils/uiText'
 
 /**
  * Stories full-screen view — official description [J17]: full-screen cards with
@@ -19,7 +20,7 @@ const stats = computed(() => {
     const d = new Date(e.dateOfJournal)
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
   })
-  const words = monthEntries.reduce((n, e) => n + (e.previewText || '').split(/\s+/).filter(Boolean).length, 0)
+  const words = monthEntries.reduce((n, e) => n + countWords(e.previewText || ''), 0)
   // streak: consecutive days ending today (or yesterday) with entries
   const days = new Set(entries.value.map((e) => new Date(e.dateOfJournal).toDateString()))
   let streak = 0
@@ -33,10 +34,10 @@ const cards = computed(() => {
   const list: { kind: string; title: string; lines: string[] }[] = []
   list.push({
     kind: 'stats',
-    title: `${stats.value.total} entries and counting`,
+    title: `已记录 ${stats.value.total} 篇日记`,
     lines: [
-      `${stats.value.monthCount} entries this month · ${stats.value.words} words`,
-      stats.value.streak > 1 ? `🔥 ${stats.value.streak}-day streak` : 'Write today to start a streak',
+      `本月 ${stats.value.monthCount} 篇 · ${stats.value.words} 词`,
+      stats.value.streak > 1 ? `🔥 已连续记录 ${stats.value.streak} 天` : '今天写一篇日记，开始连续记录。',
     ],
   })
   if (props.throwbacks.length) {
@@ -44,14 +45,14 @@ const cards = computed(() => {
     const d = new Date(t.dateOfJournal)
     list.push({
       kind: 'throwback',
-      title: `On this day in ${d.getFullYear()}`,
+      title: `${d.getFullYear()} 年的今天`,
       lines: [(t.previewText || '').slice(0, 90)],
     })
   }
   list.push({
     kind: 'coach',
-    title: 'Coach',
-    lines: ['How are you feeling today? Write it down — your future self will thank you.'],
+    title: '日记教练',
+    lines: ['今天感觉怎么样？写下来，留给未来的自己。'],
   })
   return list
 })
@@ -72,10 +73,10 @@ function next() { idx.value = (idx.value + 1) % cards.value.length }
       <div v-for="(c, i) in cards" :key="i" class="jr-sp" :class="{ on: i <= idx }" />
     </div>
     <div class="jr-stories-card" :data-kind="cards[idx].kind">
-      <div class="jr-sc-kind">{{ cards[idx].kind === 'stats' ? 'Your Journal' : cards[idx].kind === 'throwback' ? 'Throwback' : 'Coach' }}</div>
+      <div class="jr-sc-kind">{{ cards[idx].kind === 'stats' ? '你的日记' : cards[idx].kind === 'throwback' ? '往日回忆' : '日记教练' }}</div>
       <h2>{{ cards[idx].title }}</h2>
       <p v-for="(l, i) in cards[idx].lines" :key="i">{{ l }}</p>
-      <span class="jr-sc-hint">Tap to continue</span>
+      <span class="jr-sc-hint">点击继续</span>
     </div>
   </div>
 </template>

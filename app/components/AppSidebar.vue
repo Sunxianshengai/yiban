@@ -7,16 +7,16 @@ const tagsOpen = ref(false)
 const membershipOpen = useMembershipDialog()
 
 const nav = [
-  { to: '/', label: 'Timeline', icon: mdiFormatListBulleted, exact: true },
-  { to: '/calendar', label: 'Calendar', icon: mdiCalendarMonth },
-  { to: '/media', label: 'Media', icon: mdiImageMultipleOutline },
-  { to: '/atlas', label: 'Atlas', icon: mdiMapOutline },
-  { to: '/pal', label: 'Pal', icon: mdiRobotOutline },
+  { to: '/', label: '时间线', icon: mdiFormatListBulleted, exact: true },
+  { to: '/calendar', label: '日历', icon: mdiCalendarMonth },
+  { to: '/media', label: '媒体', icon: mdiImageMultipleOutline },
+  { to: '/atlas', label: '地图', icon: mdiMapOutline },
+  { to: '/pal', label: '日记伙伴', icon: mdiRobotOutline },
 ]
 const utils = [
-  { to: '/settings', label: 'Settings', icon: mdiCogOutline },
-  { to: '/cloud', label: 'Cloud Services', icon: mdiCloudOutline, badge: '1' },
-  { to: '/chat', label: 'Chat with Your Journal', icon: mdiChatProcessingOutline },
+  { to: '/settings', label: '设置', icon: mdiCogOutline },
+  { to: '/cloud', label: '云服务', icon: mdiCloudOutline, badge: '1' },
+  { to: '/chat', label: '与日记聊天', icon: mdiChatProcessingOutline },
 ]
 </script>
 
@@ -24,7 +24,7 @@ const utils = [
   <aside class="jr-sidebar">
     <form class="jr-search" @submit.prevent="navigateTo(`/search?q=${encodeURIComponent(search)}`)">
       <JrIcon :path="mdiMagnify" :size="19" />
-      <input v-model="search" type="text" placeholder="Search" />
+      <input v-model="search" type="text" placeholder="搜索" />
     </form>
 
     <NuxtLink
@@ -47,25 +47,25 @@ const utils = [
     </NuxtLink>
     <button type="button" class="jr-nav-item jr-addons" aria-haspopup="dialog" @click="membershipOpen = true">
       <JrIcon :path="mdiWalletGiftcard" :size="21" />
-      <span>Addons</span>
+      <span>附加功能</span>
     </button>
 
     <button class="jr-section-label" style="border:0;background:none" @click="tagsOpen = !tagsOpen">
-      <span>Tags</span>
+      <span>标签</span>
       <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" :style="{ transform: tagsOpen ? 'rotate(180deg)' : '' }"><path d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z" /></svg>
     </button>
     <template v-if="tagsOpen">
       <NuxtLink to="/starred" class="jr-nav-item" :class="{ active: route.path === '/starred' }">
         <JrIcon :path="mdiStarOutline" :size="21" />
-        <span>Starred</span>
+        <span>收藏</span>
       </NuxtLink>
     </template>
 
     <div class="jr-sidebar-footer">
-      <div class="jr-avatar guest">U</div>
+      <div class="jr-avatar guest">用</div>
       <div class="who">
-        <div class="name">User</div>
-        <div class="tier">Free</div>
+        <div class="name">用户</div>
+        <div class="tier">免费版</div>
       </div>
       <JrIcon :path="mdiLogout" :size="20" style="color: var(--jr-secondary)" />
     </div>

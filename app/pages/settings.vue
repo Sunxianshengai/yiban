@@ -1,24 +1,25 @@
 <script setup lang="ts">
 import { desktopBridge } from '~/utils/desktopBridge'
+import { errorText } from '~/utils/uiText'
 import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiAccountOutline, mdiShieldKeyOutline, mdiDatabaseOutline, mdiHelpCircleOutline, mdiPalette, mdiRuler, mdiMapMarkerOutline, mdiTranslate, mdiSpellcheck, mdiPuzzleOutline, mdiLockOutline, mdiChevronRight } from '@mdi/js'
 
 const tab = ref<'general' | 'account' | 'security' | 'data' | 'help'>('general')
 const gen = ref<'appearance' | 'unit' | 'location' | 'locale' | 'spellcheck' | 'plugins'>('appearance')
 const { weekStart } = useWeekStart()
 const tabs = [
-  { key: 'general', label: 'General', icon: mdiCogOutline },
-  { key: 'account', label: 'Account', icon: mdiAccountOutline },
-  { key: 'security', label: 'Security', icon: mdiShieldKeyOutline },
-  { key: 'data', label: 'Data', icon: mdiDatabaseOutline },
-  { key: 'help', label: 'Help', icon: mdiHelpCircleOutline },
+  { key: 'general', label: '通用', icon: mdiCogOutline },
+  { key: 'account', label: '账号', icon: mdiAccountOutline },
+  { key: 'security', label: '安全', icon: mdiShieldKeyOutline },
+  { key: 'data', label: '数据', icon: mdiDatabaseOutline },
+  { key: 'help', label: '帮助', icon: mdiHelpCircleOutline },
 ] as const
 const genItems = [
-  { key: 'appearance', label: 'Appearance', icon: mdiPalette },
-  { key: 'unit', label: 'Unit system', icon: mdiRuler },
-  { key: 'location', label: 'Location', icon: mdiMapMarkerOutline, disabled: true },
-  { key: 'locale', label: 'Locale', icon: mdiTranslate },
-  { key: 'spellcheck', label: 'Spell Check', icon: mdiSpellcheck },
-  { key: 'plugins', label: 'Plugins', icon: mdiPuzzleOutline },
+  { key: 'appearance', label: '外观', icon: mdiPalette },
+  { key: 'unit', label: '计量单位', icon: mdiRuler },
+  { key: 'location', label: '地点', icon: mdiMapMarkerOutline, disabled: true },
+  { key: 'locale', label: '语言与地区', icon: mdiTranslate },
+  { key: 'spellcheck', label: '拼写检查', icon: mdiSpellcheck },
+  { key: 'plugins', label: '插件', icon: mdiPuzzleOutline },
 ] as const
 
 // Appearance — faithful to page-settings.png: circles (1st free teal, rest locked) + Theme/Font/Size dropdowns + lorem preview
@@ -42,16 +43,16 @@ async function sha256(s: string) {
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 async function setPin() {
-  if (!/^\d{4,8}$/.test(pinInput.value)) { pinMsg.value = 'PIN must be 4-8 digits.'; return }
+  if (!/^\d{4,8}$/.test(pinInput.value)) { pinMsg.value = '密码必须是 4 至 8 位数字。'; return }
   localStorage.setItem('jr.pinHash', await sha256(pinInput.value))
   pinInput.value = ''
-  pinMsg.value = 'PIN set. The journal will ask for it in a new session.'
+  pinMsg.value = '密码已设置。下次打开新会话时需要解锁。'
 }
 async function removePin() {
-  if (await sha256(pinInput.value) !== pinHash) { pinMsg.value = 'Wrong PIN.'; return }
+  if (await sha256(pinInput.value) !== pinHash) { pinMsg.value = '密码不正确。'; return }
   localStorage.removeItem('jr.pinHash')
   pinInput.value = ''
-  pinMsg.value = 'PIN removed.'
+  pinMsg.value = '密码已移除。'
 }
 
 // Data — export / import / trash
@@ -80,7 +81,7 @@ async function exportZip() {
     const { exportJournalZip } = await import('~/utils/journalZip')
     await exportJournalZip()
   } catch (error) {
-    importMsg.value = 'Export failed: ' + (error as Error).message
+    importMsg.value = errorText(error, '导出失败，请重试。')
   } finally {
     busy.value = ''
   }
@@ -99,8 +100,8 @@ async function importAny(useDesktop = true) {
     try {
       const { importFromDesktop } = await import('~/utils/desktopImport')
       const result = await importFromDesktop()
-      if (result) importMsg.value = `Imported ${result.count} ${result.count === 1 ? 'entry' : 'entries'}.${result.skipped ? ` ${result.skipped} import notice(s).` : ''}`
-    } catch (error) { importMsg.value = 'Import failed: ' + (error as Error).message }
+      if (result) importMsg.value = `已导入 ${result.count} 篇日记。${result.skipped ? ` 有 ${result.skipped} 条导入提示。` : ''}`
+    } catch (error) { importMsg.value = errorText(error, '导入失败，请检查文件后重试。') }
     finally { busy.value = '' }
     return
   }
@@ -117,10 +118,10 @@ async function importAny(useDesktop = true) {
       const { importJournalZip, importJournalEntries } = await import('~/utils/journalZip')
       const parsed = await parseImportFile(file)
       const n = parsed ? await importJournalEntries(parsed.entries) : await importJournalZip(file)
-      const notice = parsed?.warnings?.length ? ` ${parsed.warnings.length} import notice(s). ${parsed.warnings[0]}` : ''
-      importMsg.value = 'Imported ' + n + (n === 1 ? ' entry.' : ' entries.') + notice
+      const notice = parsed?.warnings?.length ? ` 有 ${parsed.warnings.length} 条导入提示。${parsed.warnings[0]}` : ''
+      importMsg.value = `已导入 ${n} 篇日记。${notice}`
     } catch (error) {
-      importMsg.value = 'Import failed: ' + (error as Error).message
+      importMsg.value = errorText(error, '导入失败，请检查文件后重试。')
     } finally {
       busy.value = ''
     }
@@ -129,7 +130,7 @@ async function importAny(useDesktop = true) {
 }
 
 async function wipeAll() {
-  if (!confirm('Delete ALL local entries? This cannot be undone.')) return
+  if (!confirm('确定删除所有本机日记吗？此操作无法撤销。')) return
   const { db } = await import('~/utils/db')
   await db.transaction('rw', db.entriesV2, db.mediaFilesV2, async () => {
     const ids = await db.entriesV2.toCollection().primaryKeys()
@@ -167,16 +168,16 @@ async function wipeAll() {
         <div class="jr-gen-body">
           <template v-if="gen === 'appearance'">
             <div class="jr-lorem">
-              <h3>Septem autem illi non suo</h3>
-              <p>Lorem ipsum dolor sit amet, <b>consectetur adipiscing</b> elit. <i>Quo tandem modo?</i> Non laboro, inquit, de nomine. Duo Reges: constructio interrete. Sed ego in hoc resisto.</p>
-              <blockquote>Vos autem cum <i>perspiciatis</i> dubia debeatis illustrare, dubiis perspicua conamini tollere.</blockquote>
+              <h3>一段值得记下的时光</h3>
+              <p>午后的阳光落在书页上。我写下<b>今天的小事</b>，也记下了一句<i>想留给未来的话</i>。</p>
+              <blockquote>日常的一句话、一张照片，都可以成为日后想起今天的线索。</blockquote>
             </div>
             <div class="jr-circles">
               <button
                 v-for="(c, i) in circles" :key="c"
                 class="jr-circle" :style="{ background: c }"
-                :title="circleLocked(i) ? 'Membership theme' : 'System (free)'"
-                @click="circleLocked(i) ? (circleNote = 'Colored themes are a Membership feature in the original (13 themes). Only System is free.') : (circleNote = '')"
+                :title="circleLocked(i) ? '会员主题' : '系统主题（免费）'"
+                @click="circleLocked(i) ? (circleNote = '彩色主题属于会员权益。免费版可使用系统主题。') : (circleNote = '')"
               >
                 <JrIcon v-if="i === 0" :path="mdiCheck" :size="18" />
                 <svg v-else-if="circleLocked(i)" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" opacity="0.55"><path d="M12 17a2 2 0 0 0 2-2 2 2 0 0 0-2-2 2 2 0 0 0-2 2 2 2 0 0 0 2 2m6 3H6a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h1V6a5 5 0 0 1 5-5 5 5 0 0 1 5 5v2h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2m-6-17a3 3 0 0 0-3 3v2h6V6a3 3 0 0 0-3-3z" /></svg>
@@ -184,94 +185,94 @@ async function wipeAll() {
               <button class="jr-circle jr-circle-more"><JrIcon :path="mdiChevronRight" :size="18" /></button>
             </div>
             <p v-if="circleNote" class="jr-import-msg">{{ circleNote }}</p>
-            <div class="jr-set-row"><span class="jr-set-cap">Theme</span>
-              <select v-model="theme" class="jr-set-select" aria-label="Theme"><option>System</option><option>Light</option><option>Dark</option></select>
+            <div class="jr-set-row"><span class="jr-set-cap">主题</span>
+              <select v-model="theme" class="jr-set-select" aria-label="主题"><option value="System">跟随系统</option><option value="Light">浅色</option><option value="Dark">深色</option></select>
             </div>
-            <div class="jr-set-row"><span class="jr-set-cap">Font Family</span>
+            <div class="jr-set-row"><span class="jr-set-cap">字体</span>
               <select v-model="fontFamily" class="jr-set-select">
-                <option>Gotham Rounded</option><option>Verlag</option><option>Lexend</option><option>OpenDyslexic</option>
+                <option value="Gotham Rounded">圆体</option><option value="Verlag">无衬线体</option><option value="Lexend">易读字体</option><option value="OpenDyslexic">阅读辅助字体</option>
               </select>
             </div>
-            <div class="jr-set-row"><span class="jr-set-cap">Font Size</span>
-              <select v-model="fontSize" class="jr-set-select"><option>Small</option><option>Medium</option><option>Large</option></select>
+            <div class="jr-set-row"><span class="jr-set-cap">字号</span>
+              <select v-model="fontSize" class="jr-set-select"><option value="Small">小</option><option value="Medium">中</option><option value="Large">大</option></select>
             </div>
-            <p class="jr-muted" style="font-size:11.5px">Original bundles commercial Gotham Rounded/Verlag fonts — the replica renders with an open stack (licensing), names preserved here.</p>
+            <p class="jr-muted" style="font-size:11.5px">界面使用系统字体呈现中文。</p>
           </template>
 
           <template v-else-if="gen === 'unit'">
-            <div class="jr-set-row"><span class="jr-set-cap">Unit system</span>
-              <select class="jr-set-select"><option>Metric</option><option>Imperial</option></select>
+            <div class="jr-set-row"><span class="jr-set-cap">计量单位</span>
+              <select class="jr-set-select"><option>公制</option><option>英制</option></select>
             </div>
           </template>
 
           <template v-else-if="gen === 'locale'">
-            <div class="jr-set-row"><span class="jr-set-cap">Locale</span>
-              <select class="jr-set-select"><option>English</option></select>
+            <div class="jr-set-row"><span class="jr-set-cap">语言与地区</span>
+              <select class="jr-set-select"><option>简体中文</option></select>
             </div>
             <label class="jr-set-row">
-              <span class="jr-set-cap">First Day of Week</span>
+              <span class="jr-set-cap">每周起始日</span>
               <select v-model="weekStart" class="jr-set-select">
-                <option value="default">Default</option>
-                <option value="monday">Monday</option>
-                <option value="sunday">Sunday</option>
+                <option value="default">默认</option>
+                <option value="monday">星期一</option>
+                <option value="sunday">星期日</option>
               </select>
             </label>
-            <p class="jr-muted" style="font-size:12px">More locales pending (F-025).</p>
+            <p class="jr-muted" style="font-size:12px">日期和时间按简体中文格式显示。</p>
           </template>
 
           <template v-else-if="gen === 'spellcheck'">
             <label class="jr-set-check">
-              <input v-model="spellcheck" type="checkbox" /> Spell check while writing
+              <input v-model="spellcheck" type="checkbox" /> 写作时检查拼写
             </label>
           </template>
 
           <template v-else-if="gen === 'plugins'">
-            <p class="jr-muted" style="font-size:13px">Original shows plugin/add-on management here. Registry format not yet extracted (F-034).</p>
+            <p class="jr-muted" style="font-size:13px">插件管理暂不可用。</p>
           </template>
         </div>
       </div>
 
       <div v-else-if="tab === 'account'" class="jr-modal-body">
-        <div class="jr-avatar guest" style="margin-bottom:12px">U</div>
-        <p><b>Local journal</b> — not signed in.</p>
-        <p class="jr-muted" style="font-size:13px">Journey account sign-in, Google Drive and Journey Cloud Sync require server adapters (F-021/F-022). The original's account model is recorded in evidence/derived/contracts.json.</p>
+        <div class="jr-avatar guest" style="margin-bottom:12px">用</div>
+        <p><b>本机日记</b> · 未登录</p>
+        <p class="jr-muted" style="font-size:13px">账号登录和云同步暂未接入。目前可使用本机日记。</p>
       </div>
 
       <div v-else-if="tab === 'security'" class="jr-modal-body">
-        <p><JrIcon :path="mdiLockOutline" :size="18" /> <b>Passcode lock</b></p>
+        <p><JrIcon :path="mdiLockOutline" :size="18" /> <b>密码锁</b></p>
         <div class="jr-pop-row" style="max-width:320px">
-          <input v-model="pinInput" type="password" inputmode="numeric" maxlength="8" placeholder="4-8 digit PIN" class="jr-pop-input" />
+          <input v-model="pinInput" type="password" inputmode="numeric" maxlength="8" placeholder="输入 4 至 8 位数字密码" class="jr-pop-input" />
         </div>
         <div class="jr-data-row" style="margin-top:8px">
-          <button v-if="!pinHash" class="jr-btn" @click="setPin">Set PIN</button>
-          <button v-else class="jr-btn" @click="removePin">Remove PIN</button>
+          <button v-if="!pinHash" class="jr-btn" @click="setPin">设置密码</button>
+          <button v-else class="jr-btn" @click="removePin">移除密码</button>
         </div>
         <p v-if="pinMsg" class="jr-import-msg">{{ pinMsg }}</p>
-        <p class="jr-muted" style="font-size:12.5px;margin-top:10px">Locks the journal in a new browser session (sessionStorage unlock). Original supports Windows Hello / E2EE — pending (F-025).</p>
+        <p class="jr-muted" style="font-size:12.5px;margin-top:10px">下次打开新会话时，需要输入密码解锁日记。</p>
       </div>
 
       <div v-else-if="tab === 'data'" class="jr-modal-body">
         <div class="jr-data-row">
-          <button class="jr-btn" :disabled="!!busy" @click="exportZip"><JrIcon :path="mdiDownload" :size="17" /> Export backup (ZIP)</button>
-          <button class="jr-btn" @click="exportJson"><JrIcon :path="mdiDownload" :size="17" /> JSON</button>
-          <button class="jr-btn" :disabled="!!busy" @click="importAny()"><JrIcon :path="mdiUpload" :size="17" /> {{ busy === 'importing' ? 'Importing…' : 'Import journal files' }}</button>
-          <button v-if="desktop" class="jr-btn" :disabled="!!busy" @click="importAny(false)">Import JSON or Classic entry</button>
+          <button class="jr-btn" :disabled="!!busy" @click="exportZip"><JrIcon :path="mdiDownload" :size="17" /> 导出 ZIP 备份</button>
+          <button class="jr-btn" @click="exportJson"><JrIcon :path="mdiDownload" :size="17" /> 导出 JSON</button>
+          <button class="jr-btn" :disabled="!!busy" @click="importAny()"><JrIcon :path="mdiUpload" :size="17" /> {{ busy === 'importing' ? '正在导入…' : '导入日记文件' }}</button>
+          <button v-if="desktop" class="jr-btn" :disabled="!!busy" @click="importAny(false)">导入 JSON 或经典版日记</button>
         </div>
         <p v-if="importMsg" class="jr-import-msg">{{ importMsg }}</p>
-        <div class="jr-set-label" style="margin-top:18px">Trash</div>
-        <div v-if="!trash.length" class="jr-muted" style="font-size:13px">Trash is empty.</div>
+        <div class="jr-set-label" style="margin-top:18px">回收站</div>
+        <div v-if="!trash.length" class="jr-muted" style="font-size:13px">回收站为空。</div>
         <div v-for="t in trash" :key="t.id" class="jr-trash-row">
           <span class="jr-muted">{{ t.snapshot?.previewText?.slice(0, 48) || '(entry, pre-snapshot)' }}</span>
-          <button class="jr-btn jr-btn-sm" :disabled="!t.snapshot" @click="restore(t)"><JrIcon :path="mdiDeleteRestore" :size="15" /> Restore</button>
+          <button class="jr-btn jr-btn-sm" :disabled="!t.snapshot" @click="restore(t)"><JrIcon :path="mdiDeleteRestore" :size="15" /> 恢复</button>
         </div>
-        <div class="jr-set-label" style="margin-top:18px">Danger zone</div>
-        <button class="jr-btn jr-danger" @click="wipeAll">Delete all local entries</button>
+        <div class="jr-set-label" style="margin-top:18px">危险操作</div>
+        <button class="jr-btn jr-danger" @click="wipeAll">删除所有本机日记</button>
       </div>
 
       <div v-else class="jr-modal-body">
         <p class="jr-muted" style="font-size:13.5px; line-height:1.8">
-          This is an independent replica for study. Original help: support.journey.cloud<br />
-          Evidence and feature matrix: C:/Users/25641/Desktop/journey-replica/docs/
+          这是用于研究的独立复刻版。原版帮助见旅程帮助中心。<br />
+          功能验收结果记录在项目的功能矩阵中。
         </p>
       </div>
     </div>

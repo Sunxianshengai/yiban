@@ -20,9 +20,9 @@ async function entryData(id: number) {
     db.mediaFilesV2.where('jId').equals(id).sortBy('position'),
     db.tagWordsV2.toArray(),
   ]))
-  if (!entry) throw new Error('Entry no longer exists.')
+  if (!entry) throw new Error('日记已不存在。')
   const date = new Date(entry.dateOfJournal)
-  const heading = new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeStyle: 'short' }).format(date)
+  const heading = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'long', timeStyle: 'short' }).format(date)
   const tags = allTags.filter(tag => entry.tagWordIds?.includes(tag.id!)).map(tag => '#' + tag.title).join(' ')
   const lines = [entry.timezone, entry.address, tags].filter((value): value is string => Boolean(value))
   return { entry, heading, lines, media, fileName: 'journey-' + date.toISOString().slice(0, 10) + '-' + id }
@@ -182,7 +182,7 @@ async function exportDocx(data: EntryData) {
       type: 'png', data: image.png, transformation: { width: image.width, height: image.height },
       altText: { name: row.fileName, title: row.fileName, description: row.fileName },
     })] }))
-    else children.push(new Paragraph({ children: [new TextRun({ text: 'Attachment: ' + row.fileName, italics: true })] }))
+    else children.push(new Paragraph({ children: [new TextRun({ text: '附件：' + row.fileName, italics: true })] }))
   }
   const document = new WordDocument({
     title: data.heading,
@@ -224,13 +224,13 @@ async function exportEpub(data: EntryData) {
     const ext = epubImages[row.mimeType] || epubAudio[row.mimeType]
     if (!ext || !row.blob || row.id == null) continue
     total += row.blob.size
-    if (total > 512 * 1024 * 1024) throw new Error('EPUB media exceeds the 512 MB export limit.')
+    if (total > 512 * 1024 * 1024) throw new Error('EPUB 媒体超过 512 MB 导出上限。')
     const relative = 'media/' + row.id + '.' + ext
     assets.set(row.id, relative)
     manifest.push(`<item id="media-${row.id}" href="${relative}" media-type="${row.mimeType}"/>`)
     files['EPUB/' + relative] = [new Uint8Array(await row.blob.arrayBuffer()), { level: 0 }]
   }
-  const lang = document.documentElement.lang || 'en'
+  const lang = document.documentElement.lang || 'zh-CN'
   const book = document.implementation.createDocument(xhtmlNs, 'html')
   const root = book.documentElement
   root.setAttribute('lang', lang)
@@ -250,7 +250,7 @@ async function exportEpub(data: EntryData) {
   const xmlTitle = xml(data.heading)
   const xmlLang = xml(lang)
   files['EPUB/entry.xhtml'] = strToU8('<?xml version="1.0" encoding="utf-8"?>' + new XMLSerializer().serializeToString(book))
-  files['EPUB/nav.xhtml'] = strToU8(`<?xml version="1.0" encoding="utf-8"?><html xmlns="${xhtmlNs}" xmlns:epub="${epubNs}" lang="${xmlLang}" xml:lang="${xmlLang}"><head><title>Contents</title></head><body><nav epub:type="toc"><h1>Contents</h1><ol><li><a href="entry.xhtml">${xmlTitle}</a></li></ol></nav></body></html>`)
+  files['EPUB/nav.xhtml'] = strToU8(`<?xml version="1.0" encoding="utf-8"?><html xmlns="${xhtmlNs}" xmlns:epub="${epubNs}" lang="${xmlLang}" xml:lang="${xmlLang}"><head><title>目录</title></head><body><nav epub:type="toc"><h1>目录</h1><ol><li><a href="entry.xhtml">${xmlTitle}</a></li></ol></nav></body></html>`)
   files['EPUB/entry.css'] = strToU8('body{line-height:1.55}h1{color:#00687b}img{max-width:100%;height:auto}.entry-meta{font-size:.9em;color:#4b6269}td,th{border:1px solid #bfc8cb;padding:.3em}')
   files['EPUB/package.opf'] = strToU8(`<?xml version="1.0" encoding="utf-8"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="book-id">${identifier}</dc:identifier><dc:title>${xmlTitle}</dc:title><dc:language>${xmlLang}</dc:language><meta property="dcterms:modified">${modified}</meta></metadata><manifest><item id="entry" href="entry.xhtml" media-type="application/xhtml+xml"/><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="css" href="entry.css" media-type="text/css"/>${manifest.join('')}</manifest><spine><itemref idref="entry"/></spine></package>`)
   const result = zipSync(files)
@@ -263,7 +263,7 @@ async function printEntry(data: EntryData) {
     if (row.id != null && row.blob && row.mimeType.startsWith('image/')) assets.set(row.id, URL.createObjectURL(row.blob))
   }
   const iframe = document.createElement('iframe')
-  iframe.title = 'Journal print preview'
+  iframe.title = '日记打印预览'
   iframe.setAttribute('aria-hidden', 'true')
   iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;'
   iframe.sandbox.add('allow-same-origin', 'allow-modals')
@@ -277,7 +277,7 @@ async function printEntry(data: EntryData) {
   try {
     const frame = iframe.contentWindow
     const printDocument = iframe.contentDocument
-    if (!frame || !printDocument) throw new Error('The print preview could not be opened.')
+    if (!frame || !printDocument) throw new Error('无法打开打印预览。')
     printDocument.title = data.heading
     const style = printDocument.createElement('style')
     style.textContent = '@page{margin:18mm}body{color:#171c1e;font:12pt/1.5 system-ui}h1{color:#00687b;font-weight:600}img{display:block;max-width:100%;max-height:175mm;break-inside:avoid}table{border-collapse:collapse}th,td{border:1px solid #bfc8cb;padding:.3em .6em}.entry-meta{color:#4b6269;font-size:.88em}p{orphans:2;widows:2}'

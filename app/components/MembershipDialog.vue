@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { mdiArrowDown, mdiChevronLeft, mdiChevronRight, mdiCloseCircle, mdiCloud, mdiSeal } from '@mdi/js'
 import logo from '~/assets/membership/journey-3d-icon.png'
-import devices from '~/assets/membership/ios-addson-cross-platform.png'
-import playAward from '~/assets/membership/google-play-best-of-2023.png'
-import appAward from '~/assets/membership/app-store-of-the-day.png'
 
 const emit = defineEmits<{ close: [] }>()
 const dialog = ref<HTMLDialogElement>()
@@ -13,12 +10,12 @@ const canScroll = ref(true)
 let overviewOffset = 0
 
 const benefits = [
-  { name: 'End-to-end Encryption', description: 'Keep your journal encrypted from creation to storage.' },
-  { name: 'Shared Journals', description: 'Write and share memories with friends and family.' },
-  { name: 'Shared Web Links', description: 'Share selected entries from Journey Cloud Sync.' },
-  { name: 'Journey Coach', description: 'Follow guided programs and writing prompts.' },
-  { name: 'Odyssey AI', description: 'Ask questions about your journal and revisit the entries behind the answer.', to: '/odyssey' },
-  { name: 'Print & Export', description: 'Print from the cloud and export your entries to ePub or DOCX.' },
+  { name: '端到端加密', description: '日记从创建到存储均受加密保护。' },
+  { name: '共享日记', description: '和家人朋友一起记录与分享回忆。' },
+  { name: '网页分享链接', description: '分享旅程云同步中选中的日记。' },
+  { name: '日记教练', description: '通过写作练习和引导提示养成记录习惯。' },
+  { name: '日记问答', description: '询问关于日记的问题，回顾答案引用的条目。', to: '/odyssey' },
+  { name: '打印与导出', description: '从云端打印日记，或导出为 EPUB 和 DOCX。' },
 ]
 
 function updateScroll() {
@@ -54,82 +51,86 @@ onMounted(() => {
 <template>
   <dialog ref="dialog" class="jr-membership" aria-labelledby="jr-membership-title" @cancel.prevent="close" @click.self="close">
     <div class="jr-membership-frame">
-      <button type="button" class="jr-membership-close" aria-label="Close membership" autofocus @click="close">
+      <button type="button" class="jr-membership-close" aria-label="关闭会员弹窗" autofocus @click="close">
         <JrIcon :path="mdiCloseCircle" :size="20" />
       </button>
-      <button v-if="plans" type="button" class="jr-membership-back" aria-label="Back to membership" @click="changePage(false)">
+      <button v-if="plans" type="button" class="jr-membership-back" aria-label="返回会员介绍" @click="changePage(false)">
         <JrIcon :path="mdiChevronLeft" :size="22" />
       </button>
 
       <div ref="scrollArea" class="jr-membership-content" @scroll="updateScroll">
         <header class="jr-membership-header">
           <img :src="logo" alt="" width="74" height="74" />
-          <h2 id="jr-membership-title">Membership</h2>
-          <p v-if="!plans">Start your Membership now and get 10GB of storage on Journey Cloud Sync for free.</p>
-          <p v-else>Choose a Membership plan.</p>
+          <h2 id="jr-membership-title">会员</h2>
+          <p v-if="!plans">开通会员，即可获得 10 GB 的旅程云同步空间。</p>
+          <p v-else>选择会员套餐。</p>
         </header>
 
         <template v-if="!plans">
           <div class="jr-membership-feature-grid">
             <article class="jr-membership-feature jr-membership-sync">
-              <h3><JrIcon :path="mdiCloud" :size="24" /> Cross-platform Sync</h3>
-              <img :src="devices" alt="Journey on phone, laptop and tablet" class="jr-membership-devices" />
-              <p>Keep your journal in sync across devices. Start an entry on your phone, revisit it on your tablet, or finish writing at your desktop.</p>
+              <h3><JrIcon :path="mdiCloud" :size="24" /> 跨平台同步</h3>
+              <div class="jr-membership-devices" role="img" aria-label="旅程日记的手机、电脑和平板界面">
+                <div class="jr-membership-device jr-membership-laptop"><span>我的日记</span><b>时间线</b></div>
+                <div class="jr-membership-device jr-membership-tablet"><span>往日回忆</span><b>今天</b></div>
+                <div class="jr-membership-device jr-membership-phone"><span>日记</span><b>今天</b></div>
+              </div>
+              <p>在手机上开始写日记，在平板上回顾，也可以回到电脑上继续写。</p>
             </article>
             <article class="jr-membership-feature jr-membership-trust">
-              <h3><JrIcon :path="mdiSeal" :size="24" /> Trusted Journal Platform</h3>
-              <div class="jr-membership-stat"><strong>10+ Years</strong><span>Millions of Users</span></div>
-              <p>Journey has safeguarded personal journals for over a decade, helping people keep their private entries and memories together.</p>
+              <h3><JrIcon :path="mdiSeal" :size="24" /> 值得信赖的日记平台</h3>
+              <div class="jr-membership-stat"><strong>超过 10 年</strong><span>数百万用户</span></div>
+              <p>十余年来，旅程日记帮助用户集中保存私人日记和珍贵回忆。</p>
             </article>
             <article v-for="benefit in benefits" :key="benefit.name" class="jr-membership-feature jr-membership-benefit">
               <h3>{{ benefit.name }}</h3>
               <p>{{ benefit.description }}</p>
-              <NuxtLink v-if="benefit.to" :to="benefit.to" @click="close">Open Odyssey</NuxtLink>
+              <NuxtLink v-if="benefit.to" :to="benefit.to" @click="close">打开日记问答</NuxtLink>
             </article>
           </div>
-          <h3 class="jr-membership-section">People Love Journey.</h3>
+          <h3 class="jr-membership-section">大家喜欢旅程日记</h3>
           <div class="jr-membership-awards">
-            <img :src="playAward" alt="Google Play Best of 2023" />
-            <img :src="appAward" alt="App of the Day, App Store" />
+            <div><JrIcon :path="mdiSeal" :size="32" /><strong>2023 年度精选</strong><span>谷歌应用商店</span></div>
+            <div><JrIcon :path="mdiSeal" :size="32" /><strong>今日推荐</strong><span>苹果应用商店</span></div>
           </div>
-          <h3 class="jr-membership-section">Frequently Asked Questions</h3>
+          <h3 class="jr-membership-section">常见问题</h3>
           <details>
-            <summary>How do I activate Membership?</summary>
-            <p>Membership is tied to your Journey account. You can view the current plans on Journey’s website.</p>
+            <summary>如何开通会员？</summary>
+            <p>会员权益绑定旅程账号。可在官方网站查看当前套餐。</p>
           </details>
           <details>
-            <summary>How do I restore a purchase?</summary>
-            <p>Sign in to the Journey account associated with the purchase.</p>
+            <summary>如何恢复购买？</summary>
+            <p>请登录购买时使用的旅程账号。</p>
           </details>
         </template>
         <template v-else>
           <div class="jr-membership-plan-grid">
-            <article v-for="period in ['Monthly', 'Annual', 'Lifetime']" :key="period" class="jr-membership-feature jr-membership-benefit">
+            <article v-for="period in ['按月', '按年', '终身']" :key="period" class="jr-membership-feature jr-membership-benefit">
               <h3>{{ period }}</h3>
             </article>
           </div>
-          <p class="jr-membership-account">Current prices and checkout are available through your Journey account.</p>
+          <p class="jr-membership-account">请前往旅程官网查看价格，并登录账号完成购买。</p>
         </template>
       </div>
 
       <footer class="jr-membership-footer">
-        <button v-if="canScroll" type="button" class="jr-membership-scroll" aria-label="Scroll to more benefits" @click="scrollDown">
+        <button v-if="canScroll" type="button" class="jr-membership-scroll" aria-label="向下查看更多权益" @click="scrollDown">
           <JrIcon :path="mdiArrowDown" :size="16" />
         </button>
         <button v-if="!plans" type="button" class="jr-membership-cta" @click="changePage(true)">
-          Get 10GB of Storage For Free <JrIcon :path="mdiChevronRight" :size="18" />
+          免费获取 10 GB 存储空间 <JrIcon :path="mdiChevronRight" :size="18" />
         </button>
         <a v-else class="jr-membership-cta" href="https://journey.cloud/membership" target="_blank" rel="noopener noreferrer">
-          View Membership on Journey <JrIcon :path="mdiChevronRight" :size="18" />
+          在旅程官网查看会员套餐 <JrIcon :path="mdiChevronRight" :size="18" />
         </a>
         <div class="jr-membership-links">
-          <a href="https://journey.cloud/termsGeneral" target="_blank" rel="noopener noreferrer">Terms of Use</a>
+          <a href="https://journey.cloud/termsGeneral" target="_blank" rel="noopener noreferrer">使用条款</a>
           <span aria-hidden="true">·</span>
-          <a href="https://journey.cloud/policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+          <a href="https://journey.cloud/policy" target="_blank" rel="noopener noreferrer">隐私政策</a>
           <span aria-hidden="true">·</span>
-          <button type="button" disabled title="Sign in to restore a purchase">Restore Purchase</button>
+          <button type="button" disabled title="请登录后恢复购买">恢复购买</button>
           <span aria-hidden="true">·</span>
-          <a href="https://support.journey.cloud" target="_blank" rel="noopener noreferrer">Help Desk</a>
+          <a href="https://support.journey.cloud" target="_blank" rel="noopener noreferrer">帮助中心</a>
         </div>
       </footer>
     </div>
@@ -167,13 +168,20 @@ onMounted(() => {
 .jr-membership-sync p, .jr-membership-trust p { text-align: center; }
 .jr-membership-trust { background: #070707; color: #fff; }
 .jr-membership-devices, .jr-membership-stat { width: 100%; height: 188px; margin-top: 12px; }
-.jr-membership-devices { display: block; object-fit: contain; }
+.jr-membership-devices { position: relative; }
+.jr-membership-device { position: absolute; display: flex; flex-direction: column; gap: 4px; padding: 8px; border: 3px solid #253338; border-radius: 7px; background: #f5fafc; color: #164450; box-shadow: 0 5px 9px #142e3a33; font-size: 11px; }
+.jr-membership-device b { padding: 4px; border-radius: 4px; background: #cee7ef; }
+.jr-membership-device::after { content: ''; flex: 1; background: repeating-linear-gradient(#dbe4e7 0 2px, transparent 2px 10px); }
+.jr-membership-laptop { width: 63%; height: 108px; top: 35px; left: 11%; }
+.jr-membership-tablet { width: 42%; height: 87px; top: 60px; right: 0; }
+.jr-membership-phone { width: 24%; height: 74px; top: 76px; left: 0; padding: 4px; }
 .jr-membership-stat { display: grid; place-content: end center; gap: 6px; padding-bottom: 15px; text-align: center; }
 .jr-membership-stat strong { font-size: 31px; color: #ffe142; }
 .jr-membership-stat span { font-size: 22px; color: #aaa; font-weight: 700; }
 .jr-membership-benefit a { display: inline-block; margin-top: 14px; font-weight: 700; }
 .jr-membership-section { text-align: center; margin: 38px 0 18px; }
-.jr-membership-awards img { width: 100%; height: 156px; object-fit: contain; padding: 16px; border-radius: 10px; background: var(--jr-surface); }
+.jr-membership-awards div { display: grid; justify-items: center; align-content: center; gap: 6px; min-height: 140px; padding: 16px; border-radius: 10px; background: var(--jr-surface); }
+.jr-membership-awards svg { color: var(--jr-primary); }
 .jr-membership-content details { padding: 12px; border-bottom: 1px solid var(--jr-outline-variant); }
 .jr-membership-content summary { cursor: pointer; }
 .jr-membership-plan-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); text-align: center; }

@@ -1,4 +1,5 @@
 import { desktopBridge, stageDesktopRecording } from '~/utils/desktopBridge'
+import { errorText } from '~/utils/uiText'
 
 const maxRecordingMs = 10 * 60 * 1000
 
@@ -25,11 +26,11 @@ export function useVoiceNote(onFile: (file: File) => Promise<void>, onError: (me
       const encoder = new Worker(new URL('../workers/encodeVoiceMp3.ts', import.meta.url), { type: 'module' })
       worker = encoder
       function stop() { encoder.terminate(); worker = undefined }
-      encoder.onerror = () => { stop(); reject(new Error('MP3 encoding failed.')) }
+      encoder.onerror = () => { stop(); reject(new Error('无法编码 MP3 音频。')) }
       encoder.onmessage = ({ data }: MessageEvent<{ bytes?: Uint8Array<ArrayBuffer>; error?: string }>) => {
         stop()
-        if (data.bytes?.byteLength) resolve(new File([data.bytes], 'Voice note.mp3', { type: 'audio/mpeg' }))
-        else reject(new Error(data.error || 'The recording was empty.'))
+        if (data.bytes?.byteLength) resolve(new File([data.bytes], '语音记录.mp3', { type: 'audio/mpeg' }))
+        else reject(new Error(data.error || '录音内容为空。'))
       }
       encoder.postMessage({ pcm, sampleRate: audio.sampleRate }, [pcm.buffer])
     })
@@ -46,7 +47,7 @@ export function useVoiceNote(onFile: (file: File) => Promise<void>, onError: (me
       recorder = current
       const parts: Blob[] = []
       current.ondataavailable = event => { if (event.data.size) parts.push(event.data) }
-      current.onerror = () => onError('Audio recording stopped unexpectedly.')
+      current.onerror = () => onError('录音意外中断。')
       current.onstop = async () => {
         clearTimeout(timer)
         current.stream.getTracks().forEach(track => track.stop())
@@ -56,7 +57,7 @@ export function useVoiceNote(onFile: (file: File) => Promise<void>, onError: (me
           const file = await toMp3(new Blob(parts, { type: current.mimeType }))
           if (file && !disposed) await onFile(await stageDesktopRecording(file))
         } catch (error) {
-          if (!disposed) onError((error as Error).message || 'Could not save the recording.')
+          if (!disposed) onError(errorText(error, '无法保存录音。'))
         } finally { status.value = 'idle' }
       }
       current.start()
@@ -65,7 +66,7 @@ export function useVoiceNote(onFile: (file: File) => Promise<void>, onError: (me
     } catch {
       stream?.getTracks().forEach(track => track.stop())
       status.value = 'idle'
-      onError('Could not start recording. Check microphone access.')
+      onError('无法开始录音。请检查麦克风权限。')
     }
   }
 

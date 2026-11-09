@@ -39,11 +39,11 @@ export async function exportJournalZip(entryId?: number) {
     entryId == null ? db.mediaFilesV2.toArray() : db.mediaFilesV2.where('jId').equals(entryId).toArray(),
     db.tagWordsV2.toArray(),
   ]))
-  if (!entries.length) throw new Error('There are no entries to export.')
+  if (!entries.length) throw new Error('没有可导出的日记。')
   const ids = new Set(entries.map(entry => entry.id))
   const assets = media.filter(row => ids.has(row.jId) && row.blob)
   if (assets.reduce((bytes, row) => bytes + row.blob!.size, 0) > archiveLimit) {
-    throw new Error('This archive exceeds 512 MB. Export fewer entries at a time.')
+    throw new Error('压缩包超过 512 MB。请减少每次导出的日记数量。')
   }
   const tagTitles = new Map(tags.map(tag => [tag.id, tag.title]))
   const files: Record<string, Uint8Array> = Object.create(null)
@@ -96,14 +96,14 @@ function readBackup(file: ArrayBuffer) {
   const files = unzipSync(new Uint8Array(file), { filter: item => {
     if (!validPath(item.name)) return false
     bytes += item.originalSize
-    if (++count > 20000 || bytes > archiveLimit) throw new Error('This archive exceeds the supported backup size.')
+    if (++count > 20000 || bytes > archiveLimit) throw new Error('压缩包超过支持的备份大小。')
     return true
   } })
   const out: ImportedZipEntry[] = []
   const paths = Object.keys(files)
   function readEntry(raw: Record<string, any>, path: string, format: 'v1' | 'v2' | 'replica') {
     const date = new Date(raw.date_journal ?? raw.dateOfJournal)
-    if (!Number.isFinite(+date)) throw new Error(`Invalid date in ${path}.`)
+    if (!Number.isFinite(+date)) throw new Error(`文件 ${path} 中的日记日期无效。`)
     const directory = path.slice(0, path.lastIndexOf('/') + 1)
     const stem = path.slice(directory.length, -5)
     const siblings = paths.filter(name => name.startsWith(directory) && !name.slice(directory.length).includes('/') && attachmentMime[extension(name)])
@@ -137,23 +137,23 @@ function readBackup(file: ArrayBuffer) {
   const manifest = files['manifest.json'] ? JSON.parse(strFromU8(files['manifest.json'])) : null
   if (manifest?.format === 'journey-replica-zip' && Array.isArray(manifest.entries)) {
     for (const raw of manifest.entries) {
-      if (!Number.isInteger(raw.id) || !files[`entries/${raw.id}.html`]) throw new Error('Missing entry HTML in the backup.')
+      if (!Number.isInteger(raw.id) || !files[`entries/${raw.id}.html`]) throw new Error('备份缺少日记的 HTML 文件。')
       readEntry({ ...raw, text: strFromU8(files[`entries/${raw.id}.html`]) }, `entries/${raw.id}.json`, 'replica')
     }
   } else {
     for (const path of paths.filter(name => name.endsWith('.json') && !name.startsWith('__MACOSX/'))) {
       const raw = JSON.parse(strFromU8(files[path]!))
-      if (raw?.schemaVersion === 2 && raw.encrypted) throw new Error('Encrypted Journey backups require the original app to decrypt first.')
+      if (raw?.schemaVersion === 2 && raw.encrypted) throw new Error('请先在原应用中解密旅程日记备份。')
       if (raw?.schemaVersion === 2) readEntry(raw, path, 'v2')
       else if (raw && typeof raw.id === 'string' && raw.date_journal != null && Array.isArray(raw.photos)) readEntry(raw, path, 'v1')
     }
   }
-  if (!out.length) throw new Error('No supported Journey entries were found in this ZIP.')
+  if (!out.length) throw new Error('ZIP 中没有找到支持的旅程日记。')
   return out
 }
 
 export async function importJournalZip(file: File) {
-  if (file.size > archiveLimit) throw new Error('This archive exceeds 512 MB.')
+  if (file.size > archiveLimit) throw new Error('压缩包超过 512 MB。')
   return writeImportedEntries(readBackup(await file.arrayBuffer()))
 }
 

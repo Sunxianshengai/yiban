@@ -6,10 +6,10 @@ const route = useRoute()
 const { entries, refresh, allMedia, toggleFavourite, duplicateEntry, saveAsTemplate, moveToTrash } = useEntries()
 const { firstDay, orderedWeekdays } = useWeekStart()
 const today = new Date()
-const monthFormat = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' })
-const shortMonth = new Intl.DateTimeFormat('en-US', { month: 'short' })
-const fullDate = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-const timeFormat = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' })
+const monthFormat = new Intl.DateTimeFormat('zh-CN', { month: 'long', year: 'numeric' })
+const shortMonth = new Intl.DateTimeFormat('zh-CN', { month: 'short' })
+const fullDate = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', year: 'numeric' })
+const timeFormat = new Intl.DateTimeFormat('zh-CN', { hour: 'numeric', minute: '2-digit' })
 
 function localDate(year: number, month: number, day = 1) {
   const date = new Date(0)
@@ -145,7 +145,7 @@ function resetMonths(id: number) {
 const picker = ref<HTMLDialogElement | null>(null)
 const pickMonth = ref(today.getMonth())
 const pickYear = ref(today.getFullYear())
-const monthNames = Array.from({ length: 12 }, (_, month) => new Intl.DateTimeFormat('en-US', { month: 'long' }).format(localDate(2000, month)))
+const monthNames = Array.from({ length: 12 }, (_, month) => new Intl.DateTimeFormat('zh-CN', { month: 'long' }).format(localDate(2000, month)))
 
 function openPicker() {
   const pane = monthPane.value
@@ -228,12 +228,12 @@ onBeforeUnmount(() => { thumbGeneration++; releaseThumbnails() })
 <template>
   <div class="jr-calendar-page">
     <header class="jr-calendar-toolbar">
-      <button v-if="selectedDate" class="jr-icon-btn" type="button" title="Back to calendar" @click="clearDay"><JrIcon :path="mdiArrowLeft" :size="20" /></button>
-      <h1><img src="/favicon.svg" alt=""> Journey</h1>
-      <button class="jr-calendar-add" type="button" title="New entry" @click="openEditor()"><JrIcon :path="mdiPlus" :size="22" /></button>
+      <button v-if="selectedDate" class="jr-icon-btn" type="button" title="返回日历" @click="clearDay"><JrIcon :path="mdiArrowLeft" :size="20" /></button>
+      <h1><img src="/favicon.svg" alt=""> 旅程日记</h1>
+      <button class="jr-calendar-add" type="button" title="新建日记" @click="openEditor()"><JrIcon :path="mdiPlus" :size="22" /></button>
     </header>
     <div class="jr-calendar-split">
-      <section class="jr-calendar-leading" aria-label="Calendar">
+      <section class="jr-calendar-leading" aria-label="日历">
         <template v-if="!selectedDate">
           <div class="jr-cal-grid jr-cal-dow">
             <span v-for="day in orderedWeekdays" :key="day">{{ day }}</span>
@@ -244,7 +244,7 @@ onBeforeUnmount(() => { thumbGeneration++; releaseThumbnails() })
               <div class="jr-cal-grid jr-cal-body">
                 <template v-for="(cell, index) in month.cells" :key="index">
                   <button v-if="cell" type="button" class="jr-cal-cell" :class="{ today: cell.key === dateKey(today), has: cell.items.length, thumbnail: cellThumbnail(cell.items) }"
-                    :title="fullDate.format(cell.date)" :aria-label="`${fullDate.format(cell.date)}${cell.items.length ? ', ' + cell.items.length + (cell.items.length === 1 ? ' entry' : ' entries') : ''}`"
+                    :title="fullDate.format(cell.date)" :aria-label="`${fullDate.format(cell.date)}${cell.items.length ? '，' + cell.items.length + ' 篇日记' : ''}`"
                     :aria-current="cell.key === dateKey(today) ? 'date' : undefined" @click="chooseDay(cell.key)">
                     <template v-if="cellThumbnail(cell.items)">
                       <video v-if="cellThumbnail(cell.items)?.video" :src="cellThumbnail(cell.items)?.url" muted preload="metadata" aria-hidden="true" />
@@ -258,10 +258,10 @@ onBeforeUnmount(() => { thumbGeneration++; releaseThumbnails() })
               </div>
             </section>
           </div>
-          <button class="jr-calendar-jump" type="button" title="Go to month and year" @click="openPicker"><JrIcon :path="mdiCalendarMonth" :size="22" /></button>
+          <button class="jr-calendar-jump" type="button" title="跳转到指定年月" @click="openPicker"><JrIcon :path="mdiCalendarMonth" :size="22" /></button>
         </template>
         <template v-else>
-          <div ref="dayStrip" class="jr-calendar-day-strip" aria-label="Choose a date">
+          <div ref="dayStrip" class="jr-calendar-day-strip" aria-label="选择日期">
             <button v-for="day in daysAround" :key="day.key" type="button" :title="fullDate.format(day.date)"
               :aria-current="day.key === selectedKey ? 'date' : undefined" @click="chooseDay(day.key, true)">
               <strong>{{ String(day.date.getDate()).padStart(2, '0') }}</strong>
@@ -269,21 +269,21 @@ onBeforeUnmount(() => { thumbGeneration++; releaseThumbnails() })
               <span>{{ day.date.getFullYear() }}</span>
             </button>
           </div>
-          <div class="jr-calendar-day-entries" aria-label="Entries on this date">
+          <div class="jr-calendar-day-entries" aria-label="当天的日记">
             <div v-if="!dayEntries.length" class="jr-empty">
               <div class="big"><JrIcon :path="mdiCalendarMonth" :size="42" /></div>
-              No entries to display.
+              暂无日记。
             </div>
             <button v-for="entry in dayEntries" :key="entry.id" type="button" class="jr-entry jr-calendar-entry" :class="{ selected: selectedEntry?.id === entry.id }" @click="selectEntry(entry)">
               <span class="date">{{ timeFormat.format(entry.dateOfJournal) }}</span>
-              <span class="preview">{{ entry.previewText || 'No additional text' }}</span>
+              <span class="preview">{{ entry.previewText || '无正文' }}</span>
             </button>
           </div>
         </template>
       </section>
 
-      <section class="jr-detail-col jr-calendar-detail" :class="{ 'has-entry': selectedEntry }" aria-label="Entry detail">
-        <NuxtLink v-if="selectedEntry" class="jr-calendar-timeline" :to="{ path: '/', query: { entry: selectedEntry.id } }">Open in Timeline</NuxtLink>
+      <section class="jr-detail-col jr-calendar-detail" :class="{ 'has-entry': selectedEntry }" aria-label="日记详情">
+        <NuxtLink v-if="selectedEntry" class="jr-calendar-timeline" :to="{ path: '/', query: { entry: selectedEntry.id } }">在时间线中打开</NuxtLink>
         <EntryDetail :entry="selectedEntry" @edit="openEditor(selectedEntry)"
           @toggle-favourite="selectedEntry?.id != null && toggleFavourite(selectedEntry.id)"
           @duplicate="selectedEntry?.id != null && duplicateEntry(selectedEntry.id)"
@@ -293,14 +293,14 @@ onBeforeUnmount(() => { thumbGeneration++; releaseThumbnails() })
 
     <dialog ref="picker" class="jr-calendar-picker" aria-labelledby="calendar-picker-title" @click.self="picker?.close()">
       <form @submit.prevent="jumpToMonth">
-        <h2 id="calendar-picker-title">Select Date</h2>
+        <h2 id="calendar-picker-title">选择日期</h2>
         <div class="jr-calendar-picker-fields">
-          <label>Month<select v-model.number="pickMonth" aria-label="Month"><option v-for="(name, index) in monthNames" :key="name" :value="index">{{ name }}</option></select></label>
-          <label>Year<input v-model.number="pickYear" aria-label="Year" type="number" min="1" max="9999" required></label>
+          <label>月份<select v-model.number="pickMonth" aria-label="月份"><option v-for="(name, index) in monthNames" :key="name" :value="index">{{ name }}</option></select></label>
+          <label>年份<input v-model.number="pickYear" aria-label="年份" type="number" min="1" max="9999" required></label>
         </div>
         <div class="jr-calendar-picker-actions">
-          <button class="jr-btn" type="button" @click="picker?.close()">Cancel</button>
-          <button class="jr-btn" type="submit">Done</button>
+          <button class="jr-btn" type="button" @click="picker?.close()">取消</button>
+          <button class="jr-btn" type="submit">完成</button>
         </div>
       </form>
     </dialog>

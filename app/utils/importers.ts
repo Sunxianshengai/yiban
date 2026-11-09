@@ -1,5 +1,6 @@
 import { strFromU8, unzipSync } from 'fflate'
 import type { EntryV2 } from './db'
+import { errorText } from './uiText'
 
 export interface ImportedEntry {
   text: string
@@ -38,7 +39,7 @@ const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '
 
 function importDate(value: unknown) {
   const date = typeof value === 'number' || typeof value === 'string' ? new Date(value) : new Date(NaN)
-  if (!Number.isFinite(+date)) throw new Error('invalid entry date')
+  if (!Number.isFinite(+date)) throw new Error('日记日期无效')
   return date
 }
 
@@ -56,10 +57,10 @@ function collect(kind: string, rows: unknown[], convert: (row: unknown, warnings
       const entry = convert(row, warnings)
       if (keepEmpty || entry.text.trim() || entry.attachments?.length) entries.push(entry)
     } catch (error) {
-      warnings.push(`Entry ${index + 1}: ${(error as Error).message}.`)
+      warnings.push(`第 ${index + 1} 篇：${errorText(error, '无法读取日记')}。`)
     }
   }
-  if (!entries.length) throw new Error(warnings[0] || 'No journal entries found.')
+  if (!entries.length) throw new Error(warnings[0] || '没有找到日记。')
   return { kind, entries, ...(warnings.length ? { warnings } : {}) }
 }
 
@@ -94,7 +95,7 @@ function parseDayOne(data: Data, archiveEntry?: string, lookup?: ResourceLookup)
     const location = record(row.location)
     const ids = [...new Set(list(row.photos).map(photo => string(record(photo).md5)).filter(Boolean))]
     const attachments = archiveEntry && lookup ? ids.flatMap(id => lookup(id, 'photos', archiveEntry)) : []
-    if (ids.length && attachments.length < ids.length) warnings.push('Some Day One photos were missing. Use the original Day One ZIP with its photos folder.')
+    if (ids.length && attachments.length < ids.length) warnings.push('缺少部分 Day One 照片。请使用包含照片文件夹的原始 ZIP。')
     return {
       text: dayOneText(row.text), date: importDate(row.creationDate ?? row.date ?? Date.now()), favourite: row.starred === true, tags: textTags(row.tags), attachments,
       meta: { address: string(location.placeName), timezone: string(row.timeZone), ...locationMeta(location.latitude, location.longitude) },
@@ -105,7 +106,7 @@ function parseDayOne(data: Data, archiveEntry?: string, lookup?: ResourceLookup)
 export function parseImport(data: unknown): ParseResult {
   const root = record(data)
   if (dayOneRows(root).length) return parseDayOne(root)
-  if (root.schemaVersion === 2 && root.encrypted) throw new Error('Encrypted Journey entries must be decrypted in the original app first.')
+  if (root.schemaVersion === 2 && root.encrypted) throw new Error('请先在原应用中解密旅程日记。')
   let rows: unknown[]
   let kind: string
   if (root.format === 'journey-replica-json' && Array.isArray(root.entries)) {
@@ -117,7 +118,7 @@ export function parseImport(data: unknown): ParseResult {
   } else if (Array.isArray(data)) {
     kind = 'generic-entries'; rows = data
   } else {
-    throw new Error('Unrecognized journal JSON structure.')
+    throw new Error('无法识别日记的 JSON 结构。')
   }
   return collect(kind, rows, (value) => {
     const row = record(value)
@@ -159,7 +160,7 @@ function parseCsv(source: string) {
       row.push(field); rows.push(row); row = []; field = ''
     } else field += ch
   }
-  if (quoted) throw new Error('Unclosed quoted field in the CSV.')
+  if (quoted) throw new Error('CSV 字段的引号未闭合。')
   if (row.length || field) rows.push([...row, field])
   return rows
 }
@@ -172,7 +173,7 @@ function daylioDate(fields: Record<string, string>) {
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date)
   const english = /^(?:[a-z]+,\s*)?([a-z]+)\s+(\d{1,2})(?:,?\s+(\d{4}))?$/i.exec(date)
   const time = /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?$/i.exec((fields.time || '00:00').trim())
-  if ((!iso && !english) || !time) throw new Error('invalid entry date or time')
+  if ((!iso && !english) || !time) throw new Error('日记日期或时间无效')
   const year = Number(iso?.[1] || english?.[3] || fields.year)
   const name = english?.[1].toLowerCase()
   const month = iso ? Number(iso[2]) - 1 : months.findIndex(month => month === name || month.slice(0, 3) === name)
@@ -182,10 +183,10 @@ function daylioDate(fields: Record<string, string>) {
   const seconds = Number(time[3] || 0)
   const half = time[4]?.toLowerCase()
   if (!Number.isInteger(year) || month < 0 || (half && (hours < 1 || hours > 12)) || (!half && hours > 23) || minutes > 59 || seconds > 59) {
-    throw new Error('invalid entry date or time')
+    throw new Error('日记日期或时间无效')
   }
   const result = new Date(year, month, day, half ? hours % 12 + (half === 'pm' ? 12 : 0) : hours, minutes, seconds)
-  if (result.getMonth() !== month || result.getDate() !== day) throw new Error('invalid entry date')
+  if (result.getMonth() !== month || result.getDate() !== day) throw new Error('日记日期无效')
   return result
 }
 
@@ -193,7 +194,7 @@ function parseDaylio(source: string) {
   const [heading = [], ...rows] = parseCsv(source.replace(/^\uFEFF/, ''))
   const headers = heading.map(name => name.trim().toLowerCase())
   if (!headers.includes('mood') || !headers.includes('note') || !(headers.includes('date') || headers.includes('full_date'))) {
-    throw new Error('This CSV does not have the Daylio export columns.')
+    throw new Error('该 CSV 缺少 Daylio 导出所需的列。')
   }
   return collect('daylio', rows.filter(row => row.some(Boolean)), (value) => {
     const fields = Object.fromEntries((value as string[]).map((field, i) => [headers[i], field]))
@@ -208,13 +209,13 @@ function parseDaylio(source: string) {
 
 function xmlDocument(source: string) {
   const doc = new DOMParser().parseFromString(source, 'application/xml')
-  if (doc.querySelector('parsererror')) throw new Error('Invalid XML.')
+  if (doc.querySelector('parsererror')) throw new Error('XML 内容无效。')
   return doc
 }
 
 function parseEvernote(source: string) {
   const doc = xmlDocument(source)
-  if (doc.documentElement.localName !== 'en-export') throw new Error('Invalid Evernote export root.')
+  if (doc.documentElement.localName !== 'en-export') throw new Error('Evernote 导出文件结构无效。')
   return collect('evernote', Array.from(doc.documentElement.children).filter(node => node.localName === 'note'), (value, warnings) => {
     const note = value as Element
     const direct = (name: string) => Array.from(note.children).filter(node => node.localName === name)
@@ -228,20 +229,20 @@ function parseEvernote(source: string) {
       const encoded = resource.querySelector('data')?.textContent?.replace(/\s/g, '') || ''
       const label = basename(resource.querySelector('file-name')?.textContent || '')
       if (!encoded || !/^(?:image|video|audio)\//.test(mime) || mime === 'image/svg+xml') {
-        warnings.push(`Skipped unsupported Evernote resource ${label || index + 1}.`)
+        warnings.push(`已跳过不支持的 Evernote 附件：${label || index + 1}。`)
         continue
       }
       if (encoded.length > Math.ceil(attachmentLimit / 3) * 4) {
-        warnings.push(`Skipped Evernote resource over 200 MB: ${label || index + 1}.`)
+        warnings.push(`已跳过超过 200 MB 的 Evernote 附件：${label || index + 1}。`)
         continue
       }
       try {
         const decoded = Uint8Array.from(atob(encoded), char => char.charCodeAt(0))
         const ext = Object.keys(importMimes).find(key => importMimes[key] === mime) || mime.split('/')[1].replace(/[^a-z0-9]/gi, '')
-        if (decoded.byteLength > attachmentLimit) throw new Error('resource over 200 MB')
+        if (decoded.byteLength > attachmentLimit) throw new Error('附件超过 200 MB')
         attachments.push(new File([decoded], label || `attachment-${index + 1}.${ext}`, { type: mime }))
       } catch {
-        warnings.push(`Skipped invalid Evernote resource ${label || index + 1}.`)
+        warnings.push(`已跳过无效的 Evernote 附件：${label || index + 1}。`)
       }
     }
     return { text: (title ? `<h1>${escapeHtml(title)}</h1>` : '') + body, date: importDate(created), tags: direct('tag').map(node => node.textContent || '').filter(Boolean), attachments }
@@ -253,7 +254,7 @@ function readPlist(node: Element): unknown {
   if (node.localName === 'dict') {
     const result: Data = Object.create(null)
     for (let i = 0; i + 1 < children.length; i += 2) {
-      if (children[i].localName !== 'key') throw new Error('Invalid Day One Classic property list.')
+      if (children[i].localName !== 'key') throw new Error('Day One 经典版的属性列表无效。')
       result[children[i].textContent || ''] = readPlist(children[i + 1])
     }
     return result
@@ -267,7 +268,7 @@ function readPlist(node: Element): unknown {
 function classicEntry(source: string, attachments: File[]): ImportedEntry {
   const doc = xmlDocument(source)
   const node = doc.documentElement.firstElementChild
-  if (doc.documentElement.localName !== 'plist' || node?.localName !== 'dict') throw new Error('Invalid Day One Classic property list.')
+  if (doc.documentElement.localName !== 'plist' || node?.localName !== 'dict') throw new Error('Day One 经典版的属性列表无效。')
   const row = record(readPlist(node))
   const loc = record(row.Location)
   return {
@@ -292,10 +293,10 @@ function parseThirdPartyZip(input: ArrayBuffer): ParseResult | null {
     const path = item.name
     if (!safeZipPath(path)) return false
     bytes += item.originalSize
-    if (++count > 20000 || bytes > archiveLimit) throw new Error('This archive exceeds the supported import size.')
+    if (++count > 20000 || bytes > archiveLimit) throw new Error('压缩包超过支持的导入大小。')
     const ext = extension(path)
     if (importMimes[ext] && /(?:^|\/)(?:photos|Resources)\/[^/]+$/i.test(path)) {
-      if (item.originalSize > attachmentLimit) warnings.push(`Skipped attachment over 200 MB: ${basename(path)}.`)
+      if (item.originalSize > attachmentLimit) warnings.push(`已跳过超过 200 MB 的附件：${basename(path)}。`)
       else {
         const folder = path.split('/').at(-2)!.toLowerCase()
         const key = folder + '/' + filenameStem(path).toLowerCase()
@@ -354,7 +355,7 @@ function parseThirdPartyZip(input: ArrayBuffer): ParseResult | null {
     for (const [path, bytes] of Object.entries(assets)) {
       const type = importMimes[extension(path)]
       resolved.set(path, new File([new Uint8Array(bytes)], basename(path), { type }))
-      if (type === 'image/heic') warnings.push(`Kept HEIC attachment ${basename(path)} in its original format. Browser preview may be unavailable.`)
+      if (type === 'image/heic') warnings.push(`HEIC 附件 ${basename(path)} 已按原格式保留，浏览器可能无法预览。`)
     }
   }
   const getFiles = (paths: string[]) => [...new Set(paths)].flatMap(path => resolved.get(path) || [])
@@ -382,7 +383,7 @@ function parseThirdPartyZip(input: ArrayBuffer): ParseResult | null {
 }
 
 export async function parseImportFile(file: File): Promise<ParseResult | null> {
-  if (file.size > archiveLimit) throw new Error('This import exceeds 512 MB.')
+  if (file.size > archiveLimit) throw new Error('导入文件超过 512 MB。')
   const ext = extension(file.name)
   if (ext === 'zip') return parseThirdPartyZip(await file.arrayBuffer())
   const source = await file.text()
@@ -390,5 +391,5 @@ export async function parseImportFile(file: File): Promise<ParseResult | null> {
   if (ext === 'csv') return parseDaylio(source)
   if (ext === 'enex') return parseEvernote(source)
   if (ext === 'doentry') return collect('dayone-classic', [source], value => classicEntry(value as string, []))
-  throw new Error('Unsupported import file type.')
+  throw new Error('不支持此导入文件类型。')
 }

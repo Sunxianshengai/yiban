@@ -44,11 +44,11 @@ export function useEntries() {
     }
     const entryId = await db.transaction('rw', db.entriesV2, db.mediaFilesV2, async () => {
       const current = id == null ? undefined : await db.entriesV2.get(id)
-      if (id != null && !current) throw new Error('This entry no longer exists.')
+      if (id != null && !current) throw new Error('这篇日记已不存在。')
       const key = id ?? await db.entriesV2.add(deProxy(row))
       const media = await listMediaFor(key)
       const kept = media.filter(item => item.id == null || !removedIds.has(item.id))
-      if (files.length && kept.length + files.length > 20) throw new Error('Each entry can have up to 20 attachments.')
+      if (files.length && kept.length + files.length > 20) throw new Error('每篇日记最多可添加 20 个附件。')
       await db.mediaFilesV2.bulkDelete(media.flatMap(item => item.id != null && removedIds.has(item.id) ? [item.id] : []))
       let position = Math.max(-1, ...kept.map(item => item.position)) + 1
       for (const file of files) await attachMedia(key, file, position++)
@@ -104,7 +104,7 @@ export function useEntries() {
     const row = await db.entriesV2.get(id)
     if (!row) return
     await miscDb.templates.add({
-      name: `Entry ${new Date(row.dateOfJournal).toLocaleDateString('en-US')}`,
+      name: `日记 ${new Date(row.dateOfJournal).toLocaleDateString('zh-CN')}`,
       content: stripAttachmentUrls(row.text, new Set((await listMediaFor(id)).flatMap(file => file.id == null ? [] : [file.id]))),
       contentType: 'html',
       updatedAt: new Date(),

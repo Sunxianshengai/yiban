@@ -25,11 +25,11 @@ interface NativeImportEntry {
 
 export async function importFromDesktop() {
   const bridge = desktopBridge()
-  if (!bridge) throw new Error('Desktop import is unavailable.')
+  if (!bridge) throw new Error('桌面导入暂不可用。')
   const linkedAccountId = 'replica-local'
   const picked = await bridge.invoke<{ status: boolean; errorCode?: string; importedFileDestinationPath?: string }>('pickFile', { linkedAccountId })
   if (!picked.status || !picked.importedFileDestinationPath) {
-    if (picked.errorCode && !picked.errorCode.endsWith('ImportCancelled')) throw new Error('Could not open the import file.')
+    if (picked.errorCode && !picked.errorCode.endsWith('ImportCancelled')) throw new Error('无法打开导入文件。')
     return null
   }
   const events: NativeImportEntry[] = []
@@ -40,9 +40,9 @@ export async function importFromDesktop() {
       linkedAccountId, importedFileDestinationPath: picked.importedFileDestinationPath, userIsPaid: false,
     })
   } finally { off() }
-  if (!Array.isArray(failures)) throw new Error('Could not read the import archive.')
-  if (failures.some(item => item.passphrase)) throw new Error('Unlock the encrypted archive before importing it here.')
-  if (!events.length) throw new Error('The file did not contain any importable journal entries.')
+  if (!Array.isArray(failures)) throw new Error('无法读取导入压缩包。')
+  if (failures.some(item => item.passphrase)) throw new Error('请先解密压缩包再导入。')
+  if (!events.length) throw new Error('文件中没有可导入的日记。')
 
   const imported: ImportedEntry[] = []
   let skipped = failures.length
@@ -70,6 +70,6 @@ export async function importFromDesktop() {
       },
     })
   }
-  if (!imported.length) throw new Error('The import contained no entries with valid dates.')
+  if (!imported.length) throw new Error('导入文件中没有日期有效的日记。')
   return { count: await importJournalEntries(imported), skipped }
 }
