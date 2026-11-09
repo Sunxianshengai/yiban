@@ -2,11 +2,22 @@
 import { mdiImageOutline, mdiClose } from '@mdi/js'
 import type { EntryV2 } from '~/utils/db'
 
-const { entries } = useEntries()
+const { entries, refresh } = useEntries()
 type LocatedEntry = EntryV2 & { id: number; lat: number; lng: number }
 type AtlasPoint = { entry: LocatedEntry; x: number; y: number }
 type AtlasGroup = { entries: LocatedEntry[]; x: number; y: number }
 
+/**
+ * Atlas — 原版实测（evidence/rea/atlas-v1.json + bundle 提取，2026-11-10）：
+ * 引擎 MapLibre GL（.output/public/styles/maplibre-gl.css 在册）；
+ * 底图为两个自定义 MapTiler 样式（明 02e457dd-…/暗 a94ac775-…，api.maptiler.com/maps/<id>/style.json?key=）；
+ * 密钥走 secretKeys.mapTiler（IPC renderer->main:retrieve 取用户配置）——复刻版存 localStorage，不伪造密钥；
+ * 无密钥时内联极简底图（零网络依赖），诚实提示。
+ * 标记/聚类用 DOM Marker + 网格聚类（r=25px，512px 瓦片坐标系）：不依赖 WebGL/worker，
+ * 无底图/受限网络下标记依然可交互（对齐原版"无密钥时仅见日记标记"的行为）。
+ */
+const STYLE_LIGHT_ID = '02e457dd-6f30-4d58-9156-f924def7b2d0'
+const STYLE_DARK_ID = 'a94ac775-f3be-4aea-aa5a-028754a7aeb5'
 const minZoom = 3
 const maxZoom = 16
 // MapLibre uses 512px tiles and a default cluster radius of 50px.
@@ -21,13 +32,29 @@ const located = computed(() => entries.value.filter((entry): entry is LocatedEnt
 const mapEl = ref<HTMLElement | null>(null)
 const areaEntries = shallowRef<LocatedEntry[]>([])
 const selected = shallowRef<LocatedEntry | null>(null)
-const tilesMissing = ref(false)
 const mapError = ref(false)
-let leaflet: typeof import('leaflet') | undefined
+const styleFallback = ref(false)
 let map: any = null
-let markerLayer: any = null
+let maplib: any = null
+let markers: any[] = []
 let disposed = false
 let positioned = false
+
+function mapTilerKey() { return localStorage.getItem('jr.mapTilerKey') || '' }
+// 无密钥时的内联极简样式：零网络依赖
+const INLINE_STYLE = {
+  version: 8 as const,
+  sources: {},
+  layers: [{ id: 'bg', type: 'background' as const, paint: { 'background-color': '#e8dcc5' } }],
+}
+function styleUrl() {
+  const key = mapTilerKey()
+  if (!key) { styleFallback.value = true; return INLINE_STYLE }
+  styleFallback.value = false
+  const dark = document.documentElement.dataset.theme === 'dark'
+  const id = dark ? STYLE_DARK_ID : STYLE_LIGHT_ID
+  return `https://api.maptiler.com/maps/${id}/style.json?key=${encodeURIComponent(key)}`
+}
 
 function longitudeNear(lng: number, center: number) {
   return lng + Math.round((center - lng) / 360) * 360
@@ -36,7 +63,8 @@ function longitudeNear(lng: number, center: number) {
 function groupAt(list: LocatedEntry[], zoom: number): AtlasGroup[] {
   const center = map.getCenter().lng
   const points: AtlasPoint[] = list.map(entry => {
-    const { x, y } = map.project([entry.lat, longitudeNear(entry.lng, center)], zoom)
+    // MapLibre project 接受 [lng, lat]（Leaflet 是 [lat, lng]，迁移时注意顺序）
+    const { x, y } = map.project([longitudeNear(entry.lng, center), entry.lat], zoom)
     return { entry, x, y }
   })
   const buckets = new Map<string, AtlasPoint[]>()
@@ -72,10 +100,17 @@ function groupAt(list: LocatedEntry[], zoom: number): AtlasGroup[] {
 }
 
 function nextClusterZoom(group: AtlasGroup, zoom: number) {
-  for (let next = zoom + 1; next < maxZoom; next++) {
-    if (groupAt(group.entries, next).length > 1) return next
-  }
-  return null
+  // 包围盒法：成员经纬度跨度需要的最低缩放（不依赖 project 的可选 zoom 参数，纯数学）
+  const lats = group.entries.map((e) => e.lat)
+  const lngs = group.entries.map((e) => e.lng)
+  const span = Math.max(
+    (Math.max(...lngs) - Math.min(...lngs)) / 360,
+    (Math.max(...lats) - Math.min(...lats)) / 180,
+    1e-9,
+  )
+  // 像素跨距 = 512·2^z·span ≥ clusterRadius ⇒ z = log2(clusterRadius/(512·span))；+1 档安全余量
+  const need = Math.ceil(Math.log2(clusterRadius / (512 * span))) + 1
+  return Math.min(maxZoom - 1, Math.max(zoom + 1, need))
 }
 
 function showEntries(group: AtlasGroup) {
@@ -86,13 +121,30 @@ function showEntries(group: AtlasGroup) {
   selected.value = areaEntries.value.length === 1 ? areaEntries.value[0]! : null
 }
 
+function closeArea() {
+  areaEntries.value = []
+  selected.value = null
+}
+
+function clearMarkers() {
+  for (const m of markers) m.remove()
+  markers = []
+}
+
 function renderMarkers() {
-  if (!map || !markerLayer || !leaflet) return
-  markerLayer.clearLayers()
+  if (!map || !maplib || disposed) return
+  clearMarkers()
   const zoom = Math.round(map.getZoom())
   const center = map.getCenter().lng
-  const bounds = map.getBounds().pad(0.1)
-  const visible = located.value.filter(entry => bounds.contains([entry.lat, longitudeNear(entry.lng, center)]))
+  const b = map.getBounds()
+  const latPad = (b.getNorth() - b.getSouth()) * 0.1
+  const lngPad = (b.getEast() - b.getWest()) * 0.1
+  const south = b.getSouth() - latPad
+  const north = b.getNorth() + latPad
+  const visible = located.value.filter((entry) => {
+    const lng = longitudeNear(entry.lng, center)
+    return entry.lat >= south && entry.lat <= north && lng >= b.getWest() - lngPad && lng <= b.getEast() + lngPad
+  })
   for (const group of groupAt(visible, zoom)) {
     const count = group.entries.length
     const size = count >= 750 ? 80 : count >= 100 ? 60 : count > 1 ? 40 : 20
@@ -100,37 +152,33 @@ function renderMarkers() {
     const label = destinationZoom != null ? `放大查看 ${count} 篇日记`
       : count > 1 ? `查看此区域的 ${count} 篇日记` : '查看此区域的日记'
     const centerPoint = map.unproject([group.x, group.y], zoom)
-    const marker = leaflet.marker(centerPoint, {
-      title: label,
-      icon: leaflet.divIcon({
-        className: `jr-atlas-point${count === 1 ? ' jr-atlas-point-single' : ''}`,
-        html: compactCount.format(count),
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2],
-      }),
-    }).addTo(markerLayer)
-    marker.getElement()?.setAttribute('aria-label', label)
-    marker.on('click', () => {
+    const el = document.createElement('div')
+    el.className = `jr-atlas-point${count === 1 ? ' jr-atlas-point-single' : ''}`
+    el.style.width = el.style.height = `${size}px`
+    el.textContent = compactCount.format(count)
+    el.setAttribute('aria-label', label)
+    el.title = label
+    const marker = new maplib.Marker({ element: el })
+      .setLngLat([centerPoint.lng, centerPoint.lat])
+      .addTo(map)
+    markers.push(marker)
+    el.addEventListener('click', (ev) => {
+      ev.stopPropagation()
       if (destinationZoom == null) showEntries(group)
       else {
         closeArea()
-        map.setView(centerPoint, destinationZoom, { animate: !window.matchMedia('(prefers-reduced-motion: reduce)').matches })
+        map.easeTo({ center: [centerPoint.lng, centerPoint.lat], zoom: destinationZoom, duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300 })
       }
     })
   }
 }
 
-function closeArea() {
-  areaEntries.value = []
-  selected.value = null
-}
-
 function syncEntries() {
-  if (!map) return
+  if (!map || !maplib || disposed) return
   if (!positioned && located.value.length) {
     const first = located.value[0]!
     positioned = true
-    map.setView([first.lat, first.lng], minZoom, { animate: false })
+    map.jumpTo({ center: [first.lng, first.lat], zoom: minZoom })
   }
   if (areaEntries.value.length) {
     const byId = new Map(located.value.map(entry => [entry.id, entry]))
@@ -143,37 +191,64 @@ watch(located, syncEntries)
 
 async function renderMap() {
   try {
-    const { default: L } = await import('leaflet')
-    await import('leaflet/dist/leaflet.css')
+    const mod = await import('maplibre-gl')
+    await import('maplibre-gl/dist/maplibre-gl.css')
     if (disposed || !mapEl.value) return
-    leaflet = L
-    map = L.map(mapEl.value, { minZoom, maxZoom, zoomControl: false }).setView([22.5, 114.1], minZoom)
-    L.control.zoom({ position: 'bottomright', zoomInTitle: '放大地图', zoomOutTitle: '缩小地图' }).addTo(map)
-    map.attributionControl.setPrefix(false)
-    const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '<a href="https://www.openstreetmap.org/copyright">© 开放街图贡献者</a>' })
-    tiles.on('tileerror', () => { tilesMissing.value = true })
-    tiles.on('tileload', () => { tilesMissing.value = false })
-    tiles.addTo(map)
-    markerLayer = L.layerGroup().addTo(map)
-    map.on('moveend', renderMarkers)
-    syncEntries()
-  } catch {
+    // 注意：赋给组件级 maplib（组件内其他函数依赖它），不要在 renderMap 里用 const 遮蔽
+    maplib = (mod as any).default ?? mod
+    // 受管环境下内嵌 blob worker 会失效：显式指到 CSP worker 文件（在解析后的库对象上调用；
+    // 失败只影响 canvas 瓦片管线——DOM 标记方案不依赖它）
+    try {
+      const workerUrl = (await import('maplibre-gl/dist/maplibre-gl-csp-worker.js?url')).default
+      maplib.setWorkerUrl?.(workerUrl)
+    } catch { /* ignore */ }
+    map = new maplib.Map({
+      container: mapEl.value,
+      style: styleUrl(),
+      minZoom,
+      maxZoom,
+      attributionControl: { compact: true },
+    })
+    ;(window as any).__atlasMap = map
+    map.addControl(new maplib.NavigationControl({ showZoom: true, showCompass: false }), 'bottom-right')
+    // 底图就绪与否都挂标记：样式 JSON 就绪即挂（幂等），受限网络下不等瓦片
+    const start = () => {
+      if (disposed || !map) return
+      map.on('moveend', renderMarkers)
+      syncEntries()
+    }
+    if (map.isStyleLoaded()) start()
+    else {
+      map.once('load', start)
+      const poll = setInterval(() => {
+        if (disposed || !map) { clearInterval(poll); return }
+        if (map.getStyle()?.layers?.length) { clearInterval(poll); start(); return }
+      }, 400)
+    }
+  } catch (error) {
+    console.error('[atlas] map init failed', error)
     if (!disposed) mapError.value = true
   }
 }
-onMounted(renderMap)
+onMounted(async () => {
+  await refresh()
+  renderMap()
+})
 onBeforeUnmount(() => {
   disposed = true
+  clearMarkers()
   map?.remove()
   map = null
-  markerLayer = null
+  ;(window as any).__atlasMap = null
 })
 </script>
 
 <template>
   <div class="jr-content" style="position:relative">
     <div ref="mapEl" class="jr-atlas-map" aria-label="日记地图" />
-    <p v-if="tilesMissing && located.length && !areaEntries.length" class="jr-atlas-tile-note" role="status">地图底图暂时无法加载，仍可查看日记地点。</p>
+    <p v-if="styleFallback && located.length && !areaEntries.length" class="jr-atlas-tile-note" role="status">
+      原版底图为 MapTiler 自定义样式，需在设置中填入你自己的 MapTiler 密钥；当前使用无密钥回退底图。
+    </p>
     <section v-if="areaEntries.length" class="jr-atlas-panel" aria-label="此区域内的日记">
       <header class="jr-atlas-area-head">
         <h2>此区域内有 {{ areaEntries.length }} 篇日记</h2>
@@ -207,6 +282,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .jr-atlas-map { background: #e8dcc5; }
+:deep(.maplibregl-canvas) { outline: none; }
 :deep(.jr-atlas-point) {
   display: grid;
   place-items: center;
@@ -215,6 +291,7 @@ onBeforeUnmount(() => {
   color: var(--jr-on-primary, white);
   font-size: 12px;
   font-weight: 600;
+  cursor: pointer;
 }
 :deep(.jr-atlas-point-single) { font-size: 10px; }
 :deep(.jr-atlas-point:focus-visible) { outline: 2px solid var(--jr-on-surface); outline-offset: 3px; }

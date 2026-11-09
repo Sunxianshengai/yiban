@@ -27,9 +27,11 @@ const genItems = [
 const { theme, fontSize, colorTheme } = useAppearance()
 const fontFamily = ref(localStorage.getItem('jr.fontFamily') || 'Gotham Rounded')
 const spellcheck = ref(localStorage.getItem('jr.spellcheck') !== '0')
+const mapTilerKey = ref(localStorage.getItem('jr.mapTilerKey') || '')
 watchEffect(() => {
   localStorage.setItem('jr.fontFamily', fontFamily.value)
   localStorage.setItem('jr.spellcheck', spellcheck.value ? '1' : '0')
+  localStorage.setItem('jr.mapTilerKey', mapTilerKey.value)
 })
 // 14 个圆点 = light0-13 的 primary，逐字来自原版主题注册表（themesRegistry.ts）
 const circles = THEME_IDS.map((id) => JR_THEMES[id].colors.primary)
@@ -224,6 +226,11 @@ async function wipeAll() {
                 <option value="sunday">星期日</option>
               </select>
             </label>
+            <label class="jr-set-row" style="display:block">
+              <span class="jr-set-cap">MapTiler 密钥（地图底图）</span>
+              <input v-model="mapTilerKey" class="jr-pop-input" style="width:240px;margin-top:6px" placeholder="粘贴你自己的 MapTiler API 密钥" />
+            </label>
+            <p class="jr-muted" style="font-size:12px">原版把密钥存在桌面端 secretKeys 中；填写后地图使用与原版相同的 MapTiler 自定义样式，留空则使用无密钥回退底图。</p>
             <p class="jr-muted" style="font-size:12px">日期和时间按简体中文格式显示。</p>
           </template>
 
