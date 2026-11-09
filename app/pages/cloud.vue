@@ -48,6 +48,9 @@ async function onSyncAll() {
       <button class="jr-btn jr-btn-primary" style="width:100%;justify-content:center;margin-top:14px" :disabled="syncing" @click="onSyncAll">
         <JrIcon :path="mdiSync" :size="17" /> {{ syncing ? '正在同步…' : '全部同步' }}
       </button>
+      <div style="margin-top:20px;border-top:1px solid #edf3f5;padding-top:6px">
+        <SharedJournal />
+      </div>
     </div>
   </div>
 </template>

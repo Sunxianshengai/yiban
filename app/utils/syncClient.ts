@@ -82,6 +82,16 @@ export function createSyncClient(token: string, transport: typeof fetch = fetch)
     tagsList: (payload: Record<string, unknown> = {}) => post(SYNC_BASES.syncBaseUrl, "/tags/list", payload),
     /** POST ${syncBaseUrl}/files/get */
     filesGet: (payload: Record<string, unknown>) => post(SYNC_BASES.syncBaseUrl, "/files/get", payload),
+    /** POST ${syncBaseUrl}/share/invite — { syncDriveId } → { inviteCode, expiry }（原版 wFe 实测） */
+    shareInvite: (syncDriveId: string) => post<{ inviteCode?: string; expiry?: string }>(SYNC_BASES.syncBaseUrl, "/share/invite", { syncDriveId }),
+    /** POST ${syncBaseUrl}/share/accept — { inviteCode } → { syncDriveId }，成功后原版刷新 linkedAccounts（原版 cBe 实测） */
+    shareAccept: (inviteCode: string) => post<{ syncDriveId?: string }>(SYNC_BASES.syncBaseUrl, "/share/accept", { inviteCode }),
+    /** POST ${syncBaseUrl}/share/remove — { syncDriveId, userId, fields }（原版 TFe 实测） */
+    shareRemove: (payload: { syncDriveId: string; userId: string; fields?: string[] }) => post(SYNC_BASES.syncBaseUrl, "/share/remove", payload),
+    /** POST ${functionsBaseUrl}/oauth/all/linkedAccounts — 接受共享后刷新日记本列表（原版 cBe 实测） */
+    linkedAccountsAll: () => post(SYNC_BASES.functionsBaseUrl, "/oauth/all/linkedAccounts", {}),
+    /** POST ${syncBaseUrl}/accounts/rename — { syncDriveId, displayName }（原版 CFe 实测） */
+    accountsRename: (payload: { syncDriveId: string; displayName: string }) => post(SYNC_BASES.syncBaseUrl, "/accounts/rename", payload),
   }
 }
 

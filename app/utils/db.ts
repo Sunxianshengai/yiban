@@ -91,7 +91,22 @@ export interface PlaceRow {
   lng: number
 }
 
+/** linkedAccounts 行（原版 schema：多日记本=多账号；local 账号 id 为空字符串语义见 useEntries LOCAL） */
+export interface LinkedAccountRow {
+  id?: number
+  displayName: string
+  emailLower?: string
+  linkedAccountId?: string
+  src?: string // 'local' | 'journeyCloud' | 'shared' | 'selfHosted'
+  lastSyncStatus?: string
+  lastSyncDate?: string
+  /** 共享日记成员角色（1=Owner 0=Member），仅共享盘使用 */
+  memberRole?: 0 | 1
+  inviterName?: string
+}
+
 class JourneyReplicaDB extends Dexie {
+  linkedAccounts!: Table<LinkedAccountRow, number>
   entriesV2!: Table<EntryV2, number>
   trashesV2!: Table<TrashRow, number>
   tagWordsV2!: Table<TagWordV2, number>
