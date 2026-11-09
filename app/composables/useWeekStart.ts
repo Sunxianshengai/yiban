@@ -19,12 +19,8 @@ export function useWeekStart() {
   const firstDay = computed(() => {
     if (weekStart.value === 'monday') return 1
     if (weekStart.value === 'sunday') return 0
-
-    const locale = new Intl.Locale('zh-CN') as Intl.Locale & {
-      getWeekInfo?: () => LocaleWeekInfo
-      weekInfo?: LocaleWeekInfo
-    }
-    return (locale.getWeekInfo?.().firstDay ?? locale.weekInfo?.firstDay ?? 1) % 7
+    // 原版默认周日开始（2026-11-10 原版日历实测：Sun 起始列），不跟随 locale
+    return 0
   })
   const orderedWeekdays = computed(() => [
     ...weekdays.slice(firstDay.value),

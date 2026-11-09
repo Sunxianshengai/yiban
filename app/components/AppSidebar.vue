@@ -5,6 +5,8 @@ const route = useRoute()
 const search = ref('')
 const tagsOpen = ref(false)
 const membershipOpen = useMembershipDialog()
+// 设置弹窗在当前页之上打开（原版行为：Settings 点开为居中弹窗，不离开当前页）
+const settingsOpen = useState('jr.settingsOpen', () => false)
 
 const nav = [
   { to: '/', label: '时间线', icon: mdiFormatListBulleted, exact: true },
@@ -14,7 +16,6 @@ const nav = [
   { to: '/pal', label: '日记伙伴', icon: mdiRobotOutline },
 ]
 const utils = [
-  { to: '/settings', label: '设置', icon: mdiCogOutline },
   { to: '/cloud', label: '云服务', icon: mdiCloudOutline, badge: '1' },
   { to: '/chat', label: '与日记聊天', icon: mdiChatProcessingOutline },
 ]
@@ -45,6 +46,10 @@ const utils = [
       <span>{{ n.label }}</span>
       <span v-if="n.badge" class="jr-badge">{{ n.badge }}</span>
     </NuxtLink>
+    <button type="button" class="jr-nav-item" aria-haspopup="dialog" :aria-expanded="settingsOpen" @click="settingsOpen = true">
+      <JrIcon :path="mdiCogOutline" :size="21" />
+      <span>设置</span>
+    </button>
     <button type="button" class="jr-nav-item jr-addons" aria-haspopup="dialog" @click="membershipOpen = true">
       <JrIcon :path="mdiWalletGiftcard" :size="21" />
       <span>附加功能</span>
@@ -69,6 +74,7 @@ const utils = [
       </div>
       <JrIcon :path="mdiLogout" :size="20" style="color: var(--jr-secondary)" />
     </div>
+    <SettingsView v-if="settingsOpen" @close="settingsOpen = false" />
   </aside>
 </template>
 
