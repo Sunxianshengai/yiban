@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { mdiCalendarBlankOutline, mdiMapMarkerOutline, mdiWeatherSunny, mdiEmoticonOutline, mdiRun, mdiTagOutline, mdiFormatSize, mdiPlus, mdiFormatBold, mdiFormatItalic, mdiFormatStrikethrough, mdiFormatUnderline, mdiFormatColorText, mdiFormatAlignLeft, mdiFormatAlignCenter, mdiUndo, mdiRedo, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiBookOpenOutline, mdiClose, mdiCheck, mdiFormatListBulleted, mdiFormatListNumbered, mdiCheckboxMarkedOutline } from '@mdi/js'
-import type { EntryV2, TagWordV2 } from '~/utils/db'
-import { db } from '~/utils/db'
+import type { EntryV2, MediaFileV2, TagWordV2 } from '~/utils/db'
+import { journalFragment, journalHtml, renderJournal } from '~/utils/journalHtml'
 import { fetchWeather, searchPlaces, WEATHER_EMOJI } from '~/utils/services'
+import { activities, journalActivity, journalSentiment, sentiments } from '~/utils/journalOptions'
+import { desktopBridge, readEditorMedia } from '~/utils/desktopBridge'
+import type { DesktopMediaReply } from '~/utils/desktopBridge'
 
 const linkUrl = ref('')
+const imageUrl = ref('')
+const insertError = ref('')
+const tableCell = shallowRef<HTMLTableCellElement | null>(null)
 const spellcheck = ref(localStorage.getItem('jr.spellcheck') !== '0')
 const datePop = ref(false)
 const dpMonth = ref(new Date().getMonth() + 1)
@@ -13,6 +19,7 @@ const dpTime = ref('')
 
 const props = defineProps<{ entryId?: number; initialText?: string; initialDate?: Date; initialMeta?: Partial<EntryV2> }>()
 const emit = defineEmits<{ (e: 'done'): void }>()
+const { listMediaFor, listTags, ensureTag, saveEntry } = useEntries()
 
 const area = ref<HTMLElement | null>(null)
 const words = ref(0)
@@ -21,21 +28,39 @@ const hasContent = ref(false)
 const date = ref(props.initialDate ? new Date(props.initialDate) : new Date())
 
 const meta = ref<Partial<EntryV2>>({ ...props.initialMeta })
-const openPop = ref<'style' | 'insert' | 'color' | 'loc' | 'weather' | 'mood' | 'activity' | 'tags' | 'templates' | null>(null)
+const openPop = ref<'style' | 'insert' | 'table' | 'color' | 'loc' | 'weather' | 'mood' | 'activity' | 'tags' | 'templates' | null>(null)
 
-const MOODS = ['excited', 'happy', 'calm', 'so-so', 'tired', 'sad', 'angry', 'anxious']
-const ACTIVITIES = ['still', 'walking', 'running', 'cycling', 'driving', 'flying']
 const WEATHER_ICONS = ['sun', 'partly', 'cloud', 'fog', 'rain', 'snow', 'storm']
-const MOOD_LABEL: Record<string, string> = { excited: '😆', happy: '😊', calm: '😌', 'so-so': '😐', tired: '😪', sad: '😢', angry: '😠', anxious: '😰' }
+const selectedMood = computed(() => journalSentiment(meta.value.sentiment)?.value)
+const selectedActivity = computed(() => journalActivity(meta.value.activity)?.value)
 
 const tags = ref<TagWordV2[]>([])
 const tagInput = ref('')
+const tagError = ref('')
 const weatherBusy = ref(false)
 const placeQuery = ref('')
 const placeHits = ref<{ address: string; lat: number; lng: number }[]>([])
 const placeBusy = ref(false)
 const templates = ref<{ id?: number; name: string; content: string }[]>([])
 const touched = ref(false)
+const savedMedia = shallowRef<MediaFileV2[]>([])
+const staged = shallowRef<File[]>([])
+const removedMedia = ref<number[]>([])
+const previewUrls: string[] = []
+const attachmentNote = ref('')
+const saving = ref(false)
+const checkingFiles = ref(false)
+const nativePicking = ref(false)
+const desktop = desktopBridge()
+const attachmentLimit = desktop ? 4 : 20
+const initialReady = ref(props.entryId == null)
+const photoPrompt = shallowRef<{ name: string; date?: Date; location?: { lat: number; lng: number } }>()
+const usePhotoDate = ref(true)
+const usePhotoLocation = ref(true)
+let disposed = false
+let unsubscribeSave: (() => void) | undefined
+const voice = useVoiceNote(file => addAttachments([file], true), message => { attachmentNote.value = message })
+const recordingStatus = voice.status
 
 async function loadTemplates() {
   const { miscDb } = await import('~/utils/db')
@@ -46,7 +71,7 @@ function openTemplates() {
   loadTemplates()
 }
 function insertTemplate(t: { content: string }) {
-  const html = t.content?.trim() || ''
+  const html = journalHtml(journalFragment(t.content?.trim() || ''))
   if (area.value && !area.value.innerHTML.replace(/<p><br><\/p>|<br>/g, '').trim()) {
     area.value.innerHTML = html
   } else {
@@ -62,16 +87,30 @@ const dateLabel = computed(() =>
 const locLabel = computed(() => meta.value.address || (meta.value.lat != null ? `${meta.value.lat?.toFixed(4)}, ${meta.value.lng?.toFixed(4)}` : ''))
 
 onMounted(async () => {
+  unsubscribeSave = desktop?.on('saveAndCloseIfDirty', () => { void save() })
+  if (props.entryId != null) savedMedia.value = await listMediaFor(props.entryId)
+  if (disposed) return
   if (props.initialText && area.value) {
-    const { hydrateMediaHtml } = useEntries()
-    area.value.innerHTML = await hydrateMediaHtml(props.initialText)
+    area.value.innerHTML = renderJournal(props.initialText, savedMedia.value, row => {
+      if (!row.blob) return
+      const url = URL.createObjectURL(row.blob)
+      previewUrls.push(url)
+      return url
+    }, false)
     recount()
   } else if (area.value && !area.value.innerHTML.trim()) {
     // seed an empty block so formatBlock/style commands always have a target
     area.value.innerHTML = '<p><br></p>'
   }
-  tags.value = await useEntries().listTags()
+  initialReady.value = true
+  tags.value = await listTags()
   area.value?.focus()
+})
+
+onBeforeUnmount(() => {
+  disposed = true
+  unsubscribeSave?.()
+  for (const url of previewUrls) URL.revokeObjectURL(url)
 })
 
 function recount() {
@@ -182,9 +221,10 @@ function setBlockKeep(tag: string) {
 }
 
 // ---- date picker popover (mini month grid + time) ----
+const { firstDay, orderedWeekdays } = useWeekStart()
 const dpCells = computed(() => {
   const first = new Date(dpYear.value, dpMonth.value - 1, 1)
-  const startCol = (first.getDay() + 6) % 7
+  const startCol = (first.getDay() - firstDay.value + 7) % 7
   const days = new Date(dpYear.value, dpMonth.value - 1, 0).getDate()
   const cells: (number | null)[] = Array(startCol).fill(null)
   for (let d = 1; d <= days; d++) cells.push(d)
@@ -210,31 +250,217 @@ function dpPick(day: number) {
 }
 
 function pickFile() {
+  if (desktop) { void pickDesktopFiles(); return }
   const input = document.createElement('input')
   input.type = 'file'
   input.accept = 'image/*,video/*,audio/*'
   input.multiple = true
-  input.onchange = async () => {
-    const files = Array.from(input.files || [])
-    for (const f of files.slice(0, 20)) {
-      if (f.type.startsWith('video/') && f.size > 200 * 1024 * 1024) continue // mp4 ≤200MB per official doc
-      // stage: persist later on save with real entry id
-      staged.value.push(f)
-      const url = URL.createObjectURL(f)
-      if (f.type.startsWith('image/')) {
-        insertHtml(`<img src="${url}" data-stage="${staged.value.length - 1}" style="max-width:100%;border-radius:8px">`)
-      } else if (f.type.startsWith('video/')) {
-        insertHtml(`<video src="${url}" controls data-stage="${staged.value.length - 1}" style="max-width:100%;border-radius:8px"></video>`)
-      } else {
-        insertHtml(`<p><a data-stage="${staged.value.length - 1}" href="${url}">🎙 ${f.name}</a></p>`)
-      }
-    }
-    openPop.value = null
-  }
+  input.onchange = () => void addAttachments(Array.from(input.files ?? []))
   input.click()
 }
 
-const staged = ref<File[]>([])
+async function pickDesktopFiles(dropped?: File[]) {
+  if (!desktop || nativePicking.value || checkingFiles.value || saving.value) return
+  nativePicking.value = true
+  attachmentNote.value = ''
+  try {
+    const options = { src: '', userIsMember: false, userIsPaid: false, filesCount: attachmentCount.value }
+    const reply = dropped
+      ? await desktop.pickDroppedFiles(dropped, options)
+      : await desktop.invoke<DesktopMediaReply>('pickFiles', {
+        ...options, title: 'Add media', selectBtnLabel: 'Add', filterNameExt: 'Photos, video and audio',
+        exts: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'heic', 'mp3', 'mp4', 'mov', 'wav', 'webp', 'webm'],
+      })
+    if (reply?.status) {
+      const files = await readEditorMedia(desktop, reply.filePaths, reply.fileNames || dropped?.map(file => file.name))
+      if (!disposed) await addAttachments(files, false, reply.metadata)
+    } else if (reply?.errorCode === 'unavailable_file_path' && dropped) {
+      await addAttachments(dropped)
+    } else if (reply?.errorCode) {
+      attachmentNote.value = reply.errorCode === 'exceed_files_count' ? `Each entry can have up to ${attachmentLimit} attachments.`
+        : reply.errorCode === 'exceed_file_size' ? 'One of the attachments exceeds 200 MB.' : 'Could not add the selected files.'
+      openPop.value = null
+    }
+  } catch (error) {
+    attachmentNote.value = (error as Error).message
+    openPop.value = null
+  } finally { nativePicking.value = false }
+}
+
+function startVoiceNote() {
+  if (attachmentCount.value >= attachmentLimit) {
+    attachmentNote.value = `Each entry can have up to ${attachmentLimit} attachments.`
+    openPop.value = null
+    return
+  }
+  openPop.value = null
+  void voice.start()
+}
+
+const activeMedia = computed(() => savedMedia.value.filter(row => !removedMedia.value.includes(row.id!)))
+const attachmentCount = computed(() => activeMedia.value.length + staged.value.length)
+
+function readAudioDuration(file: File) {
+  return new Promise<number | undefined>(resolve => {
+    const audio = new Audio()
+    const url = URL.createObjectURL(file)
+    const timeout = setTimeout(() => finish(), 3000)
+    function finish(duration?: number) {
+      clearTimeout(timeout)
+      audio.onloadedmetadata = null
+      audio.onerror = null
+      audio.removeAttribute('src')
+      URL.revokeObjectURL(url)
+      resolve(duration)
+    }
+    audio.preload = 'metadata'
+    audio.onloadedmetadata = () => finish(audio.duration)
+    audio.onerror = () => finish()
+    audio.src = url
+  })
+}
+
+async function addAttachments(files: File[], recorded = false, nativeMetadata?: DesktopMediaReply['metadata']) {
+  if (!files.length || checkingFiles.value || saving.value) return
+  checkingFiles.value = true
+  const errors: string[] = []
+  try {
+    for (const file of files) {
+      if (attachmentCount.value >= attachmentLimit) {
+        errors.push(`Each entry can have up to ${attachmentLimit} attachments.`)
+        break
+      }
+      if (!/^(image|video|audio)\//.test(file.type) || file.type === 'image/svg+xml' || file.size === 0) {
+        errors.push(`Unsupported attachment: ${file.name}.`)
+        continue
+      }
+      if (file.size > 200 * 1024 * 1024) {
+        errors.push(`${file.name} exceeds 200 MB.`)
+        continue
+      }
+      if (file.type.startsWith('audio/') && !recorded) {
+        const seconds = await readAudioDuration(file)
+        if (seconds != null && seconds > 600 && Number.isFinite(seconds)) {
+          errors.push(`${file.name} exceeds 10 minutes.`)
+          continue
+        }
+      }
+      if (disposed) return
+      staged.value = [...staged.value, file]
+      if (!photoPrompt.value && /^(image|video)\//.test(file.type) && nativeMetadata) {
+        const rawDate = nativeMetadata.date ? new Date(nativeMetadata.date) : undefined
+        const date = rawDate && Number.isFinite(+rawDate) ? rawDate : undefined
+        const location = nativeMetadata.location
+        if (date || location) {
+          usePhotoDate.value = !!date
+          usePhotoLocation.value = !!location
+          photoPrompt.value = { name: file.name, date, location }
+        }
+      } else if (!photoPrompt.value && file.type.startsWith('image/')) {
+        const { readPhotoMetadata } = await import('~/utils/photoMetadata')
+        const info = await readPhotoMetadata(file).catch(() => undefined)
+        if (info && (info.date || info.location)) {
+          usePhotoDate.value = !!info.date
+          usePhotoLocation.value = !!info.location
+          photoPrompt.value = { name: file.name, ...info }
+        }
+      }
+    }
+    attachmentNote.value = errors.join(' ')
+    openPop.value = null
+  } finally {
+    checkingFiles.value = false
+  }
+}
+
+function applyPhotoMetadata() {
+  const info = photoPrompt.value
+  if (!info) return
+  if (usePhotoDate.value && info.date) date.value = info.date
+  if (usePhotoLocation.value && info.location) meta.value = { ...meta.value, ...info.location, address: undefined }
+  photoPrompt.value = undefined
+}
+
+function removeAttachment(id: number) {
+  removedMedia.value.push(id)
+  area.value?.querySelectorAll(`[data-media-id="${id}"]`).forEach(node => node.remove())
+  recount()
+}
+
+function onFileDrop(event: DragEvent) {
+  if (!event.dataTransfer?.files.length) return
+  event.preventDefault()
+  const files = Array.from(event.dataTransfer.files)
+  if (desktop) void pickDesktopFiles(files)
+  else void addAttachments(files)
+}
+
+function onPaste(event: ClipboardEvent) {
+  const html = event.clipboardData?.getData('text/html')
+  if (!html) return
+  event.preventDefault()
+  document.execCommand('insertHTML', false, journalHtml(journalFragment(html)))
+  recount()
+  saveSel()
+}
+
+function insertWebMedia(image: boolean) {
+  try {
+    const url = new URL((image ? imageUrl : linkUrl).value.trim())
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error('Unsupported address.')
+    let element: HTMLElement
+    if (image) {
+      const img = document.createElement('img')
+      img.src = url.href
+      img.alt = 'Web image'
+      element = img
+    } else {
+      const link = document.createElement('a')
+      link.href = url.href
+      link.textContent = url.href
+      link.target = '_blank'
+      link.rel = 'noopener noreferrer'
+      element = link
+    }
+    insertError.value = ''
+    insertHtml(element.outerHTML)
+  } catch { insertError.value = 'Enter a valid http or https URL.' }
+}
+
+function openTableMenu(event: MouseEvent) {
+  const cell = (event.target as HTMLElement).closest<HTMLTableCellElement>('td, th')
+  if (!cell || !area.value?.contains(cell)) return
+  event.preventDefault()
+  tableCell.value = cell
+  openPop.value = 'table'
+}
+
+function editTable(action: 'addRow' | 'removeRow' | 'addColumn' | 'removeColumn' | 'left' | 'center' | 'right' | 'remove') {
+  const cell = tableCell.value
+  const row = cell?.closest<HTMLTableRowElement>('tr')
+  const table = row?.closest<HTMLTableElement>('table')
+  if (!cell || !row || !table || !area.value?.contains(table)) return
+  const columnIndex = cell.cellIndex
+  if (action === 'addRow') {
+    const next = table.insertRow(row.rowIndex + 1)
+    for (let i = 0; i < row.cells.length; i++) next.insertCell().append(document.createElement('br'))
+  } else if (action === 'removeRow') {
+    if (table.rows.length === 1) table.remove()
+    else table.deleteRow(row.rowIndex)
+  } else if (action === 'addColumn') {
+    for (const current of table.rows) {
+      const column = current.insertCell(Math.min(columnIndex + 1, current.cells.length))
+      column.append(document.createElement('br'))
+    }
+  } else if (action === 'removeColumn') {
+    if (row.cells.length === 1) table.remove()
+    else for (const current of table.rows) if (columnIndex < current.cells.length) current.deleteCell(columnIndex)
+  } else if (action === 'remove') table.remove()
+  else cell.style.textAlign = action
+  tableCell.value = null
+  openPop.value = null
+  recount()
+}
 
 function useMyLocation() {
   navigator.geolocation?.getCurrentPosition(
@@ -265,7 +491,9 @@ function pickPlace(h: { address: string; lat: number; lng: number }) {
 async function ensureTagIfNew() {
   const t = tagInput.value.trim().toLowerCase()
   if (!t) return
-  const tag = await useEntries().ensureTag(t)
+  if (!/^[\p{L}\p{N}]+$/u.test(t)) { tagError.value = 'Use letters and numbers in a tag.'; return }
+  tagError.value = ''
+  const tag = await ensureTag(t)
   tags.value = await useEntries().listTags()
   const cur = meta.value.tagWordIds || []
   if (!cur.includes(tag.id!)) meta.value = { ...meta.value, tagWordIds: [...cur, tag.id!] }
@@ -277,51 +505,32 @@ function toggleTag(t: TagWordV2) {
   meta.value = { ...meta.value, tagWordIds: cur.includes(t.id!) ? cur.filter((x) => x !== t.id) : [...cur, t.id!] }
 }
 
-const stagedIds = ref<number[]>([])
-
 async function save() {
-  const { createEntry, updateEntry, attachMedia } = useEntries()
-  let text = area.value?.innerHTML || ''
-  // strip the placeholder node if it is still in the DOM (never focused)
-  const div = document.createElement('div')
-  div.innerHTML = text
-  div.querySelector('.jr-editor-placeholder')?.remove()
-  text = div.innerHTML
-  if (text === '<p><br></p>' || text === '<div><br></div>' || text === '<p></p>') text = ''
-  if (!text.trim() && !staged.value.length) { emit('done'); return }
-
-  const savedIds: number[] = []
-  for (const f of staged.value) savedIds.push(await attachMedia(0, f, savedIds.length))
-  stagedIds.value = savedIds
-
-  let finalText = text
-  savedIds.forEach((id, i) => {
-    finalText = finalText.replaceAll(`data-stage="${i}"`, `data-media-id="${id}"`)
-  })
-
-  let id: number
-  if (props.entryId) {
-    await updateEntry(props.entryId, finalText, date.value, meta.value)
-    id = props.entryId
-  } else {
-    id = await createEntry(finalText, date.value, meta.value)
+  if (!initialReady.value || saving.value || checkingFiles.value || nativePicking.value || recordingStatus.value !== 'idle') return
+  const text = area.value?.innerHTML || ''
+  const empty = !area.value?.textContent?.trim() && !area.value?.querySelector('img,video,audio,hr,table')
+  if (props.entryId == null && empty && !attachmentCount.value) { emit('done'); return }
+  saving.value = true
+  try {
+    await saveEntry(props.entryId, empty ? '' : text, date.value, meta.value, staged.value, removedMedia.value)
+    emit('done')
+  } catch (error) {
+    attachmentNote.value = `Could not save entry: ${(error as Error).message}`
+  } finally {
+    saving.value = false
   }
-  for (const mid of savedIds) {
-    await db.mediaFilesV2.update(mid, { jId: id })
-  }
-  emit('done')
 }
 </script>
 
 <template>
-  <div class="jr-editor">
+  <div class="jr-editor" @dragover="($event.dataTransfer?.types || []).includes('Files') && $event.preventDefault()" @drop="onFileDrop">
     <div class="jr-editor-head">
       <button class="dt" @click="openDatePicker">
         <JrIcon :path="mdiCalendarBlankOutline" :size="19" />
         <span>{{ dateLabel }}</span>
         <JrIcon :path="mdiChevronDown" :size="18" />
       </button>
-      <button class="done" @click="save">Done</button>
+      <button class="done" :disabled="!initialReady || saving || checkingFiles || nativePicking || recordingStatus !== 'idle'" @click="save">{{ saving ? 'Saving…' : 'Done' }}</button>
       <div v-if="datePop" class="jr-pop jr-dp" @click.stop>
         <div class="jr-pop-head">
           <button class="tb" @click="dpPrev"><JrIcon :path="mdiChevronLeft" :size="16" /></button>
@@ -329,7 +538,7 @@ async function save() {
           <button class="tb" @click="dpNext"><JrIcon :path="mdiChevronRight" :size="16" /></button>
           <button class="tb" @click="datePop = false"><JrIcon :path="mdiClose" :size="16" /></button>
         </div>
-        <div class="jr-dp-grid jr-dp-dow"><span v-for="(d, i) in ['M','T','W','T','F','S','S']" :key="i">{{ d }}</span></div>
+        <div class="jr-dp-grid jr-dp-dow"><span v-for="d in orderedWeekdays" :key="d" :title="d">{{ d[0] }}</span></div>
         <div class="jr-dp-grid">
           <button
             v-for="(c, i) in dpCells" :key="i"
@@ -344,15 +553,17 @@ async function save() {
     </div>
 
     <div class="jr-editor-body" style="position:relative">
-      <div v-if="!touched && !hasContent" class="jr-editor-ph">
+      <div v-if="!touched && !hasContent && !attachmentCount" class="jr-editor-ph">
         Start writing or choose a <button class="jr-template-chip" @click.stop="openTemplates"><JrIcon :path="mdiBookOpenOutline" :size="13" /> Template</button> .
       </div>
       <div
         ref="area"
         class="jr-editor-area"
-        contenteditable="true"
+        :contenteditable="initialReady ? 'true' : 'false'"
         :spellcheck="spellcheck"
         @input="recount(); saveSel(); touched = true"
+        @paste="onPaste"
+        @contextmenu="openTableMenu"
         @keydown="onAreaKeydown"
         @keyup="saveSel"
         @mouseup="saveSel"
@@ -361,6 +572,37 @@ async function save() {
     </div>
 
     <!-- popovers -->
+    <div v-if="attachmentCount || attachmentNote || recordingStatus !== 'idle'" class="jr-attachments" aria-label="Entry attachments">
+      <div v-if="attachmentCount" class="jr-attachment-list">
+        <div v-for="file in activeMedia" :key="file.id" class="jr-attachment">
+          <span :title="file.fileName">{{ file.fileName }}</span>
+          <button class="jr-icon-btn" :aria-label="`Remove ${file.fileName}`" @click="removeAttachment(file.id!)"><JrIcon :path="mdiClose" :size="15" /></button>
+        </div>
+        <div v-for="(file, index) in staged" :key="index" class="jr-attachment">
+          <span :title="file.name">{{ file.name }}</span>
+          <button class="jr-icon-btn" :aria-label="`Remove ${file.name}`" @click="staged = staged.filter((_, i) => i !== index)"><JrIcon :path="mdiClose" :size="15" /></button>
+        </div>
+      </div>
+      <p v-if="attachmentNote" role="status">{{ attachmentNote }}</p>
+      <button v-if="recordingStatus === 'recording'" class="jr-btn jr-danger" @click="voice.stop()">Stop recording</button>
+      <p v-else-if="recordingStatus === 'requesting'" role="status">Requesting microphone access…</p>
+      <p v-else-if="recordingStatus === 'encoding'" role="status">Preparing audio note…</p>
+    </div>
+
+    <div v-if="photoPrompt" class="jr-pop" role="dialog" aria-label="Photo details">
+      <div class="jr-pop-head">Use details from {{ photoPrompt.name }}?</div>
+      <label v-if="photoPrompt.date" class="jr-set-check">
+        <input v-model="usePhotoDate" type="checkbox" /> {{ photoPrompt.date.toLocaleString() }}
+      </label>
+      <label v-if="photoPrompt.location" class="jr-set-check">
+        <input v-model="usePhotoLocation" type="checkbox" /> {{ photoPrompt.location.lat.toFixed(4) }}, {{ photoPrompt.location.lng.toFixed(4) }}
+      </label>
+      <div class="jr-pop-row">
+        <button class="jr-btn" @click="photoPrompt = undefined">Keep current</button>
+        <button class="jr-btn jr-btn-primary" @click="applyPhotoMetadata">Use selected details</button>
+      </div>
+    </div>
+
     <div v-if="openPop" class="jr-pop" @click.stop>
       <div class="jr-pop-head">
         <span>{{ openPop }}</span>
@@ -386,12 +628,31 @@ async function save() {
       <template v-else-if="openPop === 'insert'">
         <button class="jr-pop-item" @click="insertHtml('<hr>')">Divider</button>
         <button class="jr-pop-item" @click="pickFile">Photo / Video / Audio</button>
+        <button v-if="voice.available" class="jr-pop-item" :disabled="recordingStatus !== 'idle'" @click="startVoiceNote">Record Audio Note</button>
         <div class="jr-pop-row">
           <input v-model="linkUrl" placeholder="https://…" style="flex:1" />
-          <button class="jr-pop-item" style="width:auto" @click="insertHtml(`<a href='${linkUrl || '#'}' target='_blank'>${linkUrl || 'link'}</a>`)"><JrIcon :path="mdiCheck" :size="16" /></button>
+          <button class="jr-pop-item" style="width:auto" aria-label="Insert link" @click="insertWebMedia(false)"><JrIcon :path="mdiCheck" :size="16" /></button>
         </div>
+        <div class="jr-pop-row">
+          <input v-model="imageUrl" aria-label="Image URL" placeholder="Image URL" style="flex:1" />
+          <button class="jr-pop-item" style="width:auto" aria-label="Insert web image" @click="insertWebMedia(true)"><JrIcon :path="mdiCheck" :size="16" /></button>
+        </div>
+        <p v-if="insertError" role="status">{{ insertError }}</p>
         <button class="jr-pop-item" @click="insertHtml('<table border=\'1\' style=\'border-collapse:collapse\'><tr><th>H</th><th>H</th></tr><tr><td>&nbsp;</td><td>&nbsp;</td></tr></table><p></p>')">Table 2×2</button>
         <button class="jr-pop-item" @click="insertHtml('<code>code</code>')">Inline code</button>
+      </template>
+
+      <template v-else-if="openPop === 'table'">
+        <button class="jr-pop-item" @click="editTable('addRow')">Add row below</button>
+        <button class="jr-pop-item" @click="editTable('addColumn')">Add column right</button>
+        <button class="jr-pop-item" @click="editTable('removeRow')">Delete row</button>
+        <button class="jr-pop-item" @click="editTable('removeColumn')">Delete column</button>
+        <div class="jr-pop-row">
+          <button class="jr-pop-item" @click="editTable('left')">Align left</button>
+          <button class="jr-pop-item" @click="editTable('center')">Center</button>
+          <button class="jr-pop-item" @click="editTable('right')">Align right</button>
+        </div>
+        <button class="jr-pop-item jr-danger" @click="editTable('remove')">Delete table</button>
       </template>
 
       <template v-else-if="openPop === 'color'">
@@ -434,12 +695,14 @@ async function save() {
 
       <template v-else-if="openPop === 'mood'">
         <div class="jr-colors">
-          <button v-for="m in MOODS" :key="m" class="jr-dot jr-wicon" :class="{ on: meta.sentiment === m }" @click="meta = { ...meta, sentiment: meta.sentiment === m ? undefined : m }">{{ MOOD_LABEL[m] }}</button>
+          <button v-for="m in sentiments" :key="m.value" class="jr-dot jr-wicon" :class="{ on: selectedMood === m.value }" :title="m.label" :aria-label="m.label" @click="meta.sentiment = m.value"><JrIcon :path="m.icon" :size="20" :style="{ color: m.color }" /></button>
         </div>
+        <button class="jr-pop-item" @click="meta.sentiment = undefined">None</button>
       </template>
 
       <template v-else-if="openPop === 'activity'">
-        <button v-for="a in ACTIVITIES" :key="a" class="jr-pop-item" :class="{ 'jr-on': meta.activity === a }" @click="meta = { ...meta, activity: meta.activity === a ? undefined : a }">{{ a }}</button>
+        <button v-for="a in activities" :key="a.value" class="jr-pop-item" :class="{ 'jr-on': selectedActivity === a.value }" @click="meta.activity = a.value"><JrIcon :path="a.icon" :size="18" /> {{ a.label }}</button>
+        <button class="jr-pop-item" @click="meta.activity = undefined">None</button>
       </template>
 
       <template v-else-if="openPop === 'tags'">
@@ -447,7 +710,7 @@ async function save() {
           <input v-model="tagInput" placeholder="new tag (no spaces)" class="jr-pop-input" @keydown.enter.prevent="ensureTagIfNew" />
           <button class="jr-pop-item" style="width:auto" @click="ensureTagIfNew"><JrIcon :path="mdiCheck" :size="16" /></button>
         </div>
-        <div v-if="stagedIds.length" class="jr-muted" style="font-size:12px;padding:0 12px 6px">{{ stagedIds.length }} file(s) staged</div>
+        <p v-if="tagError" role="status">{{ tagError }}</p>
         <div class="jr-chips">
           <button
             v-for="t in tags" :key="t.id"
@@ -481,7 +744,7 @@ async function save() {
         <span>Body</span>
         <JrIcon :path="mdiChevronDown" :size="16" />
       </button>
-      <button class="body-btn" @click="openPop = openPop === 'insert' ? null : 'insert'">
+      <button class="body-btn" title="Insert" @click="openPop = openPop === 'insert' ? null : 'insert'">
         <JrIcon :path="mdiPlus" :size="17" />
         <JrIcon :path="mdiChevronDown" :size="16" />
       </button>

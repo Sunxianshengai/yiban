@@ -3,7 +3,8 @@ import { mdiBookmark, mdiHistory, mdiSortVariant, mdiCloudUploadOutline, mdiImag
 import type { EntryV2 } from '~/utils/db'
 import { WEATHER_EMOJI } from '~/utils/services'
 
-const { entries, refresh, toggleFavourite, duplicateEntry, saveAsTemplate, moveToTrash, throwbacks, hydrateMediaHtml } = useEntries()
+const { entries, refresh, toggleFavourite, duplicateEntry, saveAsTemplate, moveToTrash, throwbacks, allMedia } = useEntries()
+const route = useRoute()
 
 const editorOpen = ref(false)
 const editing = ref<EntryV2 | null>(null)
@@ -19,18 +20,30 @@ onMounted(async () => {
     const d = new Date(tb[0].dateOfJournal)
     throwbackLabel.value = `${d.getFullYear()} · ${new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric' }).format(d)}`
   }
-  // first media thumbnail per entry (Journey View shows thumbnails)
-  const media = await useEntries().allMedia()
+  await refresh()
+  openLinkedEntry()
+  await loadThumbnails()
+})
+
+const thumbs = ref<Record<number, string>>({})
+let thumbsGeneration = 0
+function releaseThumbnails() {
+  for (const url of Object.values(thumbs.value)) URL.revokeObjectURL(url)
+}
+async function loadThumbnails() {
+  const generation = ++thumbsGeneration
+  const media = await allMedia()
+  if (generation !== thumbsGeneration) return
   const map: Record<number, string> = {}
   for (const m of media) {
     if (m.jId != null && m.blob && m.mimeType.startsWith('image/') && map[m.jId] == null) {
       map[m.jId] = URL.createObjectURL(m.blob)
     }
   }
+  releaseThumbnails()
   thumbs.value = map
-})
-
-const thumbs = ref<Record<number, string>>({})
+}
+onBeforeUnmount(() => { thumbsGeneration++; releaseThumbnails() })
 
 // sort menu — faithful to menu-sort.png: "Entry Date" (with direction arrow) / "Last Modified"
 const sortMenuOpen = ref(false)
@@ -55,11 +68,15 @@ function pickSort(k: 'entryDate' | 'lastModified') {
 const today = new Date()
 const todayLabel = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(today)
 
-async function selectEntry(e: EntryV2) {
-  const clone = { ...e }
-  clone.text = await hydrateMediaHtml(clone.text)
-  selected.value = clone
+function selectEntry(e: EntryV2) {
+  selected.value = e
 }
+
+function openLinkedEntry() {
+  const target = Number(route.query.entry || route.hash.match(/^#entry=(\d+)$/)?.[1])
+  if (target > 0) selected.value = entries.value.find(e => e.id === target) ?? null
+}
+watch([() => route.query.entry, () => route.hash], openLinkedEntry)
 
 function rowDate(e: EntryV2) {
   const d = new Date(e.dateOfJournal)
@@ -82,15 +99,17 @@ async function onDone() {
   editorOpen.value = false
   editing.value = null
   await refresh()
+  await loadThumbnails()
   if (selected.value) {
     const fresh = entries.value.find((x) => x.id === selected.value!.id)
-    if (fresh) await selectEntry(fresh)
+    if (fresh) selectEntry(fresh)
   }
 }
-function onDuplicate() {
+async function onDuplicate() {
   if (selected.value) {
-    duplicateEntry(selected.value.id!)
-    selected.value = null
+    const copy = await duplicateEntry(selected.value.id!)
+    await loadThumbnails()
+    selected.value = entries.value.find(e => e.id === copy) ?? null
   }
 }
 function onSaveTemplate() {
@@ -101,6 +120,12 @@ async function onTrash() {
     await moveToTrash(selected.value.id!)
     selected.value = null
   }
+}
+async function onFavourite() {
+  const id = selected.value?.id
+  if (id == null) return
+  await toggleFavourite(id)
+  selected.value = entries.value.find(e => e.id === id) ?? null
 }
 </script>
 
@@ -191,7 +216,7 @@ async function onTrash() {
       <EntryDetail
         :entry="selected"
         @edit="openEdit"
-        @toggle-favourite="selected && toggleFavourite(selected.id!)"
+        @toggle-favourite="onFavourite"
         @duplicate="onDuplicate"
         @save-as-template="onSaveTemplate"
         @trash="onTrash"

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { mdiMagnify, mdiFormatListBulleted, mdiCalendarMonth, mdiImageMultipleOutline, mdiMapOutline, mdiRobotOutline, mdiCogOutline, mdiCloudOutline, mdiChatProcessingOutline, mdiPuzzleOutline, mdiStarOutline, mdiLogout } from '@mdi/js'
+import { mdiMagnify, mdiFormatListBulleted, mdiCalendarMonth, mdiImageMultipleOutline, mdiMapOutline, mdiRobotOutline, mdiCogOutline, mdiCloudOutline, mdiChatProcessingOutline, mdiWalletGiftcard, mdiStarOutline, mdiLogout } from '@mdi/js'
 
 const route = useRoute()
 const search = ref('')
 const tagsOpen = ref(false)
+const membershipOpen = useMembershipDialog()
 
 const nav = [
   { to: '/', label: 'Timeline', icon: mdiFormatListBulleted, exact: true },
@@ -16,7 +17,6 @@ const utils = [
   { to: '/settings', label: 'Settings', icon: mdiCogOutline },
   { to: '/cloud', label: 'Cloud Services', icon: mdiCloudOutline, badge: '1' },
   { to: '/chat', label: 'Chat with Your Journal', icon: mdiChatProcessingOutline },
-  { to: '/addons', label: 'Addons', icon: mdiPuzzleOutline },
 ]
 </script>
 
@@ -45,6 +45,10 @@ const utils = [
       <span>{{ n.label }}</span>
       <span v-if="n.badge" class="jr-badge">{{ n.badge }}</span>
     </NuxtLink>
+    <button type="button" class="jr-nav-item jr-addons" aria-haspopup="dialog" @click="membershipOpen = true">
+      <JrIcon :path="mdiWalletGiftcard" :size="21" />
+      <span>Addons</span>
+    </button>
 
     <button class="jr-section-label" style="border:0;background:none" @click="tagsOpen = !tagsOpen">
       <span>Tags</span>
@@ -67,3 +71,8 @@ const utils = [
     </div>
   </aside>
 </template>
+
+<style scoped>
+.jr-addons { width: 100%; border: 0; background: transparent; text-align: left; }
+.jr-addons:hover { background: color-mix(in srgb, var(--jr-primary) 7%, transparent); }
+</style>

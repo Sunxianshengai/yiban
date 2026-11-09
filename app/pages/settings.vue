@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { desktopBridge } from '~/utils/desktopBridge'
 import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiAccountOutline, mdiShieldKeyOutline, mdiDatabaseOutline, mdiHelpCircleOutline, mdiPalette, mdiRuler, mdiMapMarkerOutline, mdiTranslate, mdiSpellcheck, mdiPuzzleOutline, mdiLockOutline, mdiChevronRight } from '@mdi/js'
 
 const tab = ref<'general' | 'account' | 'security' | 'data' | 'help'>('general')
 const gen = ref<'appearance' | 'unit' | 'location' | 'locale' | 'spellcheck' | 'plugins'>('appearance')
+const { weekStart } = useWeekStart()
 const tabs = [
   { key: 'general', label: 'General', icon: mdiCogOutline },
   { key: 'account', label: 'Account', icon: mdiAccountOutline },
@@ -20,16 +22,12 @@ const genItems = [
 ] as const
 
 // Appearance — faithful to page-settings.png: circles (1st free teal, rest locked) + Theme/Font/Size dropdowns + lorem preview
-const fontSize = ref(localStorage.getItem('jr.fontSize') || 'Medium')
+const { theme, fontSize } = useAppearance()
 const fontFamily = ref(localStorage.getItem('jr.fontFamily') || 'Gotham Rounded')
-const theme = ref(localStorage.getItem('jr.theme') || 'System')
 const spellcheck = ref(localStorage.getItem('jr.spellcheck') !== '0')
 watchEffect(() => {
-  localStorage.setItem('jr.fontSize', fontSize.value)
   localStorage.setItem('jr.fontFamily', fontFamily.value)
-  localStorage.setItem('jr.theme', theme.value)
   localStorage.setItem('jr.spellcheck', spellcheck.value ? '1' : '0')
-  document.documentElement.style.setProperty('--jr-content-size', { Small: '14px', Medium: '16px', Large: '18px' }[fontSize.value] || '16px')
 })
 const circles = ['#00687B', '#f3c4cd', '#e9c562', '#e2a387', '#d98d76', '#93c993', '#79b77f']
 const circleLocked = (i: number) => i > 0 // evidence: only the first (teal) circle is unlocked on Free
@@ -57,144 +55,87 @@ async function removePin() {
 }
 
 // Data — export / import / trash
+const { listTrash, restoreFromTrash } = useEntries()
 const trash = ref<import('~/utils/db').TrashRow[]>([])
 const busy = ref('')
-onMounted(loadTrash)
-async function loadTrash() { trash.value = await useEntries().listTrash() }
-
-function exportJson() {
-  const { entries } = useEntries()
-  const payload = { format: 'journey-replica-json', version: 1, exportedAt: new Date().toISOString(), entries: entries.value }
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = `journey-backup-${new Date().toISOString().slice(0, 10)}.json`
-  a.click()
-}
-
-/** ZIP backup: entries/*.html + media/* + manifest.json (replica format; original ZIP
- *  layout pending extraction from renderer->main:exportToZip* contracts). */
-async function exportZip() {
-  const { zipSync, strToU8 } = await import('fflate')
-  const { entries, allMedia } = useEntries()
-  const list = entries.value
-  const files: Record<string, Uint8Array | [Uint8Array, { level: number }]> = {}
-  const manifest: any = { format: 'journey-replica-zip', version: 1, exportedAt: new Date().toISOString(), entries: [] }
-  for (const e of list) {
-    const id = e.id!
-    files[`entries/${id}.html`] = strToU8(e.text || '')
-    manifest.entries.push({
-      id,
-      dateOfJournal: new Date(e.dateOfJournal).toISOString(),
-      dateModified: new Date(e.dateModified).toISOString(),
-      previewText: e.previewText,
-      timezone: e.timezone,
-      favourite: e.favourite,
-      type: e.type,
-      address: e.address, lat: e.lat, lng: e.lng,
-      weatherIcon: e.weatherIcon, weatherDegreeC: e.weatherDegreeC, weatherPlace: e.weatherPlace,
-      sentiment: e.sentiment, activity: e.activity,
-      media: [] as string[],
-    })
-  }
-  for (const m of await allMedia()) {
-    if (!m.blob) continue
-    const p = `media/${m.id}-${m.fileName.replace(/[^\w.-]/g, '_')}`
-    files[p] = new Uint8Array(await m.blob.arrayBuffer())
-    manifest.entries.find((x: any) => x.id === m.jId)?.media.push(p)
-  }
-  files['manifest.json'] = strToU8(JSON.stringify(manifest, null, 2))
-  const zipped = zipSync(files as any)
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(new Blob([zipped as any], { type: 'application/zip' }))
-  a.download = `journey-backup-${new Date().toISOString().slice(0, 10)}.zip`
-  a.click()
-}
-
 const importMsg = ref('')
-function importJson() {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = '.json,application/json'
-  input.onchange = async () => {
-    const file = input.files?.[0]
-    if (!file) return
-    busy.value = 'importing'
-    try {
-      const data = JSON.parse(await file.text())
-      if (data.format !== 'journey-replica-json' || !Array.isArray(data.entries)) throw new Error('unsupported format')
-      let n = 0
-      for (const e of data.entries) {
-        await (await import('~/utils/db')).db.entriesV2.add({
-          ...e,
-          id: undefined,
-          linkedAccountId: e.linkedAccountId || '',
-          dateOfJournal: new Date(e.dateOfJournal),
-          dateModified: new Date(),
-          synced: 0,
-        })
-        n++
-      }
-      importMsg.value = `Imported ${n} entr${n === 1 ? 'y' : 'ies'}. Original Journey v1/v2, Day One, Evernote, Daylio, Apple Journal importers: pending (see feature matrix).`
-      await useEntries().refresh()
-    } catch (err) {
-      importMsg.value = `Import failed: ${(err as Error).message}`
-    }
+const desktop = desktopBridge()
+onMounted(loadTrash)
+async function loadTrash() { trash.value = await listTrash() }
+
+async function exportJson() {
+  const { db } = await import('~/utils/db')
+  const { downloadJournalFile } = await import('~/utils/journalZip')
+  const entries = await db.entriesV2.toArray()
+  const payload = { format: 'journey-replica-json', version: 1, exportedAt: new Date().toISOString(), entries }
+  await downloadJournalFile(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }),
+    'journey-backup-' + new Date().toISOString().slice(0, 10) + '.json')
+}
+
+async function exportZip() {
+  if (busy.value) return
+  busy.value = 'exporting'
+  importMsg.value = ''
+  try {
+    const { exportJournalZip } = await import('~/utils/journalZip')
+    await exportJournalZip()
+  } catch (error) {
+    importMsg.value = 'Export failed: ' + (error as Error).message
+  } finally {
     busy.value = ''
   }
-  input.click()
 }
 
 async function restore(t: import('~/utils/db').TrashRow) {
-  await useEntries().restoreFromTrash(t.id!)
+  await restoreFromTrash(t.id!)
   await loadTrash()
 }
 
-/** Importer: own JSON, Day One JSON, generic entries[] (Journey v1/v2 export shape). */
-function importAny() {
+async function importAny(useDesktop = true) {
+  if (desktop && useDesktop) {
+    if (busy.value) return
+    busy.value = 'importing'
+    importMsg.value = ''
+    try {
+      const { importFromDesktop } = await import('~/utils/desktopImport')
+      const result = await importFromDesktop()
+      if (result) importMsg.value = `Imported ${result.count} ${result.count === 1 ? 'entry' : 'entries'}.${result.skipped ? ` ${result.skipped} import notice(s).` : ''}`
+    } catch (error) { importMsg.value = 'Import failed: ' + (error as Error).message }
+    finally { busy.value = '' }
+    return
+  }
   const input = document.createElement('input')
   input.type = 'file'
-  input.accept = '.json,application/json'
+  input.accept = desktop ? '.json,.doentry' : '.json,.zip,.csv,.enex,.doentry'
   input.onchange = async () => {
     const file = input.files?.[0]
-    if (!file) return
+    if (!file || busy.value) return
     busy.value = 'importing'
+    importMsg.value = ''
     try {
-      const data = JSON.parse(await file.text())
-      const { parseImport } = await import('~/utils/importers')
-      const { kind, entries } = parseImport(data)
-      const dbi = (await import('~/utils/db')).db
-      let n = 0
-      for (const r of entries) {
-        const now = new Date()
-        await dbi.entriesV2.add({
-          linkedAccountId: '',
-          text: r.text,
-          previewText: htmlToPreview(r.text),
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-          dateOfJournal: r.date,
-          dateModified: now,
-          synced: 0,
-          type: 'journal',
-          favourite: r.favourite ? 1 : 0,
-          ...computeTokens(r.date),
-        })
-        n++
-      }
-      importMsg.value = `Imported ${n} entr${n === 1 ? 'y' : 'ies'} (${kind}). Day One photo attachments and Evernote/Daylio/Apple Journal: pending (matrix).`
-      await useEntries().refresh()
-    } catch (err) {
-      importMsg.value = `Import failed: ${(err as Error).message}`
+      const { parseImportFile } = await import('~/utils/importers')
+      const { importJournalZip, importJournalEntries } = await import('~/utils/journalZip')
+      const parsed = await parseImportFile(file)
+      const n = parsed ? await importJournalEntries(parsed.entries) : await importJournalZip(file)
+      const notice = parsed?.warnings?.length ? ` ${parsed.warnings.length} import notice(s). ${parsed.warnings[0]}` : ''
+      importMsg.value = 'Imported ' + n + (n === 1 ? ' entry.' : ' entries.') + notice
+    } catch (error) {
+      importMsg.value = 'Import failed: ' + (error as Error).message
+    } finally {
+      busy.value = ''
     }
-    busy.value = ''
   }
   input.click()
 }
 
 async function wipeAll() {
   if (!confirm('Delete ALL local entries? This cannot be undone.')) return
-  await (await import('~/utils/db')).db.entriesV2.clear()
-  await useEntries().refresh()
+  const { db } = await import('~/utils/db')
+  await db.transaction('rw', db.entriesV2, db.mediaFilesV2, async () => {
+    const ids = await db.entriesV2.toCollection().primaryKeys()
+    await db.mediaFilesV2.where('jId').anyOf(ids).delete()
+    await db.entriesV2.clear()
+  })
 }
 </script>
 
@@ -244,7 +185,7 @@ async function wipeAll() {
             </div>
             <p v-if="circleNote" class="jr-import-msg">{{ circleNote }}</p>
             <div class="jr-set-row"><span class="jr-set-cap">Theme</span>
-              <select v-model="theme" class="jr-set-select"><option>System</option><option>Light</option></select>
+              <select v-model="theme" class="jr-set-select" aria-label="Theme"><option>System</option><option>Light</option><option>Dark</option></select>
             </div>
             <div class="jr-set-row"><span class="jr-set-cap">Font Family</span>
               <select v-model="fontFamily" class="jr-set-select">
@@ -267,6 +208,14 @@ async function wipeAll() {
             <div class="jr-set-row"><span class="jr-set-cap">Locale</span>
               <select class="jr-set-select"><option>English</option></select>
             </div>
+            <label class="jr-set-row">
+              <span class="jr-set-cap">First Day of Week</span>
+              <select v-model="weekStart" class="jr-set-select">
+                <option value="default">Default</option>
+                <option value="monday">Monday</option>
+                <option value="sunday">Sunday</option>
+              </select>
+            </label>
             <p class="jr-muted" style="font-size:12px">More locales pending (F-025).</p>
           </template>
 
@@ -303,9 +252,10 @@ async function wipeAll() {
 
       <div v-else-if="tab === 'data'" class="jr-modal-body">
         <div class="jr-data-row">
-          <button class="jr-btn" @click="exportZip"><JrIcon :path="mdiDownload" :size="17" /> Export backup (ZIP)</button>
+          <button class="jr-btn" :disabled="!!busy" @click="exportZip"><JrIcon :path="mdiDownload" :size="17" /> Export backup (ZIP)</button>
           <button class="jr-btn" @click="exportJson"><JrIcon :path="mdiDownload" :size="17" /> JSON</button>
-          <button class="jr-btn" :disabled="busy === 'importing'" @click="importAny"><JrIcon :path="mdiUpload" :size="17" /> {{ busy === 'importing' ? 'Importing…' : 'Import (own/Day One/Journey JSON)' }}</button>
+          <button class="jr-btn" :disabled="!!busy" @click="importAny()"><JrIcon :path="mdiUpload" :size="17" /> {{ busy === 'importing' ? 'Importing…' : 'Import journal files' }}</button>
+          <button v-if="desktop" class="jr-btn" :disabled="!!busy" @click="importAny(false)">Import JSON or Classic entry</button>
         </div>
         <p v-if="importMsg" class="jr-import-msg">{{ importMsg }}</p>
         <div class="jr-set-label" style="margin-top:18px">Trash</div>

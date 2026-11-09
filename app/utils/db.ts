@@ -143,12 +143,13 @@ export function computeTokens(d: Date) {
 }
 
 export function htmlToPreview(html: string, max = 240): string {
-  const div = document.createElement('div')
-  div.innerHTML = html
+  const template = document.createElement('template')
+  template.innerHTML = html
+  const fragment = template.content
   // preserve block boundaries as spaces so words don't concatenate
-  div.querySelectorAll('p, div, br, li, h1, h2, h3, blockquote').forEach((el) => {
+  fragment.querySelectorAll('p, div, br, li, h1, h2, h3, blockquote').forEach((el) => {
     el.after(document.createTextNode(' '))
   })
-  const t = (div.textContent || '').replace(/\s+/g, ' ').trim()
+  const t = (fragment.textContent || '').replace(/\s+/g, ' ').trim()
   return t.length > max ? t.slice(0, max) : t
 }

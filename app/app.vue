@@ -1,9 +1,26 @@
 <script setup lang="ts">
+import { desktopBridge } from '~/utils/desktopBridge'
+
 const onboarded = ref(true)
 const locked = ref(false)
-onMounted(() => {
+const membershipOpen = useMembershipDialog()
+const { theme, fontSize } = useAppearance()
+const systemDark = window.matchMedia('(prefers-color-scheme: dark)')
+const systemPrefersDark = ref(systemDark.matches)
+function onSystemTheme(event: MediaQueryListEvent) { systemPrefersDark.value = event.matches }
+onMounted(() => systemDark.addEventListener('change', onSystemTheme))
+onBeforeUnmount(() => systemDark.removeEventListener('change', onSystemTheme))
+watchEffect(() => {
+  document.documentElement.dataset.theme = theme.value === 'Dark' || (theme.value === 'System' && systemPrefersDark.value) ? 'dark' : 'light'
+  document.documentElement.style.setProperty('--jr-content-size', { Small: '14px', Medium: '16px', Large: '18px' }[fontSize.value])
+  localStorage.setItem('jr.theme', theme.value)
+  localStorage.setItem('jr.fontSize', fontSize.value)
+})
+onMounted(async () => {
   onboarded.value = localStorage.getItem('jr.onboarded') === '1'
   locked.value = !!localStorage.getItem('jr.pinHash') && sessionStorage.getItem('jr.unlocked') !== '1'
+  await nextTick()
+  desktopBridge()?.emit('appReady')
 })
 </script>
 
@@ -16,6 +33,7 @@ onMounted(() => {
         <NuxtPage />
       </main>
       <OnboardingModal v-if="!onboarded" @finish="onboarded = true" />
+      <MembershipDialog v-if="membershipOpen" @close="membershipOpen = false" />
     </template>
   </div>
 </template>

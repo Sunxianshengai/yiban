@@ -1,6 +1,10 @@
-<template>
-  <div class="jr-page">
-    <h1>Addons</h1>
-    <p class="jr-muted">Addons — next milestone.</p>
-  </div>
-</template>
+<script setup lang="ts">
+const membershipOpen = useMembershipDialog()
+
+onMounted(async () => {
+  await navigateTo('/', { replace: true })
+  membershipOpen.value = true
+})
+</script>
+
+<template><div /></template>

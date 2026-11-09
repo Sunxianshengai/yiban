@@ -1,5 +1,6 @@
 import type { EntryV2, MediaFileV2, TagWordV2 } from '~/utils/db'
 import { db, miscDb, computeTokens, htmlToPreview } from '~/utils/db'
+import { journalFragment, journalHtml, stripAttachmentUrls } from '~/utils/journalHtml'
 
 /** Local journal key: empty linkedAccountId (cloud accounts use their id, per original). */
 export const LOCAL = ''
@@ -12,7 +13,7 @@ function deProxy<T>(obj: T): T {
   if (Array.isArray(obj)) return obj.map((x) => deProxy(x)) as unknown as T
   const out: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(obj)) {
-    if (v !== undefined) out[k] = deProxy(v)
+    out[k] = deProxy(v)
   }
   return out as T
 }
@@ -24,41 +25,46 @@ export function useEntries() {
     entries.value = await db.entriesV2.orderBy('dateOfJournal').reverse().toArray()
   }
 
-  async function createEntry(text: string, date = new Date(), extra: Partial<EntryV2> = {}): Promise<number> {
+  async function saveEntry(id: number | undefined, text: string, date: Date, extra: Partial<EntryV2>, files: File[], removed: number[]) {
     const now = new Date()
-    const trimmed = text.trim()
+    const removedIds = new Set(removed)
+    const clean = stripAttachmentUrls(text.trim(), removedIds)
     const row: EntryV2 = {
       linkedAccountId: LOCAL,
-      text: trimmed,
-      previewText: htmlToPreview(trimmed),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      type: 'journal',
+      favourite: 0,
+      ...extra,
+      text: clean,
+      previewText: htmlToPreview(clean),
       dateOfJournal: date,
       dateModified: now,
       synced: 0,
-      type: 'journal',
-      favourite: 0,
       ...computeTokens(date),
-      ...extra,
     }
-    const id = await db.entriesV2.add(deProxy(row))
+    const entryId = await db.transaction('rw', db.entriesV2, db.mediaFilesV2, async () => {
+      const current = id == null ? undefined : await db.entriesV2.get(id)
+      if (id != null && !current) throw new Error('This entry no longer exists.')
+      const key = id ?? await db.entriesV2.add(deProxy(row))
+      const media = await listMediaFor(key)
+      const kept = media.filter(item => item.id == null || !removedIds.has(item.id))
+      if (files.length && kept.length + files.length > 20) throw new Error('Each entry can have up to 20 attachments.')
+      await db.mediaFilesV2.bulkDelete(media.flatMap(item => item.id != null && removedIds.has(item.id) ? [item.id] : []))
+      let position = Math.max(-1, ...kept.map(item => item.position)) + 1
+      for (const file of files) await attachMedia(key, file, position++)
+      if (current) {
+        await db.entriesV2.update(key, deProxy({
+          ...row,
+          linkedAccountId: current.linkedAccountId,
+          timezone: current.timezone,
+          type: current.type,
+          favourite: current.favourite,
+        }))
+      }
+      return key
+    })
     await refresh()
-    return id
-  }
-
-  async function updateEntry(id: number, text: string, date?: Date, extra: Partial<EntryV2> = {}) {
-    const row = await db.entriesV2.get(id)
-    if (!row) return
-    const dj = date ?? row.dateOfJournal
-    await db.entriesV2.update(id, deProxy({
-      text: text.trim(),
-      previewText: htmlToPreview(text),
-      dateOfJournal: dj,
-      dateModified: new Date(),
-      synced: 0,
-      ...computeTokens(dj),
-      ...extra,
-    }))
-    await refresh()
+    return entryId
   }
 
   async function toggleFavourite(id: number) {
@@ -69,18 +75,29 @@ export function useEntries() {
   }
 
   async function duplicateEntry(id: number) {
-    const row = await db.entriesV2.get(id)
-    if (!row) return
-    const now = new Date()
-    const { id: _drop, ...rest } = row
-    await db.entriesV2.add({
-      ...rest,
-      dateOfJournal: now,
-      dateModified: now,
-      synced: 0,
-      ...computeTokens(now),
+    const duplicateId = await db.transaction('rw', db.entriesV2, db.mediaFilesV2, async () => {
+      const row = await db.entriesV2.get(id)
+      if (!row) return
+      const now = new Date()
+      const { id: _id, externalId: _externalId, ...rest } = row
+      const copyId = await db.entriesV2.add({ ...rest, dateOfJournal: now, dateModified: now, synced: 0, ...computeTokens(now) })
+      const map = new Map<number, number>()
+      for (const media of await listMediaFor(id)) {
+        const { id: mediaId, externalId: _mediaExternalId, ...file } = media
+        const copyMediaId = await db.mediaFilesV2.add({ ...file, jId: copyId, uploaded: 0 })
+        if (mediaId != null) map.set(mediaId, copyMediaId)
+      }
+      const fragment = journalFragment(row.text)
+      for (const node of fragment.querySelectorAll('[data-media-id]')) {
+        const replacement = map.get(Number(node.getAttribute('data-media-id')))
+        if (replacement == null) node.remove()
+        else node.setAttribute('data-media-id', String(replacement))
+      }
+      await db.entriesV2.update(copyId, { text: stripAttachmentUrls(journalHtml(fragment)) })
+      return copyId
     })
     await refresh()
+    return duplicateId
   }
 
   async function saveAsTemplate(id: number) {
@@ -88,7 +105,7 @@ export function useEntries() {
     if (!row) return
     await miscDb.templates.add({
       name: `Entry ${new Date(row.dateOfJournal).toLocaleDateString('en-US')}`,
-      content: row.text,
+      content: stripAttachmentUrls(row.text, new Set((await listMediaFor(id)).flatMap(file => file.id == null ? [] : [file.id]))),
       contentType: 'html',
       updatedAt: new Date(),
     })
@@ -144,31 +161,22 @@ export function useEntries() {
   }
 
   async function allMedia() {
-    return db.mediaFilesV2.orderBy('createdAt').reverse().toArray()
+    const dates = new Map((await db.entriesV2.toArray()).map(e => [e.id, +new Date(e.dateOfJournal)]))
+    return (await db.mediaFilesV2.toArray())
+      .filter(row => dates.has(row.jId))
+      .sort((a, b) => dates.get(b.jId)! - dates.get(a.jId)! || a.position - b.position)
   }
 
   async function deleteMedia(id: number) {
-    await db.mediaFilesV2.delete(id)
-  }
-
-  /** Resolve <img data-media-id> placeholders to object URLs for rendering. */
-  async function hydrateMediaHtml(text: string): Promise<string> {
-    const div = document.createElement('div')
-    div.innerHTML = text
-    const imgs = Array.from(div.querySelectorAll('img[data-media-id]'))
-    if (!imgs.length) return text
-    await Promise.all(
-      imgs.map(async (img) => {
-        const id = Number(img.getAttribute('data-media-id'))
-        const row = await db.mediaFilesV2.get(id)
-        if (row?.blob) {
-          img.src = URL.createObjectURL(row.blob)
-        } else {
-          img.setAttribute('alt', row?.fileName || 'missing media')
-        }
-      }),
-    )
-    return div.innerHTML
+    await db.transaction('rw', db.entriesV2, db.mediaFilesV2, async () => {
+      const media = await db.mediaFilesV2.get(id)
+      if (!media || media.jId == null) return
+      const entry = await db.entriesV2.get(media.jId)
+      if (!entry) return
+      const text = stripAttachmentUrls(entry.text, new Set([id]))
+      await db.entriesV2.update(media.jId, { text, previewText: htmlToPreview(text), dateModified: new Date(), synced: 0 })
+      await db.mediaFilesV2.delete(id)
+    })
   }
 
   // ---- tags ----
@@ -212,9 +220,9 @@ export function useEntries() {
   onMounted(refresh)
 
   return {
-    entries, refresh, createEntry, updateEntry, toggleFavourite, duplicateEntry, saveAsTemplate,
+    entries, refresh, saveEntry, toggleFavourite, duplicateEntry, saveAsTemplate,
     moveToTrash, listTrash, restoreFromTrash,
-    attachMedia, listMediaFor, allMedia, deleteMedia, hydrateMediaHtml,
+    listMediaFor, allMedia, deleteMedia,
     listTags, ensureTag, setEntryTags,
     entriesOn, throwbacks,
   }

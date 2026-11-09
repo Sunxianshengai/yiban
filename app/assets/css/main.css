@@ -187,8 +187,15 @@ input, textarea { font-family: inherit; }
 .jr-detail-head .day { font-size: 40px; font-weight: 300; color: var(--jr-on-surface-variant); }
 .jr-detail-head .when .d1 { color: var(--jr-primary); font-size: 16.5px; font-weight: 600; }
 .jr-detail-head .when .d2 { color: #9fb3ba; font-size: 13.5px; margin-top: 2px; }
-.jr-detail-content { margin-top: 26px; font-size: 15.5px; line-height: 1.6; }
+.jr-detail-content { margin-top: 26px; font-size: var(--jr-content-size, 15.5px); line-height: 1.6; }
 .jr-detail-content p { margin: 0 0 14px; }
+.jr-detail-content :is(img, video, audio), .jr-editor-area :is(img, video, audio) { max-width: 100%; }
+.jr-detail-content :is(img, video) { display: block; border-radius: 8px; }
+.jr-attachments { padding: 8px 24px; color: var(--jr-on-surface-variant); font-size: 13px; }
+.jr-attachment-list { display: flex; flex-wrap: wrap; gap: 6px; max-height: 96px; overflow: auto; }
+.jr-attachment { display: flex; gap: 6px; align-items: center; max-width: 100%; padding: 2px 8px; border: 1px solid var(--jr-outline-variant); border-radius: 8px; }
+.jr-attachment span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jr-attachment button { flex: none; }
 
 .jr-detail-bar {
   position: sticky; bottom: 0;
@@ -328,7 +335,7 @@ input, textarea { font-family: inherit; }
 .jr-cal-day { font-size: 13px; font-weight: 700; color: var(--jr-on-surface-variant); }
 .jr-cal-day.today { color: #fff; background: var(--jr-primary); border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; }
 .jr-cal-entries { margin-top: 4px; display: flex; flex-direction: column; gap: 3px; }
-.jr-cal-pill { font-size: 10.5px; background: var(--jr-primary-container); color: var(--jr-on-primary-container); border-radius: 6px; padding: 2px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jr-cal-pill { font-size: 10.5px; background: var(--jr-primary-container); color: var(--jr-on-primary-container); border: 0; text-align: left; border-radius: 6px; padding: 2px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .jr-cal-more { font-size: 10.5px; color: var(--jr-outline); }
 
 /* media */
@@ -459,3 +466,52 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
   color: #b9c6cb; font-size: 16px; pointer-events: none; z-index: 2;
 }
 .jr-editor-ph .jr-template-chip { pointer-events: auto; vertical-align: baseline; }
+
+/* Default dark palette, extracted from Journey Desktop 6.0.1. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --jr-primary: #85D1E8;
+  --jr-on-primary: #003641;
+  --jr-primary-container: #004E5D;
+  --jr-on-primary-container: #AFECFF;
+  --jr-secondary: #B2CBD3;
+  --jr-secondary-container: #344A51;
+  --jr-on-secondary-container: #CEE7EF;
+  --jr-tertiary: #C0C4EB;
+  --jr-error: #FFB4AB;
+  --jr-error-container: #93000A;
+  --jr-bg: #0F1416;
+  --jr-on-bg: #DEE3E6;
+  --jr-surface: #0F1416;
+  --jr-surface-variant: #40484B;
+  --jr-on-surface-variant: #BFC8CB;
+  --jr-outline: #899295;
+  --jr-outline-variant: #40484B;
+  --jr-layer-low: #171C1E;
+  --jr-layer: #1B2022;
+  --jr-layer-high: #252B2D;
+  --jr-layer-highest: #303638;
+}
+:root[data-theme="dark"], [data-theme="dark"] :is(body, #__nuxt, .jr-main, .jr-editor) {
+  background: var(--jr-bg);
+}
+[data-theme="dark"] :is(.jr-sidebar, .jr-search, .jr-detail-bar, .jr-menu, .jr-pop, .jr-modal, .jr-media-card, .jr-atlas-panel, .jr-cal-cell, .jr-onboard-card, .jr-chip) {
+  background: var(--jr-layer);
+  border-color: var(--jr-outline-variant);
+}
+[data-theme="dark"] :is(.jr-sidebar-footer, .jr-editor-head, .jr-toolbar, .jr-set-row, .jr-pop-input, .jr-set-select, .jr-entry, .jr-detail-col) {
+  border-color: var(--jr-outline-variant);
+}
+[data-theme="dark"] :is(.jr-nav-item.active, .jr-entry.selected, .jr-cal-cell:hover, .jr-menu button:hover, .jr-pop-item:hover, .jr-chip:not(.on):hover) {
+  background: var(--jr-layer-highest);
+}
+[data-theme="dark"] :is(.jr-nav-sep, .jr-toolbar .sep, .jr-media-thumb, .jr-wicon, .jr-set-select, .jr-pop-input) {
+  background: var(--jr-layer-high);
+  color: var(--jr-on-bg);
+}
+[data-theme="dark"] .jr-cal-cell.off { background: transparent; border-color: transparent; }
+[data-theme="dark"] .jr-cal-cell.today { border-color: var(--jr-primary); }
+[data-theme="dark"] :is(.jr-btn-primary, .jr-fab, .jr-chip.on, .jr-cal-day.today) {
+  background: var(--jr-primary);
+  color: var(--jr-on-primary);
+}

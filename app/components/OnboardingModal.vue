@@ -1,19 +1,18 @@
 <script setup lang="ts">
-import { mdiCheck } from '@mdi/js'
+import { mdiAirballoonOutline, mdiBookOpenPageVariantOutline, mdiCellphone, mdiCheckDecagramOutline, mdiLockOutline, mdiPawOutline } from '@mdi/js'
 
-/**
- * First-run onboarding. Captured steps from the original (evidence/screenshots onb-0*.png):
- * step 3 "Safe & Private.", step 4 "Meet Barry & Sherry.", final "Keep Your Memories Forever."
- * with Sign In / Later. Steps 1-2, 5-7 were not captured (recorded as fidelity gap F-031);
- * no content is invented for them — flow shows the captured cards in order.
- */
+// Guest branch from Journey's OnboardingDialogView, indexed against all eight steps.
 const emit = defineEmits<{ (e: 'finish'): void }>()
 const step = ref(0)
 const cards = [
-  { t: 'Safe & Private.', d: 'Trusted by millions for over a decade, Journey keeps your journal yours.', emoji: '🔒' },
-  { t: 'Meet Barry & Sherry.', d: 'Your journaling companions are here to listen, reflect with you, and make journaling feel more joyful.', emoji: '🧸🐑' },
-  { t: 'Keep Your Memories Forever.', d: "It's free to sync your memories & see them on any of the devices.", emoji: '📱' },
+  { index: 1, t: 'Welcome to Journey!', d: 'Your diary, your companion. Press next to get started.', icon: mdiBookOpenPageVariantOutline },
+  { index: 2, t: 'Your Life Companion.', d: 'Journey is a place to keep your memories and confide in privately.', icon: mdiAirballoonOutline },
+  { index: 3, t: 'Safe & Private.', d: 'Trusted by millions for over a decade, Journey keeps your journal yours.', icon: mdiLockOutline },
+  { index: 4, t: 'Meet Barry & Sherry.', d: 'Your journaling companions are here to listen, reflect with you, and make journaling feel more joyful.', icon: mdiPawOutline },
+  { index: 5, t: 'Keep Your Memories Forever.', d: 'Use the local journal to keep your memories on this device.', icon: mdiCellphone },
+  { index: 8, t: 'Congratulations!', d: 'You can start using Journey. Journey is also available on desktop & online web.', icon: mdiCheckDecagramOutline },
 ]
+const card = computed(() => cards[step.value]!)
 function next() {
   if (step.value < cards.length - 1) step.value++
   else finish()
@@ -25,21 +24,19 @@ function finish() {
 </script>
 
 <template>
-  <div class="jr-onboard">
+  <div class="jr-onboard" role="dialog" aria-modal="true" aria-labelledby="jr-onboard-heading">
     <div class="jr-onboard-brand">
       <img src="/favicon.svg" width="26" height="26" alt="" />
       <span>JOURNEY</span>
     </div>
-    <div class="jr-onboard-bar"><div class="jr-onboard-fill" :style="{ width: `${((step + 1) / cards.length) * 100}%` }" /></div>
+    <div class="jr-onboard-bar" role="progressbar" aria-label="Setup progress" :aria-valuenow="card.index" aria-valuemin="0" aria-valuemax="8"><div class="jr-onboard-fill" :style="{ width: `${card.index / 8 * 100}%` }" /></div>
     <div class="jr-onboard-card">
-      <div class="jr-onboard-emoji">{{ cards[step].emoji }}</div>
-      <h2>{{ cards[step].t }}</h2>
-      <p>{{ cards[step].d }}</p>
-      <button v-if="step < cards.length - 1" class="jr-btn jr-btn-primary" @click="next">Next ›</button>
-      <template v-else>
-        <button class="jr-btn jr-btn-primary" @click="finish">Start journaling</button>
-        <p class="jr-muted" style="font-size:12px;margin-top:10px">Sign-in to Journey account is not part of this replica — the local journal starts immediately (original offers Sign In / Later).</p>
-      </template>
+      <div class="jr-onboard-emoji" aria-hidden="true"><JrIcon :path="card.icon" :size="66" /></div>
+      <h2 id="jr-onboard-heading">{{ card.t }}</h2>
+      <p>{{ card.d }}</p>
+      <button v-if="card.index === 5" class="jr-btn jr-btn-primary" @click="next">Later</button>
+      <button v-else-if="card.index === 8" class="jr-btn jr-btn-primary" @click="finish">Ok, got it</button>
+      <button v-else class="jr-btn jr-btn-primary" @click="next">Next ›</button>
     </div>
   </div>
 </template>

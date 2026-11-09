@@ -5,11 +5,8 @@ import type { EntryV2 } from '~/utils/db'
 const { entries } = useEntries()
 const starred = computed(() => entries.value.filter((e) => !!e.favourite))
 const selected = ref<EntryV2 | null>(null)
-async function open(e: EntryV2) {
-  const clone = { ...e }
-  const { hydrateMediaHtml } = useEntries()
-  clone.text = await hydrateMediaHtml(clone.text)
-  selected.value = clone
+function open(e: EntryV2) {
+  selected.value = e
 }
 function rowDate(e: EntryV2) {
   const d = new Date(e.dateOfJournal)
@@ -46,7 +43,8 @@ function rowDate(e: EntryV2) {
             <div class="d2">{{ new Intl.DateTimeFormat('en-US', { weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(selected.dateOfJournal) }}</div>
           </div>
         </div>
-        <div class="jr-detail-content" v-html="selected.text" />
+        <JournalBody :entry="selected" />
+        <NuxtLink class="jr-btn" :to="{ path: '/', query: { entry: selected.id } }">Open in Timeline</NuxtLink>
       </div>
       <div v-else class="jr-empty" style="margin:auto">
         <div class="big"><JrIcon :path="mdiBookOutline" :size="46" /></div>
