@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiCalendarBlankOutline, mdiMapMarkerOutline, mdiWeatherSunny, mdiEmoticonOutline, mdiRun, mdiTagOutline, mdiFormatSize, mdiPlus, mdiFormatBold, mdiFormatItalic, mdiFormatStrikethrough, mdiFormatUnderline, mdiFormatColorText, mdiFormatAlignLeft, mdiFormatAlignCenter, mdiUndo, mdiRedo, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiBookOpenOutline, mdiClose, mdiCheck, mdiFormatListBulleted, mdiFormatListNumbered, mdiCheckboxMarkedOutline } from '@mdi/js'
+import { mdiCalendarBlankOutline, mdiMapMarkerOutline, mdiWeatherSunny, mdiEmoticonOutline, mdiRun, mdiTagOutline, mdiPlus, mdiFormatBold, mdiFormatItalic, mdiFormatStrikethrough, mdiFormatUnderline, mdiFormatAlignLeft, mdiFormatAlignCenter, mdiUndo, mdiRedo, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiClose, mdiCheck, mdiFormatListBulleted, mdiFormatListNumbered, mdiCheckboxMarkedOutline, mdiFormatPilcrow, mdiFormatHeader1, mdiFormatHeader2, mdiFormatHeader3, mdiFormatQuoteOpen, mdiFormatListChecks, mdiLink, mdiImage, mdiTable, mdiBorderHorizontal, mdiPalette, mdiMarker, mdiWaterOff, mdiImageMultipleOutline, mdiApps } from '@mdi/js'
 import type { EntryV2, MediaFileV2, TagWordV2 } from '~/utils/db'
 import { journalFragment, journalHtml, renderJournal } from '~/utils/journalHtml'
 import { fetchWeather, searchPlaces, WEATHER_EMOJI } from '~/utils/services'
@@ -11,6 +11,14 @@ import { countWords, errorText } from '~/utils/uiText'
 const linkUrl = ref('')
 const imageUrl = ref('')
 const insertError = ref('')
+const insertSub = ref<'link' | 'image' | 'table' | null>(null)
+const colorSub = ref<'color' | 'highlight' | null>(null)
+const tableRows = ref(2)
+const tableCols = ref(2)
+const currentBlock = ref('p')
+const templateDialog = ref(false)
+const coachNote = ref('')
+const popX = ref<number | null>(null)
 const tableCell = shallowRef<HTMLTableCellElement | null>(null)
 const spellcheck = ref(localStorage.getItem('jr.spellcheck') !== '0')
 const datePop = ref(false)
@@ -31,8 +39,10 @@ const date = ref(props.initialDate ? new Date(props.initialDate) : new Date())
 const meta = ref<Partial<EntryV2>>({ ...props.initialMeta })
 const popoverLabels = {
   style: '段落样式', insert: '插入', table: '表格', color: '文字颜色', loc: '地点',
-  weather: '天气', mood: '心情', activity: '活动', tags: '标签', templates: '模板',
+  weather: '天气', mood: '心情', activity: '活动', tags: '标签', media: '媒体',
 }
+// style/insert/color 在原版是无标题纯菜单（v-menu），不渲染头
+const headlessPops: ReadonlySet<keyof typeof popoverLabels> = new Set(['style', 'insert', 'color'])
 const openPop = ref<keyof typeof popoverLabels | null>(null)
 
 const WEATHER_ICONS = ['sun', 'partly', 'cloud', 'fog', 'rain', 'snow', 'storm']
@@ -72,9 +82,22 @@ async function loadTemplates() {
   templates.value = (await miscDb.templates.toArray()).map((t) => ({ id: t.id, name: t.name, content: t.content }))
 }
 function openTemplates() {
-  openPop.value = 'templates'
+  templateDialog.value = true
   loadTemplates()
 }
+// 原版 Pick a Template 三区结构（evidence/derived/editor-overlays.json → template_dialog）
+const coachTemplates = [
+  { name: '目标设定', desc: '设定人生目标并规划更小的里程碑，让自己始终在轨道上。' },
+  { name: '年度目标', desc: '通过设定年度目标，为长远生活做好准备。' },
+  { name: '每周回顾', desc: '在一个地方回顾与反思你的一周。' },
+  { name: '个人发展计划', desc: '构建一张路线图，保持在正轨上并达成目标。' },
+  { name: '原子习惯记分卡', desc: '用简单的练习发现你应当改变哪些习惯。' },
+  { name: '清晨五点俱乐部', desc: '加入 5AM 俱乐部，优化你的晨间日常。' },
+  { name: '每周反思', desc: '以结构化的提示回顾本周的起伏。' },
+  { name: '创建你自己的积极肯定', desc: '培养每天的积极心态。' },
+  { name: '年中反思', desc: '回望并反思这一年过半的旅程。' },
+  { name: '成长型思维模板', desc: '把固定型思维转变为成长型思维。' },
+]
 function insertTemplate(t: { content: string }) {
   const html = journalHtml(journalFragment(t.content?.trim() || ''))
   if (area.value && !area.value.innerHTML.replace(/<p><br><\/p>|<br>/g, '').trim()) {
@@ -131,6 +154,8 @@ function saveSel() {
   const sel = window.getSelection()
   if (sel && sel.rangeCount && area.value?.contains(sel.anchorNode)) {
     savedRange = sel.getRangeAt(0).cloneRange()
+    try { currentBlock.value = (document.queryCommandValue('formatBlock') || 'p').toLowerCase() } catch { /* 无选区时保持原值 */ }
+    detectList()
   }
 }
 function restoreSel() {
@@ -150,6 +175,67 @@ function cmd(name: string, val?: string) {
 
 function setBlock(tag: string) {
   cmd('formatBlock', tag)
+  openPop.value = null
+}
+
+// 样式菜单：当前块/列表态检测（原版当前项 disabled + 勾）
+const currentList = ref<'ul' | 'ol' | 'task' | null>(null)
+function detectList() {
+  const node = savedRange?.startContainer
+  const el = node instanceof Element ? node : node?.parentElement
+  const li = el?.closest('li')
+  const ul = li?.closest('ul')
+  currentList.value = ul ? (ul.classList.contains('jr-task') ? 'task' : 'ul') : el?.closest('ol') ? 'ol' : null
+}
+function isCurrentBlock(s: { tag: string; list?: string }) {
+  if (s.list) return currentList.value === s.list
+  return currentBlock.value === s.tag && !currentList.value
+}
+function pickBlock(s: { tag: string; list?: string }) {
+  if (s.list === 'ol') cmd('insertOrderedList')
+  else if (s.list === 'ul') cmd('insertUnorderedList')
+  else if (s.list === 'task') insertTaskList()
+  else setBlock(s.tag)
+}
+
+// 弹层锚定在触发按钮上方（原版 v-menu 行为），不是固定居中
+function togglePop(name: keyof typeof popoverLabels, ev?: MouseEvent) {
+  if (openPop.value === name) { openPop.value = null; return }
+  saveSel()
+  openPop.value = name
+  insertSub.value = null
+  colorSub.value = null
+  const btn = (ev?.currentTarget as HTMLElement | undefined) ?? (ev?.target as HTMLElement | undefined)
+  popX.value = btn ? Math.max(10, Math.min(btn.getBoundingClientRect().left - 12, window.innerWidth - 340)) : null
+}
+
+// 菜单项点击不夺焦点（保住编辑器选区）；输入框不受影响
+function onPopMousedown(e: MouseEvent) {
+  const t = e.target as HTMLElement
+  if (t.closest("button.jr-pop-item")) e.preventDefault()
+}
+
+function insertTableGrid() {
+  const rows = Math.max(1, Math.min(20, tableRows.value || 2))
+  const cols = Math.max(1, Math.min(10, tableCols.value || 2))
+  const head = `<tr>${Array.from({ length: cols }, () => '<th>标题</th>').join('')}</tr>`
+  const body = Array.from({ length: rows - 1 }, () => `<tr>${Array.from({ length: cols }, () => '<td>&nbsp;</td>').join('')}</tr>`).join('')
+  insertHtml(`<table border='1' style='border-collapse:collapse'>${head}${body}</table><p></p>`)
+}
+
+// Vuetify 3 VColorPicker 默认色板（原版颜色子面板直接使用库默认值）
+const swatchRows = [
+  ['#FFFFFF', '#FF5252', '#FFC107', '#4CAF50', '#00BCD4', '#3F51B5', '#9C27B0'],
+  ['#000000', '#FF867F', '#FFD54F', '#81C784', '#4DD0E1', '#7986CB', '#BA68C8'],
+  ['#5D4037', '#D32F2F', '#FBC02D', '#388E3C', '#00ACC1', '#303F9F', '#7B1FA2'],
+  ['#795548', '#C62828', '#F9A825', '#43A047', '#0097A7', '#283593', '#6A1B9A'],
+  ['#8D6E63', '#B71C1C', '#F57F17', '#2E7D32', '#00838F', '#1A237E', '#4A148C'],
+]
+function applySwatch(c: string) {
+  restoreSel()
+  document.execCommand('styleWithCSS', false, true)
+  document.execCommand(colorSub.value === 'highlight' ? 'hiliteColor' : 'foreColor', false, c)
+  recount()
   openPop.value = null
 }
 
@@ -558,7 +644,7 @@ async function save() {
 
     <div class="jr-editor-body" style="position:relative">
       <div v-if="!touched && !hasContent && !attachmentCount" class="jr-editor-ph">
-        开始写日记，或选择 <button class="jr-template-chip" @click.stop="openTemplates"><JrIcon :path="mdiBookOpenOutline" :size="13" /> 模板</button>。
+        开始写日记，或选择 <button class="jr-template-chip" @click.stop="openTemplates"><JrIcon :path="mdiApps" :size="13" /> 模板</button>。
       </div>
       <div
         ref="area"
@@ -607,43 +693,60 @@ async function save() {
       </div>
     </div>
 
-    <div v-if="openPop" class="jr-pop" @click.stop>
-      <div class="jr-pop-head">
+    <div v-if="openPop" class="jr-pop" :style="popX != null ? { left: `${popX}px`, transform: 'none' } : undefined" @click.stop @mousedown="onPopMousedown">
+      <div v-if="!headlessPops.has(openPop)" class="jr-pop-head">
         <span>{{ popoverLabels[openPop] }}</span>
         <button class="tb" @click="openPop = null"><JrIcon :path="mdiClose" :size="16" /></button>
       </div>
 
-      <template v-if="openPop === 'templates'">
-        <div v-if="!templates.length" class="jr-muted" style="font-size:13px;padding:6px 12px 10px">
-          暂无自定义模板。可在日记的「更多」菜单中将它存为模板。
-        </div>
-        <button v-for="t in templates" :key="t.id" class="jr-pop-item" @click="insertTemplate(t)">
-          {{ t.name }}
-        </button>
-      </template>
       <template v-if="openPop === 'style'">
-        <button class="jr-pop-item" @click="setBlock('p')">正文</button>
-        <button class="jr-pop-item" @click="setBlock('h1')">一级标题</button>
-        <button class="jr-pop-item" @click="setBlock('h2')">二级标题</button>
-        <button class="jr-pop-item" @click="setBlock('h3')">三级标题</button>
-        <button class="jr-pop-item" @click="setBlock('blockquote')">引用</button>
+        <button
+          v-for="s in [
+            { tag: 'p', icon: mdiFormatPilcrow, label: '正文' },
+            { tag: 'h1', icon: mdiFormatHeader1, label: '标题 1' },
+            { tag: 'h2', icon: mdiFormatHeader2, label: '标题 2' },
+            { tag: 'h3', icon: mdiFormatHeader3, label: '标题 3' },
+            { tag: 'blockquote', icon: mdiFormatQuoteOpen, label: '引用' },
+            { tag: 'ol', icon: mdiFormatListNumbered, label: '有序列表', list: 'ol' },
+            { tag: 'ul', icon: mdiFormatListBulleted, label: '无序列表', list: 'ul' },
+            { tag: 'ul jr-task', icon: mdiFormatListCheck, label: '任务列表', list: 'task' },
+          ]" :key="s.tag"
+          class="jr-pop-item" :disabled="isCurrentBlock(s)" @click="pickBlock(s)"
+        >
+          <JrIcon :path="s.icon" :size="17" class="jr-pop-ico" />
+          <span style="flex:1">{{ s.label }}</span>
+          <JrIcon v-if="isCurrentBlock(s)" :path="mdiCheck" :size="15" class="jr-check" />
+        </button>
       </template>
 
       <template v-else-if="openPop === 'insert'">
-        <button class="jr-pop-item" @click="insertHtml('<hr>')">分隔线</button>
-        <button class="jr-pop-item" @click="pickFile">照片、视频或音频</button>
-        <button v-if="voice.available" class="jr-pop-item" :disabled="recordingStatus !== 'idle'" @click="startVoiceNote">录制语音</button>
-        <div class="jr-pop-row">
-          <input v-model="linkUrl" placeholder="https://…" style="flex:1" />
-          <button class="jr-pop-item" style="width:auto" aria-label="插入链接" @click="insertWebMedia(false)"><JrIcon :path="mdiCheck" :size="16" /></button>
-        </div>
-        <div class="jr-pop-row">
-          <input v-model="imageUrl" aria-label="图片网址" placeholder="图片网址" style="flex:1" />
-          <button class="jr-pop-item" style="width:auto" aria-label="插入网络图片" @click="insertWebMedia(true)"><JrIcon :path="mdiCheck" :size="16" /></button>
-        </div>
+        <template v-if="!insertSub">
+          <button class="jr-pop-item" @click="insertSub = 'link'"><JrIcon :path="mdiLink" :size="17" class="jr-pop-ico" /> 插入 链接</button>
+          <button class="jr-pop-item" @click="insertSub = 'image'"><JrIcon :path="mdiImage" :size="17" class="jr-pop-ico" /> 插入 从网址获取的图片</button>
+          <button class="jr-pop-item" @click="insertSub = 'table'"><JrIcon :path="mdiTable" :size="17" class="jr-pop-ico" /> 插入 表格</button>
+          <button class="jr-pop-item" @click="insertHtml('<hr>')"><JrIcon :path="mdiBorderHorizontal" :size="17" class="jr-pop-ico" /> 插入 分隔线</button>
+        </template>
+        <template v-else-if="insertSub === 'link'">
+          <div class="jr-pop-row">
+            <input v-model="linkUrl" placeholder="https://…" class="jr-pop-input" @keydown.enter.prevent="insertWebMedia(false)" />
+          </div>
+          <button class="jr-pop-item" @click="insertWebMedia(false)"><JrIcon :path="mdiCheck" :size="15" class="jr-pop-ico" /> 插入链接</button>
+        </template>
+        <template v-else-if="insertSub === 'image'">
+          <div class="jr-pop-row">
+            <input v-model="imageUrl" aria-label="图片网址" placeholder="https://…（图片）" class="jr-pop-input" @keydown.enter.prevent="insertWebMedia(true)" />
+          </div>
+          <button class="jr-pop-item" @click="insertWebMedia(true)"><JrIcon :path="mdiCheck" :size="15" class="jr-pop-ico" /> 插入图片</button>
+        </template>
+        <template v-else-if="insertSub === 'table'">
+          <p class="jr-muted" style="font-size:12.5px;padding:4px 12px 0">请输入行数和列数</p>
+          <div class="jr-pop-row">
+            <label style="font-size:13px;display:flex;align-items:center;gap:6px">行 <input v-model.number="tableRows" type="number" min="1" max="20" class="jr-pop-input" style="width:70px" /></label>
+            <label style="font-size:13px;display:flex;align-items:center;gap:6px">列 <input v-model.number="tableCols" type="number" min="1" max="10" class="jr-pop-input" style="width:70px" /></label>
+          </div>
+          <button class="jr-pop-item" @click="insertTableGrid()"><JrIcon :path="mdiCheck" :size="15" class="jr-pop-ico" /> 插入表格</button>
+        </template>
         <p v-if="insertError" role="status">{{ insertError }}</p>
-        <button class="jr-pop-item" @click="insertHtml('<table border=\'1\' style=\'border-collapse:collapse\'><tr><th>标题</th><th>标题</th></tr><tr><td>&nbsp;</td><td>&nbsp;</td></tr></table><p></p>')">2×2 表格</button>
-        <button class="jr-pop-item" @click="insertHtml('<code>代码</code>')">行内代码</button>
       </template>
 
       <template v-else-if="openPop === 'table'">
@@ -660,9 +763,23 @@ async function save() {
       </template>
 
       <template v-else-if="openPop === 'color'">
-        <div class="jr-colors">
-          <button v-for="c in ['#171C1E', '#BA1A1A', '#C4781B', '#3d7a1e', '#00687B', '#585C7E', '#9c5bb5']" :key="c" class="jr-dot" :style="{ background: c }" @click="cmd('foreColor', c); openPop = null" />
-        </div>
+        <template v-if="!colorSub">
+          <button class="jr-pop-item" @click="colorSub = 'color'"><JrIcon :path="mdiPalette" :size="17" class="jr-pop-ico" /> 颜色</button>
+          <button class="jr-pop-item" @click="colorSub = 'highlight'"><JrIcon :path="mdiMarker" :size="17" class="jr-pop-ico" /> 高亮</button>
+          <button class="jr-pop-item" @click="cmd('removeFormat'); openPop = null"><JrIcon :path="mdiWaterOff" :size="17" class="jr-pop-ico" /> 移除颜色</button>
+        </template>
+        <template v-else>
+          <div class="jr-swatch-grid">
+            <template v-for="(row, r) in swatchRows" :key="r">
+              <button v-for="c in row" :key="c" class="jr-swatch" :style="{ background: c }" :title="c" @click="applySwatch(c)" />
+            </template>
+          </div>
+        </template>
+      </template>
+
+      <template v-else-if="openPop === 'media'">
+        <button class="jr-pop-item" @click="pickFile"><JrIcon :path="mdiImageMultipleOutline" :size="17" class="jr-pop-ico" /> 照片、视频或音频</button>
+        <button v-if="voice.available" class="jr-pop-item" :disabled="recordingStatus !== 'idle'" @click="startVoiceNote"><JrIcon :path="mdiCheck" :size="17" class="jr-pop-ico" /> 录制语音笔记</button>
       </template>
 
       <template v-else-if="openPop === 'loc'">
@@ -726,29 +843,31 @@ async function save() {
     </div>
 
     <div class="jr-editor-toolbar">
-      <button class="tb" title="日记"><JrIcon :path="mdiBookOpenOutline" :size="20" /></button>
-      <button class="tb" :class="{ 'jr-open': meta.address || meta.lat != null }" title="地点" @click="openPop = openPop === 'loc' ? null : 'loc'">
+      <button class="tb" :class="{ 'jr-open': attachmentCount || staged.length }" title="媒体" @click="togglePop('media', $event)">
+        <JrIcon :path="mdiImageMultipleOutline" :size="20" />
+      </button>
+      <button class="tb" :class="{ 'jr-open': meta.address || meta.lat != null }" title="地点" @click="togglePop('loc', $event)">
         <JrIcon :path="mdiMapMarkerOutline" :size="20" />
       </button>
-      <button class="tb" :class="{ 'jr-open': meta.weatherIcon }" title="天气" @click="openPop = openPop === 'weather' ? null : 'weather'">
+      <button class="tb" :class="{ 'jr-open': meta.weatherIcon }" title="天气" @click="togglePop('weather', $event)">
         <JrIcon :path="mdiWeatherSunny" :size="20" />
       </button>
-      <button class="tb" :class="{ 'jr-open': meta.sentiment }" title="心情" @click="openPop = openPop === 'mood' ? null : 'mood'">
+      <button class="tb" :class="{ 'jr-open': meta.sentiment }" title="心情" @click="togglePop('mood', $event)">
         <JrIcon :path="mdiEmoticonOutline" :size="20" />
       </button>
-      <button class="tb" :class="{ 'jr-open': meta.activity }" title="活动" @click="openPop = openPop === 'activity' ? null : 'activity'">
+      <button class="tb" :class="{ 'jr-open': meta.activity }" title="活动" @click="togglePop('activity', $event)">
         <JrIcon :path="mdiRun" :size="20" />
       </button>
-      <button class="tb" :class="{ 'jr-open': (meta.tagWordIds || []).length }" title="标签" @click="openPop = openPop === 'tags' ? null : 'tags'">
+      <button class="tb" :class="{ 'jr-open': (meta.tagWordIds || []).length }" title="标签" @click="togglePop('tags', $event)">
         <JrIcon :path="mdiTagOutline" :size="20" />
       </button>
       <div class="sep" />
-      <button class="body-btn" @click="openPop = openPop === 'style' ? null : 'style'">
-        <JrIcon :path="mdiFormatSize" :size="17" />
+      <button class="body-btn" @click="togglePop('style', $event)">
+        <JrIcon :path="mdiFormatPilcrow" :size="17" />
         <span>正文</span>
         <JrIcon :path="mdiChevronDown" :size="16" />
       </button>
-      <button class="body-btn" title="插入" @click="openPop = openPop === 'insert' ? null : 'insert'">
+      <button class="body-btn" title="插入" @click="togglePop('insert', $event)">
         <JrIcon :path="mdiPlus" :size="17" />
         <JrIcon :path="mdiChevronDown" :size="16" />
       </button>
@@ -757,7 +876,10 @@ async function save() {
       <button class="tb" :disabled="!hasContent" @click="cmd('italic')"><JrIcon :path="mdiFormatItalic" :size="19" /></button>
       <button class="tb" :disabled="!hasContent" @click="cmd('strikeThrough')"><JrIcon :path="mdiFormatStrikethrough" :size="19" /></button>
       <button class="tb" :disabled="!hasContent" @click="cmd('underline')"><JrIcon :path="mdiFormatUnderline" :size="19" /></button>
-      <button class="tb" :disabled="!hasContent" @click="openPop = openPop === 'color' ? null : 'color'"><JrIcon :path="mdiFormatColorText" :size="19" /></button>
+      <button class="tb beach-btn" :disabled="!hasContent" title="颜色" @click="togglePop('color', $event)">
+        <span class="beach-ball" aria-hidden="true" />
+        <JrIcon :path="mdiChevronDown" :size="14" />
+      </button>
       <div class="sep" />
       <button class="tb" :disabled="!hasContent" title="项目列表" @click="cmd('insertUnorderedList')"><JrIcon :path="mdiFormatListBulleted" :size="19" /></button>
       <button class="tb" :disabled="!hasContent" title="编号列表" @click="cmd('insertOrderedList')"><JrIcon :path="mdiFormatListNumbered" :size="19" /></button>
@@ -773,6 +895,30 @@ async function save() {
         <span>·</span>
         <span>字数</span><span style="font-weight:700">{{ chars }}</span>
       </button>
+    </div>
+
+    <!-- 选择模板对话框（原版 Pick a Template 三区结构；教练模板目录来自证据，内容依赖 Journey 云端，不伪造） -->
+    <div v-if="templateDialog" class="jr-modal-mask" @click.self="templateDialog = false">
+      <div class="jr-modal jr-tpl-modal" role="dialog" aria-label="选择模板">
+        <button class="jr-modal-x" aria-label="关闭" @click="templateDialog = false"><JrIcon :path="mdiClose" :size="15" /></button>
+        <h2 class="jr-tpl-title">选择模板</h2>
+        <div class="jr-tpl-body">
+          <div class="jr-tpl-sec-head"><span>教练模板</span><span class="jr-tpl-viewall">查看全部 ›</span></div>
+          <div class="jr-tpl-cards">
+            <button v-for="c in coachTemplates" :key="c.name" class="jr-tpl-card" @click="coachNote = `「${c.name}」的模板内容来自 Journey 云端，登录原版账户后可用。`">
+              <div class="jr-tpl-cover" aria-hidden="true">{{ c.name.slice(0, 1) }}</div>
+              <div class="jr-tpl-name">{{ c.name }} <span class="jr-tpl-free">FREE</span></div>
+              <div class="jr-tpl-desc">{{ c.desc }}</div>
+            </button>
+          </div>
+          <p v-if="coachNote" role="status" class="jr-import-msg">{{ coachNote }}</p>
+          <div class="jr-tpl-sec-head"><span>自定义模板</span></div>
+          <div v-if="!templates.length" class="jr-muted jr-tpl-empty">暂无内容</div>
+          <button v-for="t in templates" :key="t.id" class="jr-pop-item" @click="insertTemplate(t); templateDialog = false">{{ t.name }}</button>
+          <div class="jr-tpl-sec-head"><span>离线模板</span></div>
+          <div class="jr-muted jr-tpl-empty">暂无内容</div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
