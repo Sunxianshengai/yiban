@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { desktopBridge } from '~/utils/desktopBridge'
+import { mdiMenu } from '@mdi/js'
 
 const onboarded = ref(true)
 const locked = ref(false)
+const sidebarOpen = ref(false)
 const membershipOpen = useMembershipDialog()
 const { theme, fontSize, colorTheme } = useAppearance()
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)')
@@ -30,11 +32,14 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="jr-shell">
+  <div class="jr-shell" :class="{ 'sidebar-open': sidebarOpen }">
     <LockOverlay v-if="locked" @unlocked="locked = false" />
     <template v-else>
-      <AppSidebar />
-      <main class="jr-main" style="position:relative">
+      <button class="jr-sidebar-toggle" type="button" aria-label="打开侧栏" @click="sidebarOpen = !sidebarOpen">
+        <JrIcon :path="mdiMenu" :size="20" />
+      </button>
+      <AppSidebar @navigate="sidebarOpen = false" />
+      <main class="jr-main" style="position:relative" @click="sidebarOpen = false">
         <NuxtPage />
       </main>
       <OnboardingModal v-if="!onboarded" @finish="onboarded = true" />

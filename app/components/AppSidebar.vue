@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { mdiMagnify, mdiFormatListBulleted, mdiCalendarMonth, mdiImageMultipleOutline, mdiMapOutline, mdiRobotOutline, mdiCogOutline, mdiCloudOutline, mdiChatProcessingOutline, mdiWalletGiftcard, mdiStarOutline, mdiTagOutline, mdiLogout } from '@mdi/js'
 
+const emit = defineEmits<{ (e: 'navigate'): void }>()
 const route = useRoute()
 const search = ref('')
 const tagsOpen = ref(false)
@@ -25,7 +26,7 @@ const utils = [
 </script>
 
 <template>
-  <aside class="jr-sidebar">
+  <aside class="jr-sidebar" @click="(e) => { if ((e.target as HTMLElement).closest('a, button')) emit('navigate') }">
     <form class="jr-search" @submit.prevent="navigateTo(`/search?q=${encodeURIComponent(search)}`)">
       <JrIcon :path="mdiMagnify" :size="19" />
       <input v-model="search" type="text" placeholder="搜索" />
