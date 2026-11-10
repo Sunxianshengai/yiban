@@ -16,6 +16,7 @@ const throwbackLabel = ref('今天没有往日回忆')
 const storiesOpen = ref(false)
 const storiesStart = ref<'stats' | 'throwback'>('stats')
 const membershipOpen = useMembershipDialog()
+const throwbackOn = ref(localStorage.getItem('jr.throwback') !== '0')
 
 onMounted(async () => {
   const tb = await throwbacks()
@@ -336,7 +337,7 @@ async function onFavourite() {
           <span class="ct">今天</span>
           <span class="cs">{{ todayLabel }}</span>
         </button>
-        <button class="card throwback" @click="storiesStart = 'throwback'; storiesOpen = true">
+        <button v-if="throwbackOn" class="card throwback" @click="storiesStart = 'throwback'; storiesOpen = true">
           <span class="cico"><JrIcon :path="mdiHistory" :size="20" /></span>
           <span class="ct">怀旧</span>
           <span class="cs">{{ throwbackList.length ? throwbackLabel : '没有怀旧今天' }}</span>

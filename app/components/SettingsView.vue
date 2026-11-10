@@ -3,9 +3,29 @@ defineEmits<{ (e: 'close'): void }>()
 import { desktopBridge } from '~/utils/desktopBridge'
 import { errorText } from '~/utils/uiText'
 import { JR_THEMES, THEME_IDS } from '~/utils/themesRegistry'
-import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiAccountOutline, mdiShieldKeyOutline, mdiDatabaseOutline, mdiHelpCircleOutline, mdiPalette, mdiRuler, mdiMapMarkerOutline, mdiTranslate, mdiSpellcheck, mdiPuzzleOutline, mdiLockOutline, mdiChevronRight, mdiChevronLeft } from '@mdi/js'
+import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiAccountOutline, mdiShieldKeyOutline, mdiDatabaseOutline, mdiHelpCircleOutline, mdiPalette, mdiRuler, mdiMapMarkerOutline, mdiTranslate, mdiSpellcheck, mdiPuzzleOutline, mdiLockOutline, mdiChevronRight, mdiChevronLeft, mdiAlertOutline, mdiCloudOutline, mdiApps, mdiBookmarkOutline, mdiBellOutline } from '@mdi/js'
 
 const tab = ref<'general' | 'account' | 'security' | 'data' | 'help'>('general')
+const isMobile = useIsMobile()
+// 移动设置中枢(证据 s05-s12):彩色图标行手风琴;怀旧开关是真实功能(控制首页怀旧卡)
+const openSection = ref<'general' | 'security' | 'help' | null>(null)
+const throwback = ref(localStorage.getItem('jr.throwback') !== '0')
+watch(throwback, (v) => localStorage.setItem('jr.throwback', v ? '1' : '0'))
+const mSections = [
+  { key: 'general', label: '通用', color: '#f8b26a', expandable: true },
+  { key: 'cloud', label: '帐户、数据与云端服务', color: '#f2e04c', expandable: false, to: '/cloud' },
+  { key: 'stories', label: '故事', color: '#d6e356', expandable: false, toggle: true },
+  { key: 'publish', label: '发布', color: '#7fe07f', expandable: false, locked: true },
+  { key: 'notifications', label: '通知&提醒', color: '#7fc4e8', expandable: false, locked: true },
+  { key: 'security', label: '安全性', color: '#6ee8dc', expandable: true },
+  { key: 'help', label: '帮助', color: '#c46ae8', expandable: true },
+] as const
+function toggleSection(key: typeof mSections[number]['key']) {
+  if (key !== 'general' && key !== 'security' && key !== 'help') return
+  openSection.value = openSection.value === key ? null : key
+}
+const mIcons = { general: mdiCogOutline, cloud: mdiCloudOutline, stories: mdiApps, publish: mdiBookmarkOutline, notifications: mdiBellOutline, security: mdiLockOutline, help: mdiHelpCircleOutline } as const
+const lockedNote = ref('')
 const gen = ref<'appearance' | 'unit' | 'location' | 'locale' | 'spellcheck' | 'plugins'>('appearance')
 const { weekStart } = useWeekStart()
 // bug06 修复：计量单位绑定并持久化（原 select 未绑 v-model，选择即丢）
@@ -160,7 +180,72 @@ async function wipeAll() {
 </script>
 
 <template>
-  <div class="jr-modal-mask" @click.self="$emit('close')">
+  <!-- 移动设置中枢（证据 s05-s12：✕+大标题+登录卡+彩色图标行手风琴） -->
+  <div v-if="isMobile" class="jr-mset">
+    <button class="mx" aria-label="关闭设置" @click="$emit('close')"><JrIcon :path="mdiClose" :size="24" /></button>
+    <h1 class="mtitle">设置</h1>
+    <NuxtLink to="/cloud" class="mlogin">
+      <JrIcon :path="mdiAlertOutline" :size="24" class="mlogin-ico" />
+      <span class="mlogin-txt"><b>本地模式</b>所有日记保存在此设备。链接云端服务请查看云服务页。</span>
+    </NuxtLink>
+
+    <template v-for="s in mSections" :key="s.key">
+      <NuxtLink v-if="s.to" :to="s.to" class="mrow-i">
+        <span class="mico" :style="{ background: s.color }"><JrIcon :path="mIcons[s.key]" :size="22" /></span>
+        <span class="mlabel">{{ s.label }}</span>
+        <JrIcon :path="mdiChevronRight" :size="20" class="mchev" />
+      </NuxtLink>
+
+      <div v-else-if="s.toggle" class="mrow-i" role="switch" :aria-checked="throwback" tabindex="0" @click="throwback = !throwback" @keydown.enter="throwback = !throwback">
+        <span class="mico" :style="{ background: s.color }"><JrIcon :path="mIcons[s.key]" :size="22" /></span>
+        <span class="mlabel">故事<small>怀旧</small></span>
+        <span class="mtoggle" :class="{ on: throwback }" />
+      </div>
+
+      <div v-else-if="s.locked" class="mrow-i locked" role="button" tabindex="0" @click="lockedNote = lockedNote === s.key ? '' : s.key" @keydown.enter="lockedNote = lockedNote === s.key ? '' : s.key">
+        <span class="mico" :style="{ background: s.color }"><JrIcon :path="mIcons[s.key]" :size="22" /></span>
+        <span class="mlabel">{{ s.label }}<small>{{ s.key === 'publish' ? '需要 Journey 云端账户' : '网页复刻暂未实现提醒' }}</small></span>
+        <JrIcon :path="mdiLockOutline" :size="18" class="mchev" />
+      </div>
+
+      <button v-else class="mrow-i" :aria-expanded="openSection === s.key" @click="toggleSection(s.key)">
+        <span class="mico" :style="{ background: s.color }"><JrIcon :path="mIcons[s.key]" :size="22" /></span>
+        <span class="mlabel">{{ s.label }}</span>
+        <JrIcon :path="mdiChevronRight" :size="20" class="mchev" :class="{ open: openSection === s.key }" />
+      </button>
+
+      <p v-if="s.locked && lockedNote === s.key" class="mnote" role="status">原版此项为 Journey 云端账户功能；复刻以本地模式运行，此功能不提供（诚实边界）。</p>
+
+      <div v-if="s.key === 'general' && openSection === 'general'" class="mexpand">
+        <div class="mset-row"><span>主题</span><select v-model="theme" class="mselect"><option value="System">跟随系统</option><option value="Light">浅色</option><option value="Dark">深色</option></select></div>
+        <div class="mset-row"><span>字体</span><select v-model="fontFamily" class="mselect"><option value="Gotham Rounded">圆体</option><option value="Verlag">无衬线体</option><option value="Lexend">易读字体</option><option value="OpenDyslexic">阅读辅助字体</option></select></div>
+        <div class="mset-row"><span>字号</span><select v-model="fontSize" class="mselect"><option value="Small">小</option><option value="Medium">中</option><option value="Large">大</option></select></div>
+        <div class="mset-row"><span>计量单位</span><select v-model="unit" class="mselect" aria-label="计量单位"><option value="metric">公制</option><option value="imperial">英制</option></select></div>
+        <div class="mset-row"><span>每周起始日</span><select v-model="weekStart" class="mselect"><option value="default">默认</option><option value="monday">星期一</option><option value="sunday">星期日</option></select></div>
+        <label class="mset-row col"><span>MapTiler 密钥（地图底图）</span><input v-model="mapTilerKey" class="minput" placeholder="粘贴你自己的 MapTiler API 密钥" /></label>
+        <label class="mset-row"><span>写作时检查拼写</span><input v-model="spellcheck" type="checkbox" /></label>
+      </div>
+
+      <div v-if="s.key === 'security' && openSection === 'security'" class="mexpand">
+        <div class="mset-row"><span>密码</span><span class="mv">{{ pinHash ? '已设置' : '未设置' }}</span></div>
+        <label class="mset-row col"><span>4–8 位数字密码</span><input v-model="pinInput" class="minput" inputmode="numeric" placeholder="仅保存在本机" /></label>
+        <div class="mbtns">
+          <button class="mbtn" @click="setPin">设置密码</button>
+          <button class="mbtn" :disabled="!pinHash" @click="removePin">删除密码</button>
+        </div>
+        <p v-if="pinMsg" class="mnote" role="status">{{ pinMsg }}</p>
+        <div class="mset-row"><span>超时</span><span class="mv">30s</span></div>
+      </div>
+
+      <div v-if="s.key === 'help' && openSection === 'help'" class="mexpand">
+        <div class="mset-row"><span>版本</span><span class="mv">旅程复刻 Web（本地）</span></div>
+        <p class="mnote">数据全部保存在本机浏览器（IndexedDB）。导出备份见云服务页；原版功能对照见 journey-replica 功能矩阵。</p>
+      </div>
+    </template>
+    <div style="height:32px" />
+  </div>
+
+  <div v-else class="jr-modal-mask" @click.self="$emit('close')">
     <div class="jr-modal">
       <button class="jr-modal-x" @click="$emit('close')"><JrIcon :path="mdiClose" :size="16" /></button>
       <div class="jr-modal-tabs">
@@ -305,3 +390,35 @@ async function wipeAll() {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* 移动设置中枢（证据 s05：✕+大标题+登录卡+彩色图标行） */
+.jr-mset { position: fixed; inset: 0; z-index: 250; background: var(--jr-bg); overflow-y: auto; padding: 0 20px 24px; }
+.jr-mset .mx { margin: 14px 0 0 -8px; background: none; border: 0; color: var(--jr-on-bg); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+.jr-mset .mtitle { font-size: 34px; font-weight: 800; margin: 18px 0 20px; }
+.mlogin { display: flex; gap: 14px; align-items: flex-start; background: #cfe6ef; border-radius: 14px; padding: 16px; text-decoration: none; color: var(--jr-on-bg); margin-bottom: 14px; }
+.mlogin-ico { color: var(--jr-on-surface-variant); flex-shrink: 0; margin-top: 2px; }
+.mlogin-txt { font-size: 13.5px; line-height: 1.5; }
+.mlogin-txt b { display: block; font-size: 15px; margin-bottom: 2px; }
+.mrow-i { display: flex; align-items: center; gap: 16px; width: 100%; padding: 14px 0; background: none; border: 0; color: var(--jr-on-bg); font-family: inherit; font-size: 16px; font-weight: 600; text-decoration: none; text-align: left; cursor: pointer; }
+.mrow-i.locked { opacity: 0.75; }
+.mico { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #263238; flex-shrink: 0; }
+.mlabel { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.mlabel small { font-size: 12px; font-weight: 400; color: var(--jr-outline); }
+.mchev { color: var(--jr-outline); transition: transform .2s ease; }
+.mchev.open { transform: rotate(90deg); }
+.mtoggle { width: 52px; height: 30px; border-radius: 999px; background: var(--jr-surface-variant); position: relative; flex-shrink: 0; transition: background .2s ease; }
+.mtoggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: left .2s ease; }
+.mtoggle.on { background: var(--jr-primary); }
+.mtoggle.on::after { left: 25px; }
+.mexpand { padding: 4px 0 14px 8px; }
+.mset-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; font-size: 14.5px; border-bottom: 1px solid var(--jr-outline-variant); }
+.mset-row.col { flex-direction: column; align-items: stretch; border-bottom: 0; }
+.mselect { background: var(--jr-surface-variant); border: 0; border-radius: 8px; padding: 8px 12px; font-family: inherit; font-size: 14px; color: var(--jr-on-bg); }
+.minput { border: 1px solid var(--jr-outline-variant); border-radius: 8px; padding: 9px 12px; font-family: inherit; font-size: 14px; background: #fff; color: var(--jr-on-bg); }
+.mv { color: var(--jr-on-surface-variant); }
+.mbtns { display: flex; gap: 10px; margin: 10px 0; }
+.mbtn { flex: 1; background: var(--jr-primary); color: var(--jr-on-primary); border: 0; border-radius: 10px; padding: 11px; font-size: 14px; font-weight: 700; font-family: inherit; }
+.mbtn:disabled { opacity: 0.4; }
+.mnote { font-size: 12.5px; color: var(--jr-on-surface-variant); margin: 6px 0 0; }
+</style>
