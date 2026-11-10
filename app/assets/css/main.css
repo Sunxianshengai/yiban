@@ -544,6 +544,7 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
 .jr-stories-arrow:last-child { border-radius: 0 8px 8px 0; background: rgba(255,255,255,0.2); }
 .jr-stories-arrow:disabled { opacity: 0.4; }
 .jr-row-thumb { width: 100%; max-height: 130px; object-fit: cover; border-radius: 8px; margin-top: 8px; display: block; }
+.jr-draft-note { margin: 0; padding: 8px 44px 0; font-size: 12.5px; color: var(--jr-secondary); }
 .jr-editor-ph {
   position: absolute; left: 44px; top: 8px;
   color: #b9c6cb; font-size: 16px; pointer-events: none; z-index: 2;

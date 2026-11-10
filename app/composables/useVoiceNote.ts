@@ -4,7 +4,7 @@ import { errorText } from '~/utils/uiText'
 const maxRecordingMs = 10 * 60 * 1000
 
 export function useVoiceNote(onFile: (file: File) => Promise<void>, onError: (message: string) => void) {
-  const available = !!desktopBridge() && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined'
+  const available = !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined'
   const status = ref<'idle' | 'requesting' | 'recording' | 'encoding'>('idle')
   let recorder: MediaRecorder | undefined
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -55,7 +55,7 @@ export function useVoiceNote(onFile: (file: File) => Promise<void>, onError: (me
         status.value = 'encoding'
         try {
           const file = await toMp3(new Blob(parts, { type: current.mimeType }))
-          if (file && !disposed) await onFile(await stageDesktopRecording(file))
+          if (file && !disposed) await onFile(desktopBridge() ? await stageDesktopRecording(file) : file)
         } catch (error) {
           if (!disposed) onError(errorText(error, '无法保存录音。'))
         } finally { status.value = 'idle' }

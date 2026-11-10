@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiCalendarBlankOutline, mdiMapMarkerOutline, mdiWeatherSunny, mdiEmoticonOutline, mdiRun, mdiTagOutline, mdiPlus, mdiFormatBold, mdiFormatItalic, mdiFormatStrikethrough, mdiFormatUnderline, mdiFormatAlignLeft, mdiFormatAlignCenter, mdiUndo, mdiRedo, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiClose, mdiCheck, mdiFormatListBulleted, mdiFormatListNumbered, mdiCheckboxMarkedOutline, mdiFormatPilcrow, mdiFormatHeader1, mdiFormatHeader2, mdiFormatHeader3, mdiFormatQuoteOpen, mdiFormatListChecks, mdiLink, mdiImage, mdiTable, mdiBorderHorizontal, mdiPalette, mdiMarker, mdiWaterOff, mdiImageMultipleOutline, mdiApps } from '@mdi/js'
+import { mdiCalendarBlankOutline, mdiMapMarkerOutline, mdiWeatherSunny, mdiEmoticonOutline, mdiRun, mdiTagOutline, mdiPlus, mdiFormatBold, mdiFormatItalic, mdiFormatStrikethrough, mdiFormatUnderline, mdiFormatAlignLeft, mdiFormatAlignCenter, mdiUndo, mdiRedo, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiClose, mdiCheck, mdiFormatListBulleted, mdiFormatListNumbered, mdiCheckboxMarkedOutline, mdiFormatPilcrow, mdiFormatHeader1, mdiFormatHeader2, mdiFormatHeader3, mdiFormatQuoteOpen, mdiFormatListChecks, mdiLink, mdiImage, mdiTable, mdiBorderHorizontal, mdiPalette, mdiMarker, mdiWaterOff, mdiImageMultipleOutline, mdiApps, mdiFormatAlignRight, mdiCodeTags, mdiFormatIndentIncrease, mdiFormatIndentDecrease } from '@mdi/js'
 import type { EntryV2, MediaFileV2, TagWordV2 } from '~/utils/db'
 import { journalFragment, journalHtml, renderJournal } from '~/utils/journalHtml'
 import { fetchWeather, searchPlaces, WEATHER_EMOJI } from '~/utils/services'
@@ -181,11 +181,37 @@ function discardEntry() {
   emit('done')
 }
 
+// ---- 工具栏状态（审计 #3/#4）：撤销/重做深度 + 格式激活 ----
+const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const canUndo = ref(false)
+const canRedo = ref(false)
+const fmtState = ref({ bold: false, italic: false, strike: false, underline: false, align: 'left' })
+function refreshToolbarState() {
+  try {
+    canUndo.value = document.queryCommandEnabled('undo') || undoDepth.value > 0
+    canRedo.value = redoDepth.value > 0
+    fmtState.value = {
+      bold: document.queryCommandState('bold'),
+      italic: document.queryCommandState('italic'),
+      strike: document.queryCommandState('strikeThrough'),
+      underline: document.queryCommandState('underline'),
+      align: (document.queryCommandState('justifyCenter') && 'center') || (document.queryCommandState('justifyRight') && 'right') || 'left',
+    }
+  } catch { /* 无选区时保持原值 */ }
+}
+// 撤销/重做深度：自维护计数（execCommand 不暴露历史深度）
+const undoDepth = ref(0)
+const redoDepth = ref(0)
+function noteUndo() { undoDepth.value++; redoDepth.value = 0; refreshToolbarState() }
+function doUndo() { restoreSel(); document.execCommand('undo'); recount(); refreshToolbarState() }
+function doRedo() { restoreSel(); document.execCommand('redo'); recount(); refreshToolbarState() }
+
 function recount() {
   const t = area.value?.innerText || ''
   words.value = countWords(t)
   chars.value = t.replace(/\n/g, '').length
   hasContent.value = !!t.trim() || !!area.value?.querySelector('img')
+  refreshToolbarState()
 }
 
 // Selection survives popover clicks: snapshot on edits, restore before commands.
@@ -211,6 +237,8 @@ function cmd(name: string, val?: string) {
   restoreSel()
   document.execCommand(name, false, val)
   recount()
+  if (name === 'undo') { redoDepth.value++; undoDepth.value = Math.max(0, undoDepth.value - 1) }
+  if (name === 'redo') { undoDepth.value++; redoDepth.value = Math.max(0, redoDepth.value - 1) }
 }
 
 function setBlock(tag: string) {
@@ -255,6 +283,25 @@ function onPopMousedown(e: MouseEvent) {
   if (t.closest("button.jr-pop-item")) e.preventDefault()
 }
 
+// 审计 #5：行内代码按钮（选区包装；无选区插占位）
+function insertInlineCodeButton() {
+  const sel = window.getSelection()
+  const text = sel?.toString() || '代码'
+  insertHtml('<code>' + esc(text) + '</code>&nbsp;')
+}
+// 审计 #5：缩进按钮（复用 Tab 逻辑；仅列表内生效）
+function indentSelection(outdent: boolean) {
+  const sel = window.getSelection()
+  const anchor = sel?.anchorNode
+  if (!anchor) return
+  const el = anchor.nodeType === 1 ? (anchor as Element) : anchor.parentElement
+  const li = el?.closest('li') as HTMLElement | null
+  if (!li) return
+  if (outdent) unNestListItem(li)
+  else nestListItem(li)
+  recount()
+}
+
 function insertTableGrid() {
   const rows = Math.max(1, Math.min(20, tableRows.value || 2))
   const cols = Math.max(1, Math.min(10, tableCols.value || 2))
@@ -273,7 +320,7 @@ const swatchRows = [
 ]
 function applySwatch(c: string) {
   restoreSel()
-  document.execCommand('styleWithCSS', false, true)
+  document.execCommand('styleWithCSS', false, 'true')
   document.execCommand(colorSub.value === 'highlight' ? 'hiliteColor' : 'foreColor', false, c)
   recount()
   openPop.value = null
@@ -298,8 +345,10 @@ function onAreaKeydown(e: KeyboardEvent) {
   // Tab / Shift+Tab adjust list indentation (official desktop behavior [J8])
   if (e.key === 'Tab') {
     const sel = window.getSelection()
-    if (sel && area.value?.contains(sel.anchorNode)) {
-      const li = (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement)?.closest('li') as HTMLElement | null
+    if (sel && sel.anchorNode && area.value?.contains(sel.anchorNode)) {
+      const anchor = sel.anchorNode
+      const el = anchor.nodeType === 1 ? (anchor as Element) : anchor.parentElement
+      const li = el?.closest('li') as HTMLElement | null
       if (li) {
         e.preventDefault()
         // 原版为规范嵌套 li>ul>li；浏览器原生 indent 会产出 ul>ul 兄弟结构，故手动搬移
@@ -330,18 +379,17 @@ function onAreaKeydown(e: KeyboardEvent) {
   }
   const line = before.split('\n').pop() || ''
   // 行内代码：`text` 第二个反引号落下时转换（原版 markdown 引擎行为）
-  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   const codeMatch = /`([^`\n]+)`$/.exec(line)
   if (codeMatch) {
     e.preventDefault()
     const dropLen = codeMatch[0].length
     for (let i = 0; i < dropLen; i++) document.execCommand('delete')
     // live selection（saved range 指向已删除的标记节点，不可恢复）
-    document.execCommand('insertHTML', false, `<code>${esc(codeMatch[1])}</code>&nbsp;`)
+    document.execCommand('insertHTML', false, `<code>${esc(codeMatch[1] ?? '')}</code>&nbsp;`)
     recount()
     return
   }
-  const rules: [RegExp, string | null, string | undefined][] = [
+  const rules: [RegExp, string | undefined, string | undefined][] = [
     [/^#$/, 'formatBlock', 'h1'],
     [/^##$/, 'formatBlock', 'h2'],
     [/^###$/, 'formatBlock', 'h3'],
@@ -359,7 +407,7 @@ function onAreaKeydown(e: KeyboardEvent) {
       // live selection (no restore — saved range points at deleted marker nodes)
       document.execCommand('insertHTML', false, '<ul class="jr-task"><li><label><input type="checkbox">待办事项</label></li></ul><p><br></p>')
     } else {
-      document.execCommand(cmdName, false, val)
+      document.execCommand(cmdName as string, false, val as string | undefined)
     }
     recount()
     return
@@ -403,6 +451,12 @@ function unNestListItem(li: HTMLElement): boolean {
   return true
 }
 
+// 审计 #8：单篇日记时区（meta.timezone 在原版 schema 内）
+const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+const COMMON_TZ = ['Asia/Shanghai', 'Asia/Tokyo', 'Asia/Singapore', 'Asia/Dubai', 'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Australia/Sydney', 'UTC']
+const tzDraft = ref(deviceTz)
+watch(datePop, (v) => { if (v) tzDraft.value = meta.value.timezone || deviceTz })
+
 // ---- date picker popover (mini month grid + time) ----
 const { firstDay, orderedWeekdays } = useWeekStart()
 const dpCells = computed(() => {
@@ -429,6 +483,8 @@ function dpPick(day: number) {
   if (!day) return
   const [h, m] = (dpTime.value || '00:00').split(':').map(Number)
   date.value = new Date(dpYear.value, dpMonth.value - 1, day, h || 0, m || 0)
+  // 审计 #8：时区写回条目 meta（原版 schema 字段 timezone）
+  meta.value = { ...meta.value, timezone: tzDraft.value }
   datePop.value = false
 }
 
@@ -645,17 +701,31 @@ function editTable(action: 'addRow' | 'removeRow' | 'addColumn' | 'removeColumn'
   recount()
 }
 
-function useMyLocation() {
-  navigator.geolocation?.getCurrentPosition(
+// 审计 #9：定位与天气解耦，失败有明确提示
+const locBusy = ref(false)
+const locError = ref('')
+function useMyLocation(fillWeather = false) {
+  if (!navigator.geolocation) { locError.value = '此浏览器不支持定位。'; return }
+  locBusy.value = true
+  locError.value = ''
+  navigator.geolocation.getCurrentPosition(
     async (p) => {
       meta.value = { ...meta.value, lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6) }
+      locBusy.value = false
+      if (!fillWeather) return
       weatherBusy.value = true
-      const w = await fetchWeather(meta.value.lat!, meta.value.lng!)
-      if (w) meta.value = { ...meta.value, weatherIcon: w.icon, weatherDegreeC: w.degreeC, weatherDescription: w.description }
+      try {
+        const w = await fetchWeather(meta.value.lat!, meta.value.lng!)
+        if (w) meta.value = { ...meta.value, weatherIcon: w.icon, weatherDegreeC: w.degreeC, weatherDescription: w.description }
+        else locError.value = '天气服务暂时没有返回数据，请稍后再试。'
+      } catch { locError.value = '天气请求失败，请检查网络后重试。' }
       weatherBusy.value = false
     },
-    () => {},
-    { timeout: 6000 },
+    (err) => {
+      locBusy.value = false
+      locError.value = err.code === err.PERMISSION_DENIED ? '定位权限被拒绝。可在浏览器地址栏重新允许。' : err.code === err.TIMEOUT ? '定位超时，请重试。' : '定位失败，请重试。'
+    },
+    { timeout: 8000, enableHighAccuracy: true },
   )
 }
 
@@ -735,6 +805,12 @@ async function save() {
         <div class="jr-pop-row" style="margin-top:6px">
           <input v-model="dpTime" type="time" class="jr-pop-input" />
         </div>
+        <div class="jr-pop-row">
+          <select v-model="tzDraft" class="jr-pop-input" aria-label="时区">
+            <option :value="deviceTz">本机时区（{{ deviceTz }}）</option>
+            <option v-for="tz in COMMON_TZ" :key="tz" :value="tz">{{ tz }}</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -747,7 +823,7 @@ async function save() {
         class="jr-editor-area"
         :contenteditable="initialReady ? 'true' : 'false'"
         :spellcheck="spellcheck"
-        @input="recount(); saveSel(); touched = true; scheduleDraft()"
+        @input="recount(); saveSel(); touched = true; scheduleDraft(); noteUndo()"
         @paste="onPaste"
         @contextmenu="openTableMenu"
         @keydown="onAreaKeydown"
@@ -805,7 +881,7 @@ async function save() {
             { tag: 'blockquote', icon: mdiFormatQuoteOpen, label: '引用' },
             { tag: 'ol', icon: mdiFormatListNumbered, label: '有序列表', list: 'ol' },
             { tag: 'ul', icon: mdiFormatListBulleted, label: '无序列表', list: 'ul' },
-            { tag: 'ul jr-task', icon: mdiFormatListCheck, label: '任务列表', list: 'task' },
+            { tag: 'ul jr-task', icon: mdiFormatListChecks, label: '任务列表', list: 'task' },
           ]" :key="s.tag"
           class="jr-pop-item" :disabled="isCurrentBlock(s)" @click="pickBlock(s)"
         >
@@ -879,6 +955,7 @@ async function save() {
       </template>
 
       <template v-else-if="openPop === 'loc'">
+        <p v-if="locError" class="jr-muted" role="status" style="padding:0 12px">{{ locError }}</p>
         <div class="jr-pop-row">
           <input v-model="placeQuery" placeholder="搜索地点…" class="jr-pop-input" @keydown.enter.prevent="searchPlace" />
           <button class="jr-pop-item" style="width:auto" @click="searchPlace"><JrIcon :path="mdiCheck" :size="16" /></button>
@@ -893,12 +970,13 @@ async function save() {
           <input v-model.number="meta.lat" type="number" step="any" placeholder="纬度" class="jr-pop-input" />
           <input v-model.number="meta.lng" type="number" step="any" placeholder="经度" class="jr-pop-input" />
         </div>
-        <button class="jr-pop-item" @click="useMyLocation">使用当前位置</button>
+        <button class="jr-pop-item" @click="useMyLocation(false)" :disabled="locBusy">{{ locBusy ? '正在定位…' : '使用当前位置' }}</button>
         <button v-if="meta.address || meta.lat != null" class="jr-pop-item jr-danger" @click="meta = { ...meta, address: undefined, lat: undefined, lng: undefined }; openPop = null">移除地点</button>
       </template>
 
       <template v-else-if="openPop === 'weather'">
-        <button class="jr-pop-item" :disabled="weatherBusy" @click="useMyLocation">
+        <p v-if="locError" class="jr-muted" role="status" style="padding:0 12px">{{ locError }}</p>
+        <button class="jr-pop-item" :disabled="weatherBusy || locBusy" @click="useMyLocation(true)">
           {{ weatherBusy ? '正在获取…' : '获取当前位置的天气' }}
         </button>
         <div class="jr-colors">
@@ -968,10 +1046,10 @@ async function save() {
         <JrIcon :path="mdiChevronDown" :size="16" />
       </button>
       <div class="sep" />
-      <button class="tb" :disabled="!hasContent" @click="cmd('bold')"><JrIcon :path="mdiFormatBold" :size="19" /></button>
-      <button class="tb" :disabled="!hasContent" @click="cmd('italic')"><JrIcon :path="mdiFormatItalic" :size="19" /></button>
-      <button class="tb" :disabled="!hasContent" @click="cmd('strikeThrough')"><JrIcon :path="mdiFormatStrikethrough" :size="19" /></button>
-      <button class="tb" :disabled="!hasContent" @click="cmd('underline')"><JrIcon :path="mdiFormatUnderline" :size="19" /></button>
+      <button class="tb" :class='{ on: fmtState.bold }' :disabled="!hasContent" :aria-pressed="fmtState.bold" title="粗体" @click="cmd('bold')"><JrIcon :path="mdiFormatBold" :size="19" /></button>
+      <button class="tb" :class='{ on: fmtState.italic }' :disabled="!hasContent" :aria-pressed="fmtState.italic" title="斜体" @click="cmd('italic')"><JrIcon :path="mdiFormatItalic" :size="19" /></button>
+      <button class="tb" :class='{ on: fmtState.strike }' :disabled="!hasContent" :aria-pressed="fmtState.strike" title="删除线" @click="cmd('strikeThrough')"><JrIcon :path="mdiFormatStrikethrough" :size="19" /></button>
+      <button class="tb" :class='{ on: fmtState.underline }' :disabled="!hasContent" :aria-pressed="fmtState.underline" title="下划线" @click="cmd('underline')"><JrIcon :path="mdiFormatUnderline" :size="19" /></button>
       <button class="tb beach-btn" :disabled="!hasContent" title="颜色" @click="togglePop('color', $event)">
         <span class="beach-ball" aria-hidden="true" />
         <JrIcon :path="mdiChevronDown" :size="14" />
@@ -980,12 +1058,16 @@ async function save() {
       <button class="tb" :disabled="!hasContent" title="项目列表" @click="cmd('insertUnorderedList')"><JrIcon :path="mdiFormatListBulleted" :size="19" /></button>
       <button class="tb" :disabled="!hasContent" title="编号列表" @click="cmd('insertOrderedList')"><JrIcon :path="mdiFormatListNumbered" :size="19" /></button>
       <button class="tb" :disabled="!hasContent" title="待办列表" @click="insertTaskList()"><JrIcon :path="mdiCheckboxMarkedOutline" :size="19" /></button>
+      <button class="tb" :disabled="!hasContent" title="行内代码" @click="insertInlineCodeButton()"><JrIcon :path="mdiCodeTags" :size="19" /></button>
+      <button class="tb" :disabled="!hasContent" title="增加缩进（列表内 Tab）" @click="indentSelection(false)"><JrIcon :path="mdiFormatIndentIncrease" :size="19" /></button>
+      <button class="tb" :disabled="!hasContent" title="减少缩进（列表内 Shift+Tab）" @click="indentSelection(true)"><JrIcon :path="mdiFormatIndentDecrease" :size="19" /></button>
       <div class="sep" />
-      <button class="tb" :disabled="!hasContent" @click="cmd('justifyLeft')"><JrIcon :path="mdiFormatAlignLeft" :size="19" /></button>
-      <button class="tb" :disabled="!hasContent" @click="cmd('justifyCenter')"><JrIcon :path="mdiFormatAlignCenter" :size="19" /></button>
+      <button class="tb" :class="{ on: fmtState.align === 'left' }" :disabled="!hasContent" title="左对齐" :aria-pressed="fmtState.align === 'left'" @click="cmd('justifyLeft')"><JrIcon :path="mdiFormatAlignLeft" :size="19" /></button>
+      <button class="tb" :class="{ on: fmtState.align === 'center' }" :disabled="!hasContent" title="居中" :aria-pressed="fmtState.align === 'center'" @click="cmd('justifyCenter')"><JrIcon :path="mdiFormatAlignCenter" :size="19" /></button>
+      <button class="tb" :class="{ on: fmtState.align === 'right' }" :disabled="!hasContent" title="右对齐" :aria-pressed="fmtState.align === 'right'" @click="cmd('justifyRight')"><JrIcon :path="mdiFormatAlignRight" :size="19" /></button>
       <div class="sep" />
-      <button class="tb" :disabled="!hasContent" @click="cmd('undo')"><JrIcon :path="mdiUndo" :size="19" /></button>
-      <button class="tb" :disabled="!hasContent" @click="cmd('redo')"><JrIcon :path="mdiRedo" :size="19" /></button>
+      <button class="tb" :disabled="!hasContent || !canUndo" title="撤销" @click="doUndo"><JrIcon :path="mdiUndo" :size="19" /></button>
+      <button class="tb" :disabled="!hasContent || !canRedo" title="重做" @click="doRedo"><JrIcon :path="mdiRedo" :size="19" /></button>
       <button class="words">
         <span>词数</span><span style="font-weight:700">{{ words }}</span>
         <span>·</span>
