@@ -13,6 +13,7 @@ const throwbackList = ref<EntryV2[]>([])
 const throwbackLabel = ref('今天没有往日回忆')
 const storiesOpen = ref(false)
 const storiesStart = ref<'stats' | 'throwback'>('stats')
+const membershipOpen = useMembershipDialog()
 
 onMounted(async () => {
   const tb = await throwbacks()
@@ -152,7 +153,7 @@ async function onFavourite() {
             <div class="t">会员</div>
             <div class="d">你正在使用免费版。升级后可解锁更多功能。</div>
           </div>
-          <button class="act">升级</button>
+          <button class="act" @click="membershipOpen = true">升级</button>
         </div>
       </template>
 
@@ -233,6 +234,7 @@ async function onFavourite() {
       />
     </div>
 
+    <MembershipDialog v-if="membershipOpen" @close="membershipOpen = false" />
     <StoriesOverlay v-if="storiesOpen" :throwbacks="throwbackList" :start-kind="storiesStart" @close="storiesOpen = false" />
   </div>
 </template>

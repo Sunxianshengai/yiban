@@ -333,6 +333,8 @@ input, textarea { font-family: inherit; }
 
 /* 选择模板对话框（原版 Pick a Template） */
 .jr-tpl-modal { width: 560px; padding: 26px 30px 30px; }
+/* 审计 #25：原版设置弹窗约 750px */
+.jr-modal:has(.jr-set-label) { width: 750px; }
 .jr-tpl-title { margin: 0 0 18px; text-align: center; font-size: 19px; }
 .jr-tpl-sec-head { display: flex; align-items: center; justify-content: space-between; margin: 16px 0 10px; font-size: 14.5px; font-weight: 700; color: var(--jr-primary); }
 .jr-tpl-viewall { font-size: 12px; font-weight: 700; color: var(--jr-secondary); letter-spacing: 0.4px; }
@@ -391,7 +393,8 @@ input, textarea { font-family: inherit; }
 .jr-modal-tab.on { background: var(--jr-primary-container); color: var(--jr-primary); }
 .jr-modal-body { padding: 22px 30px 30px; font-size: 14.5px; }
 .jr-set-label { font-size: 12.5px; font-weight: 700; color: var(--jr-outline); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
-.jr-set-select { border: 1px solid var(--jr-outline-variant); border-radius: 8px; padding: 9px 12px; font-size: 14px; width: 240px; }
+.jr-set-select { border: 0; border-radius: 8px; padding: 9px 12px; font-size: 14px; width: 240px; background: #eef3f5; appearance: none; }
+/* 审计 #25：填充式整行控件 */
 .jr-set-check { display: flex; gap: 8px; align-items: center; margin-top: 14px; font-size: 14px; }
 .jr-data-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .jr-import-msg { margin-top: 12px; background: var(--jr-primary-container); color: var(--jr-on-primary-container); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
