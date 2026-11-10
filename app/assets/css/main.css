@@ -640,6 +640,23 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
   .jr-editor-head .dt span { max-width: 44vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .jr-editor-head .done { position: static; flex-shrink: 0; margin-left: 4px; }
   .jr-editor-area { min-height: 60vh; }
+  /* 编辑器弹层 = 底部抽屉（证据 s02/s03：把手+大标题+全宽行） */
+  .jr-pop {
+    left: 0 !important; right: 0; top: auto !important; bottom: 0 !important;
+    transform: none !important;
+    width: 100%; max-width: none;
+    max-height: 72vh; overflow-y: auto;
+    border-radius: 22px 22px 0 0;
+    background: var(--jr-bg);
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    border: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .jr-pop::before { content: ''; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 44px; height: 4px; border-radius: 2px; background: var(--jr-outline); opacity: .55; }
+  .jr-pop-head { padding: 20px 20px 10px; font-size: 21px; font-weight: 800; text-transform: none; }
+  .jr-pop-head .tb { width: 36px; height: 36px; }
+  .jr-pop-item { font-size: 15.5px; padding: 13px 18px; border-radius: 0; }
+  .jr-pop-item .jr-pop-ico { color: var(--jr-primary); }
   .jr-onboard-card { padding: 30px 22px; }
   .jr-onboard-card h2 { font-size: 22px; }
 }

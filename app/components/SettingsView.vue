@@ -221,6 +221,19 @@ async function wipeAll() {
         <div class="mset-row"><span>字体</span><select v-model="fontFamily" class="mselect"><option value="Gotham Rounded">圆体</option><option value="Verlag">无衬线体</option><option value="Lexend">易读字体</option><option value="OpenDyslexic">阅读辅助字体</option></select></div>
         <div class="mset-row"><span>字号</span><select v-model="fontSize" class="mselect"><option value="Small">小</option><option value="Medium">中</option><option value="Large">大</option></select></div>
         <div class="mset-row"><span>计量单位</span><select v-model="unit" class="mselect" aria-label="计量单位"><option value="metric">公制</option><option value="imperial">英制</option></select></div>
+        <div class="mset-row col"><span>彩色主题</span>
+          <div class="mcircles">
+            <button
+              v-for="(c, i) in circlePage" :key="circlePageBase + i"
+              class="mcircle" :class="{ on: circlePageBase + i === 0 && colorTheme === 0 }" :style="{ background: c }"
+              :title="circleLocked(circlePageBase + i) ? '会员主题' : '系统主题（免费）'"
+              @click="pickCircle(circlePageBase + i)"
+            >
+              <JrIcon v-if="circlePageBase + i === 0 && colorTheme === 0" :path="mdiCheck" :size="14" />
+            </button>
+          </div>
+          <p v-if="circleNote" class="mnote">{{ circleNote }}</p>
+        </div>
         <div class="mset-row"><span>每周起始日</span><select v-model="weekStart" class="mselect"><option value="default">默认</option><option value="monday">星期一</option><option value="sunday">星期日</option></select></div>
         <label class="mset-row col"><span>MapTiler 密钥（地图底图）</span><input v-model="mapTilerKey" class="minput" placeholder="粘贴你自己的 MapTiler API 密钥" /></label>
         <label class="mset-row"><span>写作时检查拼写</span><input v-model="spellcheck" type="checkbox" /></label>
@@ -421,4 +434,7 @@ async function wipeAll() {
 .mbtn { flex: 1; background: var(--jr-primary); color: var(--jr-on-primary); border: 0; border-radius: 10px; padding: 11px; font-size: 14px; font-weight: 700; font-family: inherit; }
 .mbtn:disabled { opacity: 0.4; }
 .mnote { font-size: 12.5px; color: var(--jr-on-surface-variant); margin: 6px 0 0; }
+.mcircles { display: flex; flex-wrap: wrap; gap: 10px; padding: 4px 0; }
+.mcircle { width: 32px; height: 32px; border-radius: 50%; border: 0; display: flex; align-items: center; justify-content: center; color: #fff; cursor: pointer; }
+.mcircle.on { outline: 3px solid var(--jr-primary); outline-offset: 2px; }
 </style>

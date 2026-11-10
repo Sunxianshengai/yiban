@@ -28,6 +28,7 @@ const dpTime = ref('')
 
 const props = defineProps<{ entryId?: number; initialText?: string; initialDate?: Date; initialMeta?: Partial<EntryV2> }>()
 const emit = defineEmits<{ (e: 'done'): void }>()
+const isMobile = useIsMobile()
 const { listMediaFor, listTags, ensureTag, saveEntry } = useEntries()
 
 const area = ref<HTMLElement | null>(null)
@@ -937,7 +938,8 @@ async function save() {
     </div>
 
     <div v-if="openPop" class="jr-pop" :style="popX != null ? { left: `${popX}px`, transform: 'none' } : undefined" @click.stop @mousedown="onPopMousedown">
-      <div v-if="!headlessPops.has(openPop)" class="jr-pop-head">
+      <!-- 移动端所有弹层为底部抽屉(证据 s02),抽屉带标题头(含段落样式) -->
+      <div v-if="!headlessPops.has(openPop) || isMobile" class="jr-pop-head">
         <span>{{ popoverLabels[openPop] }}</span>
         <button class="tb" @click="openPop = null"><JrIcon :path="mdiClose" :size="16" /></button>
       </div>
