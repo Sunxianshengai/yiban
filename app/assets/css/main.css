@@ -603,7 +603,7 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
   color: var(--jr-on-primary);
 }
 
-/* 审计 #22：窄屏响应式（≤820px） */
+/* 审计 #22：窄屏响应式（≤820px，平板抽屉区；≤600px 由移动壳接管） */
 @media (max-width: 820px) {
   .jr-shell { display: block; position: relative; }
   .jr-sidebar {
@@ -614,9 +614,7 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
   .jr-shell.sidebar-open .jr-sidebar { transform: translateX(0); }
   .jr-sidebar-toggle { display: flex !important; position: fixed; top: 10px; left: 10px; z-index: 95; }
   .jr-list-col { width: auto; min-width: 0; }
-  .jr-detail-col { position: fixed; inset: 0; z-index: 80; background: var(--jr-bg); }
-  .jr-detail-col:empty { display: none; }
-  /* 审计 #03 修复：横滚样式原套在不存在的 .jr-toolbar 上；真实类为 .jr-editor-toolbar */
+  /* 平板区保留桌面双栏：详情列不再转固定浮层（旧规则 z-index:80 会盖住 FAB） */
   .jr-editor-toolbar {
     flex-wrap: nowrap;
     overflow-x: auto;
