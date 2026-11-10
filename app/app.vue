@@ -6,6 +6,7 @@ const onboarded = ref(true)
 const locked = ref(false)
 const sidebarOpen = ref(false)
 const membershipOpen = useMembershipDialog()
+const isMobile = useIsMobile()
 const { theme, fontSize, colorTheme } = useAppearance()
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)')
 const systemPrefersDark = ref(systemDark.matches)
@@ -35,13 +36,20 @@ onMounted(async () => {
   <div class="jr-shell" :class="{ 'sidebar-open': sidebarOpen }">
     <LockOverlay v-if="locked" @unlocked="locked = false" />
     <template v-else>
-      <button class="jr-sidebar-toggle" type="button" aria-label="打开侧栏" @click="sidebarOpen = !sidebarOpen">
+      <button v-if="!isMobile" class="jr-sidebar-toggle" type="button" aria-label="打开侧栏" @click="sidebarOpen = !sidebarOpen">
         <JrIcon :path="mdiMenu" :size="20" />
       </button>
-      <AppSidebar @navigate="sidebarOpen = false" />
-      <main class="jr-main" style="position:relative" @click="sidebarOpen = false">
-        <NuxtPage />
-      </main>
+      <template v-if="isMobile">
+        <MobileShell>
+          <NuxtPage />
+        </MobileShell>
+      </template>
+      <template v-else>
+        <AppSidebar @navigate="sidebarOpen = false" />
+        <main class="jr-main" style="position:relative" @click="sidebarOpen = false">
+          <NuxtPage />
+        </main>
+      </template>
       <OnboardingModal v-if="!onboarded" @finish="onboarded = true" />
       <MembershipDialog v-if="membershipOpen" @close="membershipOpen = false" />
     </template>

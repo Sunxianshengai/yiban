@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiImageMultipleOutline, mdiChevronDown } from '@mdi/js'
+import { mdiImageMultipleOutline, mdiChevronDown, mdiArrowLeft } from '@mdi/js'
 import type { MediaFileV2 } from '~/utils/db'
 
 const { allMedia, deleteMedia } = useEntries()
@@ -75,6 +75,7 @@ function fmt(d?: Date) {
       </section>
       <aside class="jr-media-detail" :class="{ 'has-media': selected }" aria-label="媒体详情">
         <template v-if="selected">
+          <button class="jr-media-back" type="button" aria-label="返回列表" @click="selectedId = null"><JrIcon :path="mdiArrowLeft" :size="22" /></button>
           <img v-if="selected.mimeType.startsWith('image/')" :src="selected.url" class="jr-media-preview" :alt="selected.fileName" />
           <video v-else-if="selected.mimeType.startsWith('video/')" :src="selected.url" class="jr-media-preview" controls />
           <audio v-else-if="selected.mimeType.startsWith('audio/')" :src="selected.url" controls style="width:100%" />
@@ -111,5 +112,11 @@ function fmt(d?: Date) {
 @media (max-width: 900px) {
   .jr-media-split { grid-template-columns: minmax(0, 1fr); }
   .jr-media-detail:not(.has-media) { display: none; }
+}
+/* 手机（安卓壳）：选中媒体全屏展示 + 返回钮 */
+@media (max-width: 600px) {
+  .jr-media-detail.has-media { position: fixed; inset: 0; z-index: 150; background: var(--jr-bg); }
+  .jr-media-back { position: absolute; top: 12px; left: 10px; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--jr-secondary-container); color: var(--jr-on-bg); }
+  .jr-media-preview { max-width: calc(100% - 24px); max-height: 56vh; }
 }
 </style>

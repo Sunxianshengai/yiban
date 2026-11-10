@@ -62,6 +62,17 @@ export interface TemplateRow {
   updatedAt: Date
 }
 
+/** 未保存草稿（新条目 key='new'，已有条目 key='entry:<id>'）；照片 blob 随草稿入库，刷新可完整恢复 */
+export interface DraftRow {
+  key: string
+  text: string
+  date: number
+  meta: Partial<EntryV2>
+  staged: { name: string; type: string; blob: Blob }[]
+  removed: number[]
+  updatedAt: Date
+}
+
 export interface MediaFileV2 {
   id?: number
   externalId?: string
@@ -132,15 +143,19 @@ class JourneyReplicaDB extends Dexie {
 
 export const db = new JourneyReplicaDB()
 
-/** Misc DB (places/templates), per original. */
+/** Misc DB (places/templates/drafts), per original. */
 class MiscDB extends Dexie {
   templates!: Table<TemplateRow, number>
   places!: Table<PlaceRow, number>
+  drafts!: Table<DraftRow, string>
   constructor() {
     super('Misc')
     this.version(1).stores({
       places: '++id,address,lat,lng',
       templates: '++id,name,content,contentType,updatedAt',
+    })
+    this.version(2).stores({
+      drafts: 'key',
     })
   }
 }

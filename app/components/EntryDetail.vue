@@ -21,6 +21,7 @@ const actionStatus = ref('')
 const router = useRouter()
 const tagTitles = ref<Record<number, string>>({})
 const { listTags } = useEntries()
+const { formatTemp } = useUnits()
 onMounted(async () => {
   const tags = await listTags()
   const m: Record<number, string> = {}
@@ -89,7 +90,7 @@ async function downloadEntry(format: 'zip' | 'docx' | 'epub' | 'pdf') {
     <div class="jr-detail-chips">
       <span v-if="entry.sentiment" class="jr-mchip">{{ { excited: '😆', happy: '😊', calm: '😌', 'so-so': '😐', tired: '😪', sad: '😢', angry: '😠', anxious: '😰' }[entry.sentiment] || entry.sentiment }} {{ entry.sentiment }}</span>
       <span v-if="entry.activity" class="jr-mchip">🏃 {{ entry.activity }}</span>
-      <span v-if="entry.weatherIcon" class="jr-mchip">{{ { sun: '☀️', partly: '🌤', cloud: '☁️', fog: '🌫', rain: '🌧', snow: '🌨', storm: '⛈' }[entry.weatherIcon] }} {{ entry.weatherDegreeC != null ? entry.weatherDegreeC + '°C' : '' }} {{ entry.weatherPlace || weatherLabel(entry.weatherDescription) }}</span>
+      <span v-if="entry.weatherIcon" class="jr-mchip">{{ { sun: '☀️', partly: '🌤', cloud: '☁️', fog: '🌫', rain: '🌧', snow: '🌨', storm: '⛈' }[entry.weatherIcon] }} {{ formatTemp(entry.weatherDegreeC) }} {{ entry.weatherPlace || weatherLabel(entry.weatherDescription) }}</span>
       <span v-if="entry.address" class="jr-mchip" :title="entry.address">📍 {{ entry.address.slice(0, 40) }}</span>
       <span v-for="t in (entry.tagWordIds || [])" :key="t" class="jr-mchip jr-mtag">#{{ tagTitles[t] || t }}</span>
     </div>

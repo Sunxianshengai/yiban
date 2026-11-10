@@ -282,6 +282,11 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .jr-atlas-map { background: #e8dcc5; }
+/* 手机（安卓壳）：jr-mbody 是滚动容器，地图父级需显式撑满，否则 absolute 地图塌陷 */
+@media (max-width: 600px) {
+  .jr-content { min-height: 100%; }
+  .jr-atlas-panel { width: calc(100% - 24px); }
+}
 :deep(.maplibregl-canvas) { outline: none; }
 :deep(.jr-atlas-point) {
   display: grid;

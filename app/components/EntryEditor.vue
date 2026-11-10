@@ -131,26 +131,46 @@ onMounted(async () => {
   unsubscribeSave = desktop?.on('saveAndCloseIfDirty', () => { void save() })
   if (props.entryId != null) savedMedia.value = await listMediaFor(props.entryId)
   if (disposed) return
+  function urlForMedia(row: MediaFileV2) {
+    if (!row.blob) return
+    const url = URL.createObjectURL(row.blob)
+    previewUrls.push(url)
+    return url
+  }
+  // 草稿 v2（bug04/05）：新条目与已有条目的未保存内容都入库，照片 blob 一并恢复
+  const draft = await loadDraft(draftKey())
   if (props.initialText && area.value) {
-    area.value.innerHTML = renderJournal(props.initialText, savedMedia.value, row => {
-      if (!row.blob) return
-      const url = URL.createObjectURL(row.blob)
-      previewUrls.push(url)
-      return url
-    }, false)
+    if (draft && draft.text && draft.text !== props.initialText) {
+      area.value.innerHTML = renderJournal(draft.text, savedMedia.value, urlForMedia, false)
+      if (draft.date) date.value = new Date(draft.date)
+      if (draft.meta) meta.value = { ...meta.value, ...draft.meta }
+      removedMedia.value = [...(draft.removed || [])]
+      staged.value = (draft.staged || []).map(b => new File([b.blob], b.name, { type: b.type }))
+      draftRestored.value = '已恢复未保存的修改。'
+    } else {
+      area.value.innerHTML = renderJournal(props.initialText, savedMedia.value, urlForMedia, false)
+    }
     recount()
   } else if (area.value && !area.value.innerHTML.trim()) {
     // 审计 #1：恢复未保存草稿（新条目）
-    try {
-      const raw = localStorage.getItem('jr.draft')
-      if (raw && props.entryId == null) {
-        const d = JSON.parse(raw)
-        area.value.innerHTML = d.text
-        if (d.date) date.value = new Date(d.date)
-        if (d.meta) meta.value = { ...meta.value, ...d.meta }
-        draftRestored.value = '已恢复未保存的草稿。'
-      }
-    } catch { localStorage.removeItem('jr.draft') }
+    if (draft && draft.text) {
+      area.value.innerHTML = draft.text
+      if (draft.date) date.value = new Date(draft.date)
+      if (draft.meta) meta.value = { ...meta.value, ...draft.meta }
+      staged.value = (draft.staged || []).map(b => new File([b.blob], b.name, { type: b.type }))
+      draftRestored.value = '已恢复未保存的草稿。'
+    } else {
+      try {
+        const raw = localStorage.getItem('jr.draft')
+        if (raw && props.entryId == null) {
+          const d = JSON.parse(raw)
+          area.value.innerHTML = d.text
+          if (d.date) date.value = new Date(d.date)
+          if (d.meta) meta.value = { ...meta.value, ...d.meta }
+          draftRestored.value = '已恢复未保存的草稿。'
+        }
+      } catch { localStorage.removeItem('jr.draft') }
+    }
     if (!area.value.innerHTML.trim()) {
       // seed an empty block so formatBlock/style commands always have a target
       area.value.innerHTML = '<p><br></p>'
@@ -168,23 +188,61 @@ onBeforeUnmount(() => {
 })
 
 
-// ---- 草稿持久化（审计 #1）：新条目未保存内容防抖写入 localStorage，崩溃/刷新可恢复 ----
-const DRAFT_KEY = 'jr.draft'
+// ---- 草稿持久化 v2（bug04/05）：新条目与已有条目防抖写入 Misc.drafts，照片随草稿入库 ----
+const DRAFT_KEY = 'jr.draft' // v1 遗留键，仅作旧数据迁移来源
 let draftTimer: ReturnType<typeof setTimeout> | undefined
-let draftRestored = ref('')
-function scheduleDraft() {
-  if (props.entryId != null) return
-  clearTimeout(draftTimer)
-  draftTimer = setTimeout(() => {
-    const text = area.value?.innerHTML || ''
-    if (!text.replace(/<p><br><\/p>|<br>/g, '').trim() && !attachmentCount.value && !staged.value.length) {
-      localStorage.removeItem(DRAFT_KEY)
-      return
-    }
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ text, date: date.value.getTime(), meta: meta.value }))
-  }, 600)
+const draftRestored = ref('')
+function draftKey() { return props.entryId == null ? 'new' : `entry:${props.entryId}` }
+async function loadDraft(key: string) {
+  try {
+    const { miscDb } = await import('~/utils/db')
+    return await miscDb.drafts.get(key)
+  } catch { return undefined }
 }
-function clearDraft() { localStorage.removeItem(DRAFT_KEY) }
+/** 已有条目的草稿文本回存为未解析形态（去 blob: src，保留 data-media-id），恢复时重新解析 */
+function snapshotHtml(): string {
+  const html = area.value?.innerHTML || ''
+  if (props.entryId == null) return html
+  const tpl = document.createElement('template')
+  tpl.innerHTML = html
+  for (const node of Array.from(tpl.content.querySelectorAll('[data-media-id]'))) {
+    node.removeAttribute('src')
+    node.removeAttribute('href')
+  }
+  return tpl.innerHTML
+}
+function scheduleDraft() {
+  clearTimeout(draftTimer)
+  draftTimer = setTimeout(() => { void persistDraft() }, 600)
+}
+async function persistDraft() {
+  const text = snapshotHtml()
+  const nothingSaved = !text.replace(/<p><br><\/p>|<br>/g, '').trim()
+    && !attachmentCount.value && !staged.value.length && !removedMedia.value.length
+    && props.entryId == null
+  if (nothingSaved) {
+    clearDraft()
+    return
+  }
+  try {
+    const { miscDb } = await import('~/utils/db')
+    await miscDb.drafts.put({
+      key: draftKey(),
+      text,
+      date: date.value.getTime(),
+      meta: JSON.parse(JSON.stringify(meta.value)),
+      staged: staged.value.map(f => ({ name: f.name, type: f.type, blob: f })),
+      removed: [...removedMedia.value],
+      updatedAt: new Date(),
+    })
+  } catch { /* 草稿写失败不阻塞编辑 */ }
+}
+function clearDraft() {
+  localStorage.removeItem(DRAFT_KEY)
+  void import('~/utils/db').then(({ miscDb }) => miscDb.drafts.delete(draftKey())).catch(() => {})
+}
+// 元数据/附件变化也触发草稿（日期、天气、标签、增删照片——不只正文输入）
+watch([date, meta, staged, removedMedia], () => { if (initialReady.value) scheduleDraft() }, { deep: true })
 function discardEntry() {
   const text = area.value?.innerHTML || ''
   const hasWork = text.replace(/<p><br><\/p>|<br>/g, '').trim() || attachmentCount.value || staged.value.length

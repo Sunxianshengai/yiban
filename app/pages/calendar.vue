@@ -3,6 +3,7 @@ import { mdiArrowLeft, mdiCalendarMonth, mdiChevronDown, mdiPlus } from '@mdi/js
 import type { EntryV2 } from '~/utils/db'
 
 const route = useRoute()
+const isMobile = useIsMobile()
 const { entries, refresh, allMedia, toggleFavourite, duplicateEntry, saveAsTemplate, moveToTrash } = useEntries()
 const { firstDay, orderedWeekdays } = useWeekStart()
 const today = new Date()
@@ -217,6 +218,34 @@ async function onTrash() {
   await loadThumbnails()
 }
 
+// 移动端：条目点开进全屏详情（复用 EntryDetailMobile）
+const mobileDetail = shallowRef<EntryV2 | null>(null)
+function openMobileDetail(entry: EntryV2) {
+  if (isMobile.value) mobileDetail.value = entry
+  else void selectEntry(entry)
+}
+async function onMobileFavourite() {
+  const id = mobileDetail.value?.id
+  if (id == null) return
+  await toggleFavourite(id)
+  mobileDetail.value = entries.value.find(e => e.id === id) ?? null
+}
+async function onMobileDuplicate() {
+  const id = mobileDetail.value?.id
+  if (id == null) return
+  await duplicateEntry(id)
+  await loadThumbnails()
+  mobileDetail.value = null
+}
+async function onMobileTrash() {
+  const id = mobileDetail.value?.id
+  if (id == null) return
+  await moveToTrash(id)
+  mobileDetail.value = null
+  await refresh()
+  await loadThumbnails()
+}
+
 onMounted(async () => {
   if (selectedKey.value) await positionDay()
   else await positionMonth()
@@ -276,7 +305,7 @@ onBeforeUnmount(() => { thumbGeneration++; releaseThumbnails() })
               <div class="big"><JrIcon :path="mdiCalendarMonth" :size="42" /></div>
               暂无日记。
             </div>
-            <button v-for="entry in dayEntries" :key="entry.id" type="button" class="jr-entry jr-calendar-entry" :class="{ selected: selectedEntry?.id === entry.id }" @click="selectEntry(entry)">
+            <button v-for="entry in dayEntries" :key="entry.id" type="button" class="jr-entry jr-calendar-entry" :class="{ selected: !isMobile && selectedEntry?.id === entry.id }" @click="openMobileDetail(entry)">
               <span class="date">{{ timeFormat.format(entry.dateOfJournal) }}</span>
               <span class="preview">{{ entry.previewText || '无正文' }}</span>
             </button>
@@ -308,6 +337,19 @@ onBeforeUnmount(() => { thumbGeneration++; releaseThumbnails() })
     </dialog>
 
     <EntryEditor v-if="editorOpen" :entry-id="editing?.id" :initial-text="editing?.text" :initial-date="editorDate" :initial-meta="editingMeta" @done="onDone" />
+
+    <EntryDetailMobile
+      v-if="mobileDetail"
+      :entry="mobileDetail"
+      :has-prev="false"
+      :has-next="false"
+      @back="mobileDetail = null"
+      @edit="openEditor(mobileDetail)"
+      @toggle-favourite="onMobileFavourite"
+      @duplicate="onMobileDuplicate"
+      @save-as-template="mobileDetail?.id != null && saveAsTemplate(mobileDetail.id)"
+      @trash="onMobileTrash"
+    />
   </div>
 </template>
 
@@ -354,5 +396,12 @@ onBeforeUnmount(() => { thumbGeneration++; releaseThumbnails() })
   .jr-calendar-detail:not(.has-entry) { display: none; }
   .jr-calendar-detail.has-entry { max-height: 45vh; border-top: 1px solid var(--jr-outline-variant); }
   .jr-calendar-split:has(.has-entry) { grid-template-rows: minmax(0, 1fr) minmax(0, auto); }
+}
+/* 手机（安卓壳）：右侧详情列由全屏详情页替代；跳转钮挪到底栏上方（证据 §6） */
+@media (max-width: 600px) {
+  .jr-calendar-detail { display: none !important; }
+  .jr-calendar-toolbar { min-height: 52px; padding: 0 10px 0 14px; }
+  .jr-calendar-jump { bottom: calc(84px + env(safe-area-inset-bottom)); right: 14px; width: 52px; height: 52px; border-radius: 20px; }
+  .jr-calendar-day-entries { padding: 0 16px calc(84px + env(safe-area-inset-bottom)); }
 }
 </style>

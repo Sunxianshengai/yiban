@@ -8,6 +8,8 @@ import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiA
 const tab = ref<'general' | 'account' | 'security' | 'data' | 'help'>('general')
 const gen = ref<'appearance' | 'unit' | 'location' | 'locale' | 'spellcheck' | 'plugins'>('appearance')
 const { weekStart } = useWeekStart()
+// bug06 修复：计量单位绑定并持久化（原 select 未绑 v-model，选择即丢）
+const { unit } = useUnits()
 const tabs = [
   { key: 'general', label: '通用', icon: mdiCogOutline },
   { key: 'account', label: '账号', icon: mdiAccountOutline },
@@ -220,8 +222,9 @@ async function wipeAll() {
 
           <template v-else-if="gen === 'unit'">
             <div class="jr-set-row"><span class="jr-set-cap">计量单位</span>
-              <select class="jr-set-select"><option>公制</option><option>英制</option></select>
+              <select v-model="unit" class="jr-set-select" aria-label="计量单位"><option value="metric">公制</option><option value="imperial">英制</option></select>
             </div>
+            <p class="jr-muted" style="font-size:11.5px">天气温度将按所选单位显示（数据仍以摄氏保存）。</p>
           </template>
 
           <template v-else-if="gen === 'locale'">

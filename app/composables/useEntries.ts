@@ -111,15 +111,17 @@ export function useEntries() {
     })
   }
 
-  /** Soft delete per original trashesV2 model; snapshot enables restore. */
+  /** Soft delete per original trashesV2 model; snapshot enables restore. Returns trash row id for in-place undo. */
   async function moveToTrash(id: number) {
     const row = await db.entriesV2.get(id)
     if (!row) return
+    let trashId: number | undefined
     await db.transaction('rw', db.entriesV2, db.trashesV2, async () => {
-      await db.trashesV2.add({ linkedAccountId: LOCAL, type: row.type || 'journal', snapshot: row })
+      trashId = await db.trashesV2.add({ linkedAccountId: LOCAL, type: row.type || 'journal', snapshot: row })
       await db.entriesV2.delete(id)
     })
     await refresh()
+    return trashId
   }
 
   async function listTrash() {
