@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { mdiMagnify, mdiFormatListBulleted, mdiCalendarMonth, mdiImageMultipleOutline, mdiMapOutline, mdiRobotOutline, mdiCogOutline, mdiCloudOutline, mdiChatProcessingOutline, mdiWalletGiftcard, mdiStarOutline, mdiLogout } from '@mdi/js'
+import { mdiMagnify, mdiFormatListBulleted, mdiCalendarMonth, mdiImageMultipleOutline, mdiMapOutline, mdiRobotOutline, mdiCogOutline, mdiCloudOutline, mdiChatProcessingOutline, mdiWalletGiftcard, mdiStarOutline, mdiTagOutline, mdiLogout } from '@mdi/js'
 
 const route = useRoute()
 const search = ref('')
 const tagsOpen = ref(false)
 const membershipOpen = useMembershipDialog()
 // 设置弹窗在当前页之上打开（原版行为：Settings 点开为居中弹窗，不离开当前页）
+const { listTags } = useEntries()
+const tags = ref<{ id?: number; title: string }[]>([])
+onMounted(async () => { tags.value = await listTags() })
 const settingsOpen = useState('jr.settingsOpen', () => false)
 
 const nav = [
@@ -60,9 +63,14 @@ const utils = [
       <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" :style="{ transform: tagsOpen ? 'rotate(180deg)' : '' }"><path d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z" /></svg>
     </button>
     <template v-if="tagsOpen">
-      <NuxtLink to="/starred" class="jr-nav-item" :class="{ active: route.path === '/starred' }">
+      <NuxtLink to="/search/results?starred=1&favourite=true" class="jr-nav-item" :class="{ active: route.path === '/search/results' && route.query.starred === '1' }">
         <JrIcon :path="mdiStarOutline" :size="21" />
         <span>收藏</span>
+      </NuxtLink>
+      <p v-if="!tags.length" class="jr-muted" style="font-size:12px;padding:4px 14px">暂无标签</p>
+      <NuxtLink v-for="t in tags" :key="t.id" :to="{ path: '/search/results', query: { tags: String(t.id) } }" class="jr-nav-item" :class="{ active: route.path === '/search/results' && String(route.query.tags || '').split(',').includes(String(t.id)) }">
+        <JrIcon :path="mdiTagOutline" :size="19" />
+        <span style="overflow:hidden;text-overflow:ellipsis">{{ t.title }}</span>
       </NuxtLink>
     </template>
 

@@ -67,6 +67,9 @@ onMounted(async () => {
 })
 
 const selected = ref<EntryV2 | null>(null)
+const editorOpen = ref(false)
+const editingId = ref<number | undefined>(undefined)
+function editSelected(e: EntryV2) { editingId.value = e.id ?? undefined; editorOpen.value = true }
 function open(e: EntryV2) {
   selected.value = e
 }
@@ -139,13 +142,17 @@ function rowDate(e: EntryV2) {
           </div>
         </div>
         <JournalBody :entry="selected" />
-        <NuxtLink class="jr-btn" :to="{ path: '/', query: { entry: selected.id } }">在时间线中打开</NuxtLink>
+        <div class="jr-pop-row" style="justify-content:center">
+          <button class="jr-btn jr-btn-primary" @click="editSelected(selected)">编辑</button>
+          <NuxtLink class="jr-btn" :to="{ path: '/', query: { entry: selected.id } }">在时间线中打开</NuxtLink>
+        </div>
       </div>
       <div v-else class="jr-empty" style="margin:auto">
         <div class="big"><JrIcon :path="mdiBookOutline" :size="46" /></div>
         请选择一篇日记。
       </div>
     </div>
+    <EntryEditor v-if="editorOpen" :entry-id="editingId" @done="editorOpen = false; selected = null" />
   </div>
 </template>
 

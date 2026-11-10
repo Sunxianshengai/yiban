@@ -77,6 +77,19 @@ let unsubscribeSave: (() => void) | undefined
 const voice = useVoiceNote(file => addAttachments([file], true), message => { attachmentNote.value = message })
 const recordingStatus = voice.status
 
+async function renameTemplate(t: { id?: number; name: string }) {
+  const name = window.prompt('重命名模板', t.name)?.trim()
+  if (!name || name === t.name || t.id == null) return
+  const { miscDb } = await import('~/utils/db')
+  await miscDb.templates.update(t.id, { name })
+  await loadTemplates()
+}
+async function deleteTemplate(t: { id?: number; name: string }) {
+  if (t.id == null || !window.confirm(`删除模板「${t.name}」？`)) return
+  const { miscDb } = await import('~/utils/db')
+  await miscDb.templates.delete(t.id)
+  await loadTemplates()
+}
 async function loadTemplates() {
   const { miscDb } = await import('~/utils/db')
   templates.value = (await miscDb.templates.toArray()).map((t) => ({ id: t.id, name: t.name, content: t.content }))
@@ -1092,7 +1105,11 @@ async function save() {
           <p v-if="coachNote" role="status" class="jr-import-msg">{{ coachNote }}</p>
           <div class="jr-tpl-sec-head"><span>自定义模板</span></div>
           <div v-if="!templates.length" class="jr-muted jr-tpl-empty">暂无内容</div>
-          <button v-for="t in templates" :key="t.id" class="jr-pop-item" @click="insertTemplate(t); templateDialog = false">{{ t.name }}</button>
+          <div v-for="t in templates" :key="t.id" class="jr-share-acct">
+            <button class="jr-pop-item" style="flex:1" @click="insertTemplate(t); templateDialog = false">{{ t.name }}</button>
+            <button class="jr-icon-btn" title="重命名" aria-label="重命名模板" @click="renameTemplate(t)"><JrIcon :path="mdiPencil" :size="16" /></button>
+            <button class="jr-link-danger" @click="deleteTemplate(t)">删除</button>
+          </div>
           <div class="jr-tpl-sec-head"><span>离线模板</span></div>
           <div class="jr-muted jr-tpl-empty">暂无内容</div>
         </div>

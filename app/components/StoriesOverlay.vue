@@ -9,13 +9,20 @@ import type { EntryV2 } from '~/utils/db'
  * 卡2 日历（深色格，有日记日高亮）；卡3 Coach（web 变体被会员门控，复刻保留本地诚实版）；
  * 另按官方描述含 Throwback 回顾卡。
  */
-const props = defineProps<{ throwbacks: EntryV2[] }>()
+const props = defineProps<{ throwbacks: EntryV2[]; startKind?: 'stats' | 'throwback' | 'calendar' | 'coach' }>()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 const { entries } = useEntries()
 
 const DURATION = 4500
 const idx = ref(0)
+// 审计 #14：从指定卡开始（「往日回忆」直接落在回忆卡）
+const startIdx = computed(() => {
+  const k = props.startKind
+  if (!k) return 0
+  const i = cards.value.findIndex((c) => c.kind === k)
+  return i >= 0 ? i : 0
+})
 const paused = ref(false)
 let elapsed = 0
 let startedAt = 0
@@ -71,6 +78,8 @@ function tick(ts: number) {
   raf = requestAnimationFrame(tick)
 }
 function advance() { idx.value = (idx.value + 1) % cards.value.length; progress.value = 0 }
+watch(idx, () => {}, { once: true })
+onMounted(() => { idx.value = startIdx.value })
 function go(delta: number) {
   idx.value = (idx.value + delta + cards.value.length) % cards.value.length
   progress.value = 0; elapsed = 0; startedAt = 0

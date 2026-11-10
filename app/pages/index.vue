@@ -12,6 +12,7 @@ const selected = ref<EntryV2 | null>(null)
 const throwbackList = ref<EntryV2[]>([])
 const throwbackLabel = ref('今天没有往日回忆')
 const storiesOpen = ref(false)
+const storiesStart = ref<'stats' | 'throwback'>('stats')
 
 onMounted(async () => {
   const tb = await throwbacks()
@@ -47,8 +48,9 @@ onBeforeUnmount(() => { thumbsGeneration++; releaseThumbnails() })
 
 // sort menu — faithful to menu-sort.png: "Entry Date" (with direction arrow) / "Last Modified"
 const sortMenuOpen = ref(false)
-const sortKey = ref<'entryDate' | 'lastModified'>('entryDate')
-const sortDir = ref<'desc' | 'asc'>('desc')
+const sortKey = ref<'entryDate' | 'lastModified'>(localStorage.getItem('jr.sortKey') === 'lastModified' ? 'lastModified' : 'entryDate')
+const sortDir = ref<'desc' | 'asc'>(localStorage.getItem('jr.sortDir') === 'asc' ? 'asc' : 'desc')
+watch([sortKey, sortDir], ([k, d]) => { localStorage.setItem('jr.sortKey', k); localStorage.setItem('jr.sortDir', d) })
 const sortedEntries = computed(() => {
   const list = [...entries.value]
   list.sort((a, b) => {
@@ -156,12 +158,12 @@ async function onFavourite() {
 
       <div class="jr-stories-title">回顾故事</div>
       <div class="jr-stories">
-        <button class="jr-story-card today" @click="storiesOpen = true">
+        <button class="jr-story-card today" @click="storiesStart = 'stats'; storiesOpen = true">
           <span class="icon"><JrIcon :path="mdiBookmark" :size="22" /></span>
           <span class="t">今天</span>
           <span class="s">{{ todayLabel }}</span>
         </button>
-        <button class="jr-story-card throwback" @click="storiesOpen = true">
+        <button class="jr-story-card throwback" @click="storiesStart = 'throwback'; storiesOpen = true">
           <span class="icon"><JrIcon :path="mdiHistory" :size="22" /></span>
           <span class="t">往日回忆</span>
           <span class="s">{{ throwbackLabel }}</span>
@@ -231,6 +233,6 @@ async function onFavourite() {
       />
     </div>
 
-    <StoriesOverlay v-if="storiesOpen" :throwbacks="throwbackList" @close="storiesOpen = false" />
+    <StoriesOverlay v-if="storiesOpen" :throwbacks="throwbackList" :start-kind="storiesStart" @close="storiesOpen = false" />
   </div>
 </template>

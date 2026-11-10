@@ -6,6 +6,7 @@ const { allMedia, deleteMedia } = useEntries()
 const items = ref<(MediaFileV2 & { url?: string })[]>([])
 const filter = ref<'all' | 'image' | 'video' | 'audio'>('all')
 const selectedId = ref<number | null>(null)
+const editorOpen = ref(false)
 const error = ref('')
 let loadGeneration = 0
 
@@ -81,6 +82,7 @@ function fmt(d?: Date) {
           <h2>{{ selected.fileName }}</h2>
           <p class="jr-muted">{{ fmt(selected.createdAt) }} · {{ selected.mimeType }}</p>
           <div class="jr-pop-row" style="justify-content:center">
+            <button class="jr-btn jr-btn-primary" @click="editorOpen = true">编辑</button>
             <NuxtLink class="jr-btn" :to="{ path: '/', query: { entry: selected.jId } }">打开所属条目</NuxtLink>
             <button class="jr-link-danger" @click="remove(selected.id!)">删除</button>
           </div>
@@ -91,6 +93,7 @@ function fmt(d?: Date) {
         </template>
       </aside>
     </div>
+    <EntryEditor v-if="editorOpen" :entry-id="selected?.jId" @done="editorOpen = false; load()" />
   </div>
 </template>
 
