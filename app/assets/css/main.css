@@ -603,6 +603,28 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
   color: var(--jr-on-primary);
 }
 
+/* 桌面深色补全：写死浅色的组件面（双端验收发现） */
+[data-theme="dark"] .jr-list-col { background: var(--jr-bg); border-right-color: var(--jr-outline-variant); }
+[data-theme="dark"] .jr-detail-col { background: var(--jr-bg); }
+[data-theme="dark"] .jr-nav-sep { background: var(--jr-outline-variant); }
+[data-theme="dark"] .jr-story-card.today { background: #3a3552; color: #d9d4f2; }
+[data-theme="dark"] .jr-story-card.throwback { background: linear-gradient(180deg, #3c4148 0%, #22282c 100%); color: #cfd6da; }
+[data-theme="dark"] .jr-entry:hover { background: var(--jr-layer-high); }
+[data-theme="dark"] .jr-entry.selected { background: var(--jr-layer-highest); }
+[data-theme="dark"] .jr-banner.cloud { background: #3a2426; color: #e8c4c0; }
+[data-theme="dark"] .jr-banner.member { background: #2e2a45; color: #cfc9ee; }
+[data-theme="dark"] .jr-banner.cloud .act { background: #4a2f2c; color: #e8c4c0; }
+[data-theme="dark"] .jr-detail-bar { background: var(--jr-layer); }
+[data-theme="dark"] .jr-editor-head { background: linear-gradient(180deg, #171c1e, var(--jr-bg)); }
+[data-theme="dark"] .jr-editor-head .done { background: var(--jr-layer-high); }
+[data-theme="dark"] .jr-editor-head .done:hover { background: var(--jr-layer-highest); }
+[data-theme="dark"] .jr-editor-toolbar { background: var(--jr-layer-low); border-top-color: var(--jr-outline-variant); }
+[data-theme="dark"] .jr-editor-toolbar .sep { background: var(--jr-outline-variant); }
+[data-theme="dark"] .jr-editor-ph .jr-template-chip { background: var(--jr-layer-high); }
+[data-theme="dark"] .jr-btn { background: var(--jr-layer-high); }
+[data-theme="dark"] .jr-btn:hover { background: var(--jr-layer-highest); }
+[data-theme="dark"] .jr-menu button:hover { background: var(--jr-layer-high); }
+
 /* 审计 #22：窄屏响应式（≤820px，平板抽屉区；≤600px 由移动壳接管） */
 @media (max-width: 820px) {
   .jr-shell { display: block; position: relative; }
