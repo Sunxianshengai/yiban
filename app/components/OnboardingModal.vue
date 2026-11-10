@@ -104,4 +104,7 @@ async function mEnableNotifications() {
 .jr-moboard p { font-size: 14.5px; color: var(--jr-on-surface-variant); line-height: 1.7; margin: 0 0 28px; max-width: 320px; }
 .jr-moboard .cta { background: var(--jr-primary); color: var(--jr-on-primary); border: 0; border-radius: 999px; padding: 15px 44px; font-size: 16px; font-weight: 800; font-family: inherit; }
 .jr-moboard .skip { margin-top: 16px; background: none; border: 0; color: var(--jr-on-surface-variant); font-size: 14px; font-family: inherit; padding: 8px 16px; }
+[data-theme="dark"] .jr-moboard { background: linear-gradient(180deg, #1a2124 0%, #20262a 100%); }
+[data-theme="dark"] .jr-moboard .bar { background: #2f3a3e; }
+[data-theme="dark"] .jr-moboard p { color: #9fb0b5; }
 </style>

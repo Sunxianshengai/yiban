@@ -30,7 +30,7 @@ onMounted(async () => {
   tagTitles.value = m
 })
 
-const day = computed(() => new Intl.DateTimeFormat('zh-CN', { day: '2-digit' }).format(props.entry.dateOfJournal))
+const day = computed(() => String(new Date(props.entry.dateOfJournal).getDate()).padStart(2, '0'))
 const d1 = computed(() => new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', year: 'numeric' }).format(props.entry.dateOfJournal))
 const d2 = computed(() => new Intl.DateTimeFormat('zh-CN', { weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(props.entry.dateOfJournal))
 
@@ -109,6 +109,7 @@ watch(() => props.entry.id, () => { menuOpen.value = false; actionStatus.value =
 <style scoped>
 .jr-mdetail { position: fixed; inset: 0; z-index: 200; background: var(--jr-bg); display: flex; flex-direction: column; }
 .bar { display: flex; align-items: center; gap: 2px; padding: 10px 8px; background: var(--jr-secondary-container); position: relative; }
+[data-theme="dark"] .bar { background: #24363c; }
 .bar .sp { flex: 1; }
 .ico { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: transparent; border: 0; color: var(--jr-on-bg); }
 .ico:active { background: rgba(0, 60, 70, 0.12); }

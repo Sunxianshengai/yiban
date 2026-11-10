@@ -504,4 +504,12 @@ async function onFavourite() {
   font-size: 13.5px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
 }
 .msnack button { margin-left: auto; background: transparent; border: 0; color: #85d1e8; font-weight: 700; font-size: 13.5px; }
+/* 深色主题:卡片与横幅走暗色 */
+[data-theme="dark"] .mrow { background: #26333a; }
+[data-theme="dark"] .mstories .card.today { background: #3a3552; color: #d9d4f2; }
+[data-theme="dark"] .mstories .card.throwback { background: #3c4148; color: #cfd6da; }
+[data-theme="dark"] .banner { background: #24363c; }
+[data-theme="dark"] .banner .d { color: #9fb0b5; }
+[data-theme="dark"] .mdlg { background: #2b3236; }
+[data-theme="dark"] .mdlg p { color: #9fb0b5; }
 </style>

@@ -437,4 +437,11 @@ async function wipeAll() {
 .mcircles { display: flex; flex-wrap: wrap; gap: 10px; padding: 4px 0; }
 .mcircle { width: 32px; height: 32px; border-radius: 50%; border: 0; display: flex; align-items: center; justify-content: center; color: #fff; cursor: pointer; }
 .mcircle.on { outline: 3px solid var(--jr-primary); outline-offset: 2px; }
+/* 深色主题 */
+[data-theme="dark"] .mlogin { background: #234048; }
+[data-theme="dark"] .mlogin-txt { color: #cfe0e6; }
+[data-theme="dark"] .mlogin-txt b { color: #e6f0f4; }
+[data-theme="dark"] .mselect { background: #2b3236; color: var(--jr-on-bg); }
+[data-theme="dark"] .minput { background: #2b3236; color: var(--jr-on-bg); border-color: var(--jr-outline-variant); }
+[data-theme="dark"] .mset-row { border-bottom-color: #394247; }
 </style>

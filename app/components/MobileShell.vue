@@ -98,4 +98,12 @@ function isActive(to: string) {
 .tab.on { color: var(--jr-primary); font-weight: 700; }
 .tab.on .tico { background: var(--jr-secondary-container); }
 .tlabel { font-size: 11.5px; }
+/* 深色主题:壳面走暗层 */
+[data-theme="dark"] .jr-mtopbar .pill { background: var(--jr-layer, #303638); border-color: var(--jr-outline-variant); box-shadow: none; }
+[data-theme="dark"] .jr-journal-pop { background: var(--jr-layer-high, #3a4144); }
+[data-theme="dark"] .jrow.on { background: var(--jr-layer-highest, #303638); }
+[data-theme="dark"] .jr-mtabs { background: var(--jr-layer, #242a2c); border-top-color: var(--jr-outline-variant); }
+[data-theme="dark"] .tab { color: #9fb0b5; }
+[data-theme="dark"] .tab.on { color: var(--jr-primary-fixed-dim, #85d1e8); }
+[data-theme="dark"] .tab.on .tico { background: #2b4449; }
 </style>

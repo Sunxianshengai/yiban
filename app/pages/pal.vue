@@ -98,4 +98,6 @@ const configured = computed(() => !!endpoint.value.trim())
 .scene-card h2 { margin: 0; font-size: 21px; font-weight: 800; }
 .scene-card p { margin: 0; font-size: 13px; color: var(--jr-on-surface-variant); }
 .scene-card input { border: 1px solid var(--jr-outline-variant); border-radius: 10px; padding: 11px 12px; font-family: inherit; font-size: 14px; background: #fff; color: var(--jr-on-bg); }
+[data-theme="dark"] .jr-pal-scene { background: linear-gradient(180deg, #1d2427 0%, #23282b 55%, #2b2b28 100%); }
+[data-theme="dark"] .scene-card { background: #242b2e; }
 </style>
