@@ -1,3 +1,7 @@
+<script setup lang="ts">
+const router = useRouter()
+</script>
+
 <template>
-  <SettingsView />
+  <SettingsView @close="router.back()" />
 </template>

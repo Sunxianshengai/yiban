@@ -50,7 +50,7 @@ function pickCircle(i: number) {
 }
 
 // Security — PIN lock (real, local)
-const pinHash = localStorage.getItem('jr.pinHash') || ''
+const pinHash = ref(localStorage.getItem('jr.pinHash') || '')
 const pinInput = ref('')
 const pinMsg = ref('')
 async function sha256(s: string) {
@@ -59,13 +59,15 @@ async function sha256(s: string) {
 }
 async function setPin() {
   if (!/^\d{4,8}$/.test(pinInput.value)) { pinMsg.value = '密码必须是 4 至 8 位数字。'; return }
-  localStorage.setItem('jr.pinHash', await sha256(pinInput.value))
+  pinHash.value = await sha256(pinInput.value)
+  localStorage.setItem('jr.pinHash', pinHash.value)
   pinInput.value = ''
   pinMsg.value = '密码已设置。下次打开新会话时需要解锁。'
 }
 async function removePin() {
-  if (await sha256(pinInput.value) !== pinHash) { pinMsg.value = '密码不正确。'; return }
+  if (await sha256(pinInput.value) !== pinHash.value) { pinMsg.value = '密码不正确。'; return }
   localStorage.removeItem('jr.pinHash')
+  pinHash.value = ''
   pinInput.value = ''
   pinMsg.value = '密码已移除。'
 }
@@ -156,9 +158,9 @@ async function wipeAll() {
 </script>
 
 <template>
-  <div class="jr-modal-mask" @click.self="$router.back()">
+  <div class="jr-modal-mask" @click.self="$emit('close')">
     <div class="jr-modal">
-      <button class="jr-modal-x" @click="$router.back()"><JrIcon :path="mdiClose" :size="16" /></button>
+      <button class="jr-modal-x" @click="$emit('close')"><JrIcon :path="mdiClose" :size="16" /></button>
       <div class="jr-modal-tabs">
         <button v-for="t in tabs" :key="t.key" class="jr-modal-tab" :class="{ on: tab === t.key }" @click="tab = t.key">
           <JrIcon :path="t.icon" :size="20" />

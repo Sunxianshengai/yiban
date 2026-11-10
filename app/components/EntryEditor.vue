@@ -127,8 +127,21 @@ onMounted(async () => {
     }, false)
     recount()
   } else if (area.value && !area.value.innerHTML.trim()) {
-    // seed an empty block so formatBlock/style commands always have a target
-    area.value.innerHTML = '<p><br></p>'
+    // 审计 #1：恢复未保存草稿（新条目）
+    try {
+      const raw = localStorage.getItem('jr.draft')
+      if (raw && props.entryId == null) {
+        const d = JSON.parse(raw)
+        area.value.innerHTML = d.text
+        if (d.date) date.value = new Date(d.date)
+        if (d.meta) meta.value = { ...meta.value, ...d.meta }
+        draftRestored.value = '已恢复未保存的草稿。'
+      }
+    } catch { localStorage.removeItem('jr.draft') }
+    if (!area.value.innerHTML.trim()) {
+      // seed an empty block so formatBlock/style commands always have a target
+      area.value.innerHTML = '<p><br></p>'
+    }
   }
   initialReady.value = true
   tags.value = await listTags()
@@ -140,6 +153,33 @@ onBeforeUnmount(() => {
   unsubscribeSave?.()
   for (const url of previewUrls) URL.revokeObjectURL(url)
 })
+
+
+// ---- 草稿持久化（审计 #1）：新条目未保存内容防抖写入 localStorage，崩溃/刷新可恢复 ----
+const DRAFT_KEY = 'jr.draft'
+let draftTimer: ReturnType<typeof setTimeout> | undefined
+let draftRestored = ref('')
+function scheduleDraft() {
+  if (props.entryId != null) return
+  clearTimeout(draftTimer)
+  draftTimer = setTimeout(() => {
+    const text = area.value?.innerHTML || ''
+    if (!text.replace(/<p><br><\/p>|<br>/g, '').trim() && !attachmentCount.value && !staged.value.length) {
+      localStorage.removeItem(DRAFT_KEY)
+      return
+    }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ text, date: date.value.getTime(), meta: meta.value }))
+  }, 600)
+}
+function clearDraft() { localStorage.removeItem(DRAFT_KEY) }
+function discardEntry() {
+  const text = area.value?.innerHTML || ''
+  const hasWork = text.replace(/<p><br><\/p>|<br>/g, '').trim() || attachmentCount.value || staged.value.length
+    || (props.entryId != null && text !== props.initialText)
+  if (hasWork && !window.confirm('放弃未保存的内容并退出编辑？')) return
+  clearDraft()
+  emit('done')
+}
 
 function recount() {
   const t = area.value?.innerText || ''
@@ -253,6 +293,8 @@ function insertTaskList() {
 /** Markdown auto-convert on space, per official "partial Markdown auto conversion": #-h1..h3, >-quote, -/*-ul, 1.-ol, []-task. */
 function onAreaKeydown(e: KeyboardEvent) {
   saveSel()
+  // 审计 #2：Esc 取消编辑（弹层打开时由各弹层自身处理）
+  if (e.key === 'Escape' && !openPop.value && !datePop.value) { discardEntry(); return }
   // Tab / Shift+Tab adjust list indentation (official desktop behavior [J8])
   if (e.key === 'Tab') {
     const sel = window.getSelection()
@@ -654,6 +696,7 @@ async function save() {
   saving.value = true
   try {
     await saveEntry(props.entryId, empty ? '' : text, date.value, meta.value, staged.value, removedMedia.value)
+    clearDraft()
     emit('done')
   } catch (error) {
     attachmentNote.value = errorText(error, '无法保存日记，请重试。')
@@ -665,12 +708,14 @@ async function save() {
 
 <template>
   <div class="jr-editor" @dragover="($event.dataTransfer?.types || []).includes('Files') && $event.preventDefault()" @drop="onFileDrop">
+    <p v-if="draftRestored" class="jr-draft-note" role="status">{{ draftRestored }}</p>
     <div class="jr-editor-head">
       <button class="dt" @click="openDatePicker">
         <JrIcon :path="mdiCalendarBlankOutline" :size="19" />
         <span>{{ dateLabel }}</span>
         <JrIcon :path="mdiChevronDown" :size="18" />
       </button>
+      <button class="jr-icon-btn" type="button" title="取消编辑（Esc）" aria-label="取消编辑" @click="discardEntry"><JrIcon :path="mdiClose" :size="20" /></button>
       <button class="done" :disabled="!initialReady || saving || checkingFiles || nativePicking || recordingStatus !== 'idle'" @click="save">{{ saving ? '正在保存…' : '完成' }}</button>
       <div v-if="datePop" class="jr-pop jr-dp" @click.stop>
         <div class="jr-pop-head">
@@ -702,7 +747,7 @@ async function save() {
         class="jr-editor-area"
         :contenteditable="initialReady ? 'true' : 'false'"
         :spellcheck="spellcheck"
-        @input="recount(); saveSel(); touched = true"
+        @input="recount(); saveSel(); touched = true; scheduleDraft()"
         @paste="onPaste"
         @contextmenu="openTableMenu"
         @keydown="onAreaKeydown"

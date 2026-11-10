@@ -24,6 +24,7 @@ onBeforeUnmount(() => {
 })
 
 async function remove(id: number) {
+  if (!window.confirm('删除此媒体文件并移除日记中的引用？此操作不可撤销。')) return
   error.value = ''
   try { await deleteMedia(id); await load() }
   catch { error.value = '无法移除附件。' }
