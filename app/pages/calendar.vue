@@ -264,7 +264,7 @@ onBeforeUnmount(() => { thumbGeneration++; releaseThumbnails() })
       <button class="jr-calendar-add" type="button" title="新建日记" @click="openEditor()"><JrIcon :path="mdiPlus" :size="22" /></button>
     </header>
     <div class="jr-calendar-split">
-      <section class="jr-calendar-leading" aria-label="日历">
+      <section class="jr-calendar-leading" :class="{ dayview: !!selectedDate }" aria-label="日历">
         <template v-if="!selectedDate">
           <div class="jr-cal-grid jr-cal-dow">
             <span v-for="day in orderedWeekdays" :key="day">{{ day }}</span>
@@ -292,6 +292,7 @@ onBeforeUnmount(() => { thumbGeneration++; releaseThumbnails() })
           <button class="jr-calendar-jump" type="button" title="跳转到指定年月" @click="openPicker"><JrIcon :path="mdiCalendarMonth" :size="22" /></button>
         </template>
         <template v-else>
+          <h2 class="jr-cal-day-title">{{ fullDate.format(selectedDate) }}</h2>
           <div ref="dayStrip" class="jr-calendar-day-strip" aria-label="选择日期">
             <button v-for="day in daysAround" :key="day.key" type="button" :title="fullDate.format(day.date)"
               :aria-current="day.key === selectedKey ? 'date' : undefined" @click="chooseDay(day.key, true)">
@@ -303,7 +304,8 @@ onBeforeUnmount(() => { thumbGeneration++; releaseThumbnails() })
           <div class="jr-calendar-day-entries" aria-label="当天的日记">
             <div v-if="!dayEntries.length" class="jr-empty">
               <div class="big"><JrIcon :path="mdiCalendarMonth" :size="42" /></div>
-              暂无日记。
+              这一天没有日记条目。
+              <p class="jr-muted" style="font-size:12.5px">此处将显示这一天的条目。</p>
             </div>
             <button v-for="entry in dayEntries" :key="entry.id" type="button" class="jr-entry jr-calendar-entry" :class="{ selected: !isMobile && selectedEntry?.id === entry.id }" @click="openMobileDetail(entry)">
               <span class="date">{{ timeFormat.format(entry.dateOfJournal) }}</span>
@@ -398,10 +400,16 @@ onBeforeUnmount(() => { thumbGeneration++; releaseThumbnails() })
   .jr-calendar-split:has(.has-entry) { grid-template-rows: minmax(0, 1fr) minmax(0, auto); }
 }
 /* 手机（安卓壳）：右侧详情列由全屏详情页替代；跳转钮挪到底栏上方（证据 §6） */
+.jr-cal-day-title { display: none; }
 @media (max-width: 600px) {
   .jr-calendar-detail { display: none !important; }
   .jr-calendar-toolbar { min-height: 52px; padding: 0 10px 0 14px; }
   .jr-calendar-jump { bottom: calc(84px + env(safe-area-inset-bottom)); right: 14px; width: 52px; height: 52px; border-radius: 20px; }
+  /* 点日期 = 独立整页日视图（证据 r31：←/+ 头部 + 大日期标题 + 日期条带） */
+  .jr-calendar-leading.dayview { position: fixed; inset: 0; z-index: 150; background: var(--jr-bg); }
+  .jr-cal-day-title { display: block; margin: 22px 18px 14px; font-size: 30px; font-weight: 800; }
+  .jr-calendar-day-strip button[aria-current='date'] { background: #e7e4f5; color: #1b1b33; }
+  .jr-calendar-day-strip button span { color: inherit; opacity: .75; }
   .jr-calendar-day-entries { padding: 0 16px calc(84px + env(safe-area-inset-bottom)); }
 }
 </style>

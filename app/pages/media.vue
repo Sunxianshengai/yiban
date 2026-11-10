@@ -118,5 +118,8 @@ function fmt(d?: Date) {
   .jr-media-detail.has-media { position: fixed; inset: 0; z-index: 150; background: var(--jr-bg); }
   .jr-media-back { position: absolute; top: 12px; left: 10px; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--jr-secondary-container); color: var(--jr-on-bg); }
   .jr-media-preview { max-width: calc(100% - 24px); max-height: 56vh; }
+  /* 原版移动媒体页无日记本工具条与筛选 chips（r25） */
+  .jr-media-toolbar { display: none; }
+  .jr-media-filters { display: none; }
 }
 </style>

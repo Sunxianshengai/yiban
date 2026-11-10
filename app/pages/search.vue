@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiFilterVariant, mdiImageOutline, mdiBookOutline, mdiStarOutline, mdiTagOutline, mdiArrowLeft, mdiClose, mdiChevronDown, mdiCloudUploadOutline } from '@mdi/js'
+import { mdiFilterVariant, mdiImageOutline, mdiBookOutline, mdiStarOutline, mdiTagOutline, mdiArrowLeft, mdiClose, mdiChevronDown, mdiCloudUploadOutline, mdiCloudOutline, mdiChevronRight, mdiPuzzleOutline, mdiAccountOutline, mdiCogOutline } from '@mdi/js'
 import type { EntryV2, TagWordV2 } from '~/utils/db'
 import { htmlToPreview } from '~/utils/db'
 import { activities, journalActivity, journalSentiment, sentiments } from '~/utils/journalOptions'
@@ -14,6 +14,7 @@ const q = ref(routeText.value)
 watch(routeText, value => { q.value = value })
 
 const { entries, listTags, allMedia } = useEntries()
+const membershipOpen = useMembershipDialog()
 const tags = ref<TagWordV2[]>([])
 const filtersOpen = ref(false)
 // 移动端筛选行展开态（原版为行式 + 展开箭头）
@@ -179,6 +180,34 @@ async function onMobileFavourite() {
           <span class="prev">媒体附件 · 所属日记</span>
         </button>
       </template>
+
+      <!-- 「我的」面板（证据 r05：搜索页下半 = 云服务/升级/插件/登录/设置） -->
+      <div class="psec">服务</div>
+      <NuxtLink class="prow" to="/cloud">
+        <span class="fico" style="color:var(--jr-primary)"><JrIcon :path="mdiCloudOutline" :size="20" /></span>
+        <span class="ft">云服务</span>
+        <JrIcon class="fchev" :path="mdiChevronRight" :size="20" />
+      </NuxtLink>
+      <button type="button" class="prow" @click="membershipOpen = true">
+        <span class="fico" style="color:#e2a03f"><JrIcon :path="mdiStarOutline" :size="20" /></span>
+        <span class="ft">升级</span>
+        <JrIcon class="fchev" :path="mdiChevronRight" :size="20" />
+      </button>
+      <NuxtLink class="prow" to="/addons">
+        <span class="fico" style="color:#66bb6a"><JrIcon :path="mdiPuzzleOutline" :size="20" /></span>
+        <span class="ft">插件</span>
+        <JrIcon class="fchev" :path="mdiChevronRight" :size="20" />
+      </NuxtLink>
+      <NuxtLink class="prow" to="/cloud">
+        <span class="fico" style="color:#5c6bc0"><JrIcon :path="mdiAccountOutline" :size="20" /></span>
+        <span class="ft">登录 Journey</span>
+        <JrIcon class="fchev" :path="mdiChevronRight" :size="20" />
+      </NuxtLink>
+      <NuxtLink class="prow" to="/settings">
+        <span class="fico" style="color:#78909c"><JrIcon :path="mdiCogOutline" :size="20" /></span>
+        <span class="ft">设置</span>
+        <JrIcon class="fchev" :path="mdiChevronRight" :size="20" />
+      </NuxtLink>
       <div style="height:24px" />
     </div>
 
@@ -307,4 +336,12 @@ async function onMobileFavourite() {
 .mrow .prev { font-size: 13.5px; color: var(--jr-on-surface-variant); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 .mrow .up { color: #e05a4e; }
 .mempty2 { text-align: center; padding: 60px 0 30px; color: var(--jr-outline); }
+.psec { font-size: 13px; color: var(--jr-on-surface-variant); margin: 26px 0 4px; }
+.prow {
+  display: flex; align-items: center; gap: 14px; width: 100%;
+  background: transparent; border: 0; border-bottom: 1px solid var(--jr-outline-variant);
+  padding: 16px 4px; font-size: 15.5px; font-weight: 600; font-family: inherit; color: var(--jr-on-bg);
+  text-decoration: none; text-align: left;
+}
+.prow .ft { flex: 1; }
 </style>

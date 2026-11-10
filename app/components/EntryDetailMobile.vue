@@ -84,6 +84,9 @@ watch(() => props.entry.id, () => { menuOpen.value = false; actionStatus.value =
         <div v-if="!entry.synced" class="up" title="仅保存在本机">
           <JrIcon :path="mdiCloudUploadOutline" :size="18" />
         </div>
+        <span v-if="entry.favourite" class="starmark" title="已收藏">
+          <JrIcon :path="mdiStar" :size="16" />
+        </span>
       </div>
       <div class="chips">
         <span v-if="entry.sentiment" class="chip">{{ { excited: '😆', happy: '😊', calm: '😌', 'so-so': '😐', tired: '😪', sad: '😢', angry: '😠', anxious: '😰' }[entry.sentiment] || entry.sentiment }}</span>
@@ -116,6 +119,8 @@ watch(() => props.entry.id, () => { menuOpen.value = false; actionStatus.value =
 .dayblock .when .d1 { font-weight: 700; font-size: 14.5px; }
 .dayblock .when .d2 { font-size: 13px; color: var(--jr-on-surface-variant); }
 .dayblock .up { color: #e05a4e; margin-left: auto; }
+.starmark { color: #e2a03f; margin-left: auto; display: flex; }
+.dayblock .up + .starmark { margin-left: 0; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
 .chip { background: var(--jr-surface-variant); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--jr-on-surface-variant); }
 .note { font-size: 12px; color: var(--jr-outline); }
