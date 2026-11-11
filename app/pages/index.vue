@@ -31,23 +31,34 @@ onMounted(async () => {
 })
 
 const thumbs = ref<Record<number, string>>({})
+const { prefetch: prefetchMedia, urlForSync: mediaUrl } = useMediaResolver()
 let thumbsGeneration = 0
 function releaseThumbnails() {
-  for (const url of Object.values(thumbs.value)) URL.revokeObjectURL(url)
+  for (const url of Object.values(thumbs.value)) if (url.startsWith('blob:')) URL.revokeObjectURL(url)
 }
 async function loadThumbnails() {
   const generation = ++thumbsGeneration
   const media = await allMedia()
   if (generation !== thumbsGeneration) return
+  // 云端来的图片没有本地 blob，先换预签名地址，否则列表里就没缩略图
+  await prefetchMedia(media.filter(m => m.mimeType.startsWith('image/')))
+  if (generation !== thumbsGeneration) return
   const map: Record<number, string> = {}
   for (const m of media) {
-    if (m.jId != null && m.blob && m.mimeType.startsWith('image/') && map[m.jId] == null) {
-      map[m.jId] = URL.createObjectURL(m.blob)
+    if (m.jId != null && m.mimeType.startsWith('image/') && map[m.jId] == null) {
+      const url = mediaUrl(m)
+      if (url) map[m.jId] = url
     }
   }
-  releaseThumbnails()
+  oldThumbs = { ...thumbs.value }
   thumbs.value = map
+  // 旧地址要等 DOM 换完再释放，否则会闪白
+  queueMicrotask(() => {
+    for (const url of Object.values(oldThumbs)) if (url.startsWith('blob:') && !Object.values(map).includes(url)) URL.revokeObjectURL(url)
+    oldThumbs = {}
+  })
 }
+let oldThumbs: Record<number, string> = {}
 onBeforeUnmount(() => { thumbsGeneration++; releaseThumbnails() })
 
 // sort menu — faithful to menu-sort.png: "Entry Date" (with direction arrow) / "Last Modified"

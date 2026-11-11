@@ -7,6 +7,12 @@ import Dexie, { type Table } from 'dexie'
 
 export interface EntryV2 {
   id?: number
+  /**
+   * 云端稳定标识（非索引扩展字段，Dexie 允许）。
+   * 必须用它而不是 id 做同步主键：id 是每台设备各自的自增序号，
+   * 两台机器的第一篇都是 1，同步时会互相覆盖。
+   */
+  cloudId?: string
   externalId?: string
   linkedAccountId: string
   text: string
@@ -84,6 +90,8 @@ export interface DraftRow {
 
 export interface MediaFileV2 {
   id?: number
+  /** 云端稳定标识，理由同 EntryV2.cloudId：id 是每台设备的自增序号。 */
+  cloudId?: string
   externalId?: string
   linkedAccountId: string
   jId?: number
@@ -97,6 +105,12 @@ export interface MediaFileV2 {
   uploaded: number
   /** Non-indexed payload (declared schema lists indexes only; Dexie permits extra fields). */
   blob?: Blob
+  /**
+   * 云端附件路径（非索引扩展字段）。
+   * 有值表示已上传到私有 Blob；渲染时拿它换一次性预签名地址。
+   * 本地有 blob 就优先用本地 blob，省一次网络请求，断网也能看。
+   */
+  remotePathname?: string
 }
 
 export interface TrashRow extends TrashV2 {
@@ -147,6 +161,24 @@ class JourneyReplicaDB extends Dexie {
       trashesV2: '++id,jId,linkedAccountId,externalId,type,[linkedAccountId+externalId],[linkedAccountId+type],[linkedAccountId+jId+type]',
       tagWordsV2: '++id,linkedAccountId,externalId,title,[linkedAccountId+externalId],[linkedAccountId+title],[linkedAccountId+id]',
     })
+    // v2：附件增加云端路径索引（同步后用 pathname 反查本地行）
+    this.version(2).stores({
+      mediaFilesV2: '++id,externalId,linkedAccountId,jId,fileMetadataDate,createdAt,fileName,mimeType,ext,position,alias,uploaded,remotePathname,[linkedAccountId+jId],[linkedAccountId+externalId],[linkedAccountId+alias],[linkedAccountId+externalId+uploaded],[linkedAccountId+jId+externalId+uploaded]',
+    })
+    // v3：给每篇日记/每个附件补一个跨设备稳定的 cloudId（旧代码拿自增 id 当同步主键，多设备会互相覆盖）
+    this.version(3).stores({
+      entriesV2: '++id,cloudId,externalId,linkedAccountId,text,previewText,timezone,dateOfJournal,dateModified,synced,version,address,musicArtist,musicTitle,lat,lng,weatherId,weatherDegreeC,weatherDescription,weatherIcon,weatherPlace,activity,sentiment,favourite,type,alias,*tagWordIds,yearToken,monthToken,dayToken,hourToken,minuteToken,[linkedAccountId+dateOfJournal],[linkedAccountId+lat+lng],[linkedAccountId+jId],[linkedAccountId+id],[linkedAccountId+externalId],[linkedAccountId+synced],[linkedAccountId+yearToken+monthToken+dayToken],[linkedAccountId+monthToken+dayToken]',
+      mediaFilesV2: '++id,cloudId,externalId,linkedAccountId,jId,fileMetadataDate,createdAt,fileName,mimeType,ext,position,alias,uploaded,remotePathname,[linkedAccountId+jId],[linkedAccountId+externalId],[linkedAccountId+alias],[linkedAccountId+externalId+uploaded],[linkedAccountId+jId+externalId+uploaded]',
+    }).upgrade(async (tx) => {
+      const entries = await tx.table('entriesV2').toArray() as EntryV2[]
+      for (const entry of entries) {
+        if (!entry.cloudId && entry.id != null) await tx.table('entriesV2').update(entry.id, { cloudId: newCloudId() })
+      }
+      const media = await tx.table('mediaFilesV2').toArray() as MediaFileV2[]
+      for (const file of media) {
+        if (!file.cloudId && file.id != null) await tx.table('mediaFilesV2').update(file.id, { cloudId: newCloudId() })
+      }
+    })
   }
 }
 
@@ -169,6 +201,16 @@ class MiscDB extends Dexie {
   }
 }
 export const miscDb = new MiscDB()
+
+/**
+ * 生成跨设备稳定标识。
+ * 不能复用自增 id：每台设备的序号都从 1 开始，同步时会撞车（云端唯一键是 user_id + client_id）。
+ */
+export function newCloudId(): string {
+  const c = (globalThis as { crypto?: Crypto }).crypto
+  if (c && typeof c.randomUUID === 'function') return c.randomUUID()
+  return `k${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
+}
 
 export function computeTokens(d: Date) {
   const p = (n: number) => String(n).padStart(2, '0')

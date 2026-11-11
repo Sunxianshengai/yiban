@@ -32,6 +32,7 @@ const props = defineProps<{ entryId?: number; initialText?: string; initialDate?
 const emit = defineEmits<{ (e: 'done'): void }>()
 const isMobile = useIsMobile()
 const { listMediaFor, listTags, ensureTag, saveEntry } = useEntries()
+const { urlForSync: mediaUrl, prefetch: prefetchMedia } = useMediaResolver()
 
 const area = ref<HTMLElement | null>(null)
 const words = ref(0)
@@ -139,10 +140,12 @@ onMounted(async () => {
   unsubscribeSave = desktop?.on('saveAndCloseIfDirty', () => { void save() })
   if (props.entryId != null) savedMedia.value = await listMediaFor(props.entryId)
   if (disposed) return
+  // 云端来的附件没有本地 blob，先换预签名地址，否则编辑器里看不到
+  await prefetchMedia(savedMedia.value)
+  if (disposed) return
   function urlForMedia(row: MediaFileV2) {
-    if (!row.blob) return
-    const url = URL.createObjectURL(row.blob)
-    previewUrls.push(url)
+    const url = mediaUrl(row)
+    if (url?.startsWith('blob:')) previewUrls.push(url)
     return url
   }
   // 草稿 v2（bug04/05）：新条目与已有条目的未保存内容都入库，照片 blob 一并恢复

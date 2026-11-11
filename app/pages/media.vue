@@ -3,6 +3,7 @@ import { mdiImageMultipleOutline, mdiChevronDown, mdiArrowLeft } from '@mdi/js'
 import type { MediaFileV2 } from '~/utils/db'
 
 const { allMedia, deleteMedia } = useEntries()
+const { prefetch: prefetchMedia, urlForSync: mediaUrl } = useMediaResolver()
 const items = ref<(MediaFileV2 & { url?: string })[]>([])
 const filter = ref<'all' | 'image' | 'video' | 'audio'>('all')
 const selectedId = ref<number | null>(null)
@@ -14,14 +15,16 @@ async function load() {
   const generation = ++loadGeneration
   const rows = await allMedia()
   if (generation !== loadGeneration) return
-  for (const item of items.value) if (item.url) URL.revokeObjectURL(item.url)
-  items.value = rows.map((r) => ({ ...r, url: r.blob ? URL.createObjectURL(r.blob) : undefined }))
+  await prefetchMedia(rows)
+  if (generation !== loadGeneration) return
+  for (const item of items.value) if (item.url?.startsWith('blob:')) URL.revokeObjectURL(item.url)
+  items.value = rows.map((r) => ({ ...r, url: mediaUrl(r) }))
   if (selectedId.value && !items.value.some((i) => i.id === selectedId.value)) selectedId.value = null
 }
 onMounted(load)
 onBeforeUnmount(() => {
   loadGeneration++
-  for (const item of items.value) if (item.url) URL.revokeObjectURL(item.url)
+  for (const item of items.value) if (item.url?.startsWith('blob:')) URL.revokeObjectURL(item.url)
 })
 
 async function remove(id: number) {

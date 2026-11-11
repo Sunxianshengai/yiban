@@ -167,19 +167,25 @@ async function jumpToMonth() {
 }
 
 const thumbs = shallowRef<Record<number, { url: string; video: boolean }>>({})
+const { prefetch: prefetchMedia, urlForSync: mediaUrl } = useMediaResolver()
 let thumbGeneration = 0
 function releaseThumbnails() {
-  for (const { url } of Object.values(thumbs.value)) URL.revokeObjectURL(url)
+  for (const { url } of Object.values(thumbs.value)) if (url.startsWith('blob:')) URL.revokeObjectURL(url)
 }
 async function loadThumbnails() {
   const generation = ++thumbGeneration
   const rows = await allMedia()
   if (generation !== thumbGeneration) return
+  // 云端图片没有本地 blob，先换预签名地址
+  await prefetchMedia(rows.filter(m => m.mimeType.startsWith('image/') || m.mimeType.startsWith('video/')))
+  if (generation !== thumbGeneration) return
   const result: typeof thumbs.value = {}
   for (const media of rows) {
-    if (media.jId == null || !media.blob || result[media.jId]) continue
+    if (media.jId == null || result[media.jId]) continue
     const video = media.mimeType.startsWith('video/')
-    if (video || media.mimeType.startsWith('image/')) result[media.jId] = { url: URL.createObjectURL(media.blob), video }
+    if (!video && !media.mimeType.startsWith('image/')) continue
+    const url = mediaUrl(media)
+    if (url) result[media.jId] = { url, video }
   }
   releaseThumbnails()
   thumbs.value = result

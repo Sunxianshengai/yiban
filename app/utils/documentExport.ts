@@ -4,6 +4,7 @@ import { db } from './db'
 import type { MediaFileV2 } from './db'
 import { journalFragment, renderJournal } from './journalHtml'
 import { downloadJournalFile } from './journalZip'
+import { hydrateMedia } from './mediaBlobs'
 
 type ExportFormat = 'docx' | 'epub' | 'pdf'
 type TextStyle = Pick<IRunOptions, 'bold' | 'italics' | 'underline' | 'strike' | 'font' | 'color'>
@@ -21,11 +22,13 @@ async function entryData(id: number) {
     db.tagWordsV2.toArray(),
   ]))
   if (!entry) throw new Error('日记已不存在。')
+  // 云端附件（别的设备上传的）没有本地 blob，导出前先取回真实字节
+  const hydrated = await hydrateMedia(media)
   const date = new Date(entry.dateOfJournal)
   const heading = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'long', timeStyle: 'short' }).format(date)
   const tags = allTags.filter(tag => entry.tagWordIds?.includes(tag.id!)).map(tag => '#' + tag.title).join(' ')
   const lines = [entry.timezone, entry.address, tags].filter((value): value is string => Boolean(value))
-  return { entry, heading, lines, media, fileName: 'journey-' + date.toISOString().slice(0, 10) + '-' + id }
+  return { entry, heading, lines, media: hydrated, fileName: 'journey-' + date.toISOString().slice(0, 10) + '-' + id }
 }
 type EntryData = Awaited<ReturnType<typeof entryData>>
 
