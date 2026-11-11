@@ -2,6 +2,7 @@
 defineEmits<{ (e: 'close'): void }>()
 import { desktopBridge } from '~/utils/desktopBridge'
 import { errorText } from '~/utils/uiText'
+import { getAmapJsKey, getAmapSecurity, getAmapWebKey, resetAmapLoader, setAmapCredentials } from '~/utils/amap'
 import { JR_THEMES, THEME_IDS } from '~/utils/themesRegistry'
 import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiAccountOutline, mdiShieldKeyOutline, mdiDatabaseOutline, mdiHelpCircleOutline, mdiPalette, mdiRuler, mdiMapMarkerOutline, mdiTranslate, mdiSpellcheck, mdiPuzzleOutline, mdiLockOutline, mdiChevronRight, mdiChevronLeft, mdiAlertOutline, mdiCloudOutline, mdiApps, mdiBookmarkOutline, mdiBellOutline } from '@mdi/js'
 
@@ -40,7 +41,7 @@ const tabs = [
 const genItems = [
   { key: 'appearance', label: '外观', icon: mdiPalette },
   { key: 'unit', label: '计量单位', icon: mdiRuler },
-  { key: 'location', label: '地点', icon: mdiMapMarkerOutline, disabled: true },
+  { key: 'location', label: '地点', icon: mdiMapMarkerOutline },
   { key: 'locale', label: '语言与地区', icon: mdiTranslate },
   { key: 'spellcheck', label: '拼写检查', icon: mdiSpellcheck },
   { key: 'plugins', label: '插件', icon: mdiPuzzleOutline },
@@ -50,11 +51,21 @@ const genItems = [
 const { theme, fontSize, colorTheme } = useAppearance()
 const fontFamily = ref(localStorage.getItem('jr.fontFamily') || 'Gotham Rounded')
 const spellcheck = ref(localStorage.getItem('jr.spellcheck') !== '0')
-const mapTilerKey = ref(localStorage.getItem('jr.mapTilerKey') || '')
+// 高德 Key：服务平台按 Key 单选绑定，所以「Web服务」和「Web端(JS API)」要分开填两个 Key
+// （本仓库没有后端，密钥存在本机 localStorage；换密钥后强制重新加载 JS API）
+const amapWebKey = ref(getAmapWebKey())
+const amapJsKey = ref(getAmapJsKey())
+const amapSecurity = ref(getAmapSecurity())
+const amapSaved = ref(false)
+function saveAmapCredentials() {
+  setAmapCredentials(amapWebKey.value, amapJsKey.value, amapSecurity.value)
+  resetAmapLoader()
+  amapSaved.value = true
+  setTimeout(() => { amapSaved.value = false }, 2400)
+}
 watchEffect(() => {
   localStorage.setItem('jr.fontFamily', fontFamily.value)
   localStorage.setItem('jr.spellcheck', spellcheck.value ? '1' : '0')
-  localStorage.setItem('jr.mapTilerKey', mapTilerKey.value)
 })
 // 14 个圆点 = light0-13 的 primary，逐字来自原版主题注册表（themesRegistry.ts）
 const circles = THEME_IDS.map((id) => JR_THEMES[id].colors.primaryContainer || JR_THEMES[id].colors.primary) // 原版色环显示浅容器色（page-settings.png 实测）
@@ -235,7 +246,14 @@ async function wipeAll() {
           <p v-if="circleNote" class="mnote">{{ circleNote }}</p>
         </div>
         <div class="mset-row"><span>每周起始日</span><select v-model="weekStart" class="mselect"><option value="default">默认</option><option value="monday">星期一</option><option value="sunday">星期日</option></select></div>
-        <label class="mset-row col"><span>MapTiler 密钥（地图底图）</span><input v-model="mapTilerKey" class="minput" placeholder="粘贴你自己的 MapTiler API 密钥" /></label>
+        <label class="mset-row col"><span>Web 服务 Key</span><input v-model="amapWebKey" class="minput" placeholder="服务平台选「Web服务」的 Key" spellcheck="false" /></label>
+        <label class="mset-row col"><span>Web端(JS API) Key</span><input v-model="amapJsKey" class="minput" placeholder="服务平台选「Web端(JS API)」的 Key" spellcheck="false" /></label>
+        <label class="mset-row col"><span>安全密钥</span><input v-model="amapSecurity" class="minput" placeholder="securityJsCode（JS API Key 用）" spellcheck="false" /></label>
+        <p class="mnote">高德一个 Key 只能选一种服务平台：搜索/天气要「Web服务」，底图要「Web端(JS API)」，两个都填才能全用。</p>
+        <div class="mset-row" style="justify-content:flex-end;gap:8px">
+          <span v-if="amapSaved" class="mnote" role="status">已保存</span>
+          <button class="mbtn" @click="saveAmapCredentials">保存密钥</button>
+        </div>
         <label class="mset-row"><span>写作时检查拼写</span><input v-model="spellcheck" type="checkbox" /></label>
       </div>
 
@@ -325,6 +343,35 @@ async function wipeAll() {
             <p class="jr-muted" style="font-size:11.5px">天气温度将按所选单位显示（数据仍以摄氏保存）。</p>
           </template>
 
+          <template v-else-if="gen === 'location'">
+            <label class="jr-set-row" style="display:block">
+              <span class="jr-set-cap">Web 服务 Key（搜索 / 地址解析 / 天气）</span>
+              <input v-model="amapWebKey" class="jr-pop-input" style="width:320px;margin-top:6px" placeholder="创建 Key 时服务平台选「Web服务」" spellcheck="false" />
+            </label>
+            <label class="jr-set-row" style="display:block">
+              <span class="jr-set-cap">Web端(JS API) Key（地图底图 / 点聚合）</span>
+              <input v-model="amapJsKey" class="jr-pop-input" style="width:320px;margin-top:6px" placeholder="创建 Key 时服务平台选「Web端(JS API)」" spellcheck="false" />
+            </label>
+            <label class="jr-set-row" style="display:block">
+              <span class="jr-set-cap">安全密钥（securityJsCode）</span>
+              <input v-model="amapSecurity" class="jr-pop-input" style="width:320px;margin-top:6px" placeholder="2021-12-02 之后申请的 JS API Key 需要填写" spellcheck="false" />
+            </label>
+            <div class="jr-set-row" style="gap:10px">
+              <button class="jr-btn" style="width:auto" @click="saveAmapCredentials">保存</button>
+              <span v-if="amapSaved" class="jr-muted" role="status">已保存，重新打开地图册即可生效。</span>
+            </div>
+            <p class="jr-muted" style="font-size:12px;line-height:1.6">
+              高德的「服务平台」是按 Key 单选绑定的：一个 Key 只能是「Web服务」或「Web端(JS API)」之一。
+              搜索地点、逆地理编码、天气查询走 Web服务；地图册的底图与点聚合走 Web端(JS API)。
+              想两边都能用，就在控制台各建一个 Key 分别填进来（同一套账号，配额分开算）。
+            </p>
+            <p class="jr-muted" style="font-size:12px;line-height:1.6">
+              密钥只保存在本机浏览器里（原版存在桌面端 secretKeys，网页版没有后端可代管）。
+              只填 Web服务 Key 时，地图册会显示已保存的地点列表；只填 JS API Key 时，地点搜索会提示先配置。
+            </p>
+            <p class="jr-muted" style="font-size:12px">IP 白名单留空即可（浏览器直连的出口 IP 不固定）。首版以中国大陆为主；海外日记仍可在地点列表里打开。</p>
+          </template>
+
           <template v-else-if="gen === 'locale'">
             <div class="jr-set-row"><span class="jr-set-cap">语言与地区</span>
               <select class="jr-set-select"><option>简体中文</option></select>
@@ -337,11 +384,6 @@ async function wipeAll() {
                 <option value="sunday">星期日</option>
               </select>
             </label>
-            <label class="jr-set-row" style="display:block">
-              <span class="jr-set-cap">MapTiler 密钥（地图底图）</span>
-              <input v-model="mapTilerKey" class="jr-pop-input" style="width:240px;margin-top:6px" placeholder="粘贴你自己的 MapTiler API 密钥" />
-            </label>
-            <p class="jr-muted" style="font-size:12px">原版把密钥存在桌面端 secretKeys 中；填写后地图使用与原版相同的 MapTiler 自定义样式，留空则使用无密钥回退底图。</p>
             <p class="jr-muted" style="font-size:12px">日期和时间按简体中文格式显示。</p>
           </template>
 

@@ -21,6 +21,15 @@ export interface EntryV2 {
   musicTitle?: string
   lat?: number
   lng?: number
+  /**
+   * 坐标来源（非索引扩展字段，Dexie 允许）。
+   * gps = WGS-84（浏览器定位/照片 EXIF），显示到高德前必须转 GCJ-02；
+   * amap = 高德搜索/逆地理编码直接返回的 GCJ-02，原样使用；
+   * 未知/缺省 = 旧记录来源不明，先按原值显示，允许用户重新选点。
+   */
+  locationSource?: 'gps' | 'amap'
+  /** 行政区编码（高德 adcode），天气等按区域查询用 */
+  adcode?: string
   weatherId?: number
   weatherDegreeC?: number
   weatherDescription?: string

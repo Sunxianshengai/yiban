@@ -1,8 +1,15 @@
 /**
- * Free public service adapters for the replica (no API keys, CORS-enabled).
- * The original app talks to Journey's own endpoints (sync.journey.cloud etc. —
- * recorded in evidence/derived/contracts.json); those servers are not cloned.
- * These adapters fill the same UX roles with the replica's own services.
+ * 天气/地点的展示层工具（原版契约的复刻部分）。
+ *
+ * 数据来源已迁到高德 Web 服务（见 `~/utils/amap`）：
+ * - 地点搜索 → `searchAmapPlaces`
+ * - 逆地理编码 → `reverseGeocodeAmap`
+ * - 实况天气 → `fetchAmapWeather`（按行政区编码查）
+ * - 坐标转换 → `wgs84ToGcj02`
+ *
+ * 这里只保留纯展示用的映射：原版把天气存成英文描述（`weatherDescription`），
+ * 详情页/时间线用 `weatherLabel()` 转中文、`WEATHER_EMOJI` 取图标。
+ * 历史条目里可能还是旧的 WMO 英文描述，映射表同时覆盖高德中文天气词。
  */
 
 export interface WeatherNow {
@@ -11,6 +18,7 @@ export interface WeatherNow {
   description: string
 }
 
+/** 原版 WMO 英文描述 → [图标键, 英文, 中文]（旧条目兼容，勿删） */
 const WMO: Record<number, [string, string, string]> = {
   0: ['sun', 'Clear sky', '晴'],
   1: ['partly', 'Mainly clear', '大部晴朗'],
@@ -37,46 +45,52 @@ const WMO: Record<number, [string, string, string]> = {
 
 const legacyWeatherLabels = new Map(Object.values(WMO).map(([, original, label]) => [original, label]))
 
+/** 高德天气词 → 中文（高德返回的就是中文，个别组合做规整） */
+const AMAP_WEATHER_LABELS: Record<string, string> = {
+  晴: '晴',
+  少云: '少云',
+  晴间多云: '晴间多云',
+  多云: '多云',
+  阴: '阴',
+  阵雨: '阵雨',
+  雷阵雨: '雷阵雨',
+  雷阵雨伴有冰雹: '雷阵雨伴冰雹',
+  小雨: '小雨',
+  中雨: '中雨',
+  大雨: '大雨',
+  暴雨: '暴雨',
+  大暴雨: '大暴雨',
+  特大暴雨: '特大暴雨',
+  冻雨: '冻雨',
+  雨夹雪: '雨夹雪',
+  小雪: '小雪',
+  中雪: '中雪',
+  大雪: '大雪',
+  暴雪: '暴雪',
+  雾: '雾',
+  霾: '霾',
+  浮尘: '浮尘',
+  扬沙: '扬沙',
+  沙尘暴: '沙尘暴',
+  强沙尘暴: '强沙尘暴',
+  未知: '未知天气',
+}
+
+/**
+ * 把条目里的天气描述转成中文显示。
+ * 依次尝试：高德中文词 → 原版 WMO 英文描述 → 原样返回。
+ */
 export function weatherLabel(description?: string) {
   if (!description) return ''
   if (description === 'Unknown') return '未知天气'
-  return legacyWeatherLabels.get(description) ?? description
-}
-
-export async function fetchWeather(lat: number, lng: number): Promise<WeatherNow | null> {
-  try {
-    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`)
-    if (!r.ok) return null
-    const d = await r.json()
-    const code = d?.current_weather?.weathercode
-    const [icon, , description] = WMO[code] || ['cloud', 'Unknown', '未知天气']
-    return { icon, degreeC: Math.round(d.current_weather.temperature), description }
-  } catch {
-    return null
-  }
-}
-
-export interface PlaceHit {
-  address: string
-  lat: number
-  lng: number
-}
-
-export async function searchPlaces(q: string): Promise<PlaceHit[]> {
-  try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=zh-CN,zh&q=${encodeURIComponent(q)}`)
-    if (!r.ok) return []
-    const d = await r.json()
-    return (d as any[]).map((h) => ({
-      address: h.display_name as string,
-      lat: Number(h.lat),
-      lng: Number(h.lon),
-    }))
-  } catch {
-    return []
-  }
+  return AMAP_WEATHER_LABELS[description] ?? legacyWeatherLabels.get(description) ?? description
 }
 
 export const WEATHER_EMOJI: Record<string, string> = {
   sun: '☀️', partly: '🌤', cloud: '☁️', fog: '🌫', rain: '🌧', snow: '🌨', storm: '⛈',
+}
+
+/** 天气图标键的中文名（无障碍标签/提示用） */
+export const WEATHER_ICON_LABELS: Record<string, string> = {
+  sun: '晴', partly: '多云', cloud: '阴', fog: '雾', rain: '雨', snow: '雪', storm: '雷雨',
 }

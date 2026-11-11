@@ -312,7 +312,7 @@ async function onFavourite() {
           :entry-id="editing?.id"
           :initial-text="editing?.text"
           :initial-date="editing ? new Date(editing.dateOfJournal) : undefined"
-          :initial-meta="editing ? { address: editing.address, lat: editing.lat, lng: editing.lng, sentiment: editing.sentiment, activity: editing.activity, weatherIcon: editing.weatherIcon, weatherDegreeC: editing.weatherDegreeC, weatherPlace: editing.weatherPlace, tagWordIds: editing.tagWordIds } : undefined"
+          :initial-meta="editing ? { address: editing.address, lat: editing.lat, lng: editing.lng, locationSource: editing.locationSource, adcode: editing.adcode, sentiment: editing.sentiment, activity: editing.activity, weatherIcon: editing.weatherIcon, weatherDegreeC: editing.weatherDegreeC, weatherDescription: editing.weatherDescription, weatherPlace: editing.weatherPlace, tagWordIds: editing.tagWordIds } : undefined"
           @done="onDone"
         />
       </div>
@@ -417,7 +417,7 @@ async function onFavourite() {
       :entry-id="editing?.id"
       :initial-text="editing?.text"
       :initial-date="editing ? new Date(editing.dateOfJournal) : undefined"
-      :initial-meta="editing ? { address: editing.address, lat: editing.lat, lng: editing.lng, sentiment: editing.sentiment, activity: editing.activity, weatherIcon: editing.weatherIcon, weatherDegreeC: editing.weatherDegreeC, weatherPlace: editing.weatherPlace, tagWordIds: editing.tagWordIds } : undefined"
+      :initial-meta="editing ? { address: editing.address, lat: editing.lat, lng: editing.lng, locationSource: editing.locationSource, adcode: editing.adcode, sentiment: editing.sentiment, activity: editing.activity, weatherIcon: editing.weatherIcon, weatherDegreeC: editing.weatherDegreeC, weatherDescription: editing.weatherDescription, weatherPlace: editing.weatherPlace, tagWordIds: editing.tagWordIds } : undefined"
       @done="onDone"
     />
 

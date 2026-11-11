@@ -2,7 +2,9 @@
 import { mdiCalendarBlankOutline, mdiMapMarkerOutline, mdiWeatherSunny, mdiEmoticonOutline, mdiRun, mdiTagOutline, mdiPlus, mdiFormatBold, mdiFormatItalic, mdiFormatStrikethrough, mdiFormatUnderline, mdiFormatAlignLeft, mdiFormatAlignCenter, mdiUndo, mdiRedo, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiClose, mdiCheck, mdiFormatListBulleted, mdiFormatListNumbered, mdiCheckboxMarkedOutline, mdiFormatPilcrow, mdiFormatHeader1, mdiFormatHeader2, mdiFormatHeader3, mdiFormatQuoteOpen, mdiFormatListChecks, mdiLink, mdiImage, mdiTable, mdiBorderHorizontal, mdiPalette, mdiMarker, mdiWaterOff, mdiImageMultipleOutline, mdiApps, mdiFormatAlignRight, mdiCodeTags, mdiFormatIndentIncrease, mdiFormatIndentDecrease } from '@mdi/js'
 import type { EntryV2, MediaFileV2, TagWordV2 } from '~/utils/db'
 import { journalFragment, journalHtml, renderJournal } from '~/utils/journalHtml'
-import { fetchWeather, searchPlaces, WEATHER_EMOJI } from '~/utils/services'
+import { WEATHER_EMOJI } from '~/utils/services'
+import { amapInfoHint, amapWeatherIcon, fetchAmapWeather, getAmapWebKey, reverseGeocodeAmap, searchAmapPlacesResult } from '~/utils/amap'
+import type { AmapPlaceHit } from '~/utils/amap'
 import { activities, journalActivity, journalSentiment, sentiments } from '~/utils/journalOptions'
 import { desktopBridge, readEditorMedia } from '~/utils/desktopBridge'
 import type { DesktopMediaReply } from '~/utils/desktopBridge'
@@ -55,8 +57,13 @@ const tagInput = ref('')
 const tagError = ref('')
 const weatherBusy = ref(false)
 const placeQuery = ref('')
-const placeHits = ref<{ address: string; lat: number; lng: number }[]>([])
+const placeCity = ref('')
+const placeHits = ref<AmapPlaceHit[]>([])
 const placeBusy = ref(false)
+const placeError = ref('')
+const weatherError = ref('')
+/** 已选地点缺 adcode（旧记录/手填坐标）时，天气无法定位行政区 */
+const needsAdcode = computed(() => meta.value.lat != null && meta.value.lng != null && !meta.value.adcode)
 const templates = ref<{ id?: number; name: string; content: string }[]>([])
 const touched = ref(false)
 const savedMedia = shallowRef<MediaFileV2[]>([])
@@ -688,7 +695,7 @@ function applyPhotoMetadata() {
   const info = photoPrompt.value
   if (!info) return
   if (usePhotoDate.value && info.date) date.value = info.date
-  if (usePhotoLocation.value && info.location) meta.value = { ...meta.value, ...info.location, address: undefined }
+  if (usePhotoLocation.value && info.location) meta.value = { ...meta.value, ...info.location, address: undefined, adcode: undefined, locationSource: 'gps' }
   photoPrompt.value = undefined
 }
 
@@ -773,45 +780,120 @@ function editTable(action: 'addRow' | 'removeRow' | 'addColumn' | 'removeColumn'
   recount()
 }
 
-// 审计 #9：定位与天气解耦，失败有明确提示
+// 定位与天气解耦：定位只在用户点击后请求，失败有明确提示（原版审计 #9）
 const locBusy = ref(false)
 const locError = ref('')
+
+/** 用浏览器定位（WGS-84）。随后反查高德拿到地址与行政区编码（GCJ-02）。 */
 function useMyLocation(fillWeather = false) {
   if (!navigator.geolocation) { locError.value = '此浏览器不支持定位。'; return }
   locBusy.value = true
   locError.value = ''
   navigator.geolocation.getCurrentPosition(
     async (p) => {
-      meta.value = { ...meta.value, lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6) }
+      const lat = +p.coords.latitude.toFixed(6)
+      const lng = +p.coords.longitude.toFixed(6)
+      meta.value = { ...meta.value, lat, lng, locationSource: 'gps' }
+      // 反查地址：高德只接受 GCJ-02，这里让 amap 层负责转换
+      const info = await reverseGeocodeAmap(lng, lat)
+      if (info) {
+        meta.value = {
+          ...meta.value,
+          address: info.address || meta.value.address,
+          adcode: info.adcode || meta.value.adcode,
+        }
+      }
       locBusy.value = false
-      if (!fillWeather) return
-      weatherBusy.value = true
-      try {
-        const w = await fetchWeather(meta.value.lat!, meta.value.lng!)
-        if (w) meta.value = { ...meta.value, weatherIcon: w.icon, weatherDegreeC: w.degreeC, weatherDescription: w.description }
-        else locError.value = '天气服务暂时没有返回数据，请稍后再试。'
-      } catch { locError.value = '天气请求失败，请检查网络后重试。' }
-      weatherBusy.value = false
+      if (fillWeather) await fillWeatherFromLocation()
     },
     (err) => {
       locBusy.value = false
-      locError.value = err.code === err.PERMISSION_DENIED ? '定位权限被拒绝。可在浏览器地址栏重新允许。' : err.code === err.TIMEOUT ? '定位超时，请重试。' : '定位失败，请重试。'
+      locError.value = err.code === err.PERMISSION_DENIED ? '定位权限被拒绝。可在浏览器地址栏重新允许，或手动填写地点。' : err.code === err.TIMEOUT ? '定位超时，请重试或手动填写地点。' : '定位失败，请重试或手动填写地点。'
     },
     { timeout: 8000, enableHighAccuracy: true },
   )
 }
 
-async function searchPlace() {
-  if (!placeQuery.value.trim()) return
-  placeBusy.value = true
-  placeHits.value = await searchPlaces(placeQuery.value)
-  placeBusy.value = false
+/** 用当前地点的行政区编码查实况天气；缺 adcode 时先反查一次。 */
+async function fillWeatherFromLocation() {
+  if (meta.value.lat == null || meta.value.lng == null) {
+    weatherError.value = '请先选择地点，再获取天气。'
+    return
+  }
+  weatherBusy.value = true
+  weatherError.value = ''
+  try {
+    let adcode = meta.value.adcode
+    if (!adcode) {
+      const info = await reverseGeocodeAmap(meta.value.lng!, meta.value.lat!)
+      if (info?.adcode) {
+        adcode = info.adcode
+        meta.value = { ...meta.value, adcode, address: meta.value.address || info.address }
+      }
+    }
+    if (!adcode) { weatherError.value = '无法确定所在行政区，请重新选择地点。'; return }
+    const w = await fetchAmapWeather(adcode)
+    if (!w) { weatherError.value = '天气服务暂时不可用，请检查密钥或稍后再试。'; return }
+    meta.value = {
+      ...meta.value,
+      weatherIcon: amapWeatherIcon(w.weather),
+      weatherDegreeC: w.degreeC,
+      weatherDescription: w.weather,
+    }
+  } catch {
+    weatherError.value = '天气请求失败，请检查网络后重试。'
+  } finally {
+    weatherBusy.value = false
+  }
 }
 
-function pickPlace(h: { address: string; lat: number; lng: number }) {
-  meta.value = { ...meta.value, address: h.address, lat: +h.lat.toFixed(6), lng: +h.lng.toFixed(6) }
-  placeHits.value = []
+async function searchPlace() {
+  const q = placeQuery.value.trim()
+  if (!q) return
+  if (!getAmapWebKey()) { placeError.value = '尚未配置「Web服务」Key，可在设置 → 通用 → 地点里填写。'; return }
+  placeBusy.value = true
+  placeError.value = ''
+  try {
+    const { hits, error, info } = await searchAmapPlacesResult(q, placeCity.value.trim())
+    placeHits.value = hits
+    // 区分「真的没搜到」和「搜索服务用不了」，否则用户会一直换关键词
+    if (error === 'service') placeError.value = `地点搜索失败：${amapInfoHint(info)}。请在 设置 → 通用 → 地点 检查 Key。`
+    else if (error === 'network') placeError.value = '地点搜索超时或网络不可用，请检查网络后重试。'
+    else if (!hits.length) placeError.value = '没有找到匹配的地点，可换个说法或手动填写。'
+  } catch {
+    placeError.value = '地点搜索失败，请检查网络后重试。'
+  } finally {
+    placeBusy.value = false
+  }
 }
+
+function pickPlace(h: AmapPlaceHit) {
+  meta.value = {
+    ...meta.value,
+    address: h.detail || h.name,
+    lat: +h.lat.toFixed(6),
+    lng: +h.lng.toFixed(6),
+    adcode: h.adcode,
+    locationSource: 'amap',
+  }
+  placeHits.value = []
+  placeError.value = ''
+}
+
+/** 手填地点名时坐标不再可信，清掉旧坐标避免地图标错位置 */
+function onManualAddressInput(value: string) {
+  meta.value = { ...meta.value, address: value, lat: undefined, lng: undefined, adcode: undefined, locationSource: undefined }
+}
+
+function clearPlace() {
+  meta.value = { ...meta.value, address: undefined, lat: undefined, lng: undefined, adcode: undefined, locationSource: undefined }
+  placeHits.value = []
+  placeError.value = ''
+  locError.value = ''
+}
+
+// 兼容旧调用的包装（天气弹层里的定位按钮）
+function useMyLocationForWeather() { useMyLocation(true) }
 
 async function ensureTagIfNew() {
   const t = tagInput.value.trim().toLowerCase()
@@ -1031,27 +1113,42 @@ async function save() {
         <p v-if="locError" class="jr-muted" role="status" style="padding:0 12px">{{ locError }}</p>
         <div class="jr-pop-row">
           <input v-model="placeQuery" placeholder="搜索地点…" class="jr-pop-input" @keydown.enter.prevent="searchPlace" />
-          <button class="jr-pop-item" style="width:auto" @click="searchPlace"><JrIcon :path="mdiCheck" :size="16" /></button>
-        </div>
-        <div v-if="placeHits.length" class="jr-place-hits">
-          <button v-for="h in placeHits" :key="h.address" class="jr-pop-item" @click="pickPlace(h); openPop = null">{{ h.address.slice(0, 70) }}</button>
+          <button class="jr-pop-item" style="width:auto" :disabled="placeBusy" @click="searchPlace"><JrIcon :path="mdiCheck" :size="16" /></button>
         </div>
         <div class="jr-pop-row">
-          <input v-model="meta.address" placeholder="地点地址" class="jr-pop-input" />
+          <input v-model="placeCity" placeholder="城市（可选，用于区分同名）" class="jr-pop-input" @keydown.enter.prevent="searchPlace" />
+        </div>
+        <p v-if="placeError" class="jr-muted" role="status" style="padding:0 12px">{{ placeError }}</p>
+        <div v-if="placeHits.length" class="jr-place-hits">
+          <button v-for="h in placeHits" :key="h.name + h.lat + h.lng" class="jr-pop-item jr-place-hit" @click="pickPlace(h); openPop = null">
+            <b>{{ h.name }}</b>
+            <span class="jr-muted">{{ h.detail }}</span>
+          </button>
+        </div>
+        <div class="jr-pop-row">
+          <input :value="meta.address" placeholder="手动填写地点名" class="jr-pop-input" @input="onManualAddressInput(($event.target as HTMLInputElement).value)" />
         </div>
         <div class="jr-pop-row">
           <input v-model.number="meta.lat" type="number" step="any" placeholder="纬度" class="jr-pop-input" />
           <input v-model.number="meta.lng" type="number" step="any" placeholder="经度" class="jr-pop-input" />
         </div>
+        <p v-if="meta.lat != null && !meta.locationSource" class="jr-muted" role="status" style="padding:0 12px">
+          这条位置的坐标来源不明（旧记录）。若在地图上位置有偏移，请重新搜索选点。
+        </p>
         <button class="jr-pop-item" @click="useMyLocation(false)" :disabled="locBusy">{{ locBusy ? '正在定位…' : '使用当前位置' }}</button>
-        <button v-if="meta.address || meta.lat != null" class="jr-pop-item jr-danger" @click="meta = { ...meta, address: undefined, lat: undefined, lng: undefined }; openPop = null">移除地点</button>
+        <button v-if="meta.address || meta.lat != null" class="jr-pop-item jr-danger" @click="clearPlace(); openPop = null">移除地点</button>
       </template>
 
       <template v-else-if="openPop === 'weather'">
         <p v-if="locError" class="jr-muted" role="status" style="padding:0 12px">{{ locError }}</p>
-        <button class="jr-pop-item" :disabled="weatherBusy || locBusy" @click="useMyLocation(true)">
-          {{ weatherBusy ? '正在获取…' : '获取当前位置的天气' }}
+        <p v-if="weatherError" class="jr-muted" role="status" style="padding:0 12px">{{ weatherError }}</p>
+        <button class="jr-pop-item" :disabled="weatherBusy || locBusy" @click="fillWeatherFromLocation">
+          {{ weatherBusy ? '正在获取…' : '按当前地点获取天气' }}
         </button>
+        <button class="jr-pop-item" :disabled="weatherBusy || locBusy" @click="useMyLocationForWeather">
+          {{ locBusy ? '正在定位…' : '用当前位置的天气' }}
+        </button>
+        <p v-if="needsAdcode" class="jr-muted" style="padding:0 12px;font-size:12px">当前地点没有行政区编码（旧记录），将先反查一次。</p>
         <div class="jr-colors">
           <button v-for="w in WEATHER_ICONS" :key="w" class="jr-dot jr-wicon" :class="{ on: meta.weatherIcon === w }" @click="meta = { ...meta, weatherIcon: w }">{{ WEATHER_EMOJI[w] }}</button>
         </div>

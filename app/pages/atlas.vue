@@ -1,311 +1,390 @@
 <script setup lang="ts">
-import { mdiImageOutline, mdiClose } from '@mdi/js'
+import { mdiClose, mdiMapMarkerOutline } from '@mdi/js'
 import type { EntryV2 } from '~/utils/db'
+import { getAmapJsKey, loadAmap, toAmapLngLat } from '~/utils/amap'
 
 const { entries, refresh } = useEntries()
+const isMobile = useIsMobile()
+
 type LocatedEntry = EntryV2 & { id: number; lat: number; lng: number }
-type AtlasPoint = { entry: LocatedEntry; x: number; y: number }
-type AtlasGroup = { entries: LocatedEntry[]; x: number; y: number }
+type AtlasPoint = { entry: LocatedEntry; lng: number; lat: number }
 
 /**
- * Atlas — 原版实测（evidence/rea/atlas-v1.json + bundle 提取，2026-11-10）：
- * 引擎 MapLibre GL（.output/public/styles/maplibre-gl.css 在册）；
- * 底图为两个自定义 MapTiler 样式（明 02e457dd-…/暗 a94ac775-…，api.maptiler.com/maps/<id>/style.json?key=）；
- * 密钥走 secretKeys.mapTiler（IPC renderer->main:retrieve 取用户配置）——复刻版存 localStorage，不伪造密钥；
- * 无密钥时内联极简底图（零网络依赖），诚实提示。
- * 标记/聚类用 DOM Marker + 网格聚类（r=25px，512px 瓦片坐标系）：不依赖 WebGL/worker，
- * 无底图/受限网络下标记依然可交互（对齐原版"无密钥时仅见日记标记"的行为）。
+ * 地图册 — 高德 JS API 2.0。
+ *
+ * 契约（用户 2026-11-11 决策）：
+ * - 手机端全屏地图，点聚合点放大，点单个地点从底部弹出日记列表；一个地点多篇日记可逐篇打开。
+ * - 桌面/Windows 地图 + 右侧详情面板，点标记直接预览日记，再进完整详情。
+ * - 聚合用 AMap.MarkerCluster（官方点聚合插件）。
+ * - 断网或地图加载失败 → 显示已保存的地点列表，仍可打开日记。
+ * - 未记录地点的日记不出现在地图上。
+ * - 坐标：GPS(WGS-84) 记录显示前转 GCJ-02；高德搜索返回的坐标直接用；来源不明的旧记录按原值显示并提示可重选。
+ * - 首版以中国大陆为主；海外旧记录只在列表里打开（世界地图需单独申请权限）。
  */
-const STYLE_LIGHT_ID = '02e457dd-6f30-4d58-9156-f924def7b2d0'
-const STYLE_DARK_ID = 'a94ac775-f3be-4aea-aa5a-028754a7aeb5'
-const minZoom = 3
-const maxZoom = 16
-// MapLibre uses 512px tiles and a default cluster radius of 50px.
-const clusterRadius = 25
-const compactCount = new Intl.NumberFormat('zh-CN', { notation: 'compact', maximumFractionDigits: 1 })
-const entryDate = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', year: 'numeric' })
+
+// 中国大陆大致范围：超出范围的记录不上图，避免在世界地图未开通时把点标到空白处
+const CHINA = { minLng: 72, maxLng: 138, minLat: 0.8, maxLat: 56 }
+
 const located = computed(() => entries.value.filter((entry): entry is LocatedEntry =>
   entry.id != null && typeof entry.lat === 'number' && Math.abs(entry.lat) <= 90
     && typeof entry.lng === 'number' && Math.abs(entry.lng) <= 180,
 ))
 
+function inChinaLatLng(lat: number, lng: number) {
+  return lng >= CHINA.minLng && lng <= CHINA.maxLng && lat >= CHINA.minLat && lat <= CHINA.maxLat
+}
+
+/** 上图的点：坐标已转成高德坐标系（GCJ-02），并限制在中国大陆范围内 */
+const points = computed<AtlasPoint[]>(() => {
+  const out: AtlasPoint[] = []
+  for (const entry of located.value) {
+    const [lng, lat] = toAmapLngLat(entry.lat, entry.lng, entry.locationSource)
+    if (!inChinaLatLng(lat, lng)) continue
+    out.push({ entry, lng, lat })
+  }
+  return out
+})
+
+/** 列表可打开的全部地点（含海外）：地图不可用时用它兜底 */
+const overseasCount = computed(() => located.value.length - points.value.length)
+
 const mapEl = ref<HTMLElement | null>(null)
 const areaEntries = shallowRef<LocatedEntry[]>([])
 const selected = shallowRef<LocatedEntry | null>(null)
-const mapError = ref(false)
-const styleFallback = ref(false)
+const sheetOpen = ref(false)
+/** 地图不可用（无密钥/加载失败/断网）→ 退回地点列表 */
+const mapUnavailable = ref(false)
+const mapNote = ref('')
+const loading = ref(true)
 let map: any = null
-let maplib: any = null
-let markers: any[] = []
+let cluster: any = null
 let disposed = false
-let positioned = false
+let AMapNS: any = null
 
-function mapTilerKey() { return localStorage.getItem('jr.mapTilerKey') || '' }
-// 无密钥时的内联极简样式：零网络依赖
-const INLINE_STYLE = {
-  version: 8 as const,
-  sources: {},
-  layers: [{ id: 'bg', type: 'background' as const, paint: { 'background-color': '#e8dcc5' } }],
-}
-function styleUrl() {
-  const key = mapTilerKey()
-  if (!key) { styleFallback.value = true; return INLINE_STYLE }
-  styleFallback.value = false
-  const dark = document.documentElement.dataset.theme === 'dark'
-  const id = dark ? STYLE_DARK_ID : STYLE_LIGHT_ID
-  return `https://api.maptiler.com/maps/${id}/style.json?key=${encodeURIComponent(key)}`
+const dayFmt = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', year: 'numeric' })
+
+function isDark() {
+  return document.documentElement.dataset.theme === 'dark'
 }
 
-function longitudeNear(lng: number, center: number) {
-  return lng + Math.round((center - lng) / 360) * 360
-}
-
-function groupAt(list: LocatedEntry[], zoom: number): AtlasGroup[] {
-  const center = map.getCenter().lng
-  const points: AtlasPoint[] = list.map(entry => {
-    // MapLibre project 接受 [lng, lat]（Leaflet 是 [lat, lng]，迁移时注意顺序）
-    const { x, y } = map.project([longitudeNear(entry.lng, center), entry.lat], zoom)
-    return { entry, x, y }
-  })
-  const buckets = new Map<string, AtlasPoint[]>()
-  for (const point of points) {
-    const key = `${Math.floor(point.x / clusterRadius)},${Math.floor(point.y / clusterRadius)}`
-    const bucket = buckets.get(key)
-    if (bucket) bucket.push(point)
-    else buckets.set(key, [point])
+function pointDom(count: number | null, active = false) {
+  const div = document.createElement('div')
+  div.className = 'jr-atlas-point' + (count == null ? ' jr-atlas-point-single' : '')
+  if (active) div.classList.add('jr-atlas-point-active')
+  if (count != null) {
+    div.textContent = String(count)
+    const size = count < 10 ? 30 : count < 100 ? 38 : count < 1000 ? 46 : 54
+    div.style.width = `${size}px`
+    div.style.height = `${size}px`
+    div.style.fontSize = `${count < 100 ? 13 : 12}px`
   }
-  const claimed = new Set<AtlasPoint>()
-  const groups: AtlasGroup[] = []
-  for (const seed of points) {
-    if (claimed.has(seed)) continue
-    const col = Math.floor(seed.x / clusterRadius)
-    const row = Math.floor(seed.y / clusterRadius)
-    const members: LocatedEntry[] = []
-    let x = 0
-    let y = 0
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
-        for (const point of buckets.get(`${col + dx},${row + dy}`) || []) {
-          if (claimed.has(point) || Math.hypot(point.x - seed.x, point.y - seed.y) > clusterRadius) continue
-          claimed.add(point)
-          members.push(point.entry)
-          x += point.x
-          y += point.y
-        }
-      }
-    }
-    groups.push({ entries: members, x: x / members.length, y: y / members.length })
-  }
-  return groups
+  return div
 }
 
-function nextClusterZoom(group: AtlasGroup, zoom: number) {
-  // 包围盒法：成员经纬度跨度需要的最低缩放（不依赖 project 的可选 zoom 参数，纯数学）
-  const lats = group.entries.map((e) => e.lat)
-  const lngs = group.entries.map((e) => e.lng)
-  const span = Math.max(
-    (Math.max(...lngs) - Math.min(...lngs)) / 360,
-    (Math.max(...lats) - Math.min(...lats)) / 180,
-    1e-9,
-  )
-  // 像素跨距 = 512·2^z·span ≥ clusterRadius ⇒ z = log2(clusterRadius/(512·span))；+1 档安全余量
-  const need = Math.ceil(Math.log2(clusterRadius / (512 * span))) + 1
-  return Math.min(maxZoom - 1, Math.max(zoom + 1, need))
+function openPlace(list: LocatedEntry[]) {
+  if (!list.length) return
+  areaEntries.value = [...list].sort((a, b) => +new Date(b.dateOfJournal) - +new Date(a.dateOfJournal))
+  selected.value = areaEntries.value[0] ?? null
+  sheetOpen.value = true
 }
 
-function showEntries(group: AtlasGroup) {
-  const single = group.entries.length === 1 ? group.entries[0] : undefined
-  const inArea = single ? located.value.filter(entry => Math.abs(entry.lat - single.lat) <= 0.01
-    && Math.abs(longitudeNear(entry.lng, single.lng) - single.lng) <= 0.01) : group.entries
-  areaEntries.value = [...inArea].sort((a, b) => +new Date(b.dateOfJournal) - +new Date(a.dateOfJournal))
-  selected.value = areaEntries.value.length === 1 ? areaEntries.value[0]! : null
-}
-
-function closeArea() {
+function closeSheet() {
+  sheetOpen.value = false
   areaEntries.value = []
   selected.value = null
 }
 
-function clearMarkers() {
-  for (const m of markers) m.remove()
-  markers = []
+function openById(id: number) {
+  const entry = located.value.find((e) => e.id === id)
+  if (entry) openPlace([entry])
 }
 
-function renderMarkers() {
-  if (!map || !maplib || disposed) return
-  clearMarkers()
-  const zoom = Math.round(map.getZoom())
-  const center = map.getCenter().lng
-  const b = map.getBounds()
-  const latPad = (b.getNorth() - b.getSouth()) * 0.1
-  const lngPad = (b.getEast() - b.getWest()) * 0.1
-  const south = b.getSouth() - latPad
-  const north = b.getNorth() + latPad
-  const visible = located.value.filter((entry) => {
-    const lng = longitudeNear(entry.lng, center)
-    return entry.lat >= south && entry.lat <= north && lng >= b.getWest() - lngPad && lng <= b.getEast() + lngPad
+/** 同一个点上的多篇日记（同一坐标 ±0.00002°）；MarkerCluster 每点带 extData.entryId */
+function entriesNear(lng: number, lat: number) {
+  return located.value.filter((e) => {
+    const [x, y] = toAmapLngLat(e.lat, e.lng, e.locationSource)
+    return Math.abs(x - lng) < 0.0002 && Math.abs(y - lat) < 0.0002
   })
-  for (const group of groupAt(visible, zoom)) {
-    const count = group.entries.length
-    const size = count >= 750 ? 80 : count >= 100 ? 60 : count > 1 ? 40 : 20
-    const destinationZoom = count > 1 ? nextClusterZoom(group, zoom) : null
-    const label = destinationZoom != null ? `放大查看 ${count} 篇日记`
-      : count > 1 ? `查看此区域的 ${count} 篇日记` : '查看此区域的日记'
-    const centerPoint = map.unproject([group.x, group.y], zoom)
-    const el = document.createElement('div')
-    el.className = `jr-atlas-point${count === 1 ? ' jr-atlas-point-single' : ''}`
-    el.style.width = el.style.height = `${size}px`
-    el.textContent = compactCount.format(count)
-    el.setAttribute('aria-label', label)
-    el.title = label
-    const marker = new maplib.Marker({ element: el })
-      .setLngLat([centerPoint.lng, centerPoint.lat])
-      .addTo(map)
-    markers.push(marker)
-    el.addEventListener('click', (ev) => {
-      ev.stopPropagation()
-      if (destinationZoom == null) showEntries(group)
-      else {
-        closeArea()
-        map.easeTo({ center: [centerPoint.lng, centerPoint.lat], zoom: destinationZoom, duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300 })
-      }
-    })
-  }
 }
 
-function syncEntries() {
-  if (!map || !maplib || disposed) return
-  if (!positioned && located.value.length) {
-    const first = located.value[0]!
-    positioned = true
-    map.jumpTo({ center: [first.lng, first.lat], zoom: minZoom })
+/** 地图不可用时：按地点分组列出全部已保存地点 */
+const fallbackGroups = computed(() => {
+  const buckets = new Map<string, LocatedEntry[]>()
+  for (const entry of located.value) {
+    const key = `${entry.address || ''}|${entry.lat.toFixed(4)}|${entry.lng.toFixed(4)}`
+    const list = buckets.get(key)
+    if (list) list.push(entry)
+    else buckets.set(key, [entry])
   }
-  if (areaEntries.value.length) {
-    const byId = new Map(located.value.map(entry => [entry.id, entry]))
-    areaEntries.value = areaEntries.value.flatMap(entry => byId.get(entry.id) || [])
-    if (selected.value) selected.value = byId.get(selected.value.id) || null
-  }
-  renderMarkers()
+  return [...buckets.values()]
+    .map((list) => ({ list: list.sort((a, b) => +new Date(b.dateOfJournal) - +new Date(a.dateOfJournal)), entry: list[0]! }))
+    .sort((a, b) => +new Date(b.entry.dateOfJournal) - +new Date(a.entry.dateOfJournal))
+})
+
+function placeLabel(entry: EntryV2) {
+  return entry.address || `${entry.lat!.toFixed(4)}, ${entry.lng!.toFixed(4)}`
 }
-watch(located, syncEntries)
+
+function buildCluster() {
+  if (!AMapNS || !map) return
+  if (cluster) {
+    try { cluster.setMap(null) } catch { /* noop */ }
+    cluster = null
+  }
+  const list = points.value
+  if (!list.length) return
+  const Ctor = AMapNS.MarkerCluster || AMapNS.MarkerClusterer
+  if (!Ctor) return
+  const data = list.map((p) => ({
+    lnglat: [p.lng, p.lat] as [number, number],
+    extData: { entryId: p.entry.id, lng: p.lng, lat: p.lat },
+  }))
+  cluster = new Ctor(map, data, {
+    gridSize: 60,
+    maxZoom: 16,
+    averageCenter: true,
+    renderClusterMarker: (context: any) => {
+      const count = Number(context?.count ?? 0)
+      const div = pointDom(count)
+      context.marker.setContent(div)
+      context.marker.setOffset(new AMapNS.Pixel(-div.offsetWidth / 2, -div.offsetHeight / 2))
+      context.marker.setTitle(`${count} 篇日记`)
+    },
+    renderMarker: (context: any) => {
+      const ext = context?.data?.[0]?.extData || {}
+      const div = pointDom(null)
+      context.marker.setContent(div)
+      context.marker.setOffset(new AMapNS.Pixel(-10, -10))
+      context.marker.setExtData(ext)
+      const hit = located.value.find((e) => e.id === ext.entryId)
+      if (hit) context.marker.setTitle(placeLabel(hit))
+      context.marker.on('click', () => {
+        const near = entriesNear(Number(ext.lng), Number(ext.lat))
+        openPlace(near.length ? near : [located.value.find((e) => e.id === ext.entryId)!].filter(Boolean))
+      })
+    },
+  })
+  // 2.0 的聚合点没有内置「点开散开」，需要自己算中心放大
+  cluster.on('click', (payload: any) => {
+    const members = payload?.clusterData
+    if (!Array.isArray(members) || members.length <= 1) return
+    let sumLng = 0
+    let sumLat = 0
+    for (const m of members) {
+      const ll = m?.lnglat
+      const lng = Array.isArray(ll) ? Number(ll[0]) : Number(ll?.lng)
+      const lat = Array.isArray(ll) ? Number(ll[1]) : Number(ll?.lat)
+      if (Number.isFinite(lng) && Number.isFinite(lat)) { sumLng += lng; sumLat += lat }
+    }
+    const zoom = map.getZoom()
+    map.setZoomAndCenter(Math.min(zoom + 2, 17), [sumLng / members.length, sumLat / members.length])
+  })
+}
+
+function fitToPoints() {
+  if (!AMapNS || !map || !points.value.length) return
+  const lngs = points.value.map((p) => p.lng)
+  const lats = points.value.map((p) => p.lat)
+  const center: [number, number] = [(Math.min(...lngs) + Math.max(...lngs)) / 2, (Math.min(...lats) + Math.max(...lats)) / 2]
+  const spanLng = Math.max(...lngs) - Math.min(...lngs)
+  const spanLat = Math.max(...lats) - Math.min(...lats)
+  const span = Math.max(spanLng, spanLat)
+  const zoom = span > 20 ? 4 : span > 8 ? 5 : span > 3 ? 6 : span > 1 ? 7 : span > 0.4 ? 9 : span > 0.1 ? 11 : 13
+  map.setZoomAndCenter(zoom, center)
+}
 
 async function renderMap() {
+  loading.value = true
+  mapUnavailable.value = false
+  mapNote.value = ''
+  if (!points.value.length) {
+    // 没有任何可上图的地点：不必加载底图，直接给地点列表
+    mapUnavailable.value = true
+    mapNote.value = located.value.length ? '这些地点在中国大陆以外，首版底图暂不覆盖。' : '还没有带地点的日记。在编辑器里添加地点后会出现在这里。'
+    loading.value = false
+    return
+  }
+  if (!getAmapJsKey()) {
+    mapUnavailable.value = true
+    mapNote.value = '尚未配置「Web端(JS API)」Key，下面显示已保存的地点。可在 设置 → 通用 → 地点 中填写。'
+    loading.value = false
+    return
+  }
+  const AMap = await loadAmap(['AMap.MarkerCluster'])
+  if (disposed) return
+  if (!AMap) {
+    mapUnavailable.value = true
+    mapNote.value = '地图加载失败：可能是网络问题，或这个 Key 的「服务平台」不是 Web端(JS API)。下面显示已保存的地点。'
+    loading.value = false
+    return
+  }
+  AMapNS = AMap
+  if (!mapEl.value) { loading.value = false; return }
   try {
-    const mod = await import('maplibre-gl')
-    await import('maplibre-gl/dist/maplibre-gl.css')
-    if (disposed || !mapEl.value) return
-    // 注意：赋给组件级 maplib（组件内其他函数依赖它），不要在 renderMap 里用 const 遮蔽
-    maplib = (mod as any).default ?? mod
-    // 受管环境下内嵌 blob worker 会失效：显式指到 CSP worker 文件（在解析后的库对象上调用；
-    // 失败只影响 canvas 瓦片管线——DOM 标记方案不依赖它）
-    try {
-      const workerUrl = (await import('maplibre-gl/dist/maplibre-gl-csp-worker.js?url')).default
-      maplib.setWorkerUrl?.(workerUrl)
-    } catch { /* ignore */ }
-    map = new maplib.Map({
-      container: mapEl.value,
-      style: styleUrl(),
-      minZoom,
-      maxZoom,
-      attributionControl: { compact: true },
+    map = new AMap.Map(mapEl.value, {
+      zoom: 5,
+      center: [104.2, 35.8],
+      viewMode: '2D',
+      mapStyle: isDark() ? 'amap://styles/dark' : 'amap://styles/normal',
+      showLabel: true,
+      resizeEnable: true,
     })
+    // 高德安全密钥/网络问题不会抛在构造函数里，靠 complete 事件确认底图真的出来了
+    await new Promise<void>((resolve) => {
+      let done = false
+      const finish = () => { if (!done) { done = true; resolve() } }
+      map.on('complete', finish)
+      setTimeout(finish, 6000)
+    })
+    if (disposed) return
     ;(window as any).__atlasMap = map
-    map.addControl(new maplib.NavigationControl({ showZoom: true, showCompass: false }), 'bottom-right')
-    // 底图就绪与否都挂标记：样式 JSON 就绪即挂（幂等），受限网络下不等瓦片
-    const start = () => {
-      if (disposed || !map) return
-      map.on('moveend', renderMarkers)
-      syncEntries()
-    }
-    if (map.isStyleLoaded()) start()
-    else {
-      map.once('load', start)
-      const poll = setInterval(() => {
-        if (disposed || !map) { clearInterval(poll); return }
-        if (map.getStyle()?.layers?.length) { clearInterval(poll); start(); return }
-      }, 400)
-    }
-  } catch (error) {
-    console.error('[atlas] map init failed', error)
-    if (!disposed) mapError.value = true
+    buildCluster()
+    fitToPoints()
+  } catch {
+    mapUnavailable.value = true
+    mapNote.value = '地图初始化失败，下面显示已保存的地点。'
+  } finally {
+    loading.value = false
   }
 }
+
+function syncMarkers() {
+  if (!map || mapUnavailable.value) return
+  buildCluster()
+  if (points.value.length) fitToPoints()
+}
+
+watch(points, () => syncMarkers())
+
+// 主题切换时同步底图样式（原版暗色模式下地图也跟着变暗）
+watch(() => document.documentElement.dataset.theme, (theme) => {
+  if (!map) return
+  try { map.setMapStyle(theme === 'dark' ? 'amap://styles/dark' : 'amap://styles/normal') } catch { /* noop */ }
+})
+
 onMounted(async () => {
   await refresh()
-  renderMap()
+  if (disposed) return
+  await renderMap()
 })
+
 onBeforeUnmount(() => {
   disposed = true
-  clearMarkers()
-  map?.remove()
+  try { cluster?.setMap(null) } catch { /* noop */ }
+  cluster = null
+  try { if (typeof map?.destroy === 'function') map.destroy(); else map?.remove?.() } catch { /* noop */ }
   map = null
+  AMapNS = null
   ;(window as any).__atlasMap = null
 })
 </script>
 
 <template>
-  <div class="jr-content" style="position:relative">
+  <div class="jr-content jr-atlas">
     <div ref="mapEl" class="jr-atlas-map" aria-label="日记地图" />
-    <p v-if="styleFallback && located.length && !areaEntries.length" class="jr-atlas-tile-note" role="status">
-      原版底图为 MapTiler 自定义样式，需在设置中填入你自己的 MapTiler 密钥；当前使用无密钥回退底图。
-    </p>
-    <section v-if="areaEntries.length" class="jr-atlas-panel" aria-label="此区域内的日记">
-      <header class="jr-atlas-area-head">
-        <h2>此区域内有 {{ areaEntries.length }} 篇日记</h2>
-        <button class="jr-icon-btn" type="button" aria-label="关闭区域日记列表" @click="closeArea"><JrIcon :path="mdiClose" :size="20" /></button>
-      </header>
+
+    <p v-if="loading" class="jr-atlas-hint" role="status">正在加载地图…</p>
+
+    <!-- 地图不可用：已保存的地点列表（断网/无密钥/加载失败） -->
+    <section v-else-if="mapUnavailable" class="jr-atlas-panel jr-atlas-fallback" aria-label="已保存的地点">
+      <div class="jr-atlas-area-head">
+        <h2>已保存的地点</h2>
+        <span class="jr-muted">{{ located.length }} 篇日记</span>
+      </div>
+      <p class="jr-muted jr-atlas-note">{{ mapNote }}</p>
+      <div v-if="!fallbackGroups.length" class="jr-atlas-empty">
+        <JrIcon :path="mdiMapMarkerOutline" :size="28" />
+        <p>还没有带地点的日记。写日记时用工具栏的「地点」按钮添加。</p>
+      </div>
+      <ul v-else class="jr-atlas-area-list">
+        <li v-for="group in fallbackGroups" :key="placeLabel(group.entry) + group.entry.lat">
+          <button class="jr-atlas-place-row" @click="openPlace(group.list)">
+            <span class="jr-atlas-place-name">{{ placeLabel(group.entry) }}</span>
+            <span class="jr-muted">{{ dayFmt.format(new Date(group.entry.dateOfJournal)) }}<template v-if="group.list.length > 1"> · {{ group.list.length }} 篇</template></span>
+          </button>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 地图上的地点 → 该地点的日记列表 + 预览（桌面右侧面板 / 手机底部抽屉） -->
+    <section v-if="sheetOpen && areaEntries.length" class="jr-atlas-panel" :class="{ 'jr-atlas-sheet': isMobile }" aria-label="此地的日记">
+      <div class="jr-atlas-area-head">
+        <h2>{{ areaEntries.length > 1 ? `此区域内有 ${areaEntries.length} 篇日记` : '此地的日记' }}</h2>
+        <button class="jr-icon-btn" aria-label="关闭" @click="closeSheet"><JrIcon :path="mdiClose" :size="20" /></button>
+      </div>
       <div v-if="areaEntries.length > 1" class="jr-atlas-area-list">
-        <button v-for="entry in areaEntries" :key="entry.id" type="button" class="jr-atlas-area-entry"
-          :aria-pressed="selected?.id === entry.id" @click="selected = entry">
-          <small>{{ entryDate.format(entry.dateOfJournal) }}</small>
-          {{ entry.previewText || entry.address || '日记' }}
+        <button
+          v-for="entry in areaEntries" :key="entry.id"
+          class="jr-atlas-area-item" :aria-pressed="selected?.id === entry.id"
+          @click="selected = entry"
+        >
+          <b>{{ dayFmt.format(new Date(entry.dateOfJournal)) }}</b>
+          <span class="jr-muted">{{ (entry.previewText || entry.text || '').replace(/<[^>]*>/g, '').slice(0, 48) || '（无正文）' }}</span>
         </button>
       </div>
       <template v-if="selected">
-        <div class="jr-detail-head">
-          <div class="day">{{ new Intl.DateTimeFormat('zh-CN', { day: '2-digit' }).format(selected.dateOfJournal) }}</div>
-          <div class="when">
-            <div class="d1">{{ entryDate.format(selected.dateOfJournal) }}</div>
-            <div class="d2">{{ selected.address || `${selected.lat}, ${selected.lng}` }}</div>
-          </div>
-        </div>
         <JournalBody :entry="selected" />
         <NuxtLink class="jr-btn" :to="{ path: '/', query: { entry: selected.id } }">在时间线中打开</NuxtLink>
       </template>
     </section>
-    <div v-if="mapError || !located.length" class="jr-atlas-hint" role="status">
-      <div class="big"><JrIcon :path="mdiImageOutline" :size="42" /></div>
-      {{ mapError ? '无法打开地图。' : '地图仅显示带地点的日记。可在编辑器中添加地点。' }}
-    </div>
+
+    <p v-if="!loading && !mapUnavailable && !points.length" class="jr-atlas-hint">
+      地图仅显示带地点的日记。可在编辑器的「地点」里添加。
+    </p>
+    <p v-if="!loading && !mapUnavailable && overseasCount > 0" class="jr-atlas-overseas">
+      另有 {{ overseasCount }} 篇海外日记不在底图范围内，可在下方列表中打开。
+    </p>
+    <button v-if="!loading && !mapUnavailable && overseasCount > 0" class="jr-atlas-overseas-btn" @click="openPlace(located)">
+      查看全部 {{ located.length }} 个地点
+    </button>
   </div>
 </template>
 
 <style scoped>
-.jr-atlas-map { background: #e8dcc5; }
-/* 手机（安卓壳）：jr-mbody 是滚动容器，地图父级需显式撑满，否则 absolute 地图塌陷 */
-@media (max-width: 600px) {
-  .jr-content { min-height: 100%; }
-  .jr-atlas-panel { width: calc(100% - 24px); }
-}
-:deep(.maplibregl-canvas) { outline: none; }
+.jr-atlas { position: relative; overflow: hidden; }
+
 :deep(.jr-atlas-point) {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--jr-primary);
-  color: var(--jr-on-primary, white);
-  font-size: 12px;
-  font-weight: 600;
+  color: var(--jr-on-primary);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(23, 28, 30, 0.28);
   cursor: pointer;
+  border: 2px solid #fff;
+  transition: transform 0.12s ease;
 }
-:deep(.jr-atlas-point-single) { font-size: 10px; }
-:deep(.jr-atlas-point:focus-visible) { outline: 2px solid var(--jr-on-surface); outline-offset: 3px; }
+:deep(.jr-atlas-point:hover) { transform: scale(1.12); }
+:deep(.jr-atlas-point-single) { background: var(--jr-primary); }
+:deep(.jr-atlas-point-active) { box-shadow: 0 0 0 3px var(--jr-primary-container); }
+
 .jr-atlas-panel { width: min(380px, calc(100% - 48px)); }
-.jr-atlas-area-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
-.jr-atlas-area-head h2 { margin: 0; font-size: 15px; }
-.jr-atlas-area-list { display: grid; gap: 4px; margin-bottom: 16px; }
-.jr-atlas-area-entry { text-align: left; padding: 8px 10px; color: var(--jr-on-surface); background: transparent; border: 1px solid var(--jr-outline-variant); border-radius: 8px; }
-.jr-atlas-area-entry small { display: block; color: var(--jr-on-surface-variant); }
-.jr-atlas-area-entry[aria-pressed='true'] { background: var(--jr-secondary-container); color: var(--jr-on-secondary-container); }
-.jr-atlas-tile-note { position: absolute; z-index: 2; top: 12px; left: 12px; margin: 0; padding: 6px 10px; background: var(--jr-surface); color: var(--jr-on-surface); border-radius: 8px; font-size: 12px; }
+.jr-atlas-area-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.jr-atlas-area-head h2 { font-size: 15.5px; font-weight: 650; margin: 0; }
+.jr-atlas-note { font-size: 12.5px; margin: 0 0 12px; line-height: 1.5; }
+.jr-atlas-area-list { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.jr-atlas-place-row, .jr-atlas-area-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  width: 100%; text-align: left; background: none; border: 0; border-radius: 8px;
+  padding: 8px 10px; cursor: pointer; font: inherit; font-size: 13.5px; color: inherit;
+}
+.jr-atlas-place-row:hover, .jr-atlas-area-item:hover { background: rgba(0, 0, 0, 0.04); }
+.jr-atlas-area-item[aria-pressed="true"] { background: var(--jr-primary-container); }
+.jr-atlas-place-name { font-weight: 600; }
+.jr-atlas-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 12px; text-align: center; color: var(--jr-on-surface-variant); font-size: 13px; }
+.jr-atlas-overseas { position: absolute; left: 24px; bottom: 24px; z-index: 4; background: #fff; border-radius: 12px; padding: 8px 12px; font-size: 12.5px; box-shadow: 0 6px 20px rgba(23, 28, 30, 0.14); margin: 0; }
+.jr-atlas-overseas-btn { position: absolute; left: 24px; bottom: 66px; z-index: 4; border: 0; border-radius: 10px; padding: 7px 12px; background: var(--jr-primary); color: var(--jr-on-primary); font-size: 12.5px; cursor: pointer; }
+
+/* 手机：全屏地图 + 底部抽屉 */
+@media (max-width: 600px) {
+  .jr-atlas { min-height: 100%; }
+  .jr-atlas-panel { left: 12px; right: 12px; top: auto; bottom: 12px; width: auto; max-height: 58vh; padding: 16px; }
+  .jr-atlas-overseas { left: 12px; bottom: 12px; }
+  .jr-atlas-overseas-btn { left: 12px; bottom: 56px; }
+}
+[data-theme="dark"] .jr-atlas-overseas { background: var(--jr-layer); color: var(--jr-on-bg); }
 </style>

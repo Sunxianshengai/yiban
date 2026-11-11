@@ -508,6 +508,9 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
 .jr-mchip { background: var(--jr-secondary-container); color: var(--jr-on-secondary-container); border-radius: 12px; padding: 3px 10px; font-size: 12px; }
 .jr-mtag { background: var(--jr-primary-container); color: var(--jr-on-primary-container); }
 .jr-place-hits { max-height: 150px; overflow-y: auto; border: 1px solid #edf3f5; border-radius: 10px; margin: 4px 8px; }
+.jr-place-hit { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; line-height: 1.35; }
+.jr-place-hit b { font-weight: 600; }
+.jr-place-hit .jr-muted { font-size: 11.5px; }
 /* Stories 全屏 — 对照原版实测（22-stories-fullscreen.png）：深遮罩/分段进度/暂停/翻页箭头/右预览 */
 .jr-stories-full { position: fixed; inset: 0; z-index: 70; background: rgba(24, 29, 33, 0.96); color: #fff; display: flex; flex-direction: column; cursor: pointer; }
 .jr-stories-x { position: absolute; top: 18px; right: 22px; background: rgba(255,255,255,0.14); border: 0; color: #fff; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
