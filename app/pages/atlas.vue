@@ -56,6 +56,11 @@ const sheetOpen = ref(false)
 const mapUnavailable = ref(false)
 const mapNote = ref('')
 const loading = ref(true)
+/** 地图已起来但没有可上图的点：在地图上提示，而不是把地图换成列表 */
+const emptyNote = computed(() => {
+  if (points.value.length) return ''
+  return located.value.length ? '这些地点在中国大陆以外，首版底图暂不覆盖。' : '还没有带地点的日记。写日记时用工具栏的「地点」按钮添加，之后就会出现在这里。'
+})
 let map: any = null
 let cluster: any = null
 let disposed = false
@@ -197,13 +202,6 @@ async function renderMap() {
   loading.value = true
   mapUnavailable.value = false
   mapNote.value = ''
-  if (!points.value.length) {
-    // 没有任何可上图的地点：不必加载底图，直接给地点列表
-    mapUnavailable.value = true
-    mapNote.value = located.value.length ? '这些地点在中国大陆以外，首版底图暂不覆盖。' : '还没有带地点的日记。在编辑器里添加地点后会出现在这里。'
-    loading.value = false
-    return
-  }
   if (!getAmapJsKey()) {
     mapUnavailable.value = true
     mapNote.value = '尚未配置「Web端(JS API)」Key，下面显示已保存的地点。可在 设置 → 通用 → 地点 中填写。'
@@ -328,9 +326,7 @@ onBeforeUnmount(() => {
       </template>
     </section>
 
-    <p v-if="!loading && !mapUnavailable && !points.length" class="jr-atlas-hint">
-      地图仅显示带地点的日记。可在编辑器的「地点」里添加。
-    </p>
+    <p v-if="!loading && !mapUnavailable && emptyNote" class="jr-atlas-hint" role="status">{{ emptyNote }}</p>
     <p v-if="!loading && !mapUnavailable && overseasCount > 0" class="jr-atlas-overseas">
       另有 {{ overseasCount }} 篇海外日记不在底图范围内，可在下方列表中打开。
     </p>
