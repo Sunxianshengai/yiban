@@ -9,7 +9,7 @@ const tabs = [
   { to: '/calendar', label: '日历', icon: mdiCalendarMonthOutline },
   { to: '/media', label: '媒体', icon: mdiImageOutline },
   { to: '/atlas', label: '地图册', icon: mdiMapOutline },
-  { to: '/pal', label: 'Pal', icon: mdiPanda },
+  { to: '/pal', label: '日记伙伴', icon: mdiPanda },
 ] as const
 const route = useRoute()
 const journalMenu = ref(false)
