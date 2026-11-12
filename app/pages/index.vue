@@ -94,8 +94,8 @@ const groupedEntries = computed(() => {
   return groups
 })
 function groupLabel(d: Date) {
-  const main = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', year: 'numeric' }).format(d)
-  return `${main} · ${new Intl.DateTimeFormat('zh-CN', { weekday: 'long' }).format(d)}`
+  // Day One 移动组头=月份制（40-mobile-main 证据："2026年11月"）
+  return `${d.getFullYear()}年${d.getMonth() + 1}月`
 }
 function timeOf(e: EntryV2) {
   return new Intl.DateTimeFormat('zh-CN', { hour: 'numeric', minute: '2-digit', hour12: false }).format(new Date(e.dateOfJournal))
@@ -353,24 +353,11 @@ async function onFavourite() {
   <!-- 移动布局（对照 Journey Android 6.0.2，evidence/mobile-derived/ui-structure.md §2） -->
   <template v-else>
     <button class="jr-mfab" aria-label="新条目" @click="openNew">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" /></svg>
-      <span>新条目</span>
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" /></svg>
     </button>
 
     <div class="jr-mfeed">
-      <div class="sec">故事</div>
-      <div class="mstories">
-        <button class="card today" @click="storiesStart = 'stats'; storiesOpen = true">
-          <span class="cico"><JrIcon :path="mdiBookmark" :size="20" /></span>
-          <span class="ct">今天</span>
-          <span class="cs">{{ todayLabel }}</span>
-        </button>
-        <button v-if="throwbackOn" class="card throwback" @click="storiesStart = 'throwback'; storiesOpen = true">
-          <span class="cico"><JrIcon :path="mdiHistory" :size="20" /></span>
-          <span class="ct">怀旧</span>
-          <span class="cs">{{ throwbackList.length ? throwbackLabel : '没有怀旧今天' }}</span>
-        </button>
-      </div>
+      <!-- Stories 卡已随 Day One 换皮退役（B2/M-204，移动侧同批） -->
 
       <template v-if="entries.length">
         <div class="banner cloud">
@@ -415,10 +402,19 @@ async function onFavourite() {
 
       <template v-for="g in groupedEntries" :key="g.label">
         <div class="ghead">{{ g.label }}</div>
+        <!-- Day One 移动条目卡（40-mobile-main）：左日期块+右摘要与时间，FAB 圆角方块 -->
         <button v-for="e in g.items" :key="e.id" class="mrow" @click="openMobileDetail(e)">
-          <span class="time">{{ timeOf(e) }}</span>
-          <span class="prev">{{ e.previewText || '无正文' }}</span>
-          <span v-if="!e.synced" class="up" title="等待上传"><JrIcon :path="mdiCloudUploadOutline" :size="16" /></span>
+          <span class="jr-entry-dateblock" aria-hidden="true">
+            <i>{{ weekdayShort(e) }}</i>
+            <b>{{ dayNum(e) }}日</b>
+          </span>
+          <span class="jr-entry-main">
+            <span class="prev">{{ e.previewText || '无正文' }}</span>
+            <span class="mrow-time">
+              {{ timeOf(e) }}
+              <span v-if="!e.synced" class="up" title="等待上传"><JrIcon :path="mdiCloudUploadOutline" :size="14" /></span>
+            </span>
+          </span>
         </button>
       </template>
 
@@ -472,27 +468,15 @@ async function onFavourite() {
 </template>
 
 <style scoped>
-/* ---- 移动首页（证据配色与布局） ---- */
+/* ---- 移动首页（Day One 40-mobile-main 证据） ---- */
 .jr-mfab {
-  position: fixed; right: 14px; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 90;
-  display: flex; align-items: center; gap: 8px;
-  background: #b2ebf2; color: #00344a; border: 0; border-radius: 999px;
-  padding: 12px 18px; font-size: 15px; font-weight: 700;
-  box-shadow: 0 3px 10px rgba(0, 60, 70, 0.25);
+  position: fixed; right: 18px; bottom: calc(22px + env(safe-area-inset-bottom)); z-index: 90;
+  display: flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px;
+  background: var(--jr-primary); color: var(--jr-on-primary); border: 0; border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
 .jr-mfeed { padding: 6px 16px 0; }
-.sec { font-size: 13.5px; font-weight: 600; margin: 8px 0 10px; }
-.mstories { display: flex; gap: 14px; }
-.mstories .card {
-  flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-  border: 0; border-radius: 16px; padding: 18px 14px; min-height: 118px;
-  text-align: left; font-family: inherit;
-}
-.mstories .card.today { background: #e7e4f5; color: #1b1b33; }
-.mstories .card.throwback { background: #b9bdc1; color: #fff; }
-.mstories .cico { opacity: 0.85; }
-.mstories .ct { font-size: 17px; font-weight: 800; }
-.mstories .cs { font-size: 12.5px; opacity: 0.8; }
 .banner {
   display: flex; align-items: center; gap: 12px;
   border-radius: 14px; padding: 14px; margin-top: 14px;
@@ -506,14 +490,17 @@ async function onFavourite() {
 .ehead .label { font-size: 14px; font-weight: 600; flex: 1; text-align: left; }
 .ehead .sort { background: transparent; border: 0; color: var(--jr-on-surface-variant); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; }
 .msort { right: 0; top: 44px; }
-.ghead { text-align: center; font-size: 14px; font-weight: 700; margin: 18px 0 8px; }
-.mrow {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-  width: 100%; border: 0; border-radius: 16px; padding: 14px 16px; margin-bottom: 10px;
-  background: #e6f0f3; text-align: left; font-family: inherit; color: var(--jr-on-bg);
+.ghead {
+  text-align: left; font-size: 13px; font-weight: 600; color: var(--jr-on-surface-variant);
+  background: var(--jr-surface-variant); margin: 14px -16px 8px; padding: 8px 16px;
 }
-.mrow .time { font-weight: 800; font-size: 15px; }
-.mrow .prev { font-size: 13.5px; color: var(--jr-on-surface-variant); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.mrow {
+  display: flex; gap: 10px; align-items: flex-start;
+  width: 100%; border: 1px solid var(--jr-outline-variant); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
+  background: var(--jr-surface); text-align: left; font-family: inherit; color: var(--jr-on-bg);
+}
+.mrow .prev { font-size: 14px; line-height: 1.45; color: var(--jr-on-bg); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.mrow .mrow-time { margin-top: 6px; display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--jr-on-surface-variant); }
 .mrow .up { color: #e05a4e; }
 .mempty { text-align: center; padding: 60px 0 30px; color: var(--jr-outline); }
 .mempty .t { font-size: 16px; margin: 14px 0 4px; color: var(--jr-on-surface-variant); }
@@ -533,9 +520,7 @@ async function onFavourite() {
 }
 .msnack button { margin-left: auto; background: transparent; border: 0; color: #85d1e8; font-weight: 700; font-size: 13.5px; }
 /* 深色主题:卡片与横幅走暗色 */
-[data-theme="dark"] .mrow { background: #26333a; }
-[data-theme="dark"] .mstories .card.today { background: #3a3552; color: #d9d4f2; }
-[data-theme="dark"] .mstories .card.throwback { background: #3c4148; color: #cfd6da; }
+[data-theme="dark"] .mrow { background: var(--jr-layer); }
 [data-theme="dark"] .banner { background: #24363c; }
 [data-theme="dark"] .banner .d { color: #9fb0b5; }
 [data-theme="dark"] .mdlg { background: #2b3236; }

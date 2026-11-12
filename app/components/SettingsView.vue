@@ -17,7 +17,7 @@ watch(throwback, (v) => localStorage.setItem('jr.throwback', v ? '1' : '0'))
 const mSections = [
   { key: 'general', label: '通用', color: '#f8b26a', expandable: true },
   { key: 'cloud', label: '帐户、数据与云端服务', color: '#f2e04c', expandable: false, to: '/cloud' },
-  { key: 'stories', label: '故事', color: '#d6e356', expandable: false, toggle: true },
+  // 「故事」行随 Stories 退役移除（M-204/B5：Day One 无此形态，怀旧开关失去作用对象）
   { key: 'publish', label: '发布', color: '#7fe07f', expandable: false, locked: true },
   { key: 'notifications', label: '通知&提醒', color: '#7fc4e8', expandable: false, locked: true },
   { key: 'security', label: '安全性', color: '#6ee8dc', expandable: true },

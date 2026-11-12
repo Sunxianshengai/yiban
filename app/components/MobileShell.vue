@@ -1,127 +1,121 @@
 <script setup lang="ts">
-import { mdiBookOutline, mdiCalendarMonthOutline, mdiImageOutline, mdiMapOutline, mdiPanda, mdiMagnify, mdiAccount, mdiCellphone, mdiCheck, mdiCloudOutline, mdiChevronRight, mdiPawOutline, mdiPawOffOutline } from '@mdi/js'
+// Day One 移动壳（W1 采集 40-mobile-main/41/56 证据 + ledger O14）：
+// 顶栏=左日记本图标(开导航抽屉)+中视图胶囊+右搜索；无底部 tab；FAB 右下圆角方块。
+// 安卓原生 APK 未采成（Cloudflare 拦，ledger U2），移动形态以 Day One web 移动视口 390x844 为准。
+import { mdiBookOutline, mdiMagnify, mdiCogOutline, mdiCloudOutline, mdiRobotOutline, mdiMapMarkerOutline, mdiWhiteBalanceSunny, mdiCalendarMonth, mdiImageMultipleOutline, mdiPawOutline, mdiPawOffOutline, mdiWalletGiftcard, mdiAccount, mdiLogout } from '@mdi/js'
+import { db } from '~/utils/db'
 
-// 移动端没有侧栏的设置入口，桌宠显隐开关就直接放在顶栏（和侧栏是同一份状态）
-const { visible: petVisible, toggle: togglePet } = usePetWidget()
-
-// 移动壳对照 Journey Android 6.0.2 证据(evidence/mobile-derived/ui-structure.md §1 + r03):
-// 顶部胶囊栏(logo=日记本下拉+搜索+头像) + 底部五 tab(Journey/日历/媒体/地图册/Pal)
-// 头像与搜索同进搜索页;logo 点开日记本下拉(本地✓+云服务,同 r03 证据)
-const tabs = [
-  { to: '/', label: 'Journey', icon: mdiBookOutline },
-  { to: '/calendar', label: '日历', icon: mdiCalendarMonthOutline },
-  { to: '/media', label: '媒体', icon: mdiImageOutline },
-  { to: '/atlas', label: '地图册', icon: mdiMapOutline },
-  { to: '/pal', label: '日记伙伴', icon: mdiPanda },
-] as const
 const route = useRoute()
-const journalMenu = ref(false)
-function isActive(to: string) {
-  return to === '/' ? route.path === '/' || route.path === '/starred' : route.path.startsWith(to)
-}
+const drawerOpen = ref(false)
+const membershipOpen = useMembershipDialog()
+const { visible: petVisible, toggle: togglePet } = usePetWidget()
+const entryCount = ref(0)
+onMounted(async () => { entryCount.value = await db.entriesV2.filter((e) => !e.deleted).count() })
 </script>
 
 <template>
   <div class="jr-mshell">
     <header class="jr-mtopbar">
-      <div class="pill">
-        <button class="brand" aria-label="日记本切换" :aria-expanded="journalMenu" @click="journalMenu = !journalMenu">
-          <JrIcon :path="mdiBookOutline" :size="22" class="brand-ico" />
-          <span class="brand-t">JOURNEY</span>
-        </button>
-        <div v-if="journalMenu" class="jr-journal-pop" @click.stop>
-          <div class="jrow on">
-            <JrIcon :path="mdiCellphone" :size="20" />
-            <span class="jt">本地</span>
-            <JrIcon :path="mdiCheck" :size="18" class="jck" />
-          </div>
-          <NuxtLink to="/cloud" class="jrow" @click="journalMenu = false">
-            <JrIcon :path="mdiCloudOutline" :size="20" />
-            <span class="jt">云服务</span>
-            <JrIcon :path="mdiChevronRight" :size="18" class="jck muted" />
-          </NuxtLink>
-        </div>
-        <span class="vr" aria-hidden="true" />
-        <NuxtLink to="/search" class="ico" aria-label="搜索"><JrIcon :path="mdiMagnify" :size="22" /></NuxtLink>
-        <button
-          type="button"
-          class="ico pet-ico"
-          :aria-label="petVisible ? '隐藏桌宠' : '显示桌宠'"
-          :aria-pressed="petVisible"
-          data-testid="pet-toggle-mobile"
-          @click="togglePet"
-        >
-          <JrIcon :path="petVisible ? mdiPawOffOutline : mdiPawOutline" :size="22" />
-        </button>
-        <NuxtLink to="/search" class="ico avatar" aria-label="账户"><JrIcon :path="mdiAccount" :size="20" /></NuxtLink>
-      </div>
+      <button type="button" class="mico-btn" aria-label="打开导航抽屉" @click="drawerOpen = true">
+        <JrIcon :path="mdiBookOutline" :size="22" />
+      </button>
+      <ViewPills class="mtop-pills" />
+      <NuxtLink to="/search" class="mico-btn" aria-label="搜索"><JrIcon :path="mdiMagnify" :size="22" /></NuxtLink>
     </header>
 
-    <main class="jr-mbody" @click="journalMenu = false">
+    <main class="jr-mbody" @click="drawerOpen = false">
       <slot />
     </main>
 
-    <nav class="jr-mtabs" aria-label="主导航">
-      <NuxtLink
-        v-for="t in tabs" :key="t.to" :to="t.to"
-        class="tab" :class="{ on: isActive(t.to) }"
-      >
-        <span class="tico"><JrIcon :path="t.icon" :size="24" /></span>
-        <span class="tlabel">{{ t.label }}</span>
-      </NuxtLink>
-    </nav>
+    <!-- 导航抽屉（Day One 左栏结构的移动化：今天/日记伙伴/日记组/位置历史/设置/云） -->
+    <Teleport to="body">
+      <div v-if="drawerOpen" class="jr-mdrawer-mask" @click="drawerOpen = false">
+        <aside class="jr-mdrawer" aria-label="导航抽屉" @click.stop>
+          <div class="dhead">
+            <NuxtLink to="/settings" class="dico" aria-label="打开设置" @click="drawerOpen = false">
+              <JrIcon :path="mdiCogOutline" :size="21" />
+            </NuxtLink>
+            <NuxtLink to="/cloud" class="dico" aria-label="云服务" @click="drawerOpen = false">
+              <JrIcon :path="mdiCloudOutline" :size="21" />
+            </NuxtLink>
+          </div>
+          <NuxtLink to="/" class="drow" :class="{ on: route.path === '/' }" @click="drawerOpen = false">
+            <JrIcon :path="mdiWhiteBalanceSunny" :size="20" /><span>今天</span>
+          </NuxtLink>
+          <NuxtLink to="/pal" class="drow" :class="{ on: route.path.startsWith('/pal') }" @click="drawerOpen = false">
+            <JrIcon :path="mdiRobotOutline" :size="20" /><span>日记伙伴</span>
+          </NuxtLink>
+          <div class="dsection"><span>日记</span></div>
+          <NuxtLink to="/" class="drow jr-djournal" :class="{ on: route.path === '/' }" @click="drawerOpen = false">
+            <span class="dchip" aria-hidden="true" /><span class="dname">Journal</span><span class="dcount">{{ entryCount }}</span>
+          </NuxtLink>
+          <NuxtLink to="/cloud" class="drow" @click="drawerOpen = false">
+            <span class="dchip cloud" aria-hidden="true" /><span class="dname">云服务</span><JrIcon :path="mdiCloudOutline" :size="16" class="dend" />
+          </NuxtLink>
+          <NuxtLink to="/atlas" class="drow" :class="{ on: route.path.startsWith('/atlas') }" @click="drawerOpen = false">
+            <JrIcon :path="mdiMapMarkerOutline" :size="20" /><span>位置历史记录</span>
+          </NuxtLink>
+          <div class="dsep" />
+          <NuxtLink to="/calendar" class="drow" :class="{ on: route.path.startsWith('/calendar') }" @click="drawerOpen = false">
+            <JrIcon :path="mdiCalendarMonth" :size="20" /><span>日历</span>
+          </NuxtLink>
+          <NuxtLink to="/media" class="drow" :class="{ on: route.path.startsWith('/media') }" @click="drawerOpen = false">
+            <JrIcon :path="mdiImageMultipleOutline" :size="20" /><span>媒体</span>
+          </NuxtLink>
+          <button
+            type="button"
+            class="drow dplain"
+            :aria-pressed="petVisible"
+            data-testid="pet-toggle-mobile"
+            @click="togglePet"
+          >
+            <JrIcon :path="petVisible ? mdiPawOffOutline : mdiPawOutline" :size="20" />
+            <span>{{ petVisible ? '隐藏桌宠' : '显示桌宠' }}</span>
+          </button>
+          <button type="button" class="drow dplain" @click="drawerOpen = false; membershipOpen = true">
+            <JrIcon :path="mdiWalletGiftcard" :size="20" /><span>附加功能</span>
+          </button>
+          <div class="dfooter">
+            <span class="davatar">用</span>
+            <span class="dwho">用户 · 免费版</span>
+            <JrIcon :path="mdiLogout" :size="18" class="dend" />
+          </div>
+        </aside>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
 .jr-mshell { height: 100%; display: flex; flex-direction: column; background: var(--jr-bg); }
-.jr-mtopbar { padding: 12px 14px 6px; position: relative; z-index: 40; }
-.jr-mtopbar .pill {
-  display: flex; align-items: center; gap: 4px;
-  background: #fff; border-radius: 999px; padding: 8px 10px 8px 18px;
-  box-shadow: 0 1px 6px rgba(0, 60, 70, 0.08);
-  border: 1px solid #eef4f6;
-}
-.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--jr-primary); flex: 1; min-width: 0; background: none; border: 0; padding: 0; text-align: left; }
-.brand-t { font-weight: 800; letter-spacing: 3px; font-size: 16px; color: var(--jr-primary); }
-.brand-ico { color: var(--jr-primary); }
-.jr-journal-pop {
-  position: absolute; left: 26px; top: 64px; min-width: 330px;
-  background: #eef2f4; border-radius: 12px; padding: 6px;
-  box-shadow: 0 8px 28px rgba(0, 40, 50, 0.18); z-index: 50;
-}
-.jrow { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 10px; color: var(--jr-on-bg); text-decoration: none; width: 100%; background: none; border: 0; font-size: 15.5px; font-weight: 600; font-family: inherit; }
-.jrow.on { background: #dfe6e9; }
-.jrow .jt { flex: 1; text-align: left; }
-.jrow .jck { color: var(--jr-on-bg); }
-.jrow .jck.muted { color: var(--jr-outline); }
-.vr { width: 1px; align-self: stretch; background: var(--jr-outline-variant); margin: 2px 6px; }
-.ico { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; color: var(--jr-on-bg); text-decoration: none; }
-.ico:active { background: var(--jr-surface-variant); }
-.ico.avatar { background: var(--jr-primary-container); color: #001f27; }
-.ico.avatar svg { color: #33247c; }
-/* 桌宠开关是 button，抹掉浏览器默认边框/底色，和旁边的搜索/头像对齐 */
-.pet-ico { border: 0; background: transparent; padding: 0; font-family: inherit; cursor: pointer; flex: 0 0 44px; }
-.pet-ico:hover { background: var(--jr-surface-variant); }
+/* Day One 移动顶栏：左图标 + 中胶囊 + 右搜索，无胶囊底板（40-mobile-main） */
+.jr-mtopbar { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 10px 12px 6px; position: relative; z-index: 40; }
+.mico-btn { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 0; background: none; border-radius: 10px; color: var(--jr-on-bg); text-decoration: none; }
+.mico-btn:active { background: var(--jr-surface-variant); }
+.mtop-pills { flex: none; }
 .jr-mbody { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-.jr-mtabs {
-  /* 主界面桌宠是 fixed 覆盖层；底栏要盖在它上面，别让小羊挡住五个 tab */
-  position: relative; z-index: 40;
-  display: flex; align-items: stretch;
-  background: #eef4f6; border-top: 1px solid #e3edf0;
-  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+/* 抽屉 */
+.jr-mdrawer-mask { position: fixed; inset: 0; z-index: 90; background: rgba(0, 0, 0, 0.4); }
+.jr-mdrawer {
+  position: absolute; inset: 0 auto 0 0; width: 300px; max-width: 84vw;
+  background: var(--jr-surface); border-right: 1px solid var(--jr-outline-variant);
+  display: flex; flex-direction: column; overflow-y: auto; padding: 0 12px;
 }
-.tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; color: var(--jr-on-surface-variant); padding: 2px 0; }
-.tab .tico { display: flex; align-items: center; justify-content: center; width: 56px; height: 34px; border-radius: 999px; }
-.tab.on { color: var(--jr-primary); font-weight: 700; }
-.tab.on .tico { background: var(--jr-secondary-container); }
-.tlabel { font-size: 11.5px; }
-/* 深色主题:壳面走暗层 */
-[data-theme="dark"] .jr-mtopbar .pill { background: var(--jr-layer, #303638); border-color: var(--jr-outline-variant); box-shadow: none; }
-[data-theme="dark"] .jr-journal-pop { background: var(--jr-layer-high, #3a4144); }
-[data-theme="dark"] .jrow.on { background: var(--jr-layer-highest, #303638); }
-[data-theme="dark"] .jr-mtabs { background: var(--jr-layer, #242a2c); border-top-color: var(--jr-outline-variant); }
-[data-theme="dark"] .tab { color: #9fb0b5; }
-[data-theme="dark"] .tab.on { color: var(--jr-primary-fixed-dim, #85d1e8); }
-[data-theme="dark"] .tab.on .tico { background: #2b4449; }
+.dhead { display: flex; align-items: center; justify-content: space-between; padding: 14px 2px 10px; }
+.dico { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; color: var(--jr-on-bg); text-decoration: none; }
+.dico:active { background: var(--jr-surface-variant); }
+.drow { display: flex; align-items: center; gap: 14px; padding: 11px 12px; border-radius: 10px; color: var(--jr-on-bg); text-decoration: none; font-size: 15px; width: 100%; background: none; border: 0; font-family: inherit; text-align: left; }
+.drow.on { background: var(--jr-surface-variant); font-weight: 600; }
+.drow:active { background: var(--jr-surface-variant); }
+.dplain { cursor: pointer; }
+.dsection { color: var(--jr-on-surface-variant); font-size: 12.5px; padding: 16px 12px 4px; }
+.jr-djournal .dchip { flex: none; width: 16px; height: 16px; border-radius: 4px; background: var(--jr-tertiary); }
+.dchip.cloud { background: var(--jr-secondary-container); }
+.dname { flex: 1; }
+.dcount { color: var(--jr-on-surface-variant); font-size: 12.5px; }
+.dend { color: var(--jr-on-surface-variant); }
+.dsep { height: 1px; background: var(--jr-outline-variant); margin: 10px 6px; }
+.dfooter { margin-top: auto; display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--jr-outline-variant); padding: 14px 10px; color: var(--jr-on-surface-variant); font-size: 13px; }
+.davatar { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: var(--jr-primary-container); color: var(--jr-on-primary-container); font-weight: 700; }
+.dwho { flex: 1; color: var(--jr-on-bg); font-weight: 600; }
 </style>
