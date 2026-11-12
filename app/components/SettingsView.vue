@@ -3,8 +3,9 @@ defineEmits<{ (e: 'close'): void }>()
 import { desktopBridge } from '~/utils/desktopBridge'
 import { errorText } from '~/utils/uiText'
 import { getAmapJsKey, getAmapSecurity, getAmapWebKey, resetAmapLoader, setAmapCredentials } from '~/utils/amap'
+import { getPalConfig, setPalConfig } from '~/utils/palClient'
 import { JR_THEMES, THEME_IDS } from '~/utils/themesRegistry'
-import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiAccountOutline, mdiShieldKeyOutline, mdiDatabaseOutline, mdiHelpCircleOutline, mdiPalette, mdiRuler, mdiMapMarkerOutline, mdiTranslate, mdiSpellcheck, mdiPuzzleOutline, mdiLockOutline, mdiChevronRight, mdiChevronLeft, mdiAlertOutline, mdiCloudOutline, mdiApps, mdiBookmarkOutline, mdiBellOutline } from '@mdi/js'
+import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiAccountOutline, mdiShieldKeyOutline, mdiDatabaseOutline, mdiHelpCircleOutline, mdiPalette, mdiRuler, mdiMapMarkerOutline, mdiTranslate, mdiSpellcheck, mdiPuzzleOutline, mdiLockOutline, mdiChevronRight, mdiChevronLeft, mdiAlertOutline, mdiCloudOutline, mdiApps, mdiBookmarkOutline, mdiBellOutline, mdiRobotOutline } from '@mdi/js'
 
 const tab = ref<'general' | 'account' | 'security' | 'data' | 'help'>('general')
 const isMobile = useIsMobile()
@@ -29,7 +30,7 @@ function toggleSection(key: typeof mSections[number]['key']) {
 }
 const mIcons = { general: mdiCogOutline, cloud: mdiCloudOutline, stories: mdiApps, publish: mdiBookmarkOutline, notifications: mdiBellOutline, security: mdiLockOutline, help: mdiHelpCircleOutline } as const
 const lockedNote = ref('')
-const gen = ref<'appearance' | 'unit' | 'location' | 'locale' | 'spellcheck' | 'plugins'>('appearance')
+const gen = ref<'appearance' | 'unit' | 'location' | 'pal' | 'locale' | 'spellcheck' | 'plugins'>('appearance')
 const { weekStart } = useWeekStart()
 // bug06 修复：计量单位绑定并持久化（原 select 未绑 v-model，选择即丢）
 const { unit } = useUnits()
@@ -44,6 +45,7 @@ const genItems = [
   { key: 'appearance', label: '外观', icon: mdiPalette },
   { key: 'unit', label: '计量单位', icon: mdiRuler },
   { key: 'location', label: '地点', icon: mdiMapMarkerOutline },
+  { key: 'pal', label: '日记伙伴', icon: mdiRobotOutline },
   { key: 'locale', label: '语言与地区', icon: mdiTranslate },
   { key: 'spellcheck', label: '拼写检查', icon: mdiSpellcheck },
   { key: 'plugins', label: '插件', icon: mdiPuzzleOutline },
@@ -64,6 +66,14 @@ function saveAmapCredentials() {
   resetAmapLoader()
   amapSaved.value = true
   setTimeout(() => { amapSaved.value = false }, 2400)
+}
+// 日记伙伴 AI 服务：从 /pal 页面挪进设置（用户要求页面直接是对话界面，别让配置表单占门面）
+const pal = ref(getPalConfig())
+const palSaved = ref(false)
+function savePal() {
+  setPalConfig(pal.value)
+  palSaved.value = true
+  setTimeout(() => { palSaved.value = false }, 2400)
 }
 watchEffect(() => {
   localStorage.setItem('jr.fontFamily', fontFamily.value)
@@ -256,6 +266,15 @@ async function wipeAll() {
           <span v-if="amapSaved" class="mnote" role="status">已保存</span>
           <button class="mbtn" @click="saveAmapCredentials">保存密钥</button>
         </div>
+        <p class="mnote" style="margin-top:10px">日记伙伴 AI 服务（兼容 OpenAI 接口，密钥仅保存在本机）</p>
+        <label class="mset-row col"><span>服务地址</span><input v-model="pal.endpoint" class="minput" placeholder="https://api.openai.com/v1" spellcheck="false" /></label>
+        <label class="mset-row col"><span>接口密钥</span><input v-model="pal.apiKey" type="password" class="minput" placeholder="仅保存在本机" spellcheck="false" /></label>
+        <label class="mset-row col"><span>对话模型</span><input v-model="pal.model" class="minput" placeholder="gpt-4o-mini" spellcheck="false" /></label>
+        <label class="mset-row col"><span>语音转写模型</span><input v-model="pal.sttModel" class="minput" placeholder="whisper-1" spellcheck="false" /></label>
+        <div class="mset-row" style="justify-content:flex-end;gap:8px">
+          <span v-if="palSaved" class="mnote" role="status">已保存</span>
+          <button class="mbtn" @click="savePal">保存日记伙伴服务</button>
+        </div>
         <label class="mset-row"><span>写作时检查拼写</span><input v-model="spellcheck" type="checkbox" /></label>
         <label class="mset-row">
           <span>在网页里显示桌宠</span>
@@ -381,6 +400,33 @@ async function wipeAll() {
               只填 Web服务 Key 时，地图册会显示已保存的地点列表；只填 JS API Key 时，地点搜索会提示先配置。
             </p>
             <p class="jr-muted" style="font-size:12px">IP 白名单留空即可（浏览器直连的出口 IP 不固定）。首版以中国大陆为主；海外日记仍可在地点列表里打开。</p>
+          </template>
+
+          <template v-else-if="gen === 'pal'">
+            <label class="jr-set-row" style="display:block">
+              <span class="jr-set-cap">服务地址（兼容 OpenAI 接口）</span>
+              <input v-model="pal.endpoint" class="jr-pop-input" style="width:320px;margin-top:6px" placeholder="https://api.openai.com/v1" spellcheck="false" />
+            </label>
+            <label class="jr-set-row" style="display:block">
+              <span class="jr-set-cap">接口密钥</span>
+              <input v-model="pal.apiKey" type="password" class="jr-pop-input" style="width:320px;margin-top:6px" placeholder="仅保存在本机" spellcheck="false" />
+            </label>
+            <label class="jr-set-row" style="display:block">
+              <span class="jr-set-cap">对话模型</span>
+              <input v-model="pal.model" class="jr-pop-input" style="width:320px;margin-top:6px" placeholder="gpt-4o-mini" spellcheck="false" />
+            </label>
+            <label class="jr-set-row" style="display:block">
+              <span class="jr-set-cap">语音转写模型（随手记语音用）</span>
+              <input v-model="pal.sttModel" class="jr-pop-input" style="width:320px;margin-top:6px" placeholder="whisper-1" spellcheck="false" />
+            </label>
+            <div class="jr-set-row" style="gap:10px">
+              <button class="jr-btn" style="width:auto" @click="savePal">保存</button>
+              <span v-if="palSaved" class="jr-muted" role="status">已保存，回到日记伙伴页即可开聊。</span>
+            </div>
+            <p class="jr-muted" style="font-size:12px;line-height:1.6">
+              密钥只保存在本机浏览器，AI 请求由浏览器直连你填的服务地址，不经过任何中间服务器。
+              没有自己的服务时，日记伙伴仍可浏览，发送消息会提示先配置。
+            </p>
           </template>
 
           <template v-else-if="gen === 'locale'">

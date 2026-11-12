@@ -6,6 +6,8 @@ import { mdiMenu } from '@mdi/js'
 // 注意 /pet?desktop=1 会被解析成 /pet/（末尾带斜杠），所以不能直接比字符串。
 const route = useRoute()
 const isPetPage = computed(() => route.name === 'pet' || route.path.replace(/\/+$/, '') === '/pet')
+// /pal 页本身的主角就是小羊（移动场景卡 / 配置后的舞台），悬浮桌宠在这里是重复还会撞场景
+const isPalPage = computed(() => route.path.replace(/\/+$/, '') === '/pal')
 
 const onboarded = ref(true)
 const locked = ref(false)
@@ -62,8 +64,8 @@ onMounted(async () => {
       </template>
       <OnboardingModal v-if="!onboarded" @finish="onboarded = true" />
       <MembershipDialog v-if="membershipOpen" @close="membershipOpen = false" />
-      <!-- 未锁、已完成引导时才放出来，免得盖住引导层；/pet 独立页已在上面提前返回 -->
-      <PetWidget v-if="petVisible && onboarded" embedded />
+      <!-- 未锁、已完成引导时才放出来，免得盖住引导层；/pet 独立页已在上面提前返回；/pal 有自己的小羊 -->
+      <PetWidget v-if="petVisible && onboarded && !isPalPage" embedded />
     </template>
   </div>
 </template>

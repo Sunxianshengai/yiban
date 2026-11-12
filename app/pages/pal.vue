@@ -4,7 +4,7 @@ import type { EntryV2 } from '~/utils/db'
 import { useEntries } from '~/composables/useEntries'
 import { useVoiceNote } from '~/composables/useVoiceNote'
 import { errorText } from '~/utils/uiText'
-import { palChat, palTranscribe, getPalConfig, setPalConfig, draftTextToHtml, type PalContentPart, type PalMessage } from '~/utils/palClient'
+import { palChat, palTranscribe, getPalConfig, draftTextToHtml, type PalContentPart, type PalMessage } from '~/utils/palClient'
 import type { PalDraft } from '~/components/PalDraftCard.vue'
 
 /**
@@ -22,11 +22,12 @@ const { entries, saveEntry } = useEntries()
 const isMobile = useIsMobile()
 const photoInput = ref<HTMLInputElement | null>(null)
 
-// ---- 配置（沿用 jr.pal* 本地键，新增语音转写模型） ----
-const cfg = ref(getPalConfig())
-watchEffect(() => setPalConfig(cfg.value))
+// ---- 配置 ----
+// 配置表单已从本页移除（用户要求：页面直接就是对话界面），入口在 设置 → 日记伙伴。
+// 每次发送都现读 localStorage，设置页保存完回来立即生效，无需刷新。
+const cfg = computed(() => getPalConfig())
 const configured = computed(() => !!cfg.value.endpoint.trim())
-const configOpen = ref(false)
+const NEED_CFG = '还没配置日记伙伴服务：在「设置 → 日记伙伴」里填入服务地址和密钥（仅保存在本机）。'
 
 // ---- 小羊舞台：状态机 idle → thinking → awake ----
 type PetStage = 'idle' | 'thinking' | 'awake'
@@ -106,6 +107,7 @@ async function captureSend() {
   const text = captureText.value.trim()
   if (!text && !capturePhotos.value.length) return
   if (busy.value) return
+  if (!configured.value) { error.value = NEED_CFG; return }
   error.value = ''
   captureLines.value.push({ role: 'user', text: text || '（照片）', photos: [...photoPreviews.value] })
   const sentPhotos = [...capturePhotos.value]
@@ -140,6 +142,7 @@ const guideTurns = ref(0)
 async function guideSend() {
   const text = guideText.value.trim()
   if (!text || busy.value) return
+  if (!configured.value) { error.value = NEED_CFG; return }
   error.value = ''
   guideText.value = ''
   guideLines.value.push({ role: 'user', text })
@@ -163,6 +166,7 @@ async function guideSend() {
 }
 async function guideCollect() {
   if (busy.value || !guideLines.value.length) return
+  if (!configured.value) { error.value = NEED_CFG; return }
   error.value = ''
   busy.value = true
   setStage('thinking')
@@ -204,6 +208,7 @@ function share(entry: EntryV2) {
 async function reviewAction(kind: 'look' | 'continue') {
   const entry = sharedEntry.value
   if (!entry || busy.value) return
+  if (!configured.value) { error.value = NEED_CFG; return }
   error.value = ''
   reviewLines.value.push({ role: 'user', text: kind === 'look' ? '帮我回顾这篇日记。' : '帮我顺着这篇日记补写。' })
   busy.value = true
@@ -276,32 +281,23 @@ function switchMode(next: Mode) {
 
 <template>
   <div class="jr-page jr-pal">
-    <!-- 移动未配置：原版式场景卡（证据 r04），配置即进入对话 -->
-    <div v-if="isMobile && !configured" class="jr-pal-scene">
-      <div class="scene-card">
-        <div class="scene-ico" aria-hidden="true">🐑</div>
-        <h2>你的日记伙伴正在等你</h2>
-        <p>配置你的 AI 服务地址后随时开始。密钥仅保存在本机。</p>
-        <input v-model="cfg.endpoint" placeholder="服务地址，例如 https://api.openai.com/v1" aria-label="服务地址">
-        <input v-model="cfg.apiKey" type="password" placeholder="接口密钥（仅保存在本机）" aria-label="接口密钥">
-        <button class="jr-btn jr-btn-primary" style="width:100%">配置后自动进入对话</button>
-      </div>
+    <!-- 未配置：一行横幅引导去设置，不挡对话界面（配置表单已挪到 设置 → 日记伙伴） -->
+    <div v-if="!configured" class="jr-pal-noai" role="status">
+      <JrIcon :path="mdiCogOutline" :size="15" />
+      <span>{{ isMobile ? '还没配置 AI 服务：设置 → 通用 → 日记伙伴服务' : '还没配置 AI 服务：侧栏「设置」→ 通用 → 日记伙伴' }}</span>
+      <button v-if="isMobile" class="jr-link-btn" @click="navigateTo('/settings')">去设置</button>
     </div>
 
-    <template v-else>
-      <!-- 小羊舞台 -->
-      <div class="jr-pet-stage" :class="stage">
-        <img v-if="petFallback" src="/pet/lamb-poster.webp" alt="日记伙伴：瞌睡小羊" class="jr-pet-img">
-        <Transition v-else name="petfade" mode="out-in">
-          <video :key="stage" class="jr-pet-video on" :src="petVideos[stage]" loop muted playsinline autoplay preload="auto" @error="petFallback = true" />
-        </Transition>
-        <span class="jr-pet-caption">{{ stage === 'thinking' ? '小羊想一下…' : stage === 'awake' ? '小羊醒着呢' : '小羊打了个盹' }}</span>
-      </div>
+    <!-- 小羊舞台 -->
+    <div class="jr-pet-stage" :class="stage">
+      <img v-if="petFallback" src="/pet/lamb-poster.webp" alt="日记伙伴：瞌睡小羊" class="jr-pet-img">
+      <Transition v-else name="petfade" mode="out-in">
+        <video :key="stage" class="jr-pet-video on" :src="petVideos[stage]" loop muted playsinline autoplay preload="auto" @error="petFallback = true" />
+      </Transition>
+      <span class="jr-pet-caption">{{ stage === 'thinking' ? '小羊想一下…' : stage === 'awake' ? '小羊醒着呢' : '小羊打了个盹' }}</span>
+    </div>
 
-      <h1>日记伙伴</h1>
-      <p v-if="!configured" class="jr-muted" style="font-size:13px">
-        还没配置 AI 服务。在下方「服务配置」里填入兼容 OpenAI 接口的地址和密钥（仅保存在本机）。
-      </p>
+    <h1 v-if="!isMobile">日记伙伴</h1>
 
       <!-- 模式切换 -->
       <div class="jr-pal-tabs" role="tablist" aria-label="日记伙伴用法">
@@ -395,18 +391,6 @@ function switchMode(next: Mode) {
       <PalDraftCard v-if="draft" :draft="draft" :saving="saving" style="margin:14px 0" @save="acceptDraft" @discard="draft = null" />
 
       <p v-if="error" class="jr-import-msg" role="alert">{{ error }}</p>
-
-      <!-- 服务配置 -->
-      <details class="jr-pal-config" :open="!configured || configOpen">
-        <summary @click.prevent="configOpen = !configOpen"><JrIcon :path="mdiCogOutline" :size="14" /> 服务配置（兼容 OpenAI 接口，仅保存在本机）</summary>
-        <div class="config-grid">
-          <input v-model="cfg.endpoint" placeholder="服务地址，例如 https://api.openai.com/v1" aria-label="服务地址">
-          <input v-model="cfg.apiKey" type="password" placeholder="接口密钥" aria-label="接口密钥">
-          <input v-model="cfg.model" placeholder="模型，例如 gpt-4o-mini" aria-label="模型">
-          <input v-model="cfg.sttModel" placeholder="语音转写模型，例如 whisper-1" aria-label="语音转写模型">
-        </div>
-      </details>
-    </template>
   </div>
 </template>
 
@@ -463,18 +447,24 @@ h1 { margin: 0; font-size: 22px; font-weight: 800; }
 .pick-list .jr-entry .date { font-size: 12px; color: var(--jr-on-surface-variant); }
 .pick-list .jr-entry .preview { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* 配置 */
-.jr-pal-config { border-top: 1px solid var(--jr-outline-variant); padding-top: 10px; font-size: 12.5px; color: var(--jr-on-surface-variant); }
-.jr-pal-config summary { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; list-style: none; }
-.config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-.config-grid input { border: 1px solid var(--jr-outline-variant); border-radius: 10px; padding: 8px 10px; font-family: inherit; font-size: 13px; background: #fff; color: var(--jr-on-bg); }
-[data-theme="dark"] .config-grid input { background: #1d2427; }
+/* 未配置横幅：一行提示，别挡对话界面（表单在 设置 → 日记伙伴） */
+.jr-pal-noai {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: var(--jr-surface-variant);
+  color: var(--jr-on-surface-variant);
+  font-size: 12.5px;
+}
+.jr-pal-noai span { flex: 1; }
 
 /* ≤600px：舞台变矮、面板通栏（沿用移动抽屉时代的布局约定） */
 @media (max-width: 600px) {
-  .jr-pal { padding: 0; }
-  .jr-pet-stage { height: 170px; border-radius: 16px; }
+  .jr-pal { padding: 0; gap: 10px; }
+  .jr-pet-stage { height: 150px; border-radius: 16px; }
   .jr-pal-msg { max-width: 92%; }
-  .config-grid { grid-template-columns: 1fr; }
+  .jr-pal-thread { min-height: 40vh; max-height: none; }
 }
 </style>
