@@ -6,7 +6,9 @@
     "dev": "nuxt dev",
     "build": "nuxt build",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "desktop": "node electron/launch.cjs",
+    "desktop:dev": "node electron/launch.cjs --dev --no-main"
   },
   "dependencies": {
     "@breezystack/lamejs": "1.2.7",
@@ -23,5 +25,8 @@
     "nuxt": "^4.2.2",
     "vue": "^3.5.24",
     "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "electron": "^38.8.6"
   }
 }

@@ -2,6 +2,11 @@
 import { desktopBridge } from '~/utils/desktopBridge'
 import { mdiMenu } from '@mdi/js'
 
+// 桌宠页要整页透明（被 Electron 当覆盖层加载），不能套侧栏和主区外壳。
+// 注意 /pet?desktop=1 会被解析成 /pet/（末尾带斜杠），所以不能直接比字符串。
+const route = useRoute()
+const isPetPage = computed(() => route.name === 'pet' || route.path.replace(/\/+$/, '') === '/pet')
+
 const onboarded = ref(true)
 const locked = ref(false)
 const sidebarOpen = ref(false)
@@ -33,8 +38,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="jr-shell" :class="{ 'sidebar-open': sidebarOpen }">
-    <LockOverlay v-if="locked" @unlocked="locked = false" />
+  <div class="jr-shell" :class="{ 'sidebar-open': sidebarOpen, 'jr-shell-pet': isPetPage }">
+    <NuxtPage v-if="isPetPage" />
+    <template v-else-if="locked">
+      <LockOverlay @unlocked="locked = false" />
+    </template>
     <template v-else>
       <button v-if="!isMobile" class="jr-sidebar-toggle" type="button" aria-label="打开侧栏" @click="sidebarOpen = !sidebarOpen">
         <JrIcon :path="mdiMenu" :size="20" />

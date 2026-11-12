@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>旅程日记 · 瞌睡小羊</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  body { display: grid; place-items: end center; font: 13px/1.6 system-ui, "Microsoft YaHei", sans-serif; color: #6d7a80; }
+  .wrap { position: relative; margin-bottom: 8vh; }
+  img { display: block; width: 195px; height: 263px; object-fit: contain; filter: drop-shadow(0 10px 14px rgba(38,46,52,.2)); }
+  .note {
+    position: absolute; left: 50%; bottom: calc(100% - 4px); transform: translateX(-50%);
+    width: max-content; max-width: 230px; padding: 9px 13px; border-radius: 14px;
+    border-bottom-left-radius: 5px; background: rgba(255,255,255,.96); color: #2f3a40;
+    box-shadow: 0 6px 22px rgba(40,52,60,.16);
+  }
+  .bar { position: fixed; left: 24px; bottom: 20px; display: flex; gap: 8px; }
+  button {
+    font: inherit; padding: 7px 14px; border-radius: 10px; border: 1px solid rgba(60,80,90,.18);
+    background: rgba(255,255,255,.92); color: #33404a; cursor: pointer;
+  }
+  button:hover { background: #fff; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="note" id="note">这会儿连不上日记，但小羊还在。</div>
+    <img id="lamb" src="../public/pet/pet-poster.webp" alt="瞌睡小羊">
+  </div>
+  <div class="bar">
+    <button id="open">打开日记</button>
+    <button id="hide">隐藏桌宠</button>
+  </div>
+  <script>
+    // 主页面加载失败时的兜底：至少留个能点的小羊，别给用户一块空白。
+    const bridge = window.yibanPet
+    bridge?.ready()
+    const rects = () => [document.getElementById('lamb'), document.getElementById('note'), document.querySelector('.bar')]
+      .filter(Boolean)
+      .map((el) => el.getBoundingClientRect())
+      .map((r) => ({ x: r.x, y: r.y, width: r.width, height: r.height }))
+    setInterval(() => bridge?.hitRegions(rects()), 150)
+    document.getElementById('open').addEventListener('click', () => bridge?.openMain('/'))
+    document.getElementById('hide').addEventListener('click', () => bridge?.hide())
+  </script>
+</body>
+</html>

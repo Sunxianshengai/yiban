@@ -39,6 +39,11 @@ input, textarea { font-family: inherit; }
 /* ---- app shell ---- */
 .jr-shell { display: flex; height: 100%; overflow: hidden; }
 
+/* 桌宠覆盖层：整页必须透明，否则 Electron 透明窗口里会是一块白板 */
+.jr-shell-pet { display: block; background: transparent; }
+html.jr-pet-doc, html.jr-pet-doc body, html.jr-pet-doc #__nuxt { background: transparent !important; }
+html.jr-pet-doc body { overflow: hidden; }
+
 .jr-sidebar {
   width: 254px;
   min-width: 254px;
