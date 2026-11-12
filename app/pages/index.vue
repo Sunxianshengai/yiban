@@ -167,6 +167,22 @@ function rowDate(e: EntryV2) {
   return `${main} · ${wd}`
 }
 
+// Day One 条目行（ia-map listView；31a/50/60 证据）：按月分组 + 左日期块（周几+大日数字）+ 右摘要与时间
+const monthGroups = computed(() => {
+  const groups: Array<{ key: string; label: string; items: EntryV2[] }> = []
+  for (const e of sortedEntries.value) {
+    const d = new Date(e.dateOfJournal)
+    const key = `${d.getFullYear()}-${d.getMonth()}`
+    let g = groups[groups.length - 1]
+    if (!g || g.key !== key) { g = { key, label: `${d.getFullYear()}年${d.getMonth() + 1}月`, items: [] }; groups.push(g) }
+    g.items.push(e)
+  }
+  return groups
+})
+const dayNum = (e: EntryV2) => new Date(e.dateOfJournal).getDate()
+const weekdayShort = (e: EntryV2) => new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(new Date(e.dateOfJournal)).replace('周', '')
+const timeOnly = (e: EntryV2) => new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(e.dateOfJournal))
+
 function openNew() {
   editing.value = null
   editorOpen.value = true
@@ -252,19 +268,7 @@ async function onFavourite() {
           </div>
         </template>
 
-        <div class="jr-stories-title">回顾故事</div>
-        <div class="jr-stories">
-          <button class="jr-story-card today" @click="storiesStart = 'stats'; storiesOpen = true">
-            <span class="icon"><JrIcon :path="mdiBookmark" :size="22" /></span>
-            <span class="t">今天</span>
-            <span class="s">{{ todayLabel }}</span>
-          </button>
-          <button class="jr-story-card throwback" @click="storiesStart = 'throwback'; storiesOpen = true">
-            <span class="icon"><JrIcon :path="mdiHistory" :size="22" /></span>
-            <span class="t">往日回忆</span>
-            <span class="s">{{ throwbackLabel }}</span>
-          </button>
-        </div>
+        <!-- Stories 卡已随 Day One 换皮退役（B2 决策：Day One 无此形态，统计由 JournalOverview 承载；StoriesOverlay 组件保留可恢复） -->
 
         <div class="jr-entries-head">
           <span class="label">日记</span>
@@ -289,25 +293,34 @@ async function onFavourite() {
           暂无日记。
         </div>
 
-        <div
-          v-for="e in sortedEntries"
-          :key="e.id"
-          class="jr-entry"
-          :class="{ selected: selected?.id === e.id }"
-          @click="selectEntry(e)"
-        >
-          <div class="date">{{ rowDate(e) }}</div>
-          <div class="preview">{{ e.previewText || '无正文' }}</div>
-          <img v-if="thumbs[e.id!]" :src="thumbs[e.id!]" class="jr-row-thumb" />
-          <div class="meta">
-            <span v-if="e.weatherIcon" :title="`${weatherLabel(e.weatherDescription)} ${formatTemp(e.weatherDegreeC)}`">{{ WEATHER_EMOJI[e.weatherIcon] || '☁️' }} {{ formatTemp(e.weatherDegreeC) }}</span>
-            <span v-if="e.address" :title="e.address">📍</span>
-            <span v-if="e.favourite" title="收藏">⭐</span>
-            <span v-if="!e.synced" class="jr-status-icon" title="等待上传">
-              <JrIcon :path="mdiCloudUploadOutline" :size="17" />
+        <template v-for="group in monthGroups" :key="group.key">
+          <div class="jr-month-head">{{ group.label }}</div>
+          <div
+            v-for="e in group.items"
+            :key="e.id"
+            class="jr-entry"
+            :class="{ selected: selected?.id === e.id }"
+            @click="selectEntry(e)"
+          >
+            <span class="jr-entry-dateblock" aria-hidden="true">
+              <i>{{ weekdayShort(e) }}</i>
+              <b>{{ dayNum(e) }}日</b>
+            </span>
+            <span class="jr-entry-main">
+              <span class="preview">{{ e.previewText || '无正文' }}</span>
+              <img v-if="thumbs[e.id!]" :src="thumbs[e.id!]" class="jr-row-thumb" />
+              <span class="jr-entry-time">
+                {{ timeOnly(e) }}
+                <span v-if="e.weatherIcon" class="jr-entry-meta" :title="`${weatherLabel(e.weatherDescription)} ${formatTemp(e.weatherDegreeC)}`">{{ WEATHER_EMOJI[e.weatherIcon] || '☁️' }} {{ formatTemp(e.weatherDegreeC) }}</span>
+                <span v-if="e.address" class="jr-entry-meta" :title="e.address">📍</span>
+                <span v-if="e.favourite" class="jr-entry-meta" title="收藏">⭐</span>
+                <span v-if="!e.synced" class="jr-status-icon" title="等待上传">
+                  <JrIcon :path="mdiCloudUploadOutline" :size="15" />
+                </span>
+              </span>
             </span>
           </div>
-        </div>
+        </template>
       </div>
 
       <div class="jr-detail-col" style="position:relative">

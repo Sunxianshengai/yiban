@@ -159,16 +159,29 @@ html.jr-pet-doc body { overflow: hidden; }
 .jr-entries-head .sort { background: none; border: 0; color: var(--jr-secondary); padding: 6px; border-radius: 8px; }
 .jr-entries-head .sort:hover { background: var(--jr-hover); }
 
-.jr-entry { padding: 12px 10px; border-radius: 10px; cursor: pointer; }
+/* Day One 条目行（31a/50/60 证据）：月份组头灰底通栏 + 左日期块（周几+大日数字）+ 右摘要与时间；选中整行天蓝 */
+.jr-month-head {
+  background: var(--jr-surface-variant); color: var(--jr-on-surface-variant);
+  margin: 14px -18px 4px; padding: 8px 18px; font-size: 13px; font-weight: 600;
+}
+.jr-entry { display: flex; gap: 10px; padding: 10px; border-radius: 8px; cursor: pointer; align-items: flex-start; }
 .jr-entry:hover { background: var(--jr-surface-variant); }
-.jr-entry.selected { background: #e3e7e9; }
-.jr-entry .date { color: var(--jr-primary); font-weight: 700; font-size: 14.5px; margin-bottom: 6px; }
+.jr-entry.selected { background: var(--jr-primary); }
+.jr-entry.selected:hover { background: var(--jr-primary); }
+.jr-entry .jr-entry-dateblock { flex: none; width: 42px; text-align: center; padding-top: 2px; }
+.jr-entry .jr-entry-dateblock i { display: block; font-style: normal; font-size: 11.5px; color: var(--jr-on-surface-variant); }
+.jr-entry .jr-entry-dateblock b { display: block; font-size: 19px; font-weight: 700; line-height: 1.15; color: var(--jr-on-bg); }
+.jr-entry.selected .jr-entry-dateblock b, .jr-entry.selected .jr-entry-dateblock i,
+.jr-entry.selected .preview, .jr-entry.selected .jr-entry-time { color: var(--jr-on-primary); }
+.jr-entry .jr-entry-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .jr-entry .preview {
-  color: #43555b; font-size: 14px; line-height: 1.45;
+  color: var(--jr-on-bg); font-size: 14px; line-height: 1.45;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   min-height: 20px;
 }
-.jr-entry .meta { margin-top: 8px; display: flex; gap: 6px; }
+.jr-entry .jr-entry-time { margin-top: 6px; display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--jr-on-surface-variant); }
+.jr-entry .jr-entry-meta { font-size: 11.5px; }
+.jr-entry.selected .jr-status-icon { color: var(--jr-on-primary); }
 .jr-status-icon { color: #e05a4e; }
 
 .jr-empty {
@@ -605,7 +618,7 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
 [data-theme="dark"] :is(.jr-sidebar-footer, .jr-editor-head, .jr-toolbar, .jr-set-row, .jr-pop-input, .jr-set-select, .jr-entry, .jr-detail-col) {
   border-color: var(--jr-outline-variant);
 }
-[data-theme="dark"] :is(.jr-nav-item.active, .jr-entry.selected, .jr-cal-cell:hover, .jr-menu button:hover, .jr-pop-item:hover, .jr-chip:not(.on):hover) {
+[data-theme="dark"] :is(.jr-nav-item.active, .jr-cal-cell:hover, .jr-menu button:hover, .jr-pop-item:hover, .jr-chip:not(.on):hover) {
   background: var(--jr-layer-highest);
 }
 [data-theme="dark"] :is(.jr-nav-sep, .jr-toolbar .sep, .jr-media-thumb, .jr-wicon, .jr-set-select, .jr-pop-input) {
@@ -625,8 +638,6 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
 [data-theme="dark"] .jr-nav-sep { background: var(--jr-outline-variant); }
 [data-theme="dark"] .jr-story-card.today { background: #3a3552; color: #d9d4f2; }
 [data-theme="dark"] .jr-story-card.throwback { background: linear-gradient(180deg, #3c4148 0%, #22282c 100%); color: #cfd6da; }
-[data-theme="dark"] .jr-entry:hover { background: var(--jr-layer-high); }
-[data-theme="dark"] .jr-entry.selected { background: var(--jr-layer-highest); }
 [data-theme="dark"] .jr-banner.cloud { background: #3a2426; color: #e8c4c0; }
 [data-theme="dark"] .jr-banner.member { background: #2e2a45; color: #cfc9ee; }
 [data-theme="dark"] .jr-banner.cloud .act { background: #4a2f2c; color: #e8c4c0; }
