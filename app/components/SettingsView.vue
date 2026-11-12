@@ -4,8 +4,7 @@ import { desktopBridge } from '~/utils/desktopBridge'
 import { errorText } from '~/utils/uiText'
 import { getAmapJsKey, getAmapSecurity, getAmapWebKey, resetAmapLoader, setAmapCredentials } from '~/utils/amap'
 import { getPalConfig, setPalConfig } from '~/utils/palClient'
-import { JR_THEMES, THEME_IDS } from '~/utils/themesRegistry'
-import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiAccountOutline, mdiShieldKeyOutline, mdiDatabaseOutline, mdiHelpCircleOutline, mdiPalette, mdiRuler, mdiMapMarkerOutline, mdiTranslate, mdiSpellcheck, mdiPuzzleOutline, mdiLockOutline, mdiChevronRight, mdiChevronLeft, mdiAlertOutline, mdiCloudOutline, mdiApps, mdiBookmarkOutline, mdiBellOutline, mdiRobotOutline } from '@mdi/js'
+import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiAccountOutline, mdiShieldKeyOutline, mdiDatabaseOutline, mdiHelpCircleOutline, mdiPalette, mdiRuler, mdiMapMarkerOutline, mdiTranslate, mdiSpellcheck, mdiPuzzleOutline, mdiLockOutline, mdiChevronRight, mdiAlertOutline, mdiCloudOutline, mdiApps, mdiBookmarkOutline, mdiBellOutline, mdiRobotOutline } from '@mdi/js'
 
 const tab = ref<'general' | 'account' | 'security' | 'data' | 'help'>('general')
 const isMobile = useIsMobile()
@@ -51,9 +50,8 @@ const genItems = [
   { key: 'plugins', label: '插件', icon: mdiPuzzleOutline },
 ] as const
 
-// Appearance — faithful to page-settings.png: circles (1st free teal, rest locked) + Theme/Font/Size dropdowns + lorem preview
-const { theme, fontSize, colorTheme } = useAppearance()
-const fontFamily = ref(localStorage.getItem('jr.fontFamily') || 'Gotham Rounded')
+// Appearance — Day One 换皮（M-2xx）：主题仅浅/深/系统三态（ledger O12），13 主题色环与字体选择退役
+const { theme, fontSize } = useAppearance()
 const spellcheck = ref(localStorage.getItem('jr.spellcheck') !== '0')
 // 高德 Key：服务平台按 Key 单选绑定，所以「Web服务」和「Web端(JS API)」要分开填两个 Key
 // （本仓库没有后端，密钥存在本机 localStorage；换密钥后强制重新加载 JS API）
@@ -76,23 +74,8 @@ function savePal() {
   setTimeout(() => { palSaved.value = false }, 2400)
 }
 watchEffect(() => {
-  localStorage.setItem('jr.fontFamily', fontFamily.value)
   localStorage.setItem('jr.spellcheck', spellcheck.value ? '1' : '0')
 })
-// 14 个圆点 = light0-13 的 primary，逐字来自原版主题注册表（themesRegistry.ts）
-const circles = THEME_IDS.map((id) => JR_THEMES[id].colors.primaryContainer || JR_THEMES[id].colors.primary) // 原版色环显示浅容器色（page-settings.png 实测）
-const circleLocked = (i: number) => i > 0 // evidence: only the first (teal) circle is unlocked on Free
-// 原版色环分页：每页 7 圆 + 翻页箭头（page-settings.png 实测），13 主题分 2 页
-const circlePageIndex = ref(0)
-const CIRCLE_PAGE_SIZE = 7
-const circlePageBase = computed(() => circlePageIndex.value * CIRCLE_PAGE_SIZE)
-const circlePage = computed(() => circles.slice(circlePageBase.value, circlePageBase.value + CIRCLE_PAGE_SIZE))
-const circleNote = ref('')
-function pickCircle(i: number) {
-  if (circleLocked(i)) { circleNote.value = '彩色主题属于会员权益。免费版可使用系统主题。'; return }
-  colorTheme.value = 0
-  circleNote.value = ''
-}
 
 // Security — PIN lock (real, local)
 const pinHash = ref(localStorage.getItem('jr.pinHash') || '')
@@ -241,22 +224,8 @@ async function wipeAll() {
 
       <div v-if="s.key === 'general' && openSection === 'general'" class="mexpand">
         <div class="mset-row"><span>主题</span><select v-model="theme" class="mselect"><option value="System">跟随系统</option><option value="Light">浅色</option><option value="Dark">深色</option></select></div>
-        <div class="mset-row"><span>字体</span><select v-model="fontFamily" class="mselect"><option value="Gotham Rounded">圆体</option><option value="Verlag">无衬线体</option><option value="Lexend">易读字体</option><option value="OpenDyslexic">阅读辅助字体</option></select></div>
         <div class="mset-row"><span>字号</span><select v-model="fontSize" class="mselect"><option value="Small">小</option><option value="Medium">中</option><option value="Large">大</option></select></div>
         <div class="mset-row"><span>计量单位</span><select v-model="unit" class="mselect" aria-label="计量单位"><option value="metric">公制</option><option value="imperial">英制</option></select></div>
-        <div class="mset-row col"><span>彩色主题</span>
-          <div class="mcircles">
-            <button
-              v-for="(c, i) in circlePage" :key="circlePageBase + i"
-              class="mcircle" :class="{ on: circlePageBase + i === 0 && colorTheme === 0 }" :style="{ background: c }"
-              :title="circleLocked(circlePageBase + i) ? '会员主题' : '系统主题（免费）'"
-              @click="pickCircle(circlePageBase + i)"
-            >
-              <JrIcon v-if="circlePageBase + i === 0 && colorTheme === 0" :path="mdiCheck" :size="14" />
-            </button>
-          </div>
-          <p v-if="circleNote" class="mnote">{{ circleNote }}</p>
-        </div>
         <div class="mset-row"><span>每周起始日</span><select v-model="weekStart" class="mselect"><option value="default">默认</option><option value="monday">星期一</option><option value="sunday">星期日</option></select></div>
         <label class="mset-row col"><span>Web 服务 Key</span><input v-model="amapWebKey" class="minput" placeholder="服务平台选「Web服务」的 Key" spellcheck="false" /></label>
         <label class="mset-row col"><span>Web端(JS API) Key</span><input v-model="amapJsKey" class="minput" placeholder="服务平台选「Web端(JS API)」的 Key" spellcheck="false" /></label>
@@ -337,28 +306,8 @@ async function wipeAll() {
               <p>午后的阳光落在书页上。我写下<b>今天的小事</b>，也记下了一句<i>想留给未来的话</i>。</p>
               <blockquote>日常的一句话、一张照片，都可以成为日后想起今天的线索。</blockquote>
             </div>
-            <div class="jr-circles">
-              <button
-                v-for="(c, i) in circlePage" :key="c + circlePageBase"
-                class="jr-circle" :class="{ 'jr-circle-on': circlePageBase + i === 0 && colorTheme === 0 }" :style="{ background: c }"
-                :title="circleLocked(circlePageBase + i) ? '会员主题' : '系统主题（免费）'"
-                @click="pickCircle(circlePageBase + i)"
-              >
-                <JrIcon v-if="circlePageBase + i === 0 && colorTheme === 0" :path="mdiCheck" :size="18" />
-                <svg v-else-if="circleLocked(circlePageBase + i)" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" opacity="0.55"><path d="M12 17a2 2 0 0 0 2-2 2 2 0 0 0-2-2 2 2 0 0 0-2 2 2 2 0 0 0 2 2m6 3H6a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h1V6a5 5 0 0 1 5-5 5 5 0 0 1 5 5v2h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2m-6-17a3 3 0 0 0-3 3v2h6V6a3 3 0 0 0-3-3z" /></svg>
-              </button>
-              <button class="jr-circle jr-circle-more" :title="circlePageIndex === 0 ? '更多主题' : '上一页'" @click="circlePageIndex = circlePageIndex === 0 ? 1 : 0">
-                <JrIcon :path="circlePageIndex === 0 ? mdiChevronRight : mdiChevronLeft" :size="18" />
-              </button>
-            </div>
-            <p v-if="circleNote" class="jr-import-msg">{{ circleNote }}</p>
             <div class="jr-set-row"><span class="jr-set-cap">主题</span>
               <select v-model="theme" class="jr-set-select" aria-label="主题"><option value="System">跟随系统</option><option value="Light">浅色</option><option value="Dark">深色</option></select>
-            </div>
-            <div class="jr-set-row"><span class="jr-set-cap">字体</span>
-              <select v-model="fontFamily" class="jr-set-select">
-                <option value="Gotham Rounded">圆体</option><option value="Verlag">无衬线体</option><option value="Lexend">易读字体</option><option value="OpenDyslexic">阅读辅助字体</option>
-              </select>
             </div>
             <div class="jr-set-row"><span class="jr-set-cap">字号</span>
               <select v-model="fontSize" class="jr-set-select"><option value="Small">小</option><option value="Medium">中</option><option value="Large">大</option></select>

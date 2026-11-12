@@ -27,8 +27,8 @@ watchEffect(() => {
   document.documentElement.dataset.theme = dark ? 'dark' : 'light'
   applyColorTheme(colorTheme.value, dark)
   document.documentElement.style.setProperty('--jr-content-size', { Small: '14px', Medium: '16px', Large: '18px' }[fontSize.value])
-  // 审计 #21：字体选择真正应用到正文
-  document.documentElement.style.setProperty('--jr-font', { 'Gotham Rounded': "'Nunito', 'Varela Round', 'Microsoft YaHei UI', 'PingFang SC'", 'Verlag': "'Segoe UI', system-ui, sans-serif", 'Lexend': "'Lexend', 'Segoe UI', sans-serif", 'OpenDyslexic': "'OpenDyslexic', 'Comic Sans MS', sans-serif" }[localStorage.getItem('jr.fontFamily') || 'Gotham Rounded'] ?? "")
+  // Day One 换皮（M-2xx）：字体统一 Inter 栈（--jr-font 已在 :root 定义）；旧的 jr.fontFamily 选项退役
+  document.documentElement.style.setProperty('--jr-font', "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei UI', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif")
   localStorage.setItem('jr.theme', theme.value)
   localStorage.setItem('jr.fontSize', fontSize.value)
   localStorage.setItem('jr.colorTheme', String(colorTheme.value))

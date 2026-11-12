@@ -13,7 +13,7 @@ const epubImages: Record<string, string> = {
   'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp',
 }
 const epubAudio: Record<string, string> = { 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a' }
-const primary = '#00687B'
+const primary = '#0087CC'
 
 async function entryData(id: number) {
   const [entry, media, allTags] = await db.transaction('r', db.entriesV2, db.mediaFilesV2, db.tagWordsV2, () => Promise.all([
@@ -254,7 +254,7 @@ async function exportEpub(data: EntryData) {
   const xmlLang = xml(lang)
   files['EPUB/entry.xhtml'] = strToU8('<?xml version="1.0" encoding="utf-8"?>' + new XMLSerializer().serializeToString(book))
   files['EPUB/nav.xhtml'] = strToU8(`<?xml version="1.0" encoding="utf-8"?><html xmlns="${xhtmlNs}" xmlns:epub="${epubNs}" lang="${xmlLang}" xml:lang="${xmlLang}"><head><title>目录</title></head><body><nav epub:type="toc"><h1>目录</h1><ol><li><a href="entry.xhtml">${xmlTitle}</a></li></ol></nav></body></html>`)
-  files['EPUB/entry.css'] = strToU8('body{line-height:1.55}h1{color:#00687b}img{max-width:100%;height:auto}.entry-meta{font-size:.9em;color:#4b6269}td,th{border:1px solid #bfc8cb;padding:.3em}')
+  files['EPUB/entry.css'] = strToU8('body{line-height:1.55}h1{color:#0087cc}img{max-width:100%;height:auto}.entry-meta{font-size:.9em;color:#4b6269}td,th{border:1px solid #bfc8cb;padding:.3em}')
   files['EPUB/package.opf'] = strToU8(`<?xml version="1.0" encoding="utf-8"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="book-id">${identifier}</dc:identifier><dc:title>${xmlTitle}</dc:title><dc:language>${xmlLang}</dc:language><meta property="dcterms:modified">${modified}</meta></metadata><manifest><item id="entry" href="entry.xhtml" media-type="application/xhtml+xml"/><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="css" href="entry.css" media-type="text/css"/>${manifest.join('')}</manifest><spine><itemref idref="entry"/></spine></package>`)
   const result = zipSync(files)
   await downloadJournalFile(new Blob([new Uint8Array(result)], { type: 'application/epub+zip' }), data.fileName + '.epub')
@@ -283,7 +283,7 @@ async function printEntry(data: EntryData) {
     if (!frame || !printDocument) throw new Error('无法打开打印预览。')
     printDocument.title = data.heading
     const style = printDocument.createElement('style')
-    style.textContent = '@page{margin:18mm}body{color:#171c1e;font:12pt/1.5 system-ui}h1{color:#00687b;font-weight:600}img{display:block;max-width:100%;max-height:175mm;break-inside:avoid}table{border-collapse:collapse}th,td{border:1px solid #bfc8cb;padding:.3em .6em}.entry-meta{color:#4b6269;font-size:.88em}p{orphans:2;widows:2}'
+    style.textContent = '@page{margin:18mm}body{color:#171c1e;font:12pt/1.5 system-ui}h1{color:#0087cc;font-weight:600}img{display:block;max-width:100%;max-height:175mm;break-inside:avoid}table{border-collapse:collapse}th,td{border:1px solid #bfc8cb;padding:.3em .6em}.entry-meta{color:#4b6269;font-size:.88em}p{orphans:2;widows:2}'
     printDocument.head.append(style)
     addEntryContent(printDocument, printDocument.body, data, renderedEntry(data, assets))
     await Promise.allSettled(Array.from(printDocument.images, image => image.decode()))

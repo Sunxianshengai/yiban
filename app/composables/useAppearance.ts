@@ -23,19 +23,11 @@ const ROLE_MAP: Array<[cssVar: string, role: string]> = [
   ['--jr-outline-variant', 'outlineVariant'],
 ]
 
-/** 应用第 idx 个彩色主题（0=默认，1-13=会员），dark 决定取 lightN/darkN 组 */
-export function applyColorTheme(idx: number, dark: boolean) {
+/** Day One 换皮（M-2xx）：13 套彩色主题退役（Day One 实测仅浅/深/系统三态，见 journey-replica/docs/dayone-ui-ledger.md O12）。
+ *  保留函数签名兼容旧调用点；任何历史 colorTheme 值一律清空回默认 token。 */
+export function applyColorTheme(_idx: number, _dark: boolean) {
   const el = document.documentElement
-  if (idx <= 0) {
-    for (const [cssVar] of ROLE_MAP) el.style.removeProperty(cssVar)
-    return
-  }
-  const t = JR_THEMES[`${dark ? 'dark' : 'light'}${idx}`]
-  if (!t) return
-  for (const [cssVar, role] of ROLE_MAP) {
-    const v = t.colors[role]
-    if (v) el.style.setProperty(cssVar, v)
-  }
+  for (const [cssVar] of ROLE_MAP) el.style.removeProperty(cssVar)
 }
 
 export function useAppearance() {

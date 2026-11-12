@@ -1,26 +1,26 @@
-/* Design tokens extracted verbatim from Journey Desktop 6.0.1 (evidence/derived/theme-tokens.json).
-   Fonts: original uses commercial Gotham Rounded/Verlag; replica ships an open/system stack. */
+/* Design tokens extracted from Day One web (dayone.me) runtime CSS custom properties.
+   Source of truth: journey-replica/evidence/dayone/dayone-derived/design-tokens.json (M-200, 2026-11-13). */
 :root {
-  --jr-primary: #00687B;
+  --jr-primary: #44C0FF;
   --jr-on-primary: #FFFFFF;
-  --jr-primary-container: #AFECFF;
-  --jr-on-primary-container: #001F27;
-  --jr-primary-fixed-dim: #85D1E8;
-  --jr-secondary: #4B6269;
-  --jr-secondary-container: #CEE7EF;
-  --jr-on-secondary-container: #061F25;
-  --jr-tertiary: #585C7E;
-  --jr-error: #BA1A1A;
-  --jr-error-container: #FFDAD6;
-  --jr-bg: #F5FAFC;
-  --jr-on-bg: #171C1E;
-  --jr-surface: #F5FAFC;
-  --jr-surface-variant: #DBE4E7;
-  --jr-on-surface-variant: #40484B;
-  --jr-outline: #70787C;
-  --jr-outline-variant: #BFC8CB;
-  --jr-font: 'Nunito', 'Varela Round', 'Microsoft YaHei UI', 'PingFang SC', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --jr-radius: 12px;
+  --jr-primary-container: #E4F6FF;
+  --jr-on-primary-container: #00587F;
+  --jr-primary-fixed-dim: #7AD2FF;
+  --jr-secondary: #333B40;
+  --jr-secondary-container: #F3F5F7;
+  --jr-on-secondary-container: #333B40;
+  --jr-tertiary: #1E75AE;
+  --jr-error: #D55745;
+  --jr-error-container: #F7E8E3;
+  --jr-bg: #FFFFFF;
+  --jr-on-bg: rgba(0, 0, 0, 0.85);
+  --jr-surface: #FFFFFF;
+  --jr-surface-variant: #F3F5F7;
+  --jr-on-surface-variant: rgba(0, 0, 0, 0.6);
+  --jr-outline: rgba(0, 0, 0, 0.4);
+  --jr-outline-variant: rgba(0, 0, 0, 0.1);
+  --jr-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei UI', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  --jr-radius: 8px;
 }
 
 * { box-sizing: border-box; }
@@ -53,8 +53,8 @@ html.jr-pet-doc body { overflow: hidden; }
   display: flex;
   flex-direction: column;
   padding: 0 14px;
-  background: linear-gradient(180deg, #fbfeff 0%, #eef6f8 100%);
-  border-right: 1px solid #e3edf0;
+  background: var(--jr-surface);
+  border-right: 1px solid var(--jr-outline-variant);
   overflow-y: auto;
 }
 
@@ -207,8 +207,10 @@ html.jr-pet-doc body { overflow: hidden; }
 
 .jr-detail-bar {
   position: sticky; bottom: 0;
+  /* z-index 75 > 内嵌桌宠(70)：详情底栏按钮不能被桌宠挡住（desktop-full E2E 实测遮挡 bug）；仍低于侧栏 80 */
+  z-index: 75;
   display: flex; align-items: center; justify-content: space-around;
-  background: #fff; border-top: 1px solid #e8f0f2;
+  background: var(--jr-surface); border-top: 1px solid var(--jr-outline-variant);
   padding: 14px 30px; margin-top: auto;
 }
 .jr-detail-bar button { background: none; border: 0; color: var(--jr-secondary); padding: 8px 18px; border-radius: 10px; position: relative; }
@@ -565,30 +567,31 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
 }
 .jr-editor-ph .jr-template-chip { pointer-events: auto; vertical-align: baseline; }
 
-/* Default dark palette, extracted from Journey Desktop 6.0.1. */
+/* Dark palette from Day One web (dayone.me) runtime tokens: surface #111314→#36393A, toolbar #181A1B. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --jr-primary: #85D1E8;
-  --jr-on-primary: #003641;
-  --jr-primary-container: #004E5D;
-  --jr-on-primary-container: #AFECFF;
-  --jr-secondary: #B2CBD3;
-  --jr-secondary-container: #344A51;
-  --jr-on-secondary-container: #CEE7EF;
-  --jr-tertiary: #C0C4EB;
-  --jr-error: #FFB4AB;
-  --jr-error-container: #93000A;
-  --jr-bg: #0F1416;
-  --jr-on-bg: #DEE3E6;
-  --jr-surface: #0F1416;
-  --jr-surface-variant: #40484B;
-  --jr-on-surface-variant: #BFC8CB;
-  --jr-outline: #899295;
-  --jr-outline-variant: #40484B;
-  --jr-layer-low: #171C1E;
-  --jr-layer: #1B2022;
-  --jr-layer-high: #252B2D;
-  --jr-layer-highest: #303638;
+  --jr-primary: #44C0FF;
+  --jr-on-primary: #FFFFFF;
+  --jr-primary-container: #434F56;
+  --jr-on-primary-container: #E4F6FF;
+  --jr-primary-fixed-dim: #7AD2FF;
+  --jr-secondary: rgba(255, 255, 255, 0.7);
+  --jr-secondary-container: #202324;
+  --jr-on-secondary-container: rgba(255, 255, 255, 0.9);
+  --jr-tertiary: #7AD2FF;
+  --jr-error: #FF6B5B;
+  --jr-error-container: rgba(231, 76, 60, 0.2);
+  --jr-bg: #111314;
+  --jr-on-bg: rgba(255, 255, 255, 0.9);
+  --jr-surface: #111314;
+  --jr-surface-variant: #202324;
+  --jr-on-surface-variant: rgba(255, 255, 255, 0.7);
+  --jr-outline: rgba(255, 255, 255, 0.4);
+  --jr-outline-variant: rgba(255, 255, 255, 0.1);
+  --jr-layer-low: #181A1B;
+  --jr-layer: #202324;
+  --jr-layer-high: #252829;
+  --jr-layer-highest: #313435;
 }
 :root[data-theme="dark"], [data-theme="dark"] :is(body, #__nuxt, .jr-main, .jr-editor) {
   background: var(--jr-bg);
