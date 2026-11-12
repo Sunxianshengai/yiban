@@ -45,6 +45,9 @@ html.jr-pet-doc, html.jr-pet-doc body, html.jr-pet-doc #__nuxt { background: tra
 html.jr-pet-doc body { overflow: hidden; }
 
 .jr-sidebar {
+  /* 主界面桌宠是 fixed 覆盖层（z-index 70），侧栏必须更高，否则会被小羊压住导航 */
+  position: relative;
+  z-index: 80;
   width: 254px;
   min-width: 254px;
   display: flex;

@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { mdiBookOutline, mdiCalendarMonthOutline, mdiImageOutline, mdiMapOutline, mdiPanda, mdiMagnify, mdiAccount, mdiCellphone, mdiCheck, mdiCloudOutline, mdiChevronRight } from '@mdi/js'
+import { mdiBookOutline, mdiCalendarMonthOutline, mdiImageOutline, mdiMapOutline, mdiPanda, mdiMagnify, mdiAccount, mdiCellphone, mdiCheck, mdiCloudOutline, mdiChevronRight, mdiPawOutline, mdiPawOffOutline } from '@mdi/js'
+
+// 移动端没有侧栏的设置入口，桌宠显隐开关就直接放在顶栏（和侧栏是同一份状态）
+const { visible: petVisible, toggle: togglePet } = usePetWidget()
 
 // 移动壳对照 Journey Android 6.0.2 证据(evidence/mobile-derived/ui-structure.md §1 + r03):
 // 顶部胶囊栏(logo=日记本下拉+搜索+头像) + 底部五 tab(Journey/日历/媒体/地图册/Pal)
@@ -40,6 +43,16 @@ function isActive(to: string) {
         </div>
         <span class="vr" aria-hidden="true" />
         <NuxtLink to="/search" class="ico" aria-label="搜索"><JrIcon :path="mdiMagnify" :size="22" /></NuxtLink>
+        <button
+          type="button"
+          class="ico pet-ico"
+          :aria-label="petVisible ? '隐藏桌宠' : '显示桌宠'"
+          :aria-pressed="petVisible"
+          data-testid="pet-toggle-mobile"
+          @click="togglePet"
+        >
+          <JrIcon :path="petVisible ? mdiPawOffOutline : mdiPawOutline" :size="22" />
+        </button>
         <NuxtLink to="/search" class="ico avatar" aria-label="账户"><JrIcon :path="mdiAccount" :size="20" /></NuxtLink>
       </div>
     </header>
@@ -87,8 +100,13 @@ function isActive(to: string) {
 .ico:active { background: var(--jr-surface-variant); }
 .ico.avatar { background: var(--jr-primary-container); color: #001f27; }
 .ico.avatar svg { color: #33247c; }
+/* 桌宠开关是 button，抹掉浏览器默认边框/底色，和旁边的搜索/头像对齐 */
+.pet-ico { border: 0; background: transparent; padding: 0; font-family: inherit; cursor: pointer; flex: 0 0 44px; }
+.pet-ico:hover { background: var(--jr-surface-variant); }
 .jr-mbody { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .jr-mtabs {
+  /* 主界面桌宠是 fixed 覆盖层；底栏要盖在它上面，别让小羊挡住五个 tab */
+  position: relative; z-index: 40;
   display: flex; align-items: stretch;
   background: #eef4f6; border-top: 1px solid #e3edf0;
   padding: 6px 4px calc(6px + env(safe-area-inset-bottom));

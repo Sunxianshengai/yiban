@@ -8,6 +8,8 @@ import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiA
 
 const tab = ref<'general' | 'account' | 'security' | 'data' | 'help'>('general')
 const isMobile = useIsMobile()
+// 主界面右下角桌宠的显隐，与侧栏 / 移动顶栏共用同一份状态（usePetWidget 已负责持久化）
+const { visible: petVisible, setVisible: setPetVisible } = usePetWidget()
 // 移动设置中枢(证据 s05-s12):彩色图标行手风琴;怀旧开关是真实功能(控制首页怀旧卡)
 const openSection = ref<'general' | 'security' | 'help' | null>(null)
 const throwback = ref(localStorage.getItem('jr.throwback') !== '0')
@@ -255,6 +257,15 @@ async function wipeAll() {
           <button class="mbtn" @click="saveAmapCredentials">保存密钥</button>
         </div>
         <label class="mset-row"><span>写作时检查拼写</span><input v-model="spellcheck" type="checkbox" /></label>
+        <label class="mset-row">
+          <span>在网页里显示桌宠</span>
+          <input
+            :checked="petVisible"
+            type="checkbox"
+            data-testid="pet-toggle-settings"
+            @change="setPetVisible(($event.target as HTMLInputElement).checked)"
+          />
+        </label>
       </div>
 
       <div v-if="s.key === 'security' && openSection === 'security'" class="mexpand">
@@ -390,6 +401,15 @@ async function wipeAll() {
           <template v-else-if="gen === 'spellcheck'">
             <label class="jr-set-check">
               <input v-model="spellcheck" type="checkbox" /> 写作时检查拼写
+            </label>
+            <label class="jr-set-check">
+              <input
+                :checked="petVisible"
+                type="checkbox"
+                data-testid="pet-toggle-settings"
+                @change="setPetVisible(($event.target as HTMLInputElement).checked)"
+              />
+              在网页里显示桌宠（小羊会待在右下角，可以拖着走）
             </label>
           </template>
 

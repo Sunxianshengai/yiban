@@ -13,6 +13,8 @@ const sidebarOpen = ref(false)
 const membershipOpen = useMembershipDialog()
 const isMobile = useIsMobile()
 const { theme, fontSize, colorTheme } = useAppearance()
+// 主界面右下角的桌宠与 /pet 独立页共用同一个 PetWidget，显隐由侧栏/顶栏/设置控制。
+const { visible: petVisible } = usePetWidget()
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)')
 const systemPrefersDark = ref(systemDark.matches)
 function onSystemTheme(event: MediaQueryListEvent) { systemPrefersDark.value = event.matches }
@@ -60,6 +62,8 @@ onMounted(async () => {
       </template>
       <OnboardingModal v-if="!onboarded" @finish="onboarded = true" />
       <MembershipDialog v-if="membershipOpen" @close="membershipOpen = false" />
+      <!-- 未锁、已完成引导时才放出来，免得盖住引导层；/pet 独立页已在上面提前返回 -->
+      <PetWidget v-if="petVisible && onboarded" embedded />
     </template>
   </div>
 </template>

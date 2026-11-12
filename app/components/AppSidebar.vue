@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { mdiMagnify, mdiFormatListBulleted, mdiCalendarMonth, mdiImageMultipleOutline, mdiMapOutline, mdiRobotOutline, mdiCogOutline, mdiCloudOutline, mdiChatProcessingOutline, mdiWalletGiftcard, mdiStarOutline, mdiTagOutline, mdiLogout } from '@mdi/js'
+import { mdiMagnify, mdiFormatListBulleted, mdiCalendarMonth, mdiImageMultipleOutline, mdiMapOutline, mdiRobotOutline, mdiCogOutline, mdiCloudOutline, mdiChatProcessingOutline, mdiWalletGiftcard, mdiStarOutline, mdiTagOutline, mdiLogout, mdiPawOutline, mdiPawOffOutline } from '@mdi/js'
 
 const emit = defineEmits<{ (e: 'navigate'): void }>()
+// 主界面右下角小羊的显隐，和移动顶栏 / 设置里的开关是同一份状态
+const { visible: petVisible, toggle: togglePet } = usePetWidget()
 const route = useRoute()
 const search = ref('')
 const tagsOpen = ref(false)
@@ -57,6 +59,16 @@ const utils = [
     <button type="button" class="jr-nav-item jr-addons" aria-haspopup="dialog" @click="membershipOpen = true">
       <JrIcon :path="mdiWalletGiftcard" :size="21" />
       <span>附加功能</span>
+    </button>
+    <button
+      type="button"
+      class="jr-nav-item jr-addons"
+      :aria-pressed="petVisible"
+      data-testid="pet-toggle-sidebar"
+      @click="togglePet"
+    >
+      <JrIcon :path="petVisible ? mdiPawOffOutline : mdiPawOutline" :size="21" />
+      <span>{{ petVisible ? '隐藏桌宠' : '显示桌宠' }}</span>
     </button>
 
     <button class="jr-section-label" style="border:0;background:none" @click="tagsOpen = !tagsOpen">
