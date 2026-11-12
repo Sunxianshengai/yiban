@@ -12,6 +12,21 @@ npm run dev     # 开发
 npm run build   # 生产构建（Vercel 自动执行）
 ```
 
+## 桌宠（瞌睡小羊）
+
+网页 `/pet` 是一个只留小羊的透明页；`electron/` 是把它变成桌面挂件的壳（透明置顶窗口、空白处鼠标穿透、托盘）。
+
+```bash
+npm run desktop        # 生产站 https://yiban-memory.eu.cc
+npm run desktop:dev    # 连本机 dev server（需先 npm run dev，端口 4321）
+```
+
+- 托盘：打开日记 / 显示桌宠 / 隐藏桌宠 / 退出
+- 点小羊 → 说今天记了几笔；双击 → 打开日记；右键 → 写一句、全部同步等
+- `Esc` 立即隐藏桌宠（安全阀）；`Ctrl+Shift+Q` 退出
+- 站点地址与 IP 钉在 `electron/desktop-config.json`（`resolveIp` 用于绕开本机 DNS 污染，不需要改 hosts）
+- 受限环境下 Chromium 沙箱起不来，`launch.cjs` 默认加 `--no-sandbox`；正常桌面可用 `node electron/launch.cjs --sandbox` 打开沙箱
+
 ## 数据与设计来源
 
 - 数据层：Dexie `JourneyDB` v1，表结构逐字镜像原版（`evidence/derived/dexie-schema.json`），IndexedDB 本地持久化
