@@ -3,15 +3,54 @@ import type { H3Event } from 'h3'
 
 /**
  * 私有 Vercel Blob。
- * 客户端不拿长期 token：服务端用 OIDC（Vercel 自动注入 VERCEL_OIDC_TOKEN + BLOB_STORE_ID）
+ * 客户端不拿长期 token：服务端用 OIDC（Vercel 运行期注入）+ BLOB_STORE_ID
  * 签发短期凭证，再换成「一个路径、一个用途」的预签名 URL。
  * 读也必须走预签名 GET —— 私有 blob 的 URL 直接打开是 403。
+ *
+ * 注意：VERCEL_OIDC_TOKEN 不一定以环境变量形式预置（生产实测为空），
+ * 必须按需通过 @vercel/oidc 取，且不能像以前那样在模块加载期缓存。
  */
 const STORE_ID = process.env.BLOB_STORE_ID || ''
-const OIDC = process.env.VERCEL_OIDC_TOKEN || ''
 
-export function blobConfigured() {
-  return Boolean(STORE_ID && OIDC)
+interface OidcCache {
+  token: string
+  expiresAt: number
+}
+let oidcCache: OidcCache | null = null
+
+function decodeExp(token: string) {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1] || '', 'base64url').toString())
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : 0
+  } catch {
+    return 0
+  }
+}
+
+/** 取 OIDC：优先环境变量，其次问 @vercel/oidc（运行时按部署环境签发）。带进程内缓存。 */
+async function getOidcToken(): Promise<string> {
+  if (oidcCache && oidcCache.expiresAt - 60_000 > Date.now()) return oidcCache.token
+
+  const fromEnv = (process.env.VERCEL_OIDC_TOKEN || '').trim()
+  if (fromEnv) {
+    const exp = decodeExp(fromEnv)
+    oidcCache = { token: fromEnv, expiresAt: exp || Date.now() + 5 * 60_000 }
+    return fromEnv
+  }
+
+  const mod: any = await import('@vercel/oidc')
+  const get = mod.getVercelOidcToken || mod.default?.getVercelOidcToken
+  if (typeof get !== 'function') return ''
+  const token = String((await get()) || '').trim()
+  if (!token) return ''
+  const exp = decodeExp(token)
+  oidcCache = { token, expiresAt: exp || Date.now() + 5 * 60_000 }
+  return token
+}
+
+export async function blobConfigured() {
+  if (!STORE_ID) return false
+  return Boolean(await getOidcToken())
 }
 
 /** 用户专属目录前缀，保证不同账号的路径不可能撞上。 */
@@ -26,15 +65,18 @@ interface BlobTarget {
 }
 
 async function signedToken(pathname: string, operations: Array<'put' | 'get'>, validUntil: number) {
-  if (!blobConfigured()) {
+  if (!STORE_ID) {
     throw createError({ statusCode: 503, statusMessage: '附件存储未配置：请在 Vercel 项目里连接私有 Blob' })
   }
-  // BLOB_STORE_ID / VERCEL_OIDC_TOKEN 是 Vercel 运行期注入；本地开发可用 vercel env pull
-  const token = await issueSignedToken({ oidcToken: OIDC, storeId: STORE_ID, pathname, operations, validUntil })
+  const oidc = await getOidcToken()
+  if (!oidc) {
+    throw createError({ statusCode: 503, statusMessage: '附件存储未配置：缺少 OIDC 凭据' })
+  }
+  const token = await issueSignedToken({ oidcToken: oidc, storeId: STORE_ID, pathname, operations, validUntil })
   return token
 }
 
-/** 上传：返回可直接 PUT 的地址（支持大文件 multipart，客户端直传不经过函数）。 */
+/** 上传：返回可直接 PUT 的预签名地址（客户端直传不经过函数）。 */
 export async function presignUpload(userId: string, target: BlobTarget, ttlMs = 15 * 60_000) {
   const validUntil = Date.now() + ttlMs
   const token = await signedToken(target.pathname, ['put'], validUntil)

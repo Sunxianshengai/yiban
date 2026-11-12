@@ -79,7 +79,7 @@ export default defineEventHandler(async (event) => {
       const ext = (photo.fileName.includes('.') ? photo.fileName.split('.').pop()! : 'jpg').replace(/[^a-z0-9]/gi, '').slice(0, 8) || 'jpg'
       const pathname = mediaPath(user.id, clientId, newClientId(), ext)
       // 服务端签名后自传：本地无 OIDC 会抛错（诚实降级，正文不受影响）
-      const { uploadUrl } = await presignUpload(user.id, {
+      const uploadUrl = await presignUpload(user.id, {
         pathname, contentType: photo.mimeType, maxBytes: Math.max(bytes.length, 1),
       }, 5 * 60_000)
       const res = await fetch(uploadUrl, {
