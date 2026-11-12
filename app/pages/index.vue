@@ -310,7 +310,10 @@ async function onFavourite() {
       </div>
 
       <div class="jr-detail-col" style="position:relative">
+        <!-- Day One 右主区（ia-map journalOverview）：未选中条目时显示日记本概览（含 Streak），选中时显示详情 -->
+        <JournalOverview v-if="!selected" :entries="entries" />
         <EntryDetail
+          v-else
           :entry="selected"
           @edit="openEdit"
           @toggle-favourite="onFavourite"
