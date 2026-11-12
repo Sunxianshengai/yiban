@@ -267,6 +267,7 @@ onBeforeUnmount(() => { thumbGeneration++; releaseThumbnails() })
       <button class="jr-cal-journal" type="button" title="选择日记本" @click="$router.push('/cloud')">
         <img src="/favicon.svg" alt=""> 旅程日记<JrIcon :path="mdiChevronDown" :size="16" />
       </button>
+      <ViewPills />
       <button class="jr-calendar-add" type="button" title="新建日记" @click="openEditor()"><JrIcon :path="mdiPlus" :size="22" /></button>
     </header>
     <div class="jr-calendar-split">
@@ -322,8 +323,10 @@ onBeforeUnmount(() => { thumbGeneration++; releaseThumbnails() })
       </section>
 
       <section class="jr-detail-col jr-calendar-detail" :class="{ 'has-entry': selectedEntry }" aria-label="日记详情">
+        <!-- Day One 日历视图右主区：未选条目=日记本概览（63-calendar 证据），选中=详情 -->
+        <JournalOverview v-if="!selectedEntry" :entries="entries" />
         <NuxtLink v-if="selectedEntry" class="jr-calendar-timeline" :to="{ path: '/', query: { entry: selectedEntry.id } }">在时间线中打开</NuxtLink>
-        <EntryDetail :entry="selectedEntry" @edit="openEditor(selectedEntry)"
+        <EntryDetail v-else-if="selectedEntry" :entry="selectedEntry" @edit="openEditor(selectedEntry)"
           @toggle-favourite="selectedEntry?.id != null && toggleFavourite(selectedEntry.id)"
           @duplicate="selectedEntry?.id != null && duplicateEntry(selectedEntry.id)"
           @save-as-template="selectedEntry?.id != null && saveAsTemplate(selectedEntry.id)" @trash="onTrash" />

@@ -697,3 +697,6 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
   .jr-onboard-card h2 { font-size: 22px; }
 }
 .jr-sidebar-toggle { display: none; align-items: center; justify-content: center; width: 38px; height: 38px; border: 0; border-radius: 8px; background: var(--jr-primary-container); color: var(--jr-on-primary-container); }
+
+/* Day One 中列视图胶囊（ViewPills）在列表列顶部的容器行 */
+.jr-view-pills-row { display: flex; justify-content: center; padding: 14px 0 2px; }

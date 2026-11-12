@@ -233,6 +233,7 @@ async function onFavourite() {
 
     <div class="jr-content">
       <div class="jr-list-col">
+        <div class="jr-view-pills-row"><ViewPills /></div>
         <template v-if="entries.length">
           <div class="jr-banner cloud">
             <JrIcon :path="mdiCloudUploadOutline" :size="26" style="color:#c96b60" />

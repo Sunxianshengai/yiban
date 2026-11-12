@@ -53,6 +53,7 @@ function fmt(d?: Date) {
       <button class="jr-cal-journal" type="button" title="选择日记本" @click="$router.push('/cloud')">
         <img src="/favicon.svg" alt=""> 旅程日记<JrIcon :path="mdiChevronDown" :size="16" />
       </button>
+      <ViewPills />
     </header>
     <div class="jr-media-split">
       <section class="jr-media-leading" aria-label="媒体库">
@@ -92,8 +93,8 @@ function fmt(d?: Date) {
           </div>
         </template>
         <template v-else>
-          <div class="big"><JrIcon :path="mdiImageMultipleOutline" :size="46" /></div>
-          请选择一篇日记。
+          <!-- Day One 媒体视图右主区=日记本概览（ia-map rightPane；61-view3 证据），选中媒体才切详情 -->
+          <JournalOverview />
         </template>
       </aside>
     </div>

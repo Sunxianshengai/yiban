@@ -1,15 +1,19 @@
 <script setup lang="ts">
 // Day One 右主区「日记本概览」（journey-replica/evidence/dayone/dayone-derived/ia-map.json journalOverview）：
 // 封面 + 名称 + 年份 + 统计行（N 日记条目 N 媒体 N 天 N Streak）。Streak 语义按 O3/I3：当日有条目即计 1 天，
-// 今天没写从昨天回数。
+// 今天没写从昨天回数。entries 可选：index/calendar 传入共享 state；media 等自治页不传时组件自行读库。
 import type { EntryV2 } from '~/utils/db'
 import { db } from '~/utils/db'
 
-const props = defineProps<{ entries: EntryV2[] }>()
+const props = defineProps<{ entries?: EntryV2[] }>()
 const mediaCount = ref(0)
-onMounted(async () => { mediaCount.value = await db.mediaFilesV2.count() })
+const localEntries = ref<EntryV2[]>([])
+onMounted(async () => {
+  mediaCount.value = await db.mediaFilesV2.count()
+  localEntries.value = props.entries?.length ? props.entries : await db.entriesV2.filter((e) => !e.deleted).toArray()
+})
 
-const live = computed(() => props.entries.filter((e) => !e.deleted))
+const live = computed(() => localEntries.value)
 const dayCount = computed(() => new Set(live.value.map((e) => new Date(e.dateOfJournal).toDateString())).size)
 const streak = computed(() => {
   const dates = new Set(live.value.map((e) => new Date(e.dateOfJournal).toDateString()))
