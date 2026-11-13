@@ -213,30 +213,129 @@ html.jr-pet-doc body { overflow: hidden; }
 .jr-entries-head .sort { background: none; border: 0; color: var(--jr-secondary); padding: 6px; border-radius: 8px; }
 .jr-entries-head .sort:hover { background: var(--jr-hover); }
 
-/* Day One 条目行（31a/50/60 证据）：月份组头灰底通栏 + 左日期块（周几+大日数字）+ 右摘要与时间；选中整行天蓝 */
+/* ---- filter chips row ---- */
+.jr-filter-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 10px;
+  overflow-x: auto;
+}
+.jr-filter-chips-row .jr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--jr-outline-variant);
+  background: var(--jr-surface-variant);
+  color: var(--jr-on-surface-variant);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.jr-filter-chips-row .jr-chip:hover {
+  background: var(--jr-hover);
+  color: var(--jr-on-bg);
+}
+.jr-filter-chips-row .jr-chip.on {
+  background: var(--jr-primary-container);
+  color: var(--jr-primary);
+  border-color: var(--jr-primary);
+  font-weight: 600;
+}
+
+/* Day One 条目行：柔和圆角卡片，选中时微蓝底色 + 细致边框，告别生硬纯蓝块 */
 .jr-month-head {
   background: var(--jr-surface-variant); color: var(--jr-on-surface-variant);
-  margin: 14px -18px 4px; padding: 8px 18px; font-size: 13px; font-weight: 600;
+  margin: 12px 0 6px; padding: 6px 12px; font-size: 12.5px; font-weight: 700;
+  border-radius: 6px;
 }
-.jr-entry { display: flex; gap: 10px; padding: 10px; border-radius: 8px; cursor: pointer; align-items: flex-start; }
-.jr-entry:hover { background: var(--jr-surface-variant); }
-.jr-entry.selected { background: var(--jr-primary); }
-.jr-entry.selected:hover { background: var(--jr-primary); }
-.jr-entry .jr-entry-dateblock { flex: none; width: 42px; text-align: center; padding-top: 2px; }
-.jr-entry .jr-entry-dateblock i { display: block; font-style: normal; font-size: 11.5px; color: var(--jr-on-surface-variant); }
-.jr-entry .jr-entry-dateblock b { display: block; font-size: 19px; font-weight: 700; line-height: 1.15; color: var(--jr-on-bg); }
-.jr-entry.selected .jr-entry-dateblock b, .jr-entry.selected .jr-entry-dateblock i,
-.jr-entry.selected .preview, .jr-entry.selected .jr-entry-time { color: var(--jr-on-primary); }
-.jr-entry .jr-entry-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.jr-entry {
+  display: flex;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  align-items: flex-start;
+  border: 1.5px solid transparent;
+  transition: all 0.16s ease;
+  margin-bottom: 4px;
+}
+.jr-entry:hover {
+  background: var(--jr-surface-variant);
+}
+.jr-entry.selected {
+  background: var(--jr-primary-container);
+  border-color: var(--jr-primary);
+  box-shadow: 0 2px 8px rgba(68, 192, 255, 0.12);
+}
+.jr-entry.selected:hover {
+  background: var(--jr-primary-container);
+}
+.jr-entry .jr-entry-dateblock {
+  flex: none;
+  width: 38px;
+  text-align: center;
+  padding-top: 1px;
+}
+.jr-entry .jr-entry-dateblock i {
+  display: block;
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--jr-on-surface-variant);
+}
+.jr-entry .jr-entry-dateblock b {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--jr-on-bg);
+}
+.jr-entry.selected .jr-entry-dateblock b {
+  color: var(--jr-primary);
+}
+.jr-entry.selected .jr-entry-dateblock i {
+  color: var(--jr-primary);
+  font-weight: 600;
+}
+.jr-entry .jr-entry-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
 .jr-entry .preview {
-  color: var(--jr-on-bg); font-size: 14px; line-height: 1.45;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  color: var(--jr-on-bg);
+  font-size: 13.5px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   min-height: 20px;
 }
-.jr-entry .jr-entry-time { margin-top: 6px; display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--jr-on-surface-variant); }
-.jr-entry .jr-entry-meta { font-size: 11.5px; }
-.jr-entry.selected .jr-status-icon { color: var(--jr-on-primary); }
-.jr-status-icon { color: #e05a4e; }
+.jr-entry .jr-entry-time {
+  margin-top: 5px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--jr-on-surface-variant);
+}
+.jr-entry .jr-entry-meta {
+  font-size: 11.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.jr-entry.selected .jr-status-icon {
+  color: var(--jr-primary);
+}
+.jr-status-icon {
+  color: #e05a4e;
+}
 
 .jr-empty {
   margin-top: 130px; text-align: center; color: var(--jr-outline); font-size: 15.5px;
@@ -263,8 +362,17 @@ html.jr-pet-doc body { overflow: hidden; }
 .jr-detail-head .day { font-size: 40px; font-weight: 300; color: var(--jr-on-surface-variant); }
 .jr-detail-head .when .d1 { color: var(--jr-primary); font-size: 16.5px; font-weight: 600; }
 .jr-detail-head .when .d2 { color: #9fb3ba; font-size: 13.5px; margin-top: 2px; }
-.jr-detail-content { margin-top: 26px; font-size: var(--jr-content-size, 15.5px); line-height: 1.6; }
-.jr-detail-content p { margin: 0 0 14px; }
+.jr-detail-content { margin-top: 24px; font-size: var(--jr-content-size, 15.5px); line-height: 1.75; }
+.jr-detail-content p { margin: 0 0 16px; }
+.jr-detail-content blockquote {
+  margin: 16px 0;
+  padding: 10px 16px;
+  border-left: 3px solid var(--jr-primary);
+  background: var(--jr-primary-container);
+  border-radius: 0 8px 8px 0;
+  color: var(--jr-on-primary-container);
+  font-style: italic;
+}
 .jr-detail-content :is(img, video, audio), .jr-editor-area :is(img, video, audio) { max-width: 100%; }
 .jr-detail-content :is(img, video) { display: block; border-radius: 8px; }
 .jr-attachments { padding: 8px 24px; color: var(--jr-on-surface-variant); font-size: 13px; }
@@ -777,6 +885,10 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
 [data-theme="dark"] :is(.jr-btn-primary, .jr-fab, .jr-chip.on, .jr-cal-day.today) {
   background: var(--jr-primary);
   color: var(--jr-on-primary);
+}
+[data-theme="dark"] .jr-entry.selected {
+  background: #18232c;
+  border-color: var(--jr-primary);
 }
 
 /* 桌面深色补全：写死浅色的组件面（双端验收发现） */

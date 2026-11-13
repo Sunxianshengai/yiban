@@ -180,10 +180,20 @@ function rowDate(e: EntryV2) {
   return `${main} · ${wd}`
 }
 
+const activeFilter = ref<'all' | 'media' | 'starred' | 'location'>('all')
+const filteredEntries = computed(() => {
+  return sortedEntries.value.filter(e => {
+    if (activeFilter.value === 'media') return !!thumbs.value[e.id!]
+    if (activeFilter.value === 'starred') return !!e.favourite
+    if (activeFilter.value === 'location') return !!e.address || (e.lat != null && e.lng != null)
+    return true
+  })
+})
+
 // Day One 条目行（ia-map listView；31a/50/60 证据）：按月分组 + 左日期块（周几+大日数字）+ 右摘要与时间
 const monthGroups = computed(() => {
   const groups: Array<{ key: string; label: string; items: EntryV2[] }> = []
-  for (const e of sortedEntries.value) {
+  for (const e of filteredEntries.value) {
     const d = new Date(e.dateOfJournal)
     const key = `${d.getFullYear()}-${d.getMonth()}`
     let g = groups[groups.length - 1]
@@ -264,23 +274,24 @@ async function onFavourite() {
     <div class="jr-content">
       <div class="jr-list-col">
         <div class="jr-view-pills-row"><ViewPills /></div>
-        <template v-if="entries.length">
-          <div class="jr-banner cloud">
-            <JrIcon :path="mdiCloudUploadOutline" :size="26" style="color:#c96b60" />
-            <div class="txt">
-              <div class="t">迁移到云端</div>
-              <div class="d">同步日记后，即可在不同设备上查看。</div>
-            </div>
-            <button class="act">继续</button>
-          </div>
-          <div class="jr-banner member">
-            <div class="txt">
-              <div class="t">会员</div>
-              <div class="d">你正在使用免费版。升级后可解锁更多功能。</div>
-            </div>
-            <button class="act" @click="membershipOpen = true">升级</button>
-          </div>
-        </template>
+        
+        <div class="jr-filter-chips-row">
+          <button class="jr-chip" :class="{ on: activeFilter === 'all' }" @click="activeFilter = 'all'">
+            全部 ({{ entries.length }})
+          </button>
+          <button class="jr-chip" :class="{ on: activeFilter === 'media' }" @click="activeFilter = 'media'">
+            <JrIcon :path="mdiImageOutline" :size="13" />
+            <span>照片</span>
+          </button>
+          <button class="jr-chip" :class="{ on: activeFilter === 'starred' }" @click="activeFilter = 'starred'">
+            <JrIcon :path="mdiStar" :size="13" />
+            <span>收藏</span>
+          </button>
+          <button class="jr-chip" :class="{ on: activeFilter === 'location' }" @click="activeFilter = 'location'">
+            <JrIcon :path="mdiMapMarkerOutline" :size="13" />
+            <span>地点</span>
+          </button>
+        </div>
 
         <!-- Stories 卡已随 Day One 换皮退役（B2 决策：Day One 无此形态，统计由 JournalOverview 承载；StoriesOverlay 组件保留可恢复） -->
 

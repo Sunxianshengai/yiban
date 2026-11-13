@@ -23,12 +23,6 @@ const nav = [
   { to: '/', label: '今天', icon: mdiWhiteBalanceSunny, exact: true },
   { to: '/pal', label: '日记伙伴', icon: mdiFeather },
 ]
-// Day One 左栏没有独立的日历/媒体入口（在中列视图胶囊里）；
-// 复刻过渡期保留「视图」分组，B2 中列胶囊接管后撤除。
-const views = [
-  { to: '/calendar', label: '日历', icon: mdiCalendarMonth },
-  { to: '/media', label: '媒体', icon: mdiImageMultipleOutline },
-]
 </script>
 
 <template>
@@ -78,12 +72,6 @@ const views = [
     </NuxtLink>
 
     <div class="jr-nav-sep" />
-
-    <!-- 过渡期视图入口（B2 中列胶囊接管后撤） -->
-    <NuxtLink v-for="n in views" :key="n.to" :to="n.to" class="jr-nav-item" :class="{ active: route.path.startsWith(n.to) }">
-      <JrIcon :path="n.icon" :size="21" />
-      <span>{{ n.label }}</span>
-    </NuxtLink>
 
     <button class="jr-section-label" style="border:0;background:none" @click="tagsOpen = !tagsOpen">
       <span>标签</span>
