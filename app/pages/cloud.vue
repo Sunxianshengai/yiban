@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiClose, mdiLaptop, mdiPlusBoxOutline, mdiCogOutline, mdiSync, mdiCloudOutline, mdiLogout } from '@mdi/js'
+import { mdiClose, mdiLaptop, mdiPlusBoxOutline, mdiSync, mdiCloudOutline, mdiLogout } from '@mdi/js'
 
 /**
  * 云服务弹窗：本机日记本 + 在线账号（日记 API）+ 同步开关。
@@ -42,16 +42,7 @@ async function onLogout() {
 }
 
 function toggleSync() {
-  // 还在确认登录态：别急着说「先登录」，用户可能已经登录了
-  if (checking.value && !user.value) {
-    notice.value = '正在确认登录状态，请稍候。'
-    return
-  }
-  if (!user.value) {
-    authOpen.value = true
-    notice.value = '先登录，再打开同步。'
-    return
-  }
+  if (!user.value || checking.value || busy.value) return
   setEnabled(!enabled.value)
   notice.value = enabled.value ? '同步已打开：下次「全部同步」会上传本地日记。' : '同步已关闭：日记只留在本机。'
 }
@@ -60,7 +51,7 @@ function toggleSync() {
 <template>
   <div class="jr-modal-mask" @click.self="$router.back()">
     <div class="jr-modal jr-cloud-modal">
-      <button class="jr-modal-x" @click="$router.back()"><JrIcon :path="mdiClose" :size="16" /></button>
+      <button class="jr-modal-x" aria-label="关闭云服务" @click="$router.back()"><JrIcon :path="mdiClose" :size="16" /></button>
 
       <div class="jr-set-label" style="padding-left:4px">默认账号</div>
       <div class="jr-cloud-row on">
@@ -98,25 +89,20 @@ function toggleSync() {
       <div class="jr-cloud-sync">
         <div class="jr-cloud-sync-row">
           <span>云端同步</span>
-          <button class="jr-switch" :class="{ on: enabled }" role="switch" :aria-checked="enabled" @click="toggleSync">
+          <button class="jr-switch" :class="{ on: enabled }" role="switch" aria-label="云端同步" :aria-checked="enabled" :disabled="!user || checking || busy" @click="toggleSync">
             <span />
           </button>
         </div>
         <p class="jr-muted" style="margin:2px 0 0">
-          {{ enabled ? '已打开：日记和附件会在同步时上传到你的账号。' : '关闭时日记只存在本机，离线也能写。' }}
+          {{ !user ? '登录账号后可开启云端同步。' : enabled ? '日记和附件会在同步时上传到你的账号。' : '开启云端同步后可同步日记和附件。' }}
         </p>
       </div>
-
-      <button class="jr-cloud-row" @click="notice = '账号、数据与云服务的管理界面还在做，目前在这里登录和开关同步。'">
-        <JrIcon :path="mdiCogOutline" :size="24" />
-        <span>管理账号、数据与云服务</span>
-      </button>
 
       <p v-if="notice" class="jr-import-msg" role="status">{{ notice }}</p>
       <p v-if="error" class="jr-import-msg" role="alert">{{ error }}</p>
       <p v-if="lastSyncAt" class="jr-cloud-lastsync">上次同步：{{ lastSyncAt }}</p>
 
-      <button class="jr-btn jr-btn-primary" style="width:100%;justify-content:center;margin-top:14px" :disabled="busy" @click="onSyncAll">
+      <button v-if="user" class="jr-btn jr-btn-primary" style="width:100%;justify-content:center;margin-top:14px" :disabled="busy || !enabled" @click="onSyncAll">
         <JrIcon :path="mdiSync" :size="17" /> {{ busy ? '正在同步…' : '全部同步' }}
       </button>
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiArrowLeft, mdiCalendarMonth, mdiChevronDown, mdiPlus } from '@mdi/js'
+import { mdiArrowLeft, mdiCalendarMonth, mdiPlus } from '@mdi/js'
 import type { EntryV2 } from '~/utils/db'
 
 const route = useRoute()
@@ -264,10 +264,7 @@ onBeforeUnmount(() => { thumbGeneration++; releaseThumbnails() })
   <div class="jr-calendar-page">
     <header class="jr-calendar-toolbar">
       <button v-if="selectedDate" class="jr-icon-btn" type="button" title="返回日历" @click="clearDay"><JrIcon :path="mdiArrowLeft" :size="20" /></button>
-      <button class="jr-cal-journal" type="button" title="选择日记本" @click="$router.push('/cloud')">
-        <img src="/favicon.svg" alt=""> 旅程日记<JrIcon :path="mdiChevronDown" :size="16" />
-      </button>
-      <ViewPills />
+      <ViewPills v-if="!isMobile" />
       <button class="jr-calendar-add" type="button" title="新建日记" @click="openEditor()"><JrIcon :path="mdiPlus" :size="22" /></button>
     </header>
     <div class="jr-calendar-split">

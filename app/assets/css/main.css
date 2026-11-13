@@ -858,9 +858,6 @@ html.jr-pet-doc body { overflow: hidden; }
 .jr-cal-head { display: flex; align-items: center; gap: 12px; }
 .jr-cal-head h1 { margin: 0; font-size: 20px; min-width: 190px; }
 /* 日历页头日记本下拉（原版 JOURNEY ▾ → 日记本选择弹窗） */
-.jr-cal-journal { display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 4px 8px; border-radius: 8px; font-size: 19px; font-weight: 800; color: var(--jr-primary); letter-spacing: 1px; }
-.jr-cal-journal:hover { background: var(--jr-hover); }
-.jr-cal-journal img { width: 22px; height: 22px; }
 .jr-icon-btn { background: none; border: 0; padding: 8px; border-radius: 8px; color: var(--jr-secondary); display: flex; }
 .jr-icon-btn:hover { background: var(--jr-hover); }
 .jr-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }

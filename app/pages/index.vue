@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { mdiBookmark, mdiHistory, mdiSortVariant, mdiCloudUploadOutline, mdiImageOutline, mdiCheck, mdiArrowDown, mdiArrowUp, mdiTrashCanOutline, mdiMapMarkerOutline, mdiStar, mdiStarOutline, mdiPlus, mdiWeatherSunny } from '@mdi/js'
+import { mdiBookmark, mdiSortVariant, mdiCloudUploadOutline, mdiImageOutline, mdiCheck, mdiArrowDown, mdiArrowUp, mdiMapMarkerOutline, mdiStar, mdiStarOutline, mdiPlus, mdiWeatherSunny } from '@mdi/js'
 import type { EntryV2 } from '~/utils/db'
 import { WEATHER_EMOJI, weatherLabel } from '~/utils/services'
 
-const { entries, refresh, toggleFavourite, duplicateEntry, saveAsTemplate, moveToTrash, restoreFromTrash, throwbacks, allMedia } = useEntries()
+const { entries, refresh, toggleFavourite, duplicateEntry, saveAsTemplate, moveToTrash, throwbacks, allMedia } = useEntries()
 const route = useRoute()
 const isMobile = useIsMobile()
 const { formatTemp } = useUnits()
@@ -16,7 +16,6 @@ const throwbackList = ref<EntryV2[]>([])
 const throwbackLabel = ref('今天没有往日回忆')
 const storiesOpen = ref(false)
 const storiesStart = ref<'stats' | 'throwback'>('stats')
-const membershipOpen = useMembershipDialog()
 const throwbackOn = ref(localStorage.getItem('jr.throwback') !== '0')
 
 onMounted(async () => {
@@ -142,30 +141,7 @@ watch(() => route.query.entry, (target) => {
 })
 
 // 删除 + 原地撤销（证据 §5：确认弹窗 → 底部 snackbar 撤销）
-const deleteTarget = ref<EntryV2 | null>(null)
-const snackbar = ref<{ text: string; trashId: number } | null>(null)
-let snackTimer: ReturnType<typeof setTimeout> | undefined
-function requestDelete() {
-  deleteTarget.value = mobileDetail.value
-}
-async function doDelete() {
-  const id = deleteTarget.value?.id
-  deleteTarget.value = null
-  if (id == null) return
-  const trashId = await moveToTrash(id)
-  mobileDetail.value = null
-  if (trashId != null) {
-    snackbar.value = { text: '已移到回收站', trashId }
-    clearTimeout(snackTimer)
-    snackTimer = setTimeout(() => { snackbar.value = null }, 6000)
-  }
-}
-async function undoTrash() {
-  const item = snackbar.value
-  clearTimeout(snackTimer)
-  snackbar.value = null
-  if (item) await restoreFromTrash(item.trashId)
-}
+const deleteId = ref<number | null>(null)
 
 function openLinkedEntry() {
   const target = Number(route.query.entry || route.hash.match(/^#entry=(\d+)$/)?.[1])
@@ -392,7 +368,6 @@ async function onFavourite() {
         <JournalOverview v-else :entries="entries" />
       </div>
 
-      <MembershipDialog v-if="membershipOpen" @close="membershipOpen = false" />
       <StoriesOverlay v-if="storiesOpen" :throwbacks="throwbackList" :start-kind="storiesStart" @close="storiesOpen = false" />
     </div>
   </template>
@@ -405,23 +380,6 @@ async function onFavourite() {
 
     <div class="jr-mfeed">
       <!-- Stories 卡已随 Day One 换皮退役（B2/M-204，移动侧同批） -->
-
-      <template v-if="entries.length">
-        <div class="banner cloud">
-          <JrIcon :path="mdiCloudUploadOutline" :size="22" style="color:#c96b60" />
-          <div class="txt">
-            <div class="t">移至云端</div>
-            <div class="d">同步您的回忆并在任何设备上查看都是免费的。</div>
-          </div>
-        </div>
-        <div class="banner member" @click="membershipOpen = true">
-          <div class="txt">
-            <div class="t">让我们升级吧！</div>
-            <div class="d">加入数百万用户，创建一个更健康，更快乐的心态。</div>
-          </div>
-          <span class="chev">›</span>
-        </div>
-      </template>
 
       <div class="ehead">
         <span class="label">条目</span>
@@ -478,7 +436,7 @@ async function onFavourite() {
       @toggle-favourite="onFavourite"
       @duplicate="onDuplicate"
       @save-as-template="onSaveTemplate"
-      @trash="requestDelete"
+      @trash="deleteId = mobileDetail.id ?? null"
       @prev="mdStep(-1)"
       @next="mdStep(1)"
     />
@@ -492,24 +450,7 @@ async function onFavourite() {
       @done="onDone"
     />
 
-    <div v-if="deleteTarget" class="mmask" @click.self="deleteTarget = null">
-      <div class="mdlg" role="dialog" aria-modal="true" aria-label="删除日记">
-        <JrIcon :path="mdiTrashCanOutline" :size="26" style="color:var(--jr-on-surface-variant)" />
-        <div class="dlg-t">删除</div>
-        <p>您想要删除这个日记条目吗？</p>
-        <div class="dlg-btns">
-          <button @click="deleteTarget = null">取消</button>
-          <button class="danger" @click="doDelete">删除</button>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="snackbar" class="msnack" role="status">
-      <span>{{ snackbar.text }}</span>
-      <button @click="undoTrash">撤销</button>
-    </div>
-
-    <MembershipDialog v-if="membershipOpen" @close="membershipOpen = false" />
+    <MobileEntryTrash v-model="deleteId" @trashed="mobileDetail = null" @restored="loadThumbnails" />
     <StoriesOverlay v-if="storiesOpen" :throwbacks="throwbackList" :start-kind="storiesStart" @close="storiesOpen = false" />
   </template>
 </template>
@@ -524,15 +465,6 @@ async function onFavourite() {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
 .jr-mfeed { padding: 6px 16px 0; }
-.banner {
-  display: flex; align-items: center; gap: 12px;
-  border-radius: 14px; padding: 14px; margin-top: 14px;
-  background: #dcebee; width: 100%; text-align: left; border: 0; font-family: inherit;
-}
-.banner .txt { flex: 1; min-width: 0; }
-.banner .t { font-weight: 800; font-size: 14.5px; }
-.banner .d { font-size: 12.5px; color: var(--jr-on-surface-variant); margin-top: 2px; }
-.banner.member .chev { font-size: 22px; color: var(--jr-on-surface-variant); }
 .ehead { display: flex; align-items: center; margin: 20px 0 4px; position: relative; }
 .ehead .label { font-size: 14px; font-weight: 600; flex: 1; text-align: left; }
 .ehead .sort { background: transparent; border: 0; color: var(--jr-on-surface-variant); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; }
@@ -552,24 +484,5 @@ async function onFavourite() {
 .mempty { text-align: center; padding: 60px 0 30px; color: var(--jr-outline); }
 .mempty .t { font-size: 16px; margin: 14px 0 4px; color: var(--jr-on-surface-variant); }
 .mempty .d { font-size: 13px; margin: 0; }
-.mmask { position: fixed; inset: 0; z-index: 400; background: rgba(90, 100, 104, 0.55); display: flex; align-items: center; justify-content: center; }
-.mdlg { width: min(320px, 84vw); background: #e6eaea; border-radius: 22px; padding: 22px 18px 14px; text-align: center; }
-.mdlg .dlg-t { font-size: 20px; font-weight: 800; margin: 8px 0 6px; }
-.mdlg p { font-size: 13.5px; color: var(--jr-on-surface-variant); margin: 0 0 16px; }
-.mdlg .dlg-btns { display: flex; justify-content: center; gap: 26px; }
-.mdlg .dlg-btns button { background: transparent; border: 0; color: var(--jr-primary); font-size: 15px; font-weight: 700; padding: 8px 6px; }
-.mdlg .dlg-btns .danger { color: var(--jr-error); }
-.msnack {
-  position: fixed; left: 14px; right: 14px; bottom: calc(78px + env(safe-area-inset-bottom)); z-index: 380;
-  display: flex; align-items: center; gap: 12px;
-  background: #303638; color: #fff; border-radius: 10px; padding: 12px 16px;
-  font-size: 13.5px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
-}
-.msnack button { margin-left: auto; background: transparent; border: 0; color: #85d1e8; font-weight: 700; font-size: 13.5px; }
-/* 深色主题:卡片与横幅走暗色 */
 [data-theme="dark"] .mrow { background: var(--jr-layer); }
-[data-theme="dark"] .banner { background: #24363c; }
-[data-theme="dark"] .banner .d { color: #9fb0b5; }
-[data-theme="dark"] .mdlg { background: #2b3236; }
-[data-theme="dark"] .mdlg p { color: #9fb0b5; }
 </style>

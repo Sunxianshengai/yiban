@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { mdiArrowLeft, mdiShareOutline, mdiStar, mdiStarOutline, mdiPencil, mdiDotsHorizontal, mdiChevronLeft, mdiChevronRight, mdiLinkVariant, mdiContentDuplicate, mdiLabelOutline, mdiTrashCanOutline, mdiCloudUploadOutline, mdiMapMarkerOutline } from '@mdi/js'
+import { mdiArrowLeft, mdiStar, mdiStarOutline, mdiPencil, mdiDotsHorizontal, mdiChevronLeft, mdiChevronRight, mdiLinkVariant, mdiContentDuplicate, mdiLabelOutline, mdiTrashCanOutline, mdiCloudUploadOutline, mdiMapMarkerOutline } from '@mdi/js'
 import type { EntryV2 } from '~/utils/db'
 import { weatherLabel } from '~/utils/services'
 
 // 移动详情页对照原版(evidence/mobile-derived/ui-structure.md §4):
 // 顶栏 返回+分享+收藏+编辑+更多;大日数字+日期星期时间+云状态;底部 ‹ › 前后篇
-const props = defineProps<{ entry: EntryV2; hasPrev: boolean; hasNext: boolean }>()
+const props = defineProps<{ entry: EntryV2; hasPrev: boolean; hasNext: boolean; notice?: string; busy?: boolean }>()
 const emit = defineEmits<{
   (e: 'back'): void
   (e: 'edit'): void
@@ -35,23 +35,24 @@ const d1 = computed(() => new Intl.DateTimeFormat('zh-CN', { month: 'long', day:
 const d2 = computed(() => new Intl.DateTimeFormat('zh-CN', { weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(props.entry.dateOfJournal))
 
 const menu = [
-  { key: 'copy', label: '复制链接', icon: mdiLinkVariant },
   { key: 'duplicate', label: '复制日记', icon: mdiContentDuplicate },
   { key: 'template', label: '存为模板', icon: mdiLabelOutline },
   { key: 'trash', label: '移到回收站', icon: mdiTrashCanOutline },
 ] as const
 
-async function onMenu(key: typeof menu[number]['key']) {
+function onMenu(key: typeof menu[number]['key']) {
   menuOpen.value = false
   if (key === 'duplicate') emit('duplicate')
   else if (key === 'template') emit('saveAsTemplate')
-  else if (key === 'trash') emit('trash')
-  else if (key === 'copy') {
-    const url = new URL(router.resolve({ path: '/', query: { entry: props.entry.id } }).href, location.href).href
-    try { await navigator.clipboard.writeText(url); actionStatus.value = '已复制日记链接。' }
-    catch { actionStatus.value = url }
-  }
+  else emit('trash')
 }
+async function copyLink() {
+  menuOpen.value = false
+  const url = new URL(router.resolve({ path: '/', query: { entry: props.entry.id } }).href, location.href).href
+  try { await navigator.clipboard.writeText(url); actionStatus.value = '已复制日记链接。' }
+  catch { actionStatus.value = url }
+}
+watch(() => props.notice, () => { actionStatus.value = '' })
 watch(() => props.entry.id, () => { menuOpen.value = false; actionStatus.value = '' })
 </script>
 
@@ -60,12 +61,12 @@ watch(() => props.entry.id, () => { menuOpen.value = false; actionStatus.value =
     <div class="bar">
       <button class="ico" aria-label="返回" @click="emit('back')"><JrIcon :path="mdiArrowLeft" :size="22" /></button>
       <span class="sp" />
-      <button class="ico" aria-label="分享与导出" @click="onMenu('copy')"><JrIcon :path="mdiShareOutline" :size="22" /></button>
+      <button class="ico" aria-label="复制链接" @click="copyLink"><JrIcon :path="mdiLinkVariant" :size="22" /></button>
       <button class="ico" :aria-label="entry.favourite ? '取消收藏' : '收藏'" @click="emit('toggleFavourite')">
         <JrIcon :path="entry.favourite ? mdiStar : mdiStarOutline" :size="22" :style="entry.favourite ? 'color:#e2a03f' : ''" />
       </button>
-      <button class="ico" aria-label="编辑" @click="emit('edit')"><JrIcon :path="mdiPencil" :size="22" /></button>
-      <button class="ico" aria-label="更多" @click="menuOpen = !menuOpen"><JrIcon :path="mdiDotsHorizontal" :size="22" /></button>
+      <button class="ico" aria-label="编辑" :disabled="busy" @click="emit('edit')"><JrIcon :path="mdiPencil" :size="22" /></button>
+      <button class="ico" aria-label="更多" :aria-expanded="menuOpen" :disabled="busy" @click="menuOpen = !menuOpen"><JrIcon :path="mdiDotsHorizontal" :size="22" /></button>
       <div v-if="menuOpen" class="jr-menu" @click.stop>
         <button v-for="m in menu" :key="m.key" @click="onMenu(m.key)">
           <JrIcon :path="m.icon" :size="18" />
@@ -99,10 +100,10 @@ watch(() => props.entry.id, () => { menuOpen.value = false; actionStatus.value =
         <span v-for="t in (entry.tagWordIds || [])" :key="t" class="chip">#{{ tagTitles[t] || t }}</span>
       </div>
       <JournalBody :entry="entry" />
-      <p v-if="actionStatus" class="note" role="status">{{ actionStatus }}</p>
+      <p v-if="actionStatus || notice" class="note" role="status">{{ actionStatus || notice }}</p>
     </div>
 
-    <div class="pager">
+    <div v-if="hasPrev || hasNext" class="pager">
       <button class="nav" :disabled="!hasPrev" aria-label="上一篇" @click="emit('prev')"><JrIcon :path="mdiChevronLeft" :size="26" /></button>
       <button class="nav" :disabled="!hasNext" aria-label="下一篇" @click="emit('next')"><JrIcon :path="mdiChevronRight" :size="26" /></button>
     </div>

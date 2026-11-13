@@ -166,7 +166,7 @@ export function useEntries() {
   async function saveAsTemplate(id: number) {
     const row = await db.entriesV2.get(id)
     if (!row) return
-    await miscDb.templates.add({
+    return miscDb.templates.add({
       name: `日记 ${new Date(row.dateOfJournal).toLocaleDateString('zh-CN')}`,
       content: stripAttachmentUrls(row.text, new Set((await listMediaFor(id)).flatMap(file => file.id == null ? [] : [file.id]))),
       contentType: 'html',

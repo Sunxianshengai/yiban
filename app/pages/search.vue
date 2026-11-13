@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiFilterVariant, mdiImageOutline, mdiBookOutline, mdiStarOutline, mdiTagOutline, mdiArrowLeft, mdiClose, mdiChevronDown, mdiCloudUploadOutline, mdiCloudOutline, mdiChevronRight, mdiPuzzleOutline, mdiAccountOutline, mdiCogOutline } from '@mdi/js'
+import { mdiFilterVariant, mdiImageOutline, mdiBookOutline, mdiStarOutline, mdiTagOutline, mdiArrowLeft, mdiClose, mdiChevronDown, mdiCloudUploadOutline } from '@mdi/js'
 import type { EntryV2, TagWordV2 } from '~/utils/db'
 import { htmlToPreview } from '~/utils/db'
 import { activities, journalActivity, journalSentiment, sentiments } from '~/utils/journalOptions'
@@ -13,8 +13,7 @@ const routeText = computed(() => String(route.query.query ?? route.query.q ?? ''
 const q = ref(routeText.value)
 watch(routeText, value => { q.value = value })
 
-const { entries, listTags, allMedia } = useEntries()
-const membershipOpen = useMembershipDialog()
+const { entries, listTags, allMedia, toggleFavourite, duplicateEntry, saveAsTemplate } = useEntries()
 const tags = ref<TagWordV2[]>([])
 const filtersOpen = ref(false)
 // 移动端筛选行展开态（原版为行式 + 展开箭头）
@@ -61,14 +60,16 @@ const results = computed(() => {
 
 // Keep local filename search alongside entry results. The original's classified file types require Sync.
 const fileResults = computed(() =>
-  needle.value && !hasFilters.value ? mediaItems.value.filter((m) => m.fileName.toLowerCase().includes(needle.value)) : [],
+  needle.value && !hasFilters.value ? mediaItems.value.filter(m => m.jId != null && entriesById.value.has(m.jId) && m.fileName.toLowerCase().includes(needle.value)) : [],
 )
+const entriesById = computed(() => new Map(entries.value.map(entry => [entry.id, entry])))
 const mediaItems = ref<{ id?: number; fileName: string; jId?: number }[]>([])
-onMounted(async () => {
+async function loadSearchMetadata() {
   const [rows, tagRows] = await Promise.all([allMedia(), listTags()])
   tags.value = tagRows
   mediaItems.value = rows.map(({ id, fileName, jId }) => ({ id, fileName, jId }))
-})
+}
+onMounted(loadSearchMetadata)
 
 // 移动端结果分组 + 全屏详情（与首页同构）
 const groupedResults = computed(() => {
@@ -85,18 +86,32 @@ const groupedResults = computed(() => {
 function timeOf(e: EntryV2) {
   return new Intl.DateTimeFormat('zh-CN', { hour: 'numeric', minute: '2-digit', hour12: false }).format(new Date(e.dateOfJournal))
 }
-const mobileDetail = ref<EntryV2 | null>(null)
-const editorOpen = ref(false)
-const editingId = ref<number | undefined>(undefined)
-function editSelected(e: EntryV2) { editingId.value = e.id ?? undefined; editorOpen.value = true }
+const mobileDetailId = ref<number>()
+const mobileDetail = computed(() => entriesById.value.get(mobileDetailId.value))
+const deleteId = ref<number | null>(null)
+const detailNotice = ref('')
+const detailBusy = ref(false)
+const editing = shallowRef<EntryV2>()
+const editingMeta = computed(() => {
+  if (!editing.value) return
+  const { address, lat, lng, locationSource, adcode, sentiment, activity, weatherIcon, weatherDegreeC, weatherPlace, weatherDescription, weatherId, tagWordIds } = editing.value
+  return { address, lat, lng, locationSource, adcode, sentiment, activity, weatherIcon, weatherDegreeC, weatherPlace, weatherDescription, weatherId, tagWordIds }
+})
 function open(e: EntryV2) {
-  if (isMobile.value) mobileDetail.value = e
+  if (isMobile.value) {
+    detailNotice.value = ''
+    mobileDetailId.value = e.id
+  }
   else selected.value = e
 }
-async function onMobileDone() {
-  editorOpen.value = false
-  await refresh()
-  if (mobileDetail.value) mobileDetail.value = entries.value.find(e => e.id === mobileDetail.value!.id) ?? null
+function openAttachment(id?: number) {
+  const entry = entriesById.value.get(id)
+  if (entry) open(entry)
+}
+async function onEditDone(savedId?: number) {
+  editing.value = undefined
+  if (!isMobile.value) selected.value = null
+  if (savedId != null) await loadSearchMetadata()
 }
 const selected = ref<EntryV2 | null>(null)
 function rowDate(e: EntryV2) {
@@ -105,10 +120,33 @@ function rowDate(e: EntryV2) {
   return `${main} · ${new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(d)}`
 }
 async function onMobileFavourite() {
-  const id = mobileDetail.value?.id
+  const id = mobileDetailId.value
   if (id == null) return
-  await useEntries().toggleFavourite(id)
-  mobileDetail.value = entries.value.find(e => e.id === id) ?? null
+  await toggleFavourite(id)
+}
+async function onMobileEntryAction(action: 'duplicate' | 'template') {
+  const id = mobileDetailId.value
+  if (id == null || detailBusy.value) return
+  detailBusy.value = true
+  detailNotice.value = ''
+  try {
+    if (action === 'duplicate') {
+      const copyId = await duplicateEntry(id)
+      if (copyId == null) detailNotice.value = '原日记已不存在。'
+      else if (mobileDetailId.value === id) {
+        mobileDetailId.value = copyId
+        detailNotice.value = '已复制日记。'
+      }
+      await loadSearchMetadata()
+    } else {
+      const templateId = await saveAsTemplate(id)
+      if (mobileDetailId.value === id) detailNotice.value = templateId == null ? '原日记已不存在。' : '已存为模板。'
+    }
+  } catch {
+    detailNotice.value = action === 'duplicate' ? '无法复制日记。' : '无法存为模板。'
+  } finally {
+    detailBusy.value = false
+  }
 }
 </script>
 
@@ -119,7 +157,7 @@ async function onMobileFavourite() {
       <div class="mbar">
         <button class="ico" aria-label="返回" @click="router.back()"><JrIcon :path="mdiArrowLeft" :size="22" /></button>
         <input v-model="q" type="text" placeholder="搜索 Journey…" aria-label="搜索日记" @keyup.enter="search()" />
-        <button class="ico" aria-label="关闭" @click="q = ''; search()"><JrIcon :path="mdiClose" :size="22" /></button>
+        <button class="ico" aria-label="清空搜索词" :disabled="!q" @click="q = ''; search()"><JrIcon :path="mdiClose" :size="22" /></button>
       </div>
 
       <div class="fsec">筛选器</div>
@@ -135,7 +173,7 @@ async function onMobileFavourite() {
       </div>
       <button type="button" class="frow" :class="{ on: starredOnly }" @click="search({ favourite: starredOnly ? undefined : 'true' })">
         <span class="fico" style="color:#e2a03f"><JrIcon :path="mdiStarOutline" :size="20" /></span>
-        <span class="ft">已加星标</span>
+        <span class="ft">收藏</span>
       </button>
       <div class="frow" @click="mExpand = mExpand === 'activity' ? null : 'activity'">
         <span class="fico" style="color:#4c7d92"><JrIcon :path="mdiFilterVariant" :size="20" /></span>
@@ -175,40 +213,12 @@ async function onMobileFavourite() {
 
       <template v-if="fileResults.length">
         <div class="sec">附件结果</div>
-        <button v-for="m in fileResults" :key="'f' + m.id" class="mrow" @click="open(entries.find(e => e.id === m.jId)!)">
+        <button v-for="m in fileResults" :key="'f' + m.id" class="mrow" @click="openAttachment(m.jId)">
           <span class="time">{{ m.fileName }}</span>
           <span class="prev">媒体附件 · 所属日记</span>
         </button>
       </template>
 
-      <!-- 「我的」面板（证据 r05：搜索页下半 = 云服务/升级/插件/登录/设置） -->
-      <div class="psec">服务</div>
-      <NuxtLink class="prow" to="/cloud">
-        <span class="fico" style="color:var(--jr-primary)"><JrIcon :path="mdiCloudOutline" :size="20" /></span>
-        <span class="ft">云服务</span>
-        <JrIcon class="fchev" :path="mdiChevronRight" :size="20" />
-      </NuxtLink>
-      <button type="button" class="prow" @click="membershipOpen = true">
-        <span class="fico" style="color:#e2a03f"><JrIcon :path="mdiStarOutline" :size="20" /></span>
-        <span class="ft">升级</span>
-        <JrIcon class="fchev" :path="mdiChevronRight" :size="20" />
-      </button>
-      <NuxtLink class="prow" to="/addons">
-        <span class="fico" style="color:#66bb6a"><JrIcon :path="mdiPuzzleOutline" :size="20" /></span>
-        <span class="ft">插件</span>
-        <JrIcon class="fchev" :path="mdiChevronRight" :size="20" />
-      </NuxtLink>
-      <NuxtLink class="prow" to="/cloud">
-        <span class="fico" style="color:#5c6bc0"><JrIcon :path="mdiAccountOutline" :size="20" /></span>
-        <span class="ft">登录 Journey</span>
-        <JrIcon class="fchev" :path="mdiChevronRight" :size="20" />
-      </NuxtLink>
-      <NuxtLink class="prow" to="/settings">
-        <span class="fico" style="color:#78909c"><JrIcon :path="mdiCogOutline" :size="20" /></span>
-        <span class="ft">设置</span>
-        <JrIcon class="fchev" :path="mdiChevronRight" :size="20" />
-      </NuxtLink>
-      <div style="height:24px" />
     </div>
 
     <EntryDetailMobile
@@ -216,11 +226,16 @@ async function onMobileFavourite() {
       :entry="mobileDetail"
       :has-prev="false"
       :has-next="false"
-      @back="mobileDetail = null"
-      @edit="editSelected(mobileDetail)"
+      :notice="detailNotice"
+      :busy="detailBusy"
+      @back="mobileDetailId = undefined"
+      @edit="editing = mobileDetail"
       @toggle-favourite="onMobileFavourite"
+      @duplicate="onMobileEntryAction('duplicate')"
+      @save-as-template="onMobileEntryAction('template')"
+      @trash="deleteId = mobileDetail.id ?? null"
     />
-    <EntryEditor v-if="editorOpen" :entry-id="editingId" @done="onMobileDone" />
+    <MobileEntryTrash v-model="deleteId" @trashed="mobileDetailId = undefined" @restored="loadSearchMetadata" />
   </template>
 
   <!-- 桌面端（保持原样） -->
@@ -269,7 +284,7 @@ async function onMobileFavourite() {
 
       <template v-if="fileResults.length">
         <div class="jr-set-label" style="margin-top:20px">附件结果</div>
-        <div v-for="m in fileResults" :key="'f' + m.id" class="jr-entry" @click="selected = entries.find(e => e.id === m.jId) ?? null">
+        <div v-for="m in fileResults" :key="'f' + m.id" class="jr-entry" @click="openAttachment(m.jId)">
           <div class="date">{{ m.fileName }}</div>
           <div class="preview">媒体附件 · 所属日记 {{ m.jId }}</div>
         </div>
@@ -286,7 +301,7 @@ async function onMobileFavourite() {
         </div>
         <JournalBody :entry="selected" />
         <div class="jr-pop-row" style="justify-content:center">
-          <button class="jr-btn jr-btn-primary" @click="editSelected(selected)">编辑</button>
+          <button class="jr-btn jr-btn-primary" @click="editing = selected">编辑</button>
           <NuxtLink class="jr-btn" :to="{ path: '/', query: { entry: selected.id } }">在时间线中打开</NuxtLink>
         </div>
       </div>
@@ -295,8 +310,15 @@ async function onMobileFavourite() {
         请选择一篇日记。
       </div>
     </div>
-    <EntryEditor v-if="editorOpen" :entry-id="editingId" @done="editorOpen = false; selected = null" />
   </div>
+  <EntryEditor
+    v-if="editing"
+    :entry-id="editing.id"
+    :initial-text="editing.text"
+    :initial-date="new Date(editing.dateOfJournal)"
+    :initial-meta="editingMeta"
+    @done="onEditDone"
+  />
 </template>
 
 <style scoped>
@@ -305,10 +327,11 @@ async function onMobileFavourite() {
 .jr-search-filters details .jr-pop-item, .jr-search-filters details p { padding-inline-start: 24px; }
 
 /* ---- 移动搜索（证据 §9：标签/已加星标/活动/情绪行式 + 结果分组） ---- */
-.msearch { padding: 8px 16px 0; }
+.msearch { padding: 8px 16px 24px; }
 .mbar { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--jr-outline-variant); padding: 6px 0 12px; }
 .mbar input { flex: 1; border: 0; outline: 0; background: transparent; font-size: 17px; color: var(--jr-on-bg); font-family: inherit; }
 .mbar .ico { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: transparent; border: 0; color: var(--jr-on-bg); }
+.mbar .ico:disabled { visibility: hidden; }
 .fsec { font-size: 13px; color: var(--jr-on-surface-variant); margin: 16px 0 6px; }
 .frow {
   display: flex; align-items: center; gap: 14px; width: 100%;
@@ -336,12 +359,4 @@ async function onMobileFavourite() {
 .mrow .prev { font-size: 13.5px; color: var(--jr-on-surface-variant); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 .mrow .up { color: #e05a4e; }
 .mempty2 { text-align: center; padding: 60px 0 30px; color: var(--jr-outline); }
-.psec { font-size: 13px; color: var(--jr-on-surface-variant); margin: 26px 0 4px; }
-.prow {
-  display: flex; align-items: center; gap: 14px; width: 100%;
-  background: transparent; border: 0; border-bottom: 1px solid var(--jr-outline-variant);
-  padding: 16px 4px; font-size: 15.5px; font-weight: 600; font-family: inherit; color: var(--jr-on-bg);
-  text-decoration: none; text-align: left;
-}
-.prow .ft { flex: 1; }
 </style>

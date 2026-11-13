@@ -6,7 +6,6 @@ import {
   mdiShareOutline,
   mdiPencil,
   mdiDotsHorizontal,
-  mdiLinkVariant,
   mdiContentDuplicate,
   mdiLabelOutline,
   mdiTrashCanOutline,
@@ -68,13 +67,12 @@ const hasHeadingInBody = computed(() => {
 })
 
 const menu = [
-  { key: 'copy', label: '复制链接', icon: mdiLinkVariant },
   { key: 'duplicate', label: '复制日记', icon: mdiContentDuplicate },
   { key: 'template', label: '存为模板', icon: mdiLabelOutline },
   { key: 'trash', label: '移到回收站', icon: mdiTrashCanOutline },
 ] as const
 
-async function onMenu(key: typeof menu[number]['key']) {
+async function onMenu(key: typeof menu[number]['key'] | 'copy') {
   menuOpen.value = false
   if (key === 'duplicate') emit('duplicate')
   else if (key === 'template') emit('saveAsTemplate')

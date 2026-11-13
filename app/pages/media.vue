@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiImageMultipleOutline, mdiChevronDown, mdiArrowLeft } from '@mdi/js'
+import { mdiImageMultipleOutline, mdiArrowLeft } from '@mdi/js'
 import type { MediaFileV2 } from '~/utils/db'
 
 const { allMedia, deleteMedia } = useEntries()
@@ -50,9 +50,6 @@ function fmt(d?: Date) {
 <template>
   <div class="jr-media-page">
     <header class="jr-media-toolbar">
-      <button class="jr-cal-journal" type="button" title="选择日记本" @click="$router.push('/cloud')">
-        <img src="/favicon.svg" alt=""> 旅程日记<JrIcon :path="mdiChevronDown" :size="16" />
-      </button>
       <ViewPills />
     </header>
     <div class="jr-media-split">

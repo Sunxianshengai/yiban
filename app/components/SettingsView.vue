@@ -4,38 +4,27 @@ import { desktopBridge } from '~/utils/desktopBridge'
 import { errorText } from '~/utils/uiText'
 import { getAmapJsKey, getAmapSecurity, getAmapWebKey, resetAmapLoader, setAmapCredentials } from '~/utils/amap'
 import { getPalConfig, setPalConfig } from '~/utils/palClient'
-import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiAccountOutline, mdiShieldKeyOutline, mdiDatabaseOutline, mdiHelpCircleOutline, mdiPalette, mdiRuler, mdiMapMarkerOutline, mdiTranslate, mdiSpellcheck, mdiPuzzleOutline, mdiLockOutline, mdiChevronRight, mdiAlertOutline, mdiCloudOutline, mdiApps, mdiBookmarkOutline, mdiBellOutline, mdiRobotOutline } from '@mdi/js'
+import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiShieldKeyOutline, mdiDatabaseOutline, mdiHelpCircleOutline, mdiPalette, mdiRuler, mdiMapMarkerOutline, mdiTranslate, mdiSpellcheck, mdiLockOutline, mdiChevronRight, mdiRobotOutline } from '@mdi/js'
 
-const tab = ref<'general' | 'account' | 'security' | 'data' | 'help'>('general')
+const tab = ref<'general' | 'security' | 'data' | 'help'>('general')
 const isMobile = useIsMobile()
 // 主界面右下角桌宠的显隐，与侧栏 / 移动顶栏共用同一份状态（usePetWidget 已负责持久化）
 const { visible: petVisible, setVisible: setPetVisible } = usePetWidget()
-// 移动设置中枢(证据 s05-s12):彩色图标行手风琴;怀旧开关是真实功能(控制首页怀旧卡)
 const openSection = ref<'general' | 'security' | 'help' | null>(null)
-const throwback = ref(localStorage.getItem('jr.throwback') !== '0')
-watch(throwback, (v) => localStorage.setItem('jr.throwback', v ? '1' : '0'))
 const mSections = [
-  { key: 'general', label: '通用', color: '#f8b26a', expandable: true },
-  { key: 'cloud', label: '帐户、数据与云端服务', color: '#f2e04c', expandable: false, to: '/cloud' },
-  // 「故事」行随 Stories 退役移除（M-204/B5：Day One 无此形态，怀旧开关失去作用对象）
-  { key: 'publish', label: '发布', color: '#7fe07f', expandable: false, locked: true },
-  { key: 'notifications', label: '通知&提醒', color: '#7fc4e8', expandable: false, locked: true },
-  { key: 'security', label: '安全性', color: '#6ee8dc', expandable: true },
-  { key: 'help', label: '帮助', color: '#c46ae8', expandable: true },
+  { key: 'general', label: '通用', color: '#f8b26a', icon: mdiCogOutline },
+  { key: 'security', label: '安全性', color: '#6ee8dc', icon: mdiLockOutline },
+  { key: 'help', label: '帮助', color: '#c46ae8', icon: mdiHelpCircleOutline },
 ] as const
 function toggleSection(key: typeof mSections[number]['key']) {
-  if (key !== 'general' && key !== 'security' && key !== 'help') return
   openSection.value = openSection.value === key ? null : key
 }
-const mIcons = { general: mdiCogOutline, cloud: mdiCloudOutline, stories: mdiApps, publish: mdiBookmarkOutline, notifications: mdiBellOutline, security: mdiLockOutline, help: mdiHelpCircleOutline } as const
-const lockedNote = ref('')
-const gen = ref<'appearance' | 'unit' | 'location' | 'pal' | 'locale' | 'spellcheck' | 'plugins'>('appearance')
+const gen = ref<'appearance' | 'unit' | 'location' | 'pal' | 'locale' | 'spellcheck'>('appearance')
 const { weekStart } = useWeekStart()
 // bug06 修复：计量单位绑定并持久化（原 select 未绑 v-model，选择即丢）
 const { unit } = useUnits()
 const tabs = [
   { key: 'general', label: '通用', icon: mdiCogOutline },
-  { key: 'account', label: '账号', icon: mdiAccountOutline },
   { key: 'security', label: '安全', icon: mdiShieldKeyOutline },
   { key: 'data', label: '数据', icon: mdiDatabaseOutline },
   { key: 'help', label: '帮助', icon: mdiHelpCircleOutline },
@@ -47,7 +36,6 @@ const genItems = [
   { key: 'pal', label: '日记伙伴', icon: mdiRobotOutline },
   { key: 'locale', label: '语言与地区', icon: mdiTranslate },
   { key: 'spellcheck', label: '拼写检查', icon: mdiSpellcheck },
-  { key: 'plugins', label: '插件', icon: mdiPuzzleOutline },
 ] as const
 
 // Appearance — Day One / Moleskine 双主题风格支持与深浅模式
@@ -186,41 +174,17 @@ async function wipeAll() {
 </script>
 
 <template>
-  <!-- 移动设置中枢（证据 s05-s12：✕+大标题+登录卡+彩色图标行手风琴） -->
+  <!-- 移动设置中枢（证据 s05-s12：彩色图标行手风琴） -->
   <div v-if="isMobile" class="jr-mset">
     <button class="mx" aria-label="关闭设置" @click="$emit('close')"><JrIcon :path="mdiClose" :size="24" /></button>
     <h1 class="mtitle">设置</h1>
-    <NuxtLink to="/cloud" class="mlogin">
-      <JrIcon :path="mdiAlertOutline" :size="24" class="mlogin-ico" />
-      <span class="mlogin-txt"><b>本地模式</b>所有日记保存在此设备。链接云端服务请查看云服务页。</span>
-    </NuxtLink>
-
     <template v-for="s in mSections" :key="s.key">
-      <NuxtLink v-if="s.to" :to="s.to" class="mrow-i">
-        <span class="mico" :style="{ background: s.color }"><JrIcon :path="mIcons[s.key]" :size="22" /></span>
-        <span class="mlabel">{{ s.label }}</span>
-        <JrIcon :path="mdiChevronRight" :size="20" class="mchev" />
-      </NuxtLink>
-
-      <div v-else-if="s.toggle" class="mrow-i" role="switch" :aria-checked="throwback" tabindex="0" @click="throwback = !throwback" @keydown.enter="throwback = !throwback">
-        <span class="mico" :style="{ background: s.color }"><JrIcon :path="mIcons[s.key]" :size="22" /></span>
-        <span class="mlabel">故事<small>怀旧</small></span>
-        <span class="mtoggle" :class="{ on: throwback }" />
-      </div>
-
-      <div v-else-if="s.locked" class="mrow-i locked" role="button" tabindex="0" @click="lockedNote = lockedNote === s.key ? '' : s.key" @keydown.enter="lockedNote = lockedNote === s.key ? '' : s.key">
-        <span class="mico" :style="{ background: s.color }"><JrIcon :path="mIcons[s.key]" :size="22" /></span>
-        <span class="mlabel">{{ s.label }}<small>{{ s.key === 'publish' ? '需要 Journey 云端账户' : '网页复刻暂未实现提醒' }}</small></span>
-        <JrIcon :path="mdiLockOutline" :size="18" class="mchev" />
-      </div>
-
-      <button v-else class="mrow-i" :aria-expanded="openSection === s.key" @click="toggleSection(s.key)">
-        <span class="mico" :style="{ background: s.color }"><JrIcon :path="mIcons[s.key]" :size="22" /></span>
+      <button type="button" class="mrow-i" :aria-expanded="openSection === s.key" @click="toggleSection(s.key)">
+        <span class="mico" :style="{ background: s.color }"><JrIcon :path="s.icon" :size="22" /></span>
         <span class="mlabel">{{ s.label }}</span>
         <JrIcon :path="mdiChevronRight" :size="20" class="mchev" :class="{ open: openSection === s.key }" />
       </button>
 
-      <p v-if="s.locked && lockedNote === s.key" class="mnote" role="status">原版此项为 Journey 云端账户功能；复刻以本地模式运行，此功能不提供（诚实边界）。</p>
 
       <div v-if="s.key === 'general' && openSection === 'general'" class="mexpand">
         <div class="mset-row">
@@ -276,7 +240,7 @@ async function wipeAll() {
 
       <div v-if="s.key === 'help' && openSection === 'help'" class="mexpand">
         <div class="mset-row"><span>版本</span><span class="mv">旅程复刻 Web（本地）</span></div>
-        <p class="mnote">数据全部保存在本机浏览器（IndexedDB）。导出备份见云服务页；原版功能对照见 journey-replica 功能矩阵。</p>
+        <p class="mnote">可在导航抽屉中打开云服务，登录并开启日记同步。</p>
       </div>
     </template>
     <div style="height:32px" />
@@ -284,7 +248,7 @@ async function wipeAll() {
 
   <div v-else class="jr-modal-mask" @click.self="$emit('close')">
     <div class="jr-modal">
-      <button class="jr-modal-x" @click="$emit('close')"><JrIcon :path="mdiClose" :size="16" /></button>
+      <button class="jr-modal-x" aria-label="关闭设置" @click="$emit('close')"><JrIcon :path="mdiClose" :size="16" /></button>
       <div class="jr-modal-tabs">
         <button v-for="t in tabs" :key="t.key" class="jr-modal-tab" :class="{ on: tab === t.key }" @click="tab = t.key">
           <JrIcon :path="t.icon" :size="20" />
@@ -297,9 +261,8 @@ async function wipeAll() {
         <div class="jr-gen-nav">
           <button
             v-for="g in genItems" :key="g.key"
-            class="jr-gen-item" :class="{ on: gen === g.key, disabled: g.disabled }"
-            :disabled="g.disabled"
-            @click="!g.disabled && (gen = g.key)"
+            class="jr-gen-item" :class="{ on: gen === g.key }"
+            @click="gen = g.key"
           >
             <JrIcon :path="g.icon" :size="19" />
             <span>{{ g.label }}</span>
@@ -461,17 +424,9 @@ async function wipeAll() {
             </label>
           </template>
 
-          <template v-else-if="gen === 'plugins'">
-            <p class="jr-muted" style="font-size:13px">插件管理暂不可用。</p>
-          </template>
         </div>
       </div>
 
-      <div v-else-if="tab === 'account'" class="jr-modal-body">
-        <div class="jr-avatar guest" style="margin-bottom:12px">用</div>
-        <p><b>本机日记</b> · 未登录</p>
-        <p class="jr-muted" style="font-size:13px">账号登录和云同步暂未接入。目前可使用本机日记。</p>
-      </div>
 
       <div v-else-if="tab === 'security'" class="jr-modal-body">
         <p><JrIcon :path="mdiLockOutline" :size="18" /> <b>密码锁</b></p>
@@ -515,25 +470,15 @@ async function wipeAll() {
 </template>
 
 <style scoped>
-/* 移动设置中枢（证据 s05：✕+大标题+登录卡+彩色图标行） */
+/* 移动设置中枢（证据 s05：彩色图标行） */
 .jr-mset { position: fixed; inset: 0; z-index: 250; background: var(--jr-bg); overflow-y: auto; padding: 0 20px 24px; }
 .jr-mset .mx { margin: 14px 0 0 -8px; background: none; border: 0; color: var(--jr-on-bg); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
 .jr-mset .mtitle { font-size: 34px; font-weight: 800; margin: 18px 0 20px; }
-.mlogin { display: flex; gap: 14px; align-items: flex-start; background: #cfe6ef; border-radius: 14px; padding: 16px; text-decoration: none; color: var(--jr-on-bg); margin-bottom: 14px; }
-.mlogin-ico { color: var(--jr-on-surface-variant); flex-shrink: 0; margin-top: 2px; }
-.mlogin-txt { font-size: 13.5px; line-height: 1.5; }
-.mlogin-txt b { display: block; font-size: 15px; margin-bottom: 2px; }
 .mrow-i { display: flex; align-items: center; gap: 16px; width: 100%; padding: 14px 0; background: none; border: 0; color: var(--jr-on-bg); font-family: inherit; font-size: 16px; font-weight: 600; text-decoration: none; text-align: left; cursor: pointer; }
-.mrow-i.locked { opacity: 0.75; }
 .mico { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #263238; flex-shrink: 0; }
 .mlabel { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.mlabel small { font-size: 12px; font-weight: 400; color: var(--jr-outline); }
 .mchev { color: var(--jr-outline); transition: transform .2s ease; }
 .mchev.open { transform: rotate(90deg); }
-.mtoggle { width: 52px; height: 30px; border-radius: 999px; background: var(--jr-surface-variant); position: relative; flex-shrink: 0; transition: background .2s ease; }
-.mtoggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: left .2s ease; }
-.mtoggle.on { background: var(--jr-primary); }
-.mtoggle.on::after { left: 25px; }
 .mexpand { padding: 4px 0 14px 8px; }
 .mset-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; font-size: 14.5px; border-bottom: 1px solid var(--jr-outline-variant); }
 .mset-row.col { flex-direction: column; align-items: stretch; border-bottom: 0; }
@@ -548,9 +493,6 @@ async function wipeAll() {
 .mcircle { width: 32px; height: 32px; border-radius: 50%; border: 0; display: flex; align-items: center; justify-content: center; color: #fff; cursor: pointer; }
 .mcircle.on { outline: 3px solid var(--jr-primary); outline-offset: 2px; }
 /* 深色主题 */
-[data-theme="dark"] .mlogin { background: #234048; }
-[data-theme="dark"] .mlogin-txt { color: #cfe0e6; }
-[data-theme="dark"] .mlogin-txt b { color: #e6f0f4; }
 [data-theme="dark"] .mselect { background: #2b3236; color: var(--jr-on-bg); }
 [data-theme="dark"] .minput { background: #2b3236; color: var(--jr-on-bg); border-color: var(--jr-outline-variant); }
 [data-theme="dark"] .mset-row { border-bottom-color: #394247; }

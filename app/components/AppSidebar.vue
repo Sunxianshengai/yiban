@@ -4,13 +4,11 @@ import {
   mdiCloudOutline,
   mdiFeather,
   mdiMapMarkerOutline,
-  mdiPlus,
   mdiCalendarBlankOutline,
   mdiStarOutline,
   mdiTagOutline,
   mdiPawOutline,
   mdiMagnify,
-  mdiBookOpenOutline,
   mdiCompassOutline,
 } from '@mdi/js'
 import { db } from '~/utils/db'
@@ -24,8 +22,7 @@ const { entries, refresh: refreshEntries, listTags } = useEntries()
 const tags = ref<{ id?: number; title: string }[]>([])
 
 const totalCount = computed(() => entries.value.length)
-const dailyCount = computed(() => entries.value.length)
-const travelCount = computed(() => entries.value.filter(e => !!e.address || (e.text || '').includes('旅行') || (e.text || '').includes('旅途')).length)
+const travelSearch = computed(() => (route.query.query ?? route.query.q) === '旅行')
 const starredCount = computed(() => entries.value.filter(e => !!e.favourite).length)
 
 onMounted(async () => {
@@ -64,7 +61,7 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
     <!-- 导航：今天 · 时间线 & 写作伙伴 (Pal) -->
     <NuxtLink to="/" class="jr-nav-item" :class="{ active: route.path === '/' }">
       <JrIcon :path="mdiCalendarBlankOutline" :size="20" />
-      <span class="jr-nav-text">今天 · 时间线</span>
+      <span class="jr-nav-text">时间线</span>
       <span class="jr-badge">{{ totalCount }}</span>
     </NuxtLink>
 
@@ -74,29 +71,15 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
       <span class="jr-sublabel">灵感</span>
     </NuxtLink>
 
-    <!-- 「日记本」分组 -->
-    <div class="jr-side-section">
-      <span>日记本</span>
-      <button type="button" class="jr-side-add" aria-label="添加日记本" @click="navigateTo('/cloud')">
-        <JrIcon :path="mdiPlus" :size="15" />
-      </button>
-    </div>
-
-    <NuxtLink to="/" class="jr-nav-item jr-journal-item" :class="{ active: route.path === '/' }">
-      <JrIcon :path="mdiBookOpenOutline" :size="18" style="color:#44C0FF" />
-      <span class="jr-nav-text">日常随笔</span>
-      <span class="jr-badge-sub">{{ dailyCount }}</span>
-    </NuxtLink>
-
-    <NuxtLink to="/search/results?q=%E6%97%85%E8%A1%8C" class="jr-nav-item jr-journal-item" :class="{ active: route.path === '/search/results' && route.query.q === '旅行' }">
+    <div class="jr-side-section">快捷筛选</div>
+    <NuxtLink to="/search/results?q=%E6%97%85%E8%A1%8C" class="jr-nav-item jr-journal-item" :class="{ active: route.path.startsWith('/search') && travelSearch }">
       <JrIcon :path="mdiCompassOutline" :size="18" style="color:#10B981" />
-      <span class="jr-nav-text">旅途记录</span>
-      <span class="jr-badge-sub">{{ travelCount }}</span>
+      <span class="jr-nav-text">搜索「旅行」</span>
     </NuxtLink>
 
-    <NuxtLink to="/search/results?starred=1&favourite=true" class="jr-nav-item jr-journal-item" :class="{ active: route.path === '/search/results' && route.query.starred === '1' }">
+    <NuxtLink to="/search/results?starred=1&favourite=true" class="jr-nav-item jr-journal-item" :class="{ active: route.path.startsWith('/search') && ('favourite' in route.query || route.query.starred === '1') }">
       <JrIcon :path="mdiStarOutline" :size="18" style="color:#A855F7" />
-      <span class="jr-nav-text">星标精选</span>
+      <span class="jr-nav-text">收藏</span>
       <span class="jr-badge-sub">{{ starredCount }}</span>
     </NuxtLink>
 
@@ -209,23 +192,6 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
   font-size: 12.5px;
   font-weight: 600;
   color: var(--jr-outline);
-}
-.jr-side-add {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--jr-surface-variant);
-  color: var(--jr-on-surface-variant);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.jr-side-add:hover {
-  background: var(--jr-hover);
-  color: var(--jr-primary);
 }
 .jr-side-pet-card {
   margin-top: auto;
