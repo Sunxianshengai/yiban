@@ -127,6 +127,8 @@ html.jr-pet-doc body { overflow: hidden; }
   background: linear-gradient(180deg, var(--jr-surface-variant) 0%, #ffffff 30%);
 }
 .jr-detail-col { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+.jr-timeline-detail { position: relative; min-width: 0; }
+.jr-timeline-detail:has(> .jr-editor-inline) { overflow: hidden; }
 
 .jr-fab {
   position: absolute; top: 34px; right: 40px;
@@ -305,6 +307,54 @@ html.jr-pet-doc body { overflow: hidden; }
   margin-left: auto; color: var(--jr-secondary); font-size: 13.5px;
   display: flex; align-items: center; gap: 4px; background: none; border: 0;
 }
+
+/* 桌面时间线右栏内的编辑器，正文独立滚动。 */
+.jr-editor-inline {
+  position: relative; inset: auto; flex: 1; min-height: 0;
+  z-index: 75; /* 写作区盖住桌宠，侧栏及其弹窗仍可操作。 */
+}
+.jr-editor-inline .jr-editor-head {
+  display: grid; grid-template-columns: 1fr minmax(0, auto) 1fr;
+  gap: 8px; padding: 10px 16px;
+}
+.jr-editor-inline .jr-editor-head .jr-icon-btn { justify-self: start; }
+.jr-editor-inline .dt { min-width: 0; justify-content: center; font-weight: 500; }
+.jr-editor-inline .dt span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.jr-editor-inline .dt svg { flex: none; }
+.jr-editor-inline .done { justify-self: end; white-space: nowrap; padding: 8px 14px; color: var(--jr-on-primary-container); background: var(--jr-primary-container); }
+.jr-editor-inline .done:hover { background: var(--jr-primary-fixed-dim); }
+.jr-editor-inline .done:disabled { opacity: 0.55; cursor: default; }
+.jr-editor-inline .jr-editor-toolbar {
+  flex-wrap: wrap; gap: 2px; padding: 6px 12px;
+  overflow: visible; border-top: 0;
+}
+.jr-editor-inline .jr-editor-toolbar .tb { padding: 6px; }
+.jr-editor-inline .body-btn { padding: 6px 8px; white-space: nowrap; }
+.jr-editor-inline .jr-editor-toolbar .sep { margin: 0 4px; }
+.jr-editor-inline .words { white-space: nowrap; }
+.jr-editor-inline .jr-editor-body { min-height: 0; padding: 24px clamp(18px, 3vw, 44px); }
+.jr-editor-inline .jr-editor-area { display: flow-root; min-height: 100%; overflow-wrap: anywhere; }
+.jr-editor-inline .jr-editor-ph { left: clamp(18px, 3vw, 44px); }
+.jr-editor-inline > .jr-attachments { order: 3; }
+.jr-editor-inline .jr-pop {
+  position: absolute; max-width: calc(100% - 16px); overflow: auto;
+}
+.jr-editor-inline > .jr-pop {
+  max-height: calc(100% - var(--jr-editor-pop-top, 66px) - 8px);
+}
+.jr-editor-inline .jr-editor-tool-pop { top: var(--jr-editor-pop-top, 112px); bottom: auto; }
+.jr-editor-inline .jr-dp {
+  top: calc(100% + 4px); bottom: auto; right: 50%; transform: translateX(50%);
+  max-height: 65vh;
+}
+.jr-editor-discard {
+  max-width: calc(100vw - 32px); padding: 20px;
+  border: 1px solid var(--jr-outline-variant); border-radius: var(--jr-radius);
+  background: var(--jr-surface); color: var(--jr-on-bg);
+}
+.jr-editor-discard::backdrop { background: rgb(0 0 0 / 32%); }
+.jr-editor-discard p { margin: 0 0 16px; }
+.jr-editor-discard form { display: flex; justify-content: flex-end; gap: 8px; }
 
 /* generic */
 .jr-page { flex: 1; padding: 40px; overflow-y: auto; }
@@ -655,6 +705,8 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
 [data-theme="dark"] .jr-editor-head .done:hover { background: color-mix(in srgb, var(--jr-primary) 82%, #000); }
 [data-theme="dark"] .jr-editor-toolbar { background: var(--jr-layer-low); border-top-color: var(--jr-outline-variant); }
 [data-theme="dark"] .jr-editor-toolbar .sep { background: var(--jr-outline-variant); }
+[data-theme="dark"] .jr-editor-inline .done { color: var(--jr-on-primary-container); background: var(--jr-primary-container); }
+[data-theme="dark"] .jr-editor-inline .done:hover { background: var(--jr-layer-highest); }
 [data-theme="dark"] .jr-editor-ph .jr-template-chip { background: var(--jr-layer-high); }
 [data-theme="dark"] .jr-btn { background: var(--jr-layer-high); }
 [data-theme="dark"] .jr-btn:hover { background: var(--jr-layer-highest); }
@@ -671,6 +723,7 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
   .jr-shell.sidebar-open .jr-sidebar { transform: translateX(0); }
   .jr-sidebar-toggle { display: flex !important; position: fixed; top: 10px; left: 10px; z-index: 95; }
   .jr-list-col { width: auto; min-width: 0; }
+  .jr-content:has(> .jr-timeline-detail > .jr-editor-inline) > .jr-list-col { flex: 0 0 38%; }
   /* 平板区保留桌面双栏：详情列不再转固定浮层（旧规则 z-index:80 会盖住 FAB） */
   .jr-editor-toolbar {
     flex-wrap: nowrap;

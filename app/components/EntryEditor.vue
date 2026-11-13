@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { mdiCalendarBlankOutline, mdiMapMarkerOutline, mdiWeatherSunny, mdiEmoticonOutline, mdiRun, mdiTagOutline, mdiPlus, mdiFormatBold, mdiFormatItalic, mdiFormatStrikethrough, mdiFormatUnderline, mdiFormatAlignLeft, mdiFormatAlignCenter, mdiUndo, mdiRedo, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiClose, mdiCheck, mdiFormatListBulleted, mdiFormatListNumbered, mdiCheckboxMarkedOutline, mdiFormatPilcrow, mdiFormatHeader1, mdiFormatHeader2, mdiFormatHeader3, mdiFormatQuoteOpen, mdiFormatListChecks, mdiLink, mdiImage, mdiTable, mdiBorderHorizontal, mdiPalette, mdiMarker, mdiWaterOff, mdiImageMultipleOutline, mdiApps, mdiFormatAlignRight, mdiCodeTags, mdiFormatIndentIncrease, mdiFormatIndentDecrease } from '@mdi/js'
 import type { EntryV2, MediaFileV2, TagWordV2 } from '~/utils/db'
+import { miscDb } from '~/utils/db'
 import { journalFragment, journalHtml, renderJournal } from '~/utils/journalHtml'
 import { WEATHER_EMOJI } from '~/utils/services'
 import { amapInfoHint, amapWeatherIcon, fetchAmapWeather, getAmapWebKey, reverseGeocodeAmap, searchAmapPlacesResult } from '~/utils/amap'
@@ -21,6 +22,7 @@ const currentBlock = ref('p')
 const templateDialog = ref(false)
 const coachNote = ref('')
 const popX = ref<number | null>(null)
+const popY = ref<number | null>(null)
 const tableCell = shallowRef<HTMLTableCellElement | null>(null)
 const spellcheck = ref(localStorage.getItem('jr.spellcheck') !== '0')
 const datePop = ref(false)
@@ -28,13 +30,15 @@ const dpMonth = ref(new Date().getMonth() + 1)
 const dpYear = ref(new Date().getFullYear())
 const dpTime = ref('')
 
-const props = defineProps<{ entryId?: number; initialText?: string; initialDate?: Date; initialMeta?: Partial<EntryV2> }>()
-const emit = defineEmits<{ (e: 'done'): void }>()
+const props = defineProps<{ entryId?: number; initialText?: string; initialDate?: Date; initialMeta?: Partial<EntryV2>; inline?: boolean }>()
+const emit = defineEmits<{ (e: 'done', savedId?: number): void }>()
 const isMobile = useIsMobile()
 const { listMediaFor, listTags, ensureTag, saveEntry } = useEntries()
 const { urlForSync: mediaUrl, prefetch: prefetchMedia } = useMediaResolver()
 
 const area = ref<HTMLElement | null>(null)
+const editorPane = ref<HTMLElement | null>(null)
+const discardDialog = ref<HTMLDialogElement | null>(null)
 const words = ref(0)
 const chars = ref(0)
 const hasContent = ref(false)
@@ -77,7 +81,8 @@ const checkingFiles = ref(false)
 const nativePicking = ref(false)
 const desktop = desktopBridge()
 const attachmentLimit = desktop ? 4 : 20
-const initialReady = ref(props.entryId == null)
+const initialReady = ref(false)
+let initialDraftState = ''
 const photoPrompt = shallowRef<{ name: string; date?: Date; location?: { lat: number; lng: number } }>()
 const usePhotoDate = ref(true)
 const usePhotoLocation = ref(true)
@@ -150,6 +155,7 @@ onMounted(async () => {
   }
   // 草稿 v2（bug04/05）：新条目与已有条目的未保存内容都入库，照片 blob 一并恢复
   const draft = await loadDraft(draftKey())
+  if (disposed) return
   if (props.initialText && area.value) {
     if (draft && draft.text && draft.text !== props.initialText) {
       area.value.innerHTML = renderJournal(draft.text, savedMedia.value, urlForMedia, false)
@@ -187,12 +193,17 @@ onMounted(async () => {
       area.value.innerHTML = '<p><br></p>'
     }
   }
+  initialDraftState = draftState()
   initialReady.value = true
   tags.value = await listTags()
   area.value?.focus()
 })
 
 onBeforeUnmount(() => {
+  if (props.inline && draftTimer != null) {
+    clearTimeout(draftTimer)
+    void persistDraft()
+  }
   disposed = true
   unsubscribeSave?.()
   for (const url of previewUrls) URL.revokeObjectURL(url)
@@ -206,7 +217,6 @@ const draftRestored = ref('')
 function draftKey() { return props.entryId == null ? 'new' : `entry:${props.entryId}` }
 async function loadDraft(key: string) {
   try {
-    const { miscDb } = await import('~/utils/db')
     return await miscDb.drafts.get(key)
   } catch { return undefined }
 }
@@ -224,7 +234,10 @@ function snapshotHtml(): string {
 }
 function scheduleDraft() {
   clearTimeout(draftTimer)
-  draftTimer = setTimeout(() => { void persistDraft() }, 600)
+  draftTimer = setTimeout(() => {
+    draftTimer = undefined
+    void persistDraft()
+  }, 600)
 }
 async function persistDraft() {
   const text = snapshotHtml()
@@ -236,7 +249,6 @@ async function persistDraft() {
     return
   }
   try {
-    const { miscDb } = await import('~/utils/db')
     await miscDb.drafts.put({
       key: draftKey(),
       text,
@@ -249,19 +261,41 @@ async function persistDraft() {
   } catch { /* 草稿写失败不阻塞编辑 */ }
 }
 function clearDraft() {
+  clearTimeout(draftTimer)
+  draftTimer = undefined
   localStorage.removeItem(DRAFT_KEY)
-  void import('~/utils/db').then(({ miscDb }) => miscDb.drafts.delete(draftKey())).catch(() => {})
+  void miscDb.drafts.delete(draftKey()).catch(() => {})
 }
 // 元数据/附件变化也触发草稿（日期、天气、标签、增删照片——不只正文输入）
 watch([date, meta, staged, removedMedia], () => { if (initialReady.value) scheduleDraft() }, { deep: true })
-function discardEntry() {
-  const text = area.value?.innerHTML || ''
-  const hasWork = text.replace(/<p><br><\/p>|<br>/g, '').trim() || attachmentCount.value || staged.value.length
-    || (props.entryId != null && text !== props.initialText)
-  if (hasWork && !window.confirm('放弃未保存的内容并退出编辑？')) return
-  clearDraft()
-  emit('done')
+function draftState() {
+  return JSON.stringify([snapshotHtml(), date.value.getTime(), meta.value])
 }
+async function discardChanges() {
+  if (saving.value || checkingFiles.value || nativePicking.value || recordingStatus.value !== 'idle') return false
+  const hasWork = draftRestored.value || staged.value.length || removedMedia.value.length
+    || (initialDraftState && draftState() !== initialDraftState)
+  if (hasWork) {
+    const dialog = discardDialog.value
+    if (!dialog) {
+      if (!window.confirm('放弃未保存的内容并退出编辑？')) return false
+    } else {
+      if (dialog.open) return false
+      dialog.returnValue = ''
+      dialog.showModal()
+      const confirmed = await new Promise<boolean>(resolve => {
+        dialog.addEventListener('close', () => resolve(dialog.returnValue === 'discard'), { once: true })
+      })
+      if (!confirmed) return false
+    }
+  }
+  clearDraft()
+  return true
+}
+async function discardEntry() {
+  if (await discardChanges()) emit('done')
+}
+defineExpose({ discardChanges })
 
 // ---- 工具栏状态（审计 #3/#4）：撤销/重做深度 + 格式激活 ----
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -348,15 +382,21 @@ function pickBlock(s: { tag: string; list?: string }) {
   else setBlock(s.tag)
 }
 
-// 弹层锚定在触发按钮上方（原版 v-menu 行为），不是固定居中
+// 右栏里的工具菜单从触发控件下方展开，并限制在编辑区宽度内。
+function positionPopover(anchor?: Element) {
+  const rect = anchor?.getBoundingClientRect()
+  const pane = props.inline ? editorPane.value?.getBoundingClientRect() : undefined
+  popY.value = pane && rect ? Math.min(rect.bottom - pane.top + 4, pane.height / 2) : null
+  popX.value = rect ? Math.max(8, Math.min(rect.left - (pane?.left ?? 0) - 12, (pane?.width ?? window.innerWidth) - 328)) : null
+}
+
 function togglePop(name: keyof typeof popoverLabels, ev?: MouseEvent) {
   if (openPop.value === name) { openPop.value = null; return }
   saveSel()
   openPop.value = name
   insertSub.value = null
   colorSub.value = null
-  const btn = (ev?.currentTarget as HTMLElement | undefined) ?? (ev?.target as HTMLElement | undefined)
-  popX.value = btn ? Math.max(10, Math.min(btn.getBoundingClientRect().left - 12, window.innerWidth - 340)) : null
+  positionPopover((ev?.currentTarget as HTMLElement | undefined) ?? (ev?.target as HTMLElement | undefined))
 }
 
 // 菜单项点击不夺焦点（保住编辑器选区）；输入框不受影响
@@ -753,6 +793,7 @@ function openTableMenu(event: MouseEvent) {
   if (!cell || !area.value?.contains(cell)) return
   event.preventDefault()
   tableCell.value = cell
+  positionPopover(cell)
   openPop.value = 'table'
 }
 
@@ -919,12 +960,16 @@ async function save() {
   if (!initialReady.value || saving.value || checkingFiles.value || nativePicking.value || recordingStatus.value !== 'idle') return
   const text = area.value?.innerHTML || ''
   const empty = !area.value?.textContent?.trim() && !area.value?.querySelector('img,video,audio,hr,table')
-  if (props.entryId == null && empty && !attachmentCount.value) { emit('done'); return }
-  saving.value = true
-  try {
-    await saveEntry(props.entryId, empty ? '' : text, date.value, meta.value, staged.value, removedMedia.value)
+  if (props.entryId == null && empty && !attachmentCount.value) {
     clearDraft()
     emit('done')
+    return
+  }
+  saving.value = true
+  try {
+    const savedId = await saveEntry(props.entryId, empty ? '' : text, date.value, meta.value, staged.value, removedMedia.value)
+    clearDraft()
+    emit('done', savedId)
   } catch (error) {
     attachmentNote.value = errorText(error, '无法保存日记，请重试。')
   } finally {
@@ -934,7 +979,14 @@ async function save() {
 </script>
 
 <template>
-  <div class="jr-editor" @dragover="($event.dataTransfer?.types || []).includes('Files') && $event.preventDefault()" @drop="onFileDrop">
+  <div ref="editorPane" class="jr-editor" :class="{ 'jr-editor-inline': inline }" @dragover="($event.dataTransfer?.types || []).includes('Files') && $event.preventDefault()" @drop="onFileDrop">
+    <dialog v-if="inline" ref="discardDialog" class="jr-editor-discard" aria-label="放弃未保存的修改">
+      <p>放弃未保存的内容并退出编辑？</p>
+      <form method="dialog">
+        <button class="jr-btn" value="keep" autofocus>继续编辑</button>
+        <button class="jr-btn jr-btn-danger" value="discard">放弃修改</button>
+      </form>
+    </dialog>
     <p v-if="draftRestored" class="jr-draft-note" role="status">{{ draftRestored }}</p>
     <div class="jr-editor-head">
       <button class="dt" @click="openDatePicker">
@@ -942,7 +994,7 @@ async function save() {
         <span>{{ dateLabel }}</span>
         <JrIcon :path="mdiChevronDown" :size="18" />
       </button>
-      <button class="jr-icon-btn" type="button" title="取消编辑（Esc）" aria-label="取消编辑" @click="discardEntry"><JrIcon :path="mdiClose" :size="20" /></button>
+      <button class="jr-icon-btn" type="button" title="取消编辑（Esc）" aria-label="取消编辑" :disabled="saving" @click="discardEntry"><JrIcon :path="mdiClose" :size="20" /></button>
       <button class="done" :disabled="!initialReady || saving || checkingFiles || nativePicking || recordingStatus !== 'idle'" @click="save">{{ saving ? '正在保存…' : '完成' }}</button>
       <div v-if="datePop" class="jr-pop jr-dp" @click.stop>
         <div class="jr-pop-head">
@@ -978,6 +1030,9 @@ async function save() {
       <div
         ref="area"
         class="jr-editor-area"
+        role="textbox"
+        aria-label="日记正文"
+        aria-multiline="true"
         :contenteditable="initialReady ? 'true' : 'false'"
         :spellcheck="spellcheck"
         @input="recount(); saveSel(); touched = true; scheduleDraft(); noteUndo()"
@@ -1022,7 +1077,11 @@ async function save() {
       </div>
     </div>
 
-    <div v-if="openPop" class="jr-pop" :style="popX != null ? { left: `${popX}px`, transform: 'none' } : undefined" @click.stop @mousedown="onPopMousedown">
+    <div v-if="openPop" class="jr-pop jr-editor-tool-pop" :style="{
+      left: popX == null ? undefined : `${popX}px`,
+      transform: popX == null ? undefined : 'none',
+      '--jr-editor-pop-top': popY == null ? undefined : `${popY}px`,
+    }" @click.stop @mousedown="onPopMousedown">
       <!-- 移动端所有弹层为底部抽屉(证据 s02),抽屉带标题头(含段落样式) -->
       <div v-if="!headlessPops.has(openPop) || isMobile" class="jr-pop-head">
         <span>{{ popoverLabels[openPop] }}</span>

@@ -9,6 +9,7 @@ const isMobile = useIsMobile()
 const { formatTemp } = useUnits()
 
 const editorOpen = ref(false)
+const inlineEditor = ref<{ discardChanges: () => Promise<boolean> } | null>(null)
 const editing = ref<EntryV2 | null>(null)
 const selected = ref<EntryV2 | null>(null)
 const throwbackList = ref<EntryV2[]>([])
@@ -104,9 +105,21 @@ function timeOf(e: EntryV2) {
 const today = new Date()
 const todayLabel = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', year: 'numeric' }).format(today)
 
-function selectEntry(e: EntryV2) {
+async function selectEntry(e: EntryV2) {
+  if (editorOpen.value && editing.value?.id === e.id) return
+  if (!await closeInlineEditor()) return
   selected.value = e
 }
+
+async function closeInlineEditor() {
+  if (!inlineEditor.value) return true
+  if (!await inlineEditor.value.discardChanges()) return false
+  editorOpen.value = false
+  editing.value = null
+  return true
+}
+onBeforeRouteLeave(closeInlineEditor)
+onBeforeRouteUpdate(closeInlineEditor)
 
 // 移动详情：全屏页 + 前后篇导航
 const mobileDetail = ref<EntryV2 | null>(null)
@@ -194,15 +207,16 @@ function openEdit() {
     editorOpen.value = true
   }
 }
-async function onDone() {
+async function onDone(savedId?: number) {
+  const previousSelection = selected.value
+  const activeId = !isMobile.value && savedId != null ? savedId : previousSelection?.id
   editorOpen.value = false
   editing.value = null
   await refresh()
-  await loadThumbnails()
-  if (selected.value) {
-    const fresh = entries.value.find((x) => x.id === selected.value!.id)
-    if (fresh) selectEntry(fresh)
+  if (activeId != null && selected.value === previousSelection && !editorOpen.value) {
+    selected.value = entries.value.find(e => e.id === activeId) ?? null
   }
+  await loadThumbnails()
   if (mobileDetail.value) {
     mobileDetail.value = entries.value.find((x) => x.id === mobileDetail.value!.id) ?? null
   }
@@ -241,9 +255,9 @@ async function onFavourite() {
 </script>
 
 <template>
-  <!-- 桌面布局（保持原样） -->
+  <!-- 桌面时间线的右栏在概览、详情和编辑之间切换。 -->
   <template v-if="!isMobile">
-    <button class="jr-fab" title="新建日记" @click="openNew">
+    <button v-if="!editorOpen" class="jr-fab" title="新建日记" @click="openNew">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" /></svg>
     </button>
 
@@ -299,7 +313,7 @@ async function onFavourite() {
             v-for="e in group.items"
             :key="e.id"
             class="jr-entry"
-            :class="{ selected: selected?.id === e.id }"
+            :class="{ selected: (editorOpen ? editing : selected)?.id === e.id }"
             @click="selectEntry(e)"
           >
             <span class="jr-entry-dateblock" aria-hidden="true">
@@ -323,11 +337,19 @@ async function onFavourite() {
         </template>
       </div>
 
-      <div class="jr-detail-col" style="position:relative">
-        <!-- Day One 右主区（ia-map journalOverview）：未选中条目时显示日记本概览（含 Streak），选中时显示详情 -->
-        <JournalOverview v-if="!selected" :entries="entries" />
+      <div class="jr-detail-col jr-timeline-detail">
+        <EntryEditor
+          v-if="editorOpen"
+          ref="inlineEditor"
+          inline
+          :entry-id="editing?.id"
+          :initial-text="editing?.text"
+          :initial-date="editing ? new Date(editing.dateOfJournal) : undefined"
+          :initial-meta="editing ? { address: editing.address, lat: editing.lat, lng: editing.lng, locationSource: editing.locationSource, adcode: editing.adcode, sentiment: editing.sentiment, activity: editing.activity, weatherIcon: editing.weatherIcon, weatherDegreeC: editing.weatherDegreeC, weatherDescription: editing.weatherDescription, weatherPlace: editing.weatherPlace, tagWordIds: editing.tagWordIds } : undefined"
+          @done="onDone"
+        />
         <EntryDetail
-          v-else
+          v-else-if="selected"
           :entry="selected"
           @edit="openEdit"
           @toggle-favourite="onFavourite"
@@ -335,14 +357,7 @@ async function onFavourite() {
           @save-as-template="onSaveTemplate"
           @trash="onTrash"
         />
-        <EntryEditor
-          v-if="editorOpen"
-          :entry-id="editing?.id"
-          :initial-text="editing?.text"
-          :initial-date="editing ? new Date(editing.dateOfJournal) : undefined"
-          :initial-meta="editing ? { address: editing.address, lat: editing.lat, lng: editing.lng, locationSource: editing.locationSource, adcode: editing.adcode, sentiment: editing.sentiment, activity: editing.activity, weatherIcon: editing.weatherIcon, weatherDegreeC: editing.weatherDegreeC, weatherDescription: editing.weatherDescription, weatherPlace: editing.weatherPlace, tagWordIds: editing.tagWordIds } : undefined"
-          @done="onDone"
-        />
+        <JournalOverview v-else :entries="entries" />
       </div>
 
       <MembershipDialog v-if="membershipOpen" @close="membershipOpen = false" />
