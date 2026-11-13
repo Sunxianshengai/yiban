@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiBookmark, mdiHistory, mdiSortVariant, mdiCloudUploadOutline, mdiImageOutline, mdiCheck, mdiArrowDown, mdiArrowUp, mdiTrashCanOutline, mdiMapMarkerOutline, mdiStar } from '@mdi/js'
+import { mdiBookmark, mdiHistory, mdiSortVariant, mdiCloudUploadOutline, mdiImageOutline, mdiCheck, mdiArrowDown, mdiArrowUp, mdiTrashCanOutline, mdiMapMarkerOutline, mdiStar, mdiStarOutline, mdiPlus, mdiWeatherSunny } from '@mdi/js'
 import type { EntryV2 } from '~/utils/db'
 import { WEATHER_EMOJI, weatherLabel } from '~/utils/services'
 
@@ -203,8 +203,20 @@ const monthGroups = computed(() => {
   return groups
 })
 const dayNum = (e: EntryV2) => new Date(e.dateOfJournal).getDate()
-const weekdayShort = (e: EntryV2) => new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(new Date(e.dateOfJournal)).replace('周', '')
+const weekdayShort = (e: EntryV2) => new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(new Date(e.dateOfJournal))
 const timeOnly = (e: EntryV2) => new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(e.dateOfJournal))
+
+function entryTitle(e: EntryV2) {
+  const text = (e.previewText || e.text || '').trim()
+  const firstLine = text.split('\n')[0]?.replace(/^[#\s]+/, '').trim()
+  return firstLine || '无标题日记'
+}
+function entrySnippet(e: EntryV2) {
+  const text = (e.previewText || e.text || '').trim()
+  const lines = text.split('\n').map(l => l.replace(/^[#\s]+/, '').trim()).filter(Boolean)
+  if (lines.length > 1) return lines.slice(1).join(' ')
+  return text || '无正文'
+}
 
 function openNew() {
   editing.value = null
@@ -267,13 +279,14 @@ async function onFavourite() {
 <template>
   <!-- 桌面时间线的右栏在概览、详情和编辑之间切换。 -->
   <template v-if="!isMobile">
-    <button v-if="!editorOpen" class="jr-fab" title="新建日记" @click="openNew">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" /></svg>
-    </button>
-
     <div class="jr-content">
       <div class="jr-list-col">
-        <div class="jr-view-pills-row"><ViewPills /></div>
+        <div class="jr-mid-header">
+          <ViewPills />
+          <button class="jr-mid-add-btn" title="新建日记" @click="openNew">
+            <JrIcon :path="mdiPlus" :size="18" />
+          </button>
+        </div>
         
         <div class="jr-filter-chips-row">
           <button class="jr-chip" :class="{ on: activeFilter === 'all' }" @click="activeFilter = 'all'">
@@ -281,36 +294,12 @@ async function onFavourite() {
           </button>
           <button class="jr-chip" :class="{ on: activeFilter === 'media' }" @click="activeFilter = 'media'">
             <JrIcon :path="mdiImageOutline" :size="13" />
-            <span>照片</span>
+            <span>含照片</span>
           </button>
           <button class="jr-chip" :class="{ on: activeFilter === 'starred' }" @click="activeFilter = 'starred'">
-            <JrIcon :path="mdiStar" :size="13" />
+            <JrIcon :path="mdiStarOutline" :size="13" />
             <span>收藏</span>
           </button>
-          <button class="jr-chip" :class="{ on: activeFilter === 'location' }" @click="activeFilter = 'location'">
-            <JrIcon :path="mdiMapMarkerOutline" :size="13" />
-            <span>地点</span>
-          </button>
-        </div>
-
-        <!-- Stories 卡已随 Day One 换皮退役（B2 决策：Day One 无此形态，统计由 JournalOverview 承载；StoriesOverlay 组件保留可恢复） -->
-
-        <div class="jr-entries-head">
-          <span class="label">日记</span>
-          <button class="sort" title="排序" @click="sortMenuOpen = !sortMenuOpen"><JrIcon :path="mdiSortVariant" :size="20" /></button>
-          <div v-if="sortMenuOpen" class="jr-sort-menu">
-            <button @click="pickSort('entryDate')">
-              <JrIcon v-if="sortKey === 'entryDate'" :path="mdiCheck" :size="16" />
-              <span style="width:16px" v-else />
-              <span>日记日期</span>
-              <JrIcon v-if="sortKey === 'entryDate'" :path="sortDir === 'desc' ? mdiArrowDown : mdiArrowUp" :size="15" />
-            </button>
-            <button @click="pickSort('lastModified')">
-              <JrIcon v-if="sortKey === 'lastModified'" :path="mdiCheck" :size="16" />
-              <span style="width:16px" v-else />
-              <span>最近修改</span>
-            </button>
-          </div>
         </div>
 
         <div v-if="!sortedEntries.length" class="jr-empty">
@@ -319,7 +308,26 @@ async function onFavourite() {
         </div>
 
         <template v-for="group in monthGroups" :key="group.key">
-          <div class="jr-month-head">{{ group.label }}</div>
+          <div class="jr-month-head-row">
+            <span class="jr-month-head">{{ group.label }}</span>
+            <button class="jr-sort-btn" title="排序" @click="sortMenuOpen = !sortMenuOpen">
+              <JrIcon :path="mdiSortVariant" :size="16" />
+            </button>
+            <div v-if="sortMenuOpen" class="jr-sort-menu">
+              <button @click="pickSort('entryDate')">
+                <JrIcon v-if="sortKey === 'entryDate'" :path="mdiCheck" :size="16" />
+                <span style="width:16px" v-else />
+                <span>日记日期</span>
+                <JrIcon v-if="sortKey === 'entryDate'" :path="sortDir === 'desc' ? mdiArrowDown : mdiArrowUp" :size="15" />
+              </button>
+              <button @click="pickSort('lastModified')">
+                <JrIcon v-if="sortKey === 'lastModified'" :path="mdiCheck" :size="16" />
+                <span style="width:16px" v-else />
+                <span>最近修改</span>
+              </button>
+            </div>
+          </div>
+
           <div
             v-for="e in group.items"
             :key="e.id"
@@ -329,25 +337,34 @@ async function onFavourite() {
           >
             <span class="jr-entry-dateblock" aria-hidden="true">
               <i>{{ weekdayShort(e) }}</i>
-              <b>{{ dayNum(e) }}日</b>
+              <b>{{ dayNum(e) }}</b>
             </span>
             <span class="jr-entry-main">
-              <span class="preview">{{ e.previewText || '无正文' }}</span>
-              <img v-if="thumbs[e.id!]" :src="thumbs[e.id!]" class="jr-row-thumb" />
+              <span class="jr-entry-title-row">
+                <span class="title">{{ entryTitle(e) }}</span>
+                <span class="time">{{ timeOnly(e) }}</span>
+              </span>
+              <span class="preview">{{ entrySnippet(e) }}</span>
               <span class="jr-entry-time">
-                {{ timeOnly(e) }}
-                <span v-if="e.weatherIcon" class="jr-entry-meta" :title="`${weatherLabel(e.weatherDescription)} ${formatTemp(e.weatherDegreeC)}`">{{ WEATHER_EMOJI[e.weatherIcon] || '☁️' }} {{ formatTemp(e.weatherDegreeC) }}</span>
-                <span v-if="e.address" class="jr-entry-meta" :title="e.address">
-                  <JrIcon :path="mdiMapMarkerOutline" :size="13" style="vertical-align:-2px" />
+                <span v-if="e.weatherIcon" class="jr-entry-meta" :title="`${weatherLabel(e.weatherDescription)} ${formatTemp(e.weatherDegreeC)}`">
+                  <JrIcon :path="mdiWeatherSunny" :size="13" />
+                  <span>{{ formatTemp(e.weatherDegreeC) }}</span>
                 </span>
-                <span v-if="e.favourite" class="jr-entry-meta" title="收藏" style="color:var(--jr-primary)">
-                  <JrIcon :path="mdiStar" :size="13" style="vertical-align:-2px" />
+                <span v-if="e.address" class="jr-entry-meta" :title="e.address">
+                  <JrIcon :path="mdiMapMarkerOutline" :size="13" />
+                  <span>{{ (e.address || '').slice(0, 8) }}</span>
+                </span>
+                <span v-if="e.favourite" class="jr-entry-meta" title="收藏" style="color:#F59E0B">
+                  <JrIcon :path="mdiStar" :size="13" />
                 </span>
                 <span v-if="!e.synced" class="jr-status-icon" title="等待上传">
-                  <JrIcon :path="mdiCloudUploadOutline" :size="15" />
+                  <JrIcon :path="mdiCloudUploadOutline" :size="14" />
                 </span>
               </span>
             </span>
+            <div v-if="thumbs[e.id!]" class="jr-row-polaroid">
+              <img :src="thumbs[e.id!]" alt="" />
+            </div>
           </div>
         </template>
       </div>

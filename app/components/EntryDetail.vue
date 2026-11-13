@@ -1,5 +1,20 @@
 <script setup lang="ts">
-import { mdiStarOutline, mdiStar, mdiBookOutline, mdiShareOutline, mdiPencil, mdiDotsHorizontal, mdiLinkVariant, mdiContentDuplicate, mdiLabelOutline, mdiTrashCanOutline, mdiCloudUploadOutline, mdiMapMarkerOutline } from '@mdi/js'
+import {
+  mdiStarOutline,
+  mdiStar,
+  mdiBookOutline,
+  mdiShareOutline,
+  mdiPencil,
+  mdiDotsHorizontal,
+  mdiLinkVariant,
+  mdiContentDuplicate,
+  mdiLabelOutline,
+  mdiTrashCanOutline,
+  mdiCloudUploadOutline,
+  mdiMapMarkerOutline,
+  mdiWeatherSunny,
+  mdiEmoticonOutline,
+} from '@mdi/js'
 import type { EntryV2 } from '~/utils/db'
 import { exportJournalZip } from '~/utils/journalZip'
 import { weatherLabel } from '~/utils/services'
@@ -22,6 +37,7 @@ const router = useRouter()
 const tagTitles = ref<Record<number, string>>({})
 const { listTags } = useEntries()
 const { formatTemp } = useUnits()
+
 onMounted(async () => {
   const tags = await listTags()
   const m: Record<number, string> = {}
@@ -29,9 +45,21 @@ onMounted(async () => {
   tagTitles.value = m
 })
 
-const day = computed(() => props.entry ? new Intl.DateTimeFormat('zh-CN', { day: '2-digit' }).format(props.entry.dateOfJournal) : '')
-const d1 = computed(() => props.entry ? new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', year: 'numeric' }).format(props.entry.dateOfJournal) : '')
-const d2 = computed(() => props.entry ? new Intl.DateTimeFormat('zh-CN', { weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(props.entry.dateOfJournal) : '')
+const fullDateStr = computed(() => {
+  if (!props.entry) return ''
+  const d = new Date(props.entry.dateOfJournal)
+  const monthDay = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric' }).format(d)
+  const weekday = new Intl.DateTimeFormat('zh-CN', { weekday: 'long' }).format(d)
+  const time = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }).format(d)
+  return `${monthDay} · ${weekday} ${time}`
+})
+
+const entryTitle = computed(() => {
+  if (!props.entry) return ''
+  const text = (props.entry.text || props.entry.previewText || '').trim()
+  const firstLine = text.split('\n')[0]?.replace(/^[#\s]+/, '').trim()
+  return firstLine || ''
+})
 
 const menu = [
   { key: 'copy', label: '复制链接', icon: mdiLinkVariant },
@@ -76,55 +104,75 @@ async function downloadEntry(format: 'zip' | 'docx' | 'epub' | 'pdf') {
 </script>
 
 <template>
-  <div v-if="entry" class="jr-detail-body">
-    <div class="jr-detail-head">
-      <div class="day">{{ day }}</div>
-      <div class="when">
-        <div class="d1">{{ d1 }}</div>
-        <div class="d2">{{ d2 }}</div>
+  <div v-if="entry" class="jr-detail-container">
+    <!-- 顶部状态栏与操作按钮 -->
+    <div class="jr-detail-top-bar">
+      <div class="jr-detail-date-wrap">
+        <span class="jr-detail-date-str">{{ fullDateStr }}</span>
+        <span class="jr-sync-badge">
+          <span class="dot" />
+          <span>{{ entry.synced ? '至本地与云端' : '已保存在本地' }}</span>
+        </span>
       </div>
-      <div style="align-self:flex-start" title="仅保存在本机">
-        <JrIcon :path="mdiCloudUploadOutline" :size="20" style="color:#e05a4e" />
+
+      <div class="jr-detail-actions">
+        <button class="jr-detail-btn" :class="{ on: !!entry.favourite }" title="收藏" @click="emit('toggleFavourite')">
+          <JrIcon :path="entry.favourite ? mdiStar : mdiStarOutline" :size="19" />
+        </button>
+        <button class="jr-detail-btn" title="编辑" @click="emit('edit')">
+          <JrIcon :path="mdiPencil" :size="19" />
+        </button>
+        <button class="jr-detail-btn" title="分享与导出" :aria-expanded="exportOpen" @click="menuOpen = false; exportOpen = !exportOpen">
+          <JrIcon :path="mdiShareOutline" :size="19" />
+        </button>
+        <button class="jr-detail-btn" title="更多" @click="exportOpen = false; menuOpen = !menuOpen">
+          <JrIcon :path="mdiDotsHorizontal" :size="19" />
+        </button>
+
+        <div v-if="exportOpen" class="jr-menu">
+          <button :disabled="exporting" @click="downloadEntry('zip')">{{ exporting ? '正在导出…' : '导出为 ZIP' }}</button>
+          <button :disabled="exporting" @click="downloadEntry('docx')">导出为 DOCX</button>
+          <button :disabled="exporting" @click="downloadEntry('epub')">导出为 EPUB</button>
+          <button :disabled="exporting" @click="downloadEntry('pdf')">打印或另存为 PDF</button>
+          <button @click="exportOpen = false; onMenu('copy')">复制链接</button>
+        </div>
+        <div v-if="menuOpen" class="jr-menu">
+          <button v-for="m in menu" :key="m.key" @click="onMenu(m.key)">
+            <JrIcon :path="m.icon" :size="18" />
+            <span :style="m.key === 'trash' ? 'color:var(--jr-error)' : ''">{{ m.label }}</span>
+          </button>
+        </div>
       </div>
     </div>
-    <div class="jr-detail-chips">
-      <span v-if="entry.sentiment" class="jr-mchip">{{ { excited: '😆', happy: '😊', calm: '😌', 'so-so': '😐', tired: '😪', sad: '😢', angry: '😠', anxious: '😰' }[entry.sentiment] || entry.sentiment }} {{ entry.sentiment }}</span>
-      <span v-if="entry.activity" class="jr-mchip">🏃 {{ entry.activity }}</span>
-      <span v-if="entry.weatherIcon" class="jr-mchip">{{ { sun: '☀️', partly: '🌤', cloud: '☁️', fog: '🌫', rain: '🌧', snow: '🌨', storm: '⛈' }[entry.weatherIcon] }} {{ formatTemp(entry.weatherDegreeC) }} {{ entry.weatherPlace || weatherLabel(entry.weatherDescription) }}</span>
+
+    <!-- 元数据 Chips 栏 -->
+    <div class="jr-detail-chips-bar">
       <span v-if="entry.address" class="jr-mchip" :title="entry.address">
-        <JrIcon :path="mdiMapMarkerOutline" :size="14" style="vertical-align:-2px;margin-right:2px" />
-        {{ entry.address.slice(0, 40) }}
+        <JrIcon :path="mdiMapMarkerOutline" :size="14" style="color:var(--jr-primary);vertical-align:-2px" />
+        <span>{{ entry.address.slice(0, 32) }}</span>
       </span>
-      <span v-for="t in (entry.tagWordIds || [])" :key="t" class="jr-mchip jr-mtag">#{{ tagTitles[t] || t }}</span>
+      <span v-if="entry.weatherIcon" class="jr-mchip">
+        <JrIcon :path="mdiWeatherSunny" :size="14" style="color:#F59E0B;vertical-align:-2px" />
+        <span>{{ weatherLabel(entry.weatherDescription) }} {{ formatTemp(entry.weatherDegreeC) }}</span>
+      </span>
+      <span v-if="entry.sentiment" class="jr-mchip">
+        <JrIcon :path="mdiEmoticonOutline" :size="14" style="color:#10B981;vertical-align:-2px" />
+        <span>{{ { excited: '兴奋', happy: '开心', calm: '轻松惬意', 'so-so': '平淡', tired: '疲惫', sad: '难过', angry: '生气', anxious: '焦虑' }[entry.sentiment] || entry.sentiment }}</span>
+      </span>
+      <span v-for="t in (entry.tagWordIds || [])" :key="t" class="jr-mchip jr-mtag">
+        #{{ tagTitles[t] || t }}
+      </span>
     </div>
-    <JournalBody :entry="entry" />
-    <p v-if="actionStatus" class="jr-muted" role="status">{{ actionStatus }}</p>
+
+    <!-- 滚动正文区域 -->
+    <div class="jr-detail-scroll">
+      <h1 v-if="entryTitle" class="jr-detail-title">{{ entryTitle }}</h1>
+      <JournalBody :entry="entry" />
+      <p v-if="actionStatus" class="jr-muted" role="status">{{ actionStatus }}</p>
+    </div>
   </div>
   <div v-else class="jr-empty" style="margin:auto">
     <div class="big"><JrIcon :path="mdiBookOutline" :size="52" /></div>
-    请选择一篇日记。
-  </div>
-
-  <div v-if="entry" class="jr-detail-bar">
-    <button :class="{ on: !!entry.favourite }" title="收藏" @click="emit('toggleFavourite')">
-      <JrIcon :path="entry.favourite ? mdiStar : mdiStarOutline" :size="22" />
-    </button>
-    <button title="存为模板" @click="emit('saveAsTemplate')"><JrIcon :path="mdiBookOutline" :size="22" /></button>
-    <button title="分享与导出" :aria-expanded="exportOpen" @click="menuOpen = false; exportOpen = !exportOpen"><JrIcon :path="mdiShareOutline" :size="22" /></button>
-    <button title="编辑" @click="emit('edit')"><JrIcon :path="mdiPencil" :size="22" /></button>
-    <button title="更多" @click="exportOpen = false; menuOpen = !menuOpen"><JrIcon :path="mdiDotsHorizontal" :size="22" /></button>
-    <div v-if="exportOpen" class="jr-menu">
-      <button :disabled="exporting" @click="downloadEntry('zip')">{{ exporting ? '正在导出…' : '导出为 ZIP' }}</button>
-      <button :disabled="exporting" @click="downloadEntry('docx')">导出为 DOCX</button>
-      <button :disabled="exporting" @click="downloadEntry('epub')">导出为 EPUB</button>
-      <button :disabled="exporting" @click="downloadEntry('pdf')">打印或另存为 PDF</button>
-      <button @click="exportOpen = false; onMenu('copy')">复制链接</button>
-    </div>
-    <div v-if="menuOpen" class="jr-menu">
-      <button v-for="m in menu" :key="m.key" @click="onMenu(m.key)">
-        <JrIcon :path="m.icon" :size="18" />
-        <span :style="m.key === 'trash' ? 'color:var(--jr-error)' : ''">{{ m.label }}</span>
-      </button>
-    </div>
+    请从左侧选择一篇日记。
   </div>
 </template>

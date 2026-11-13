@@ -1,12 +1,11 @@
 <script setup lang="ts">
-// Day One 中列顶部视图切换胶囊（ia-map middleColumn.header；09/63 截图：灰底圆角容器，激活项天蓝底白图标）
 import { mdiFormatListBulleted, mdiImageMultipleOutline, mdiCalendarMonth } from '@mdi/js'
 
 const route = useRoute()
 const views = [
-  { to: '/', icon: mdiFormatListBulleted, label: '列表视图', exact: true },
-  { to: '/media', icon: mdiImageMultipleOutline, label: '媒体视图' },
-  { to: '/calendar', icon: mdiCalendarMonth, label: '日历视图' },
+  { to: '/', icon: mdiFormatListBulleted, label: '条目', exact: true },
+  { to: '/media', icon: mdiImageMultipleOutline, label: '相册' },
+  { to: '/calendar', icon: mdiCalendarMonth, label: '日历' },
 ]
 const active = (to: string, exact?: boolean) => (exact ? route.path === '/' : route.path.startsWith(to))
 </script>
@@ -18,15 +17,45 @@ const active = (to: string, exact?: boolean) => (exact ? route.path === '/' : ro
       :aria-selected="active(v.to, v.exact)" :aria-label="v.label"
       :class="{ on: active(v.to, v.exact) }"
     >
-      <JrIcon :path="v.icon" :size="18" />
+      <JrIcon :path="v.icon" :size="16" />
+      <span>{{ v.label }}</span>
     </NuxtLink>
   </div>
 </template>
 
 <style scoped>
-.jr-view-pills { display: flex; gap: 4px; align-items: center; background: var(--jr-surface-variant); border-radius: 999px; padding: 4px; width: max-content; }
-.jr-vpill { display: flex; align-items: center; justify-content: center; width: 36px; height: 28px; border-radius: 999px; color: var(--jr-secondary); text-decoration: none; }
-.jr-vpill:hover { background: var(--jr-hover); }
-.jr-vpill.on { background: var(--jr-primary); color: var(--jr-on-primary); }
-.jr-vpill.on:hover { background: var(--jr-primary); }
+.jr-view-pills {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  background: var(--jr-surface-variant);
+  border-radius: 999px;
+  padding: 3px;
+  width: max-content;
+}
+.jr-vpill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: var(--jr-on-surface-variant);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+.jr-vpill:hover {
+  background: var(--jr-hover);
+  color: var(--jr-on-bg);
+}
+.jr-vpill.on {
+  background: var(--jr-primary);
+  color: var(--jr-on-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(68, 192, 255, 0.25);
+}
+.jr-vpill.on:hover {
+  background: var(--jr-primary);
+}
 </style>
