@@ -14,7 +14,7 @@ const locked = ref(false)
 const sidebarOpen = ref(false)
 const membershipOpen = useMembershipDialog()
 const isMobile = useIsMobile()
-const { theme, fontSize, colorTheme } = useAppearance()
+const { theme, fontSize, colorTheme, themeStyle } = useAppearance()
 // 主界面右下角的桌宠与 /pet 独立页共用同一个 PetWidget，显隐由侧栏/顶栏/设置控制。
 const { visible: petVisible } = usePetWidget()
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)')
@@ -25,6 +25,7 @@ onBeforeUnmount(() => systemDark.removeEventListener('change', onSystemTheme))
 watchEffect(() => {
   const dark = theme.value === 'Dark' || (theme.value === 'System' && systemPrefersDark.value)
   document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+  document.documentElement.dataset.themeStyle = themeStyle.value
   applyColorTheme(colorTheme.value, dark)
   document.documentElement.style.setProperty('--jr-content-size', { Small: '14px', Medium: '16px', Large: '18px' }[fontSize.value])
   // Day One 换皮（M-2xx）：字体统一 Inter 栈（--jr-font 已在 :root 定义）；旧的 jr.fontFamily 选项退役
@@ -32,6 +33,7 @@ watchEffect(() => {
   localStorage.setItem('jr.theme', theme.value)
   localStorage.setItem('jr.fontSize', fontSize.value)
   localStorage.setItem('jr.colorTheme', String(colorTheme.value))
+  localStorage.setItem('jr.themeStyle', themeStyle.value)
 })
 onMounted(async () => {
   onboarded.value = localStorage.getItem('jr.onboarded') === '1'

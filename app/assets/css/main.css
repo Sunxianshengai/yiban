@@ -24,6 +24,58 @@
   --jr-radius: 8px;
 }
 
+/* ---- Moleskine 温暖手账风格 (暖白纸本 / 琥珀金色调 / 拍立得照片卡) ---- */
+:root[data-theme-style="moleskine"] {
+  --jr-primary: #D97706;
+  --jr-on-primary: #FFFFFF;
+  --jr-primary-container: #FEF3C7;
+  --jr-on-primary-container: #78350F;
+  --jr-primary-fixed-dim: #FBBF24;
+  --jr-secondary: #4A3E3D;
+  --jr-secondary-container: #F4EFE6;
+  --jr-on-secondary-container: #443735;
+  --jr-tertiary: #92400E;
+  --jr-error: #C0392B;
+  --jr-error-container: #FDEDEC;
+  --jr-bg: #FAF7F2;
+  --jr-on-bg: #2C2625;
+  --jr-surface: #FFFDF9;
+  --jr-surface-variant: #F4EFE6;
+  --jr-on-surface-variant: #6E6259;
+  --jr-outline: #A89F91;
+  --jr-outline-variant: #E8E1D5;
+  --jr-hover: rgba(180, 83, 9, 0.07);
+  --jr-radius: 10px;
+}
+:root[data-theme-style="moleskine"],
+[data-theme-style="moleskine"] :is(body, #__nuxt, .jr-main, .jr-editor, .jr-list-col, .jr-detail-col) {
+  background: var(--jr-bg);
+}
+[data-theme-style="moleskine"] .jr-sidebar {
+  background: #F4EFE6;
+  border-right-color: var(--jr-outline-variant);
+}
+[data-theme-style="moleskine"] .jr-nav-item.active {
+  background: #EBE4D8;
+  color: var(--jr-primary);
+}
+[data-theme-style="moleskine"] .jr-vpill.on {
+  background: var(--jr-primary);
+  color: #FFFFFF;
+}
+[data-theme-style="moleskine"] .jr-entry.selected {
+  background: #F2EAE0;
+  border-color: var(--jr-primary);
+}
+[data-theme-style="moleskine"] .jr-entry-dateblock b {
+  color: var(--jr-primary);
+}
+[data-theme-style="moleskine"] .jr-row-thumb {
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 2px 6px rgba(44, 38, 37, 0.12);
+  border-radius: 4px;
+}
+
 * { box-sizing: border-box; }
 
 html, body, #__nuxt {
@@ -663,6 +715,45 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
   --jr-layer: #202324;
   --jr-layer-high: #252829;
   --jr-layer-highest: #313435;
+}
+
+:root[data-theme="dark"][data-theme-style="moleskine"] {
+  --jr-primary: #F59E0B;
+  --jr-on-primary: #1C1917;
+  --jr-primary-container: #451A03;
+  --jr-on-primary-container: #FEF3C7;
+  --jr-primary-fixed-dim: #FBBF24;
+  --jr-secondary: #D6C7B2;
+  --jr-secondary-container: #2A2420;
+  --jr-on-secondary-container: #F5EFE6;
+  --jr-tertiary: #FBBF24;
+  --jr-bg: #1A1715;
+  --jr-on-bg: #EAE3DC;
+  --jr-surface: #221E1B;
+  --jr-surface-variant: #2D2723;
+  --jr-on-surface-variant: #B0A499;
+  --jr-outline: #7D736A;
+  --jr-outline-variant: #3D352F;
+  --jr-hover: rgba(245, 158, 11, 0.1);
+  --jr-layer-low: #201C19;
+  --jr-layer: #25201C;
+  --jr-layer-high: #2D2722;
+  --jr-layer-highest: #38302A;
+}
+[data-theme="dark"][data-theme-style="moleskine"] .jr-sidebar {
+  background: #201C19;
+}
+[data-theme="dark"][data-theme-style="moleskine"] .jr-nav-item.active {
+  background: #332A23;
+  color: var(--jr-primary);
+}
+[data-theme="dark"][data-theme-style="moleskine"] .jr-entry.selected {
+  background: #2E2721;
+  border-color: var(--jr-primary);
+}
+[data-theme="dark"][data-theme-style="moleskine"] .jr-row-thumb {
+  border: 2px solid #2D2723;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 :root[data-theme="dark"], [data-theme="dark"] :is(body, #__nuxt, .jr-main, .jr-editor) {
   background: var(--jr-bg);

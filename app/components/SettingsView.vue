@@ -50,8 +50,8 @@ const genItems = [
   { key: 'plugins', label: '插件', icon: mdiPuzzleOutline },
 ] as const
 
-// Appearance — Day One 换皮（M-2xx）：主题仅浅/深/系统三态（ledger O12），13 主题色环与字体选择退役
-const { theme, fontSize } = useAppearance()
+// Appearance — Day One / Moleskine 双主题风格支持与深浅模式
+const { theme, fontSize, themeStyle } = useAppearance()
 const spellcheck = ref(localStorage.getItem('jr.spellcheck') !== '0')
 // 高德 Key：服务平台按 Key 单选绑定，所以「Web服务」和「Web端(JS API)」要分开填两个 Key
 // （本仓库没有后端，密钥存在本机 localStorage；换密钥后强制重新加载 JS API）
@@ -223,7 +223,14 @@ async function wipeAll() {
       <p v-if="s.locked && lockedNote === s.key" class="mnote" role="status">原版此项为 Journey 云端账户功能；复刻以本地模式运行，此功能不提供（诚实边界）。</p>
 
       <div v-if="s.key === 'general' && openSection === 'general'" class="mexpand">
-        <div class="mset-row"><span>主题</span><select v-model="theme" class="mselect"><option value="System">跟随系统</option><option value="Light">浅色</option><option value="Dark">深色</option></select></div>
+        <div class="mset-row">
+          <span>界面风格</span>
+          <select v-model="themeStyle" class="mselect">
+            <option value="dayone">Day One 现代极简</option>
+            <option value="moleskine">Moleskine 温暖手账</option>
+          </select>
+        </div>
+        <div class="mset-row"><span>显示模式</span><select v-model="theme" class="mselect"><option value="System">跟随系统</option><option value="Light">浅色</option><option value="Dark">深色</option></select></div>
         <div class="mset-row"><span>字号</span><select v-model="fontSize" class="mselect"><option value="Small">小</option><option value="Medium">中</option><option value="Large">大</option></select></div>
         <div class="mset-row"><span>计量单位</span><select v-model="unit" class="mselect" aria-label="计量单位"><option value="metric">公制</option><option value="imperial">英制</option></select></div>
         <div class="mset-row"><span>每周起始日</span><select v-model="weekStart" class="mselect"><option value="default">默认</option><option value="monday">星期一</option><option value="sunday">星期日</option></select></div>
@@ -306,13 +313,59 @@ async function wipeAll() {
               <p>午后的阳光落在书页上。我写下<b>今天的小事</b>，也记下了一句<i>想留给未来的话</i>。</p>
               <blockquote>日常的一句话、一张照片，都可以成为日后想起今天的线索。</blockquote>
             </div>
-            <div class="jr-set-row"><span class="jr-set-cap">主题</span>
-              <select v-model="theme" class="jr-set-select" aria-label="主题"><option value="System">跟随系统</option><option value="Light">浅色</option><option value="Dark">深色</option></select>
+
+            <div class="jr-set-section-title">界面视觉风格</div>
+            <div class="jr-theme-style-cards">
+              <button
+                type="button"
+                class="jr-theme-card"
+                :class="{ on: themeStyle === 'dayone' }"
+                @click="themeStyle = 'dayone'"
+              >
+                <div class="jr-theme-preview dayone">
+                  <div class="bar"></div>
+                  <div class="content"><span class="dot"></span><span class="line"></span></div>
+                </div>
+                <div class="jr-theme-meta">
+                  <div class="name">Day One 现代极简</div>
+                  <div class="desc">清爽天蓝 · 极简单线 · 现代通透</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                class="jr-theme-card"
+                :class="{ on: themeStyle === 'moleskine' }"
+                @click="themeStyle = 'moleskine'"
+              >
+                <div class="jr-theme-preview moleskine">
+                  <div class="bar"></div>
+                  <div class="content"><span class="dot"></span><span class="line"></span></div>
+                </div>
+                <div class="jr-theme-meta">
+                  <div class="name">Moleskine 温暖手账</div>
+                  <div class="desc">暖白纸本 · 琥珀金色 · 拍立得相框质感</div>
+                </div>
+              </button>
             </div>
-            <div class="jr-set-row"><span class="jr-set-cap">字号</span>
-              <select v-model="fontSize" class="jr-set-select"><option value="Small">小</option><option value="Medium">中</option><option value="Large">大</option></select>
+
+            <div class="jr-set-row" style="margin-top:14px">
+              <span class="jr-set-cap">显示模式</span>
+              <select v-model="theme" class="jr-set-select" aria-label="主题">
+                <option value="System">跟随系统</option>
+                <option value="Light">浅色模式</option>
+                <option value="Dark">深色 / 暗黑模式</option>
+              </select>
             </div>
-            <p class="jr-muted" style="font-size:11.5px">界面使用系统字体呈现中文。</p>
+            <div class="jr-set-row">
+              <span class="jr-set-cap">正文字号</span>
+              <select v-model="fontSize" class="jr-set-select">
+                <option value="Small">小</option>
+                <option value="Medium">中</option>
+                <option value="Large">大</option>
+              </select>
+            </div>
+            <p class="jr-muted" style="font-size:11.5px">风格切换即时生效，设置自动保存在本机。</p>
           </template>
 
           <template v-else-if="gen === 'unit'">
@@ -501,4 +554,133 @@ async function wipeAll() {
 [data-theme="dark"] .mselect { background: #2b3236; color: var(--jr-on-bg); }
 [data-theme="dark"] .minput { background: #2b3236; color: var(--jr-on-bg); border-color: var(--jr-outline-variant); }
 [data-theme="dark"] .mset-row { border-bottom-color: #394247; }
+
+/* 界面风格选择卡片 */
+.jr-set-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--jr-on-bg);
+  margin: 18px 0 10px;
+}
+.jr-theme-style-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.jr-theme-card {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border-radius: 12px;
+  border: 2px solid var(--jr-outline-variant);
+  background: var(--jr-surface);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.jr-theme-card:hover {
+  border-color: var(--jr-outline);
+}
+.jr-theme-card.on {
+  border-color: var(--jr-primary);
+  background: var(--jr-hover);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+.jr-theme-preview {
+  height: 48px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  margin-bottom: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.jr-theme-preview.dayone {
+  background: #FFFFFF;
+}
+.jr-theme-preview.dayone .bar {
+  height: 12px;
+  background: #E4F6FF;
+  border-bottom: 2px solid #44C0FF;
+}
+.jr-theme-preview.dayone .content {
+  flex: 1;
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.jr-theme-preview.dayone .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #44C0FF;
+}
+.jr-theme-preview.dayone .line {
+  height: 4px;
+  flex: 1;
+  border-radius: 2px;
+  background: #E8ECEF;
+}
+
+.jr-theme-preview.moleskine {
+  background: #FAF7F2;
+}
+.jr-theme-preview.moleskine .bar {
+  height: 12px;
+  background: #FEF3C7;
+  border-bottom: 2px solid #D97706;
+}
+.jr-theme-preview.moleskine .content {
+  flex: 1;
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.jr-theme-preview.moleskine .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #D97706;
+}
+.jr-theme-preview.moleskine .line {
+  height: 4px;
+  flex: 1;
+  border-radius: 2px;
+  background: #E8E1D5;
+}
+
+.jr-theme-meta .name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--jr-on-bg);
+}
+.jr-theme-meta .desc {
+  font-size: 11px;
+  color: var(--jr-on-surface-variant);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+[data-theme="dark"] .jr-theme-preview.dayone {
+  background: #111314;
+}
+[data-theme="dark"] .jr-theme-preview.dayone .bar {
+  background: #202324;
+  border-bottom-color: #44C0FF;
+}
+[data-theme="dark"] .jr-theme-preview.dayone .line {
+  background: #313435;
+}
+[data-theme="dark"] .jr-theme-preview.moleskine {
+  background: #1A1715;
+}
+[data-theme="dark"] .jr-theme-preview.moleskine .bar {
+  background: #2D2723;
+  border-bottom-color: #F59E0B;
+}
+[data-theme="dark"] .jr-theme-preview.moleskine .line {
+  background: #38302A;
+}
 </style>

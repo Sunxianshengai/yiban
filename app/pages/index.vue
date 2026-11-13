@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiBookmark, mdiHistory, mdiSortVariant, mdiCloudUploadOutline, mdiImageOutline, mdiCheck, mdiArrowDown, mdiArrowUp, mdiTrashCanOutline } from '@mdi/js'
+import { mdiBookmark, mdiHistory, mdiSortVariant, mdiCloudUploadOutline, mdiImageOutline, mdiCheck, mdiArrowDown, mdiArrowUp, mdiTrashCanOutline, mdiMapMarkerOutline, mdiStar } from '@mdi/js'
 import type { EntryV2 } from '~/utils/db'
 import { WEATHER_EMOJI, weatherLabel } from '~/utils/services'
 
@@ -326,8 +326,12 @@ async function onFavourite() {
               <span class="jr-entry-time">
                 {{ timeOnly(e) }}
                 <span v-if="e.weatherIcon" class="jr-entry-meta" :title="`${weatherLabel(e.weatherDescription)} ${formatTemp(e.weatherDegreeC)}`">{{ WEATHER_EMOJI[e.weatherIcon] || '☁️' }} {{ formatTemp(e.weatherDegreeC) }}</span>
-                <span v-if="e.address" class="jr-entry-meta" :title="e.address">📍</span>
-                <span v-if="e.favourite" class="jr-entry-meta" title="收藏">⭐</span>
+                <span v-if="e.address" class="jr-entry-meta" :title="e.address">
+                  <JrIcon :path="mdiMapMarkerOutline" :size="13" style="vertical-align:-2px" />
+                </span>
+                <span v-if="e.favourite" class="jr-entry-meta" title="收藏" style="color:var(--jr-primary)">
+                  <JrIcon :path="mdiStar" :size="13" style="vertical-align:-2px" />
+                </span>
                 <span v-if="!e.synced" class="jr-status-icon" title="等待上传">
                   <JrIcon :path="mdiCloudUploadOutline" :size="15" />
                 </span>

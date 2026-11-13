@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiStarOutline, mdiStar, mdiBookOutline, mdiShareOutline, mdiPencil, mdiDotsHorizontal, mdiLinkVariant, mdiContentDuplicate, mdiLabelOutline, mdiTrashCanOutline, mdiCloudUploadOutline } from '@mdi/js'
+import { mdiStarOutline, mdiStar, mdiBookOutline, mdiShareOutline, mdiPencil, mdiDotsHorizontal, mdiLinkVariant, mdiContentDuplicate, mdiLabelOutline, mdiTrashCanOutline, mdiCloudUploadOutline, mdiMapMarkerOutline } from '@mdi/js'
 import type { EntryV2 } from '~/utils/db'
 import { exportJournalZip } from '~/utils/journalZip'
 import { weatherLabel } from '~/utils/services'
@@ -91,7 +91,10 @@ async function downloadEntry(format: 'zip' | 'docx' | 'epub' | 'pdf') {
       <span v-if="entry.sentiment" class="jr-mchip">{{ { excited: '😆', happy: '😊', calm: '😌', 'so-so': '😐', tired: '😪', sad: '😢', angry: '😠', anxious: '😰' }[entry.sentiment] || entry.sentiment }} {{ entry.sentiment }}</span>
       <span v-if="entry.activity" class="jr-mchip">🏃 {{ entry.activity }}</span>
       <span v-if="entry.weatherIcon" class="jr-mchip">{{ { sun: '☀️', partly: '🌤', cloud: '☁️', fog: '🌫', rain: '🌧', snow: '🌨', storm: '⛈' }[entry.weatherIcon] }} {{ formatTemp(entry.weatherDegreeC) }} {{ entry.weatherPlace || weatherLabel(entry.weatherDescription) }}</span>
-      <span v-if="entry.address" class="jr-mchip" :title="entry.address">📍 {{ entry.address.slice(0, 40) }}</span>
+      <span v-if="entry.address" class="jr-mchip" :title="entry.address">
+        <JrIcon :path="mdiMapMarkerOutline" :size="14" style="vertical-align:-2px;margin-right:2px" />
+        {{ entry.address.slice(0, 40) }}
+      </span>
       <span v-for="t in (entry.tagWordIds || [])" :key="t" class="jr-mchip jr-mtag">#{{ tagTitles[t] || t }}</span>
     </div>
     <JournalBody :entry="entry" />

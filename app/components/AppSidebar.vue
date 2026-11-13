@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiCogOutline, mdiCloudOutline, mdiRobotOutline, mdiMapMarkerOutline, mdiPlus, mdiWhiteBalanceSunny, mdiCalendarMonth, mdiImageMultipleOutline, mdiStarOutline, mdiTagOutline, mdiLogout, mdiPawOutline, mdiPawOffOutline, mdiWalletGiftcard, mdiMagnify } from '@mdi/js'
+import { mdiCogOutline, mdiCloudOutline, mdiFeather, mdiMapMarkerOutline, mdiPlus, mdiWhiteBalanceSunny, mdiCalendarMonth, mdiImageMultipleOutline, mdiStarOutline, mdiTagOutline, mdiLogout, mdiPawOutline, mdiPawOffOutline, mdiWalletGiftcard, mdiMagnify } from '@mdi/js'
 import { db } from '~/utils/db'
 
 const emit = defineEmits<{ (e: 'navigate'): void }>()
@@ -21,7 +21,7 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
 
 const nav = [
   { to: '/', label: '今天', icon: mdiWhiteBalanceSunny, exact: true },
-  { to: '/pal', label: '日记伙伴', icon: mdiRobotOutline },
+  { to: '/pal', label: '日记伙伴', icon: mdiFeather },
 ]
 // Day One 左栏没有独立的日历/媒体入口（在中列视图胶囊里）；
 // 复刻过渡期保留「视图」分组，B2 中列胶囊接管后撤除。

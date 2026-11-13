@@ -1,5 +1,6 @@
-type Theme = 'System' | 'Light' | 'Dark'
-type FontSize = 'Small' | 'Medium' | 'Large'
+export type Theme = 'System' | 'Light' | 'Dark'
+export type FontSize = 'Small' | 'Medium' | 'Large'
+export type ThemeStyle = 'dayone' | 'moleskine'
 
 // --jr-* 变量与原版 M3 角色的映射（themesRegistry.ts 逐字来自原版 bundle）
 const ROLE_MAP: Array<[cssVar: string, role: string]> = [
@@ -43,5 +44,9 @@ export function useAppearance() {
     const saved = Number(localStorage.getItem('jr.colorTheme'))
     return Number.isInteger(saved) && saved >= 0 && saved <= 13 ? saved : 0
   })
-  return { theme, fontSize, colorTheme }
+  const themeStyle = useState<ThemeStyle>('appearance-theme-style', () => {
+    const saved = localStorage.getItem('jr.themeStyle')
+    return saved === 'moleskine' ? 'moleskine' : 'dayone'
+  })
+  return { theme, fontSize, colorTheme, themeStyle }
 }

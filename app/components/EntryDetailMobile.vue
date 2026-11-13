@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiArrowLeft, mdiShareOutline, mdiStar, mdiStarOutline, mdiPencil, mdiDotsHorizontal, mdiChevronLeft, mdiChevronRight, mdiLinkVariant, mdiContentDuplicate, mdiLabelOutline, mdiTrashCanOutline, mdiCloudUploadOutline } from '@mdi/js'
+import { mdiArrowLeft, mdiShareOutline, mdiStar, mdiStarOutline, mdiPencil, mdiDotsHorizontal, mdiChevronLeft, mdiChevronRight, mdiLinkVariant, mdiContentDuplicate, mdiLabelOutline, mdiTrashCanOutline, mdiCloudUploadOutline, mdiMapMarkerOutline } from '@mdi/js'
 import type { EntryV2 } from '~/utils/db'
 import { weatherLabel } from '~/utils/services'
 
@@ -92,7 +92,10 @@ watch(() => props.entry.id, () => { menuOpen.value = false; actionStatus.value =
         <span v-if="entry.sentiment" class="chip">{{ { excited: '😆', happy: '😊', calm: '😌', 'so-so': '😐', tired: '😪', sad: '😢', angry: '😠', anxious: '😰' }[entry.sentiment] || entry.sentiment }}</span>
         <span v-if="entry.activity" class="chip">🏃 {{ entry.activity }}</span>
         <span v-if="entry.weatherIcon" class="chip">{{ { sun: '☀️', partly: '🌤', cloud: '☁️', fog: '🌫', rain: '🌧', snow: '🌨', storm: '⛈' }[entry.weatherIcon] }} {{ formatTemp(entry.weatherDegreeC) }} {{ entry.weatherPlace || weatherLabel(entry.weatherDescription) }}</span>
-        <span v-if="entry.address" class="chip">📍 {{ entry.address.slice(0, 40) }}</span>
+        <span v-if="entry.address" class="chip">
+          <JrIcon :path="mdiMapMarkerOutline" :size="14" style="vertical-align:-2px;margin-right:2px" />
+          {{ entry.address.slice(0, 40) }}
+        </span>
         <span v-for="t in (entry.tagWordIds || [])" :key="t" class="chip">#{{ tagTitles[t] || t }}</span>
       </div>
       <JournalBody :entry="entry" />
