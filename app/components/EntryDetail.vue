@@ -56,9 +56,15 @@ const fullDateStr = computed(() => {
 
 const entryTitle = computed(() => {
   if (!props.entry) return ''
-  const text = (props.entry.text || props.entry.previewText || '').trim()
+  const text = (props.entry.text || props.entry.previewText || '').replace(/<[^>]*>/g, '').trim()
   const firstLine = text.split('\n')[0]?.replace(/^[#\s]+/, '').trim()
   return firstLine || ''
+})
+
+const hasHeadingInBody = computed(() => {
+  if (!props.entry) return false
+  const raw = (props.entry.text || '').trim()
+  return /^<h[1-3][^>]*>/i.test(raw)
 })
 
 const menu = [
@@ -166,7 +172,7 @@ async function downloadEntry(format: 'zip' | 'docx' | 'epub' | 'pdf') {
 
     <!-- 滚动正文区域 -->
     <div class="jr-detail-scroll">
-      <h1 v-if="entryTitle" class="jr-detail-title">{{ entryTitle }}</h1>
+      <h1 v-if="entryTitle && !hasHeadingInBody" class="jr-detail-title">{{ entryTitle }}</h1>
       <JournalBody :entry="entry" />
       <p v-if="actionStatus" class="jr-muted" role="status">{{ actionStatus }}</p>
     </div>
