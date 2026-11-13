@@ -20,15 +20,19 @@ const { visible: petVisible, toggle: togglePet } = usePetWidget()
 const route = useRoute()
 const search = ref('')
 const tagsOpen = ref(false)
-const { listTags } = useEntries()
+const { entries, refresh: refreshEntries, listTags } = useEntries()
 const tags = ref<{ id?: number; title: string }[]>([])
-const entryCount = ref(0)
-const starredCount = ref(0)
+
+const totalCount = computed(() => entries.value.length)
+const dailyCount = computed(() => entries.value.length)
+const travelCount = computed(() => entries.value.filter(e => !!e.address || (e.text || '').includes('旅行') || (e.text || '').includes('旅途')).length)
+const starredCount = computed(() => entries.value.filter(e => !!e.favourite).length)
 
 onMounted(async () => {
   tags.value = await listTags()
-  entryCount.value = await db.entriesV2.filter((e) => !e.deleted).count()
-  starredCount.value = await db.entriesV2.filter((e) => !e.deleted && !!e.favourite).count()
+  if (!entries.value.length) {
+    await refreshEntries()
+  }
 })
 const settingsOpen = useState('jr.settingsOpen', () => false)
 </script>
@@ -61,7 +65,7 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
     <NuxtLink to="/" class="jr-nav-item" :class="{ active: route.path === '/' }">
       <JrIcon :path="mdiCalendarBlankOutline" :size="20" />
       <span class="jr-nav-text">今天 · 时间线</span>
-      <span class="jr-badge">{{ entryCount }}</span>
+      <span class="jr-badge">{{ totalCount }}</span>
     </NuxtLink>
 
     <NuxtLink to="/pal" class="jr-nav-item" :class="{ active: route.path.startsWith('/pal') }">
@@ -81,19 +85,19 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
     <NuxtLink to="/" class="jr-nav-item jr-journal-item" :class="{ active: route.path === '/' }">
       <JrIcon :path="mdiBookOpenOutline" :size="18" style="color:#44C0FF" />
       <span class="jr-nav-text">日常随笔</span>
-      <span class="jr-badge-sub">{{ entryCount || 28 }}</span>
+      <span class="jr-badge-sub">{{ dailyCount }}</span>
     </NuxtLink>
 
     <NuxtLink to="/search/results?q=%E6%97%85%E8%A1%8C" class="jr-nav-item jr-journal-item" :class="{ active: route.path === '/search/results' && route.query.q === '旅行' }">
       <JrIcon :path="mdiCompassOutline" :size="18" style="color:#10B981" />
       <span class="jr-nav-text">旅途记录</span>
-      <span class="jr-badge-sub">12</span>
+      <span class="jr-badge-sub">{{ travelCount }}</span>
     </NuxtLink>
 
     <NuxtLink to="/search/results?starred=1&favourite=true" class="jr-nav-item jr-journal-item" :class="{ active: route.path === '/search/results' && route.query.starred === '1' }">
       <JrIcon :path="mdiStarOutline" :size="18" style="color:#A855F7" />
       <span class="jr-nav-text">星标精选</span>
-      <span class="jr-badge-sub">{{ starredCount || 6 }}</span>
+      <span class="jr-badge-sub">{{ starredCount }}</span>
     </NuxtLink>
 
     <NuxtLink to="/atlas" class="jr-nav-item" :class="{ active: route.path.startsWith('/atlas') }">

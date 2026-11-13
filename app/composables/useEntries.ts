@@ -76,7 +76,7 @@ function deProxy<T>(obj: T): T {
 }
 
 export function useEntries() {
-  const entries = ref<EntryV2[]>([])
+  const entries = useState<EntryV2[]>('jr.globalEntries', () => [])
 
   async function refresh() {
     entries.value = await db.entriesV2.orderBy('dateOfJournal').reverse().toArray()
