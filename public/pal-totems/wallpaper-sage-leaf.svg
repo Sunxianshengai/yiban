@@ -1,18 +1,54 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice">
-  <!-- 浅绿叶片纹壁纸 -->
+  <!-- sage-leaf：完整房间场景（墙面+踢脚线+地板），光照与家具（左上主光）呼应 -->
+  <style>
+    .st { animation: twinkle 2.6s ease-in-out infinite; }
+    @keyframes twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+    .rain { animation: fall 1.6s linear infinite; }
+    @keyframes fall { 0% { transform: translateY(-140px); } 100% { transform: translateY(0); } }
+    .pt { animation: petal 8s linear infinite; }
+    .pt.p2 { animation-duration: 10s; animation-delay: 2.6s; }
+    .pt.p3 { animation-duration: 9s; animation-delay: 5s; }
+    @keyframes petal { 0% { transform: translate(0, -20px) rotate(0deg); opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { transform: translate(-60px, 420px) rotate(300deg); opacity: 0; } }
+    .mist1 { animation: mbreath 9s ease-in-out infinite alternate; }
+    .mist2 { animation: mbreath 12s ease-in-out infinite alternate; animation-delay: 2s; }
+    @keyframes mbreath { 0% { opacity: 0.5; } 100% { opacity: 0.85; } }
+  </style>
   <defs>
-    <pattern id="leafp" width="72" height="72" patternUnits="userSpaceOnUse">
+    <pattern id="wp" width="72" height="72" patternUnits="userSpaceOnUse">
       <rect width="72" height="72" fill="#eef1e8"/>
       <g fill="#a9c295">
         <path d="M18 44 C10 34 12 22 22 16 C30 24 30 36 18 44 Z"/>
-        <path d="M54 18 C46 8 48 -4 58 -10 C66 -2 66 10 54 18 Z" transform="translate(0,14)"/>
         <path d="M50 56 C44 48 46 38 54 34 C60 40 60 50 50 56 Z" opacity="0.7"/>
       </g>
-      <g stroke="#9db98a" stroke-width="1.6" fill="none" opacity="0.8">
-        <path d="M22 18 C22 28 22 36 18 44"/>
-        <path d="M58 22 C58 30 58 38 54 44"/>
-      </g>
     </pattern>
+    <linearGradient id="wallGlow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a1420" stop-opacity="0.16"/>
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.07"/>
+      <stop offset="0.8" stop-color="#ffffff" stop-opacity="0.02"/>
+      <stop offset="1" stop-color="#0a1420" stop-opacity="0.12"/>
+    </linearGradient>
+    <linearGradient id="floorShade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.1"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#7a6448" stop-opacity="0.3"/>
+    </linearGradient>
   </defs>
-  <rect width="800" height="520" fill="url(#leafp)"/>
+  <rect width="800" height="395" fill="url(#wp)"/>
+  
+  <rect width="800" height="395" fill="url(#wallGlow)"/>
+  <!-- 墙脚 AO -->
+  <rect y="368" width="800" height="20" fill="#0a1420" opacity="0.10"/>
+  <!-- 踢脚线 -->
+  <rect y="388" width="800" height="18" fill="#efe9da"/>
+  <rect y="388" width="800" height="3" fill="#ffffff"/>
+  <rect y="403" width="800" height="3" fill="#c4b8a0"/>
+  <!-- 地板（拼板线+横向接缝+前缘压暗） -->
+  <rect y="406" width="800" height="114" fill="#dcc9a4"/>
+  <g><line x1="130" y1="406" x2="130" y2="520" stroke="#c4ad86" stroke-width="2.4"/>
+  <line x1="268" y1="406" x2="268" y2="520" stroke="#c4ad86" stroke-width="2.4"/>
+  <line x1="406" y1="406" x2="406" y2="520" stroke="#c4ad86" stroke-width="2.4"/>
+  <line x1="544" y1="406" x2="544" y2="520" stroke="#c4ad86" stroke-width="2.4"/>
+  <line x1="682" y1="406" x2="682" y2="520" stroke="#c4ad86" stroke-width="2.4"/></g>
+  <rect y="462" width="800" height="2.4" fill="#cdb994"/>
+  <rect y="406" width="800" height="114" fill="url(#floorShade)"/>
 </svg>

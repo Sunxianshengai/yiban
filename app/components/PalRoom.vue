@@ -596,7 +596,7 @@ function photoStyle(def: PalTotemDef) {
 /* 世界层：固定纵横比，贴底居中（竖高房间上方留墙面） */
 .room-world { position: absolute; bottom: 0; }
 .room-world.is-portrait .room-mascot { height: 62%; }
-.room-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 14%; background: linear-gradient(180deg, rgba(120,138,146,0) 0%, rgba(120,138,146,0.18) 100%); pointer-events: none; }
+.room-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 7%; background: linear-gradient(180deg, rgba(20,30,40,0) 0%, rgba(20,30,40,0.12) 100%); pointer-events: none; }
 .lamp-light { position: absolute; transform: translate(-50%, 18%); background: radial-gradient(circle at 50% 46%, rgba(255,196,110,0.32) 0%, rgba(255,188,100,0.15) 44%, transparent 70%); pointer-events: none; }
 
 .room-totem { position: absolute; cursor: grab; user-select: none; touch-action: none; }

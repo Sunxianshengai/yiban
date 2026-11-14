@@ -1,31 +1,52 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice">
-  <!-- 晴空薄荷：薄荷渐变+缓移白云+柔光 -->
+  <!-- mint-sky：完整房间场景（墙面+踢脚线+地板），光照与家具（左上主光）呼应 -->
   <style>
-    .mc1 { animation: mdrift1 28s ease-in-out infinite alternate; }
-    .mc2 { animation: mdrift2 36s ease-in-out infinite alternate; }
-    @keyframes mdrift1 { 0% { transform: translateX(30px); } 100% { transform: translateX(-60px); } }
-    @keyframes mdrift2 { 0% { transform: translateX(-40px); } 100% { transform: translateX(70px); } }
+    .st { animation: twinkle 2.6s ease-in-out infinite; }
+    @keyframes twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+    .rain { animation: fall 1.6s linear infinite; }
+    @keyframes fall { 0% { transform: translateY(-140px); } 100% { transform: translateY(0); } }
+    .pt { animation: petal 8s linear infinite; }
+    .pt.p2 { animation-duration: 10s; animation-delay: 2.6s; }
+    .pt.p3 { animation-duration: 9s; animation-delay: 5s; }
+    @keyframes petal { 0% { transform: translate(0, -20px) rotate(0deg); opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { transform: translate(-60px, 420px) rotate(300deg); opacity: 0; } }
+    .mist1 { animation: mbreath 9s ease-in-out infinite alternate; }
+    .mist2 { animation: mbreath 12s ease-in-out infinite alternate; animation-delay: 2s; }
+    @keyframes mbreath { 0% { opacity: 0.5; } 100% { opacity: 0.85; } }
   </style>
   <defs>
-    <linearGradient id="mint" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#d8f3ec"/>
-      <stop offset="0.6" stop-color="#e7f6ef"/>
-      <stop offset="1" stop-color="#f4faf3"/>
+    <linearGradient id="wp" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d8f3ec"/><stop offset="1" stop-color="#f4faf3"/>
+    </linearGradient>
+    <linearGradient id="wallGlow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a1420" stop-opacity="0.16"/>
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.07"/>
+      <stop offset="0.8" stop-color="#ffffff" stop-opacity="0.02"/>
+      <stop offset="1" stop-color="#0a1420" stop-opacity="0.12"/>
+    </linearGradient>
+    <linearGradient id="floorShade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.1"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#8a7a56" stop-opacity="0.3"/>
     </linearGradient>
   </defs>
-  <rect width="800" height="520" fill="url(#mint)"/>
-  <circle cx="640" cy="110" r="52" fill="#ffeaa6" opacity="0.9"/>
-  <circle cx="640" cy="110" r="74" fill="#fff3c4" opacity="0.35"/>
-  <g class="mc1" fill="#ffffff" opacity="0.9">
-    <ellipse cx="170" cy="130" rx="110" ry="22"/>
-    <ellipse cx="250" cy="112" rx="70" ry="16"/>
-    <ellipse cx="110" cy="112" rx="55" ry="14"/>
-  </g>
-  <g class="mc2" fill="#ffffff" opacity="0.7">
-    <ellipse cx="470" cy="230" rx="130" ry="18"/>
-    <ellipse cx="560" cy="214" rx="70" ry="13"/>
-  </g>
-  <g class="mc1" fill="#ffffff" opacity="0.5">
-    <ellipse cx="330" cy="350" rx="180" ry="16"/>
-  </g>
+  <rect width="800" height="395" fill="url(#wp)"/>
+  <circle cx="640" cy="100" r="46" fill="#ffeaa6" opacity="0.9"/><circle cx="640" cy="100" r="66" fill="#fff3c4" opacity="0.35"/>
+      <g fill="#ffffff" opacity="0.9"><ellipse cx="170" cy="120" rx="110" ry="22"/><ellipse cx="250" cy="104" rx="70" ry="16"/></g>
+      <g fill="#ffffff" opacity="0.7"><ellipse cx="470" cy="210" rx="130" ry="18"/><ellipse cx="560" cy="196" rx="70" ry="13"/></g>
+  <rect width="800" height="395" fill="url(#wallGlow)"/>
+  <!-- 墙脚 AO -->
+  <rect y="368" width="800" height="20" fill="#0a1420" opacity="0.10"/>
+  <!-- 踢脚线 -->
+  <rect y="388" width="800" height="18" fill="#f0f2ec"/>
+  <rect y="388" width="800" height="3" fill="#ffffff"/>
+  <rect y="403" width="800" height="3" fill="#cdd0c2"/>
+  <!-- 地板（拼板线+横向接缝+前缘压暗） -->
+  <rect y="406" width="800" height="114" fill="#e2d3b2"/>
+  <g><line x1="130" y1="406" x2="130" y2="520" stroke="#ccbb96" stroke-width="2.4"/>
+  <line x1="268" y1="406" x2="268" y2="520" stroke="#ccbb96" stroke-width="2.4"/>
+  <line x1="406" y1="406" x2="406" y2="520" stroke="#ccbb96" stroke-width="2.4"/>
+  <line x1="544" y1="406" x2="544" y2="520" stroke="#ccbb96" stroke-width="2.4"/>
+  <line x1="682" y1="406" x2="682" y2="520" stroke="#ccbb96" stroke-width="2.4"/></g>
+  <rect y="462" width="800" height="2.4" fill="#d5c6a4"/>
+  <rect y="406" width="800" height="114" fill="url(#floorShade)"/>
 </svg>

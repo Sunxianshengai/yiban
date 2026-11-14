@@ -1,36 +1,55 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice">
-  <!-- 黄昏暖阳：暖色渐变+落日光晕+缓移云带 -->
+  <!-- dusk-glow：完整房间场景（墙面+踢脚线+地板），光照与家具（左上主光）呼应 -->
   <style>
-    .cl1 { animation: drift1 26s ease-in-out infinite alternate; }
-    .cl2 { animation: drift2 34s ease-in-out infinite alternate; }
-    @keyframes drift1 { 0% { transform: translateX(-40px); } 100% { transform: translateX(60px); } }
-    @keyframes drift2 { 0% { transform: translateX(50px); } 100% { transform: translateX(-50px); } }
+    .st { animation: twinkle 2.6s ease-in-out infinite; }
+    @keyframes twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+    .rain { animation: fall 1.6s linear infinite; }
+    @keyframes fall { 0% { transform: translateY(-140px); } 100% { transform: translateY(0); } }
+    .pt { animation: petal 8s linear infinite; }
+    .pt.p2 { animation-duration: 10s; animation-delay: 2.6s; }
+    .pt.p3 { animation-duration: 9s; animation-delay: 5s; }
+    @keyframes petal { 0% { transform: translate(0, -20px) rotate(0deg); opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { transform: translate(-60px, 420px) rotate(300deg); opacity: 0; } }
+    .mist1 { animation: mbreath 9s ease-in-out infinite alternate; }
+    .mist2 { animation: mbreath 12s ease-in-out infinite alternate; animation-delay: 2s; }
+    @keyframes mbreath { 0% { opacity: 0.5; } 100% { opacity: 0.85; } }
   </style>
   <defs>
-    <linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffe3b8"/>
-      <stop offset="0.45" stop-color="#f9b9ad"/>
-      <stop offset="0.8" stop-color="#cf9fbd"/>
-      <stop offset="1" stop-color="#9d8ec6"/>
+    <linearGradient id="wp" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe3b8"/><stop offset="0.55" stop-color="#f9b9ad"/><stop offset="1" stop-color="#b49ac0"/>
     </linearGradient>
     <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#fff3cf" stop-opacity="0.95"/>
-      <stop offset="0.55" stop-color="#ffdf9e" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#ffdf9e" stop-opacity="0"/>
+      <stop offset="0" stop-color="#fff3cf" stop-opacity="0.95"/><stop offset="0.55" stop-color="#ffdf9e" stop-opacity="0.55"/><stop offset="1" stop-color="#ffdf9e" stop-opacity="0"/>
     </radialGradient>
+    <linearGradient id="wallGlow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a1420" stop-opacity="0.16"/>
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.07"/>
+      <stop offset="0.8" stop-color="#ffffff" stop-opacity="0.02"/>
+      <stop offset="1" stop-color="#0a1420" stop-opacity="0.12"/>
+    </linearGradient>
+    <linearGradient id="floorShade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.1"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#5e4838" stop-opacity="0.3"/>
+    </linearGradient>
   </defs>
-  <rect width="800" height="520" fill="url(#dusk)"/>
-  <circle cx="560" cy="400" r="150" fill="url(#sun)"/>
-  <circle cx="560" cy="418" r="46" fill="#ffedb8" opacity="0.92"/>
-  <g class="cl1" fill="#ffffff" opacity="0.5">
-    <ellipse cx="150" cy="120" rx="120" ry="20"/>
-    <ellipse cx="260" cy="100" rx="80" ry="14"/>
-  </g>
-  <g class="cl2" fill="#ffffff" opacity="0.35">
-    <ellipse cx="520" cy="200" rx="140" ry="16"/>
-    <ellipse cx="640" cy="182" rx="70" ry="12"/>
-  </g>
-  <g class="cl1" fill="#f7c9c0" opacity="0.45">
-    <ellipse cx="360" cy="300" rx="170" ry="18"/>
-  </g>
+  <rect width="800" height="395" fill="url(#wp)"/>
+  <circle cx="560" cy="300" r="130" fill="url(#sun)"/><circle cx="560" cy="314" r="40" fill="#ffedb8" opacity="0.92"/>
+      <g fill="#ffffff" opacity="0.5"><ellipse cx="150" cy="110" rx="120" ry="20"/><ellipse cx="260" cy="92" rx="80" ry="14"/></g>
+      <g fill="#ffffff" opacity="0.35"><ellipse cx="520" cy="190" rx="140" ry="16"/><ellipse cx="640" cy="174" rx="70" ry="12"/></g>
+  <rect width="800" height="395" fill="url(#wallGlow)"/>
+  <!-- 墙脚 AO -->
+  <rect y="368" width="800" height="20" fill="#0a1420" opacity="0.10"/>
+  <!-- 踢脚线 -->
+  <rect y="388" width="800" height="18" fill="#4a3d5c"/>
+  <rect y="388" width="800" height="3" fill="#6b5a80"/>
+  <rect y="403" width="800" height="3" fill="#332a44"/>
+  <!-- 地板（拼板线+横向接缝+前缘压暗） -->
+  <rect y="406" width="800" height="114" fill="#9a7a5e"/>
+  <g><line x1="130" y1="406" x2="130" y2="520" stroke="#82644c" stroke-width="2.4"/>
+  <line x1="268" y1="406" x2="268" y2="520" stroke="#82644c" stroke-width="2.4"/>
+  <line x1="406" y1="406" x2="406" y2="520" stroke="#82644c" stroke-width="2.4"/>
+  <line x1="544" y1="406" x2="544" y2="520" stroke="#82644c" stroke-width="2.4"/>
+  <line x1="682" y1="406" x2="682" y2="520" stroke="#82644c" stroke-width="2.4"/></g>
+  <rect y="462" width="800" height="2.4" fill="#8d6e52"/>
+  <rect y="406" width="800" height="114" fill="url(#floorShade)"/>
 </svg>

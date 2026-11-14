@@ -1,26 +1,54 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice">
-  <!-- 森林晨雾：层叠山脊剪影+雾气呼吸 -->
+  <!-- forest-mist：完整房间场景（墙面+踢脚线+地板），光照与家具（左上主光）呼应 -->
   <style>
+    .st { animation: twinkle 2.6s ease-in-out infinite; }
+    @keyframes twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+    .rain { animation: fall 1.6s linear infinite; }
+    @keyframes fall { 0% { transform: translateY(-140px); } 100% { transform: translateY(0); } }
+    .pt { animation: petal 8s linear infinite; }
+    .pt.p2 { animation-duration: 10s; animation-delay: 2.6s; }
+    .pt.p3 { animation-duration: 9s; animation-delay: 5s; }
+    @keyframes petal { 0% { transform: translate(0, -20px) rotate(0deg); opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { transform: translate(-60px, 420px) rotate(300deg); opacity: 0; } }
     .mist1 { animation: mbreath 9s ease-in-out infinite alternate; }
     .mist2 { animation: mbreath 12s ease-in-out infinite alternate; animation-delay: 2s; }
-    @keyframes mbreath { 0% { opacity: 0.35; } 100% { opacity: 0.75; } }
+    @keyframes mbreath { 0% { opacity: 0.5; } 100% { opacity: 0.85; } }
   </style>
   <defs>
-    <linearGradient id="fsky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#e9f2df"/>
-      <stop offset="1" stop-color="#cfe3c2"/>
+    <linearGradient id="wp" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e9f2df"/><stop offset="1" stop-color="#cfe3c2"/>
+    </linearGradient>
+    <linearGradient id="wallGlow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a1420" stop-opacity="0.16"/>
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.07"/>
+      <stop offset="0.8" stop-color="#ffffff" stop-opacity="0.02"/>
+      <stop offset="1" stop-color="#0a1420" stop-opacity="0.12"/>
+    </linearGradient>
+    <linearGradient id="floorShade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.1"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#5f7354" stop-opacity="0.3"/>
     </linearGradient>
   </defs>
-  <rect width="800" height="520" fill="url(#fsky)"/>
-  <path d="M0 300 Q140 220 300 280 Q470 340 620 260 Q720 220 800 250 L800 520 L0 520 Z" fill="#b9d4b0" opacity="0.75"/>
-  <path d="M0 380 Q180 300 380 370 Q560 430 800 350 L800 520 L0 520 Z" fill="#8fb98a" opacity="0.85"/>
-  <path d="M0 450 Q220 390 440 450 Q640 500 800 440 L800 520 L0 520 Z" fill="#6f9e6a"/>
-  <g class="mist1" fill="#ffffff">
-    <ellipse cx="240" cy="330" rx="260" ry="16" opacity="0.55"/>
-    <ellipse cx="600" cy="400" rx="220" ry="14" opacity="0.45"/>
-  </g>
-  <g class="mist2" fill="#ffffff">
-    <ellipse cx="420" cy="470" rx="300" ry="18" opacity="0.5"/>
-    <ellipse cx="140" cy="430" rx="160" ry="12" opacity="0.45"/>
-  </g>
+  <rect width="800" height="395" fill="url(#wp)"/>
+  <path d="M0 260 Q140 190 300 245 Q470 300 620 230 Q720 195 800 220 L800 388 L0 388 Z" fill="#b9d4b0" opacity="0.75"/>
+      <path d="M0 320 Q180 250 380 315 Q560 370 800 300 L800 388 L0 388 Z" fill="#8fb98a" opacity="0.85"/>
+      <path d="M0 368 Q220 320 440 372 Q640 415 800 366 L800 388 L0 388 Z" fill="#6f9e6a"/>
+      <g class="mist1" fill="#ffffff"><ellipse cx="240" cy="300" rx="260" ry="14" opacity="0.5"/></g>
+      <g class="mist2" fill="#ffffff"><ellipse cx="560" cy="360" rx="240" ry="13" opacity="0.45"/></g>
+  <rect width="800" height="395" fill="url(#wallGlow)"/>
+  <!-- 墙脚 AO -->
+  <rect y="368" width="800" height="20" fill="#0a1420" opacity="0.10"/>
+  <!-- 踢脚线 -->
+  <rect y="388" width="800" height="18" fill="#c9b18a"/>
+  <rect y="388" width="800" height="3" fill="#e8d7b8"/>
+  <rect y="403" width="800" height="3" fill="#a08a64"/>
+  <!-- 地板（拼板线+横向接缝+前缘压暗） -->
+  <rect y="406" width="800" height="114" fill="#a8bd9a"/>
+  <g><line x1="130" y1="406" x2="130" y2="520" stroke="#93a988" stroke-width="2.4"/>
+  <line x1="268" y1="406" x2="268" y2="520" stroke="#93a988" stroke-width="2.4"/>
+  <line x1="406" y1="406" x2="406" y2="520" stroke="#93a988" stroke-width="2.4"/>
+  <line x1="544" y1="406" x2="544" y2="520" stroke="#93a988" stroke-width="2.4"/>
+  <line x1="682" y1="406" x2="682" y2="520" stroke="#93a988" stroke-width="2.4"/></g>
+  <rect y="462" width="800" height="2.4" fill="#9db191"/>
+  <rect y="406" width="800" height="114" fill="url(#floorShade)"/>
 </svg>

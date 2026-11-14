@@ -1,38 +1,56 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice">
-  <!-- 星空夜幕：深蓝渐变+月亮+眨眼星星 -->
+  <!-- night-sky：完整房间场景（墙面+踢脚线+地板），光照与家具（左上主光）呼应 -->
   <style>
     .st { animation: twinkle 2.6s ease-in-out infinite; }
     @keyframes twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+    .rain { animation: fall 1.6s linear infinite; }
+    @keyframes fall { 0% { transform: translateY(-140px); } 100% { transform: translateY(0); } }
+    .pt { animation: petal 8s linear infinite; }
+    .pt.p2 { animation-duration: 10s; animation-delay: 2.6s; }
+    .pt.p3 { animation-duration: 9s; animation-delay: 5s; }
+    @keyframes petal { 0% { transform: translate(0, -20px) rotate(0deg); opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { transform: translate(-60px, 420px) rotate(300deg); opacity: 0; } }
+    .mist1 { animation: mbreath 9s ease-in-out infinite alternate; }
+    .mist2 { animation: mbreath 12s ease-in-out infinite alternate; animation-delay: 2s; }
+    @keyframes mbreath { 0% { opacity: 0.5; } 100% { opacity: 0.85; } }
   </style>
   <defs>
-    <linearGradient id="nsky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#16233f"/>
-      <stop offset="0.7" stop-color="#1f3055"/>
-      <stop offset="1" stop-color="#2c3f66"/>
+    <linearGradient id="wp" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16233f"/><stop offset="0.7" stop-color="#1f3055"/><stop offset="1" stop-color="#2c3f66"/>
     </linearGradient>
     <radialGradient id="moon" cx="0.4" cy="0.4" r="0.8">
-      <stop offset="0" stop-color="#fffbe8"/>
-      <stop offset="1" stop-color="#efe4bd"/>
+      <stop offset="0" stop-color="#fffbe8"/><stop offset="1" stop-color="#efe4bd"/>
     </radialGradient>
+    <linearGradient id="wallGlow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a1420" stop-opacity="0.16"/>
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.07"/>
+      <stop offset="0.8" stop-color="#ffffff" stop-opacity="0.02"/>
+      <stop offset="1" stop-color="#0a1420" stop-opacity="0.12"/>
+    </linearGradient>
+    <linearGradient id="floorShade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.1"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#0d1424" stop-opacity="0.3"/>
+    </linearGradient>
   </defs>
-  <rect width="800" height="520" fill="url(#nsky)"/>
-  <circle cx="620" cy="120" r="44" fill="url(#moon)"/>
-  <circle cx="606" cy="110" r="7" fill="#e3d6a8" opacity="0.7"/>
-  <circle cx="632" cy="132" r="5" fill="#e3d6a8" opacity="0.6"/>
-  <g fill="#ffffff">
-    <circle class="st" cx="80" cy="70" r="2.4"/>
-    <circle class="st" cx="180" cy="140" r="1.8" style="animation-delay:0.4s"/>
-    <circle class="st" cx="300" cy="60" r="2.2" style="animation-delay:1.1s"/>
-    <circle class="st" cx="420" cy="120" r="1.6" style="animation-delay:1.8s"/>
-    <circle class="st" cx="500" cy="50" r="2.6" style="animation-delay:0.7s"/>
-    <circle class="st" cx="700" cy="220" r="2" style="animation-delay:2.1s"/>
-    <circle class="st" cx="120" cy="240" r="1.7" style="animation-delay:1.4s"/>
-    <circle class="st" cx="240" cy="210" r="2.3" style="animation-delay:2.4s"/>
-    <circle class="st" cx="360" cy="180" r="1.5" style="animation-delay:0.2s"/>
-    <circle class="st" cx="470" cy="250" r="1.9" style="animation-delay:1.9s"/>
-    <circle class="st" cx="60" cy="170" r="1.6" style="animation-delay:2.8s"/>
-    <circle class="st" cx="740" cy="80" r="2.1" style="animation-delay:0.9s"/>
-  </g>
-  <ellipse cx="200" cy="330" rx="200" ry="18" fill="#2a3c63" opacity="0.8"/>
-  <ellipse cx="600" cy="380" rx="240" ry="20" fill="#31446e" opacity="0.7"/>
+  <rect width="800" height="395" fill="url(#wp)"/>
+  <circle cx="620" cy="110" r="44" fill="url(#moon)"/><circle cx="606" cy="100" r="7" fill="#e3d6a8" opacity="0.7"/>
+      <g fill="#ffffff"><circle class="st" cx="80" cy="70" r="2.4"/><circle class="st" cx="180" cy="140" r="1.8" style="animation-delay:0.4s"/><circle class="st" cx="300" cy="60" r="2.2" style="animation-delay:1.1s"/><circle class="st" cx="420" cy="120" r="1.6" style="animation-delay:1.8s"/><circle class="st" cx="500" cy="50" r="2.6" style="animation-delay:0.7s"/><circle class="st" cx="120" cy="240" r="1.7" style="animation-delay:1.4s"/><circle class="st" cx="240" cy="210" r="2.3" style="animation-delay:2.4s"/><circle class="st" cx="470" cy="250" r="1.9" style="animation-delay:1.9s"/><circle class="st" cx="60" cy="170" r="1.6" style="animation-delay:2.8s"/><circle class="st" cx="740" cy="80" r="2.1" style="animation-delay:0.9s"/></g>
+      <ellipse cx="200" cy="320" rx="200" ry="18" fill="#2a3c63" opacity="0.8"/>
+      <ellipse cx="600" cy="350" rx="240" ry="20" fill="#31446e" opacity="0.7"/>
+  <rect width="800" height="395" fill="url(#wallGlow)"/>
+  <!-- 墙脚 AO -->
+  <rect y="368" width="800" height="20" fill="#0a1420" opacity="0.10"/>
+  <!-- 踢脚线 -->
+  <rect y="388" width="800" height="18" fill="#1a2438"/>
+  <rect y="388" width="800" height="3" fill="#2c3a58"/>
+  <rect y="403" width="800" height="3" fill="#111a2c"/>
+  <!-- 地板（拼板线+横向接缝+前缘压暗） -->
+  <rect y="406" width="800" height="114" fill="#1f2b45"/>
+  <g><line x1="130" y1="406" x2="130" y2="520" stroke="#182238" stroke-width="2.4"/>
+  <line x1="268" y1="406" x2="268" y2="520" stroke="#182238" stroke-width="2.4"/>
+  <line x1="406" y1="406" x2="406" y2="520" stroke="#182238" stroke-width="2.4"/>
+  <line x1="544" y1="406" x2="544" y2="520" stroke="#182238" stroke-width="2.4"/>
+  <line x1="682" y1="406" x2="682" y2="520" stroke="#182238" stroke-width="2.4"/></g>
+  <rect y="462" width="800" height="2.4" fill="#1d2940"/>
+  <rect y="406" width="800" height="114" fill="url(#floorShade)"/>
 </svg>
