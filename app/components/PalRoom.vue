@@ -43,12 +43,31 @@ function measureRoom() {
 
 /** 纵向布局档：房间明显高于宽（桌面双栏右栏）时切竖版世界与摆位（对齐原版移动端场景） */
 const portrait = computed(() => roomH.value > roomW.value * 0.75)
+
+// ---- 2.5D 写真化：鼠标视差（背景/世界反向微移） ----
+const parX = ref(0)
+const parY = ref(0)
+let parLast = 0
+function onRoomMove(e: PointerEvent) {
+  if (isMobile.value) return
+  const now = performance.now()
+  if (now - parLast < 50) return // 50ms 节流：headless 下 rAF 可能被抑制，直接更新
+  parLast = now
+  const rect = roomEl.value?.getBoundingClientRect()
+  if (!rect || !rect.width) return
+  parX.value = ((e.clientX - rect.left) / rect.width - 0.5) * 2
+  parY.value = ((e.clientY - rect.top) / rect.height - 0.5) * 2
+}
+const roomParallaxStyle = computed(() => ({
+  '--par-x': `${(parX.value * 1.4).toFixed(2)}%`,
+  '--par-y': `${(parY.value * 1.0).toFixed(2)}%`,
+}))
 const worldW = computed(() => {
   if (portrait.value) { const h = Math.min(roomH.value * 0.95, roomW.value / PORTRAIT_ASPECT); return h * PORTRAIT_ASPECT }
   return Math.min(roomW.value, roomH.value * DESIGN_ASPECT)
 })
 const worldH = computed(() => portrait.value ? worldW.value / PORTRAIT_ASPECT : worldW.value / DESIGN_ASPECT)
-const worldStyle = computed(() => ({ width: `${worldW.value}px`, height: `${worldH.value}px`, left: `${(roomW.value - worldW.value) / 2}px` }))
+const worldStyle = computed(() => ({ width: `${worldW.value}px`, height: `${worldH.value}px`, left: `${(roomW.value - worldW.value) / 2}px`, transform: `translate(calc(var(--par-x, 0%) * -0.22), calc(var(--par-y, 0%) * -0.22))` }))
 
 /** 当前布局档下的家具尺寸/摆位 */
 function dims(def: PalTotemDef) {
@@ -362,6 +381,20 @@ function rescale(id: string, delta: number) {
   palSound.tap()
 }
 
+// ---- 灯光照亮房间：点亮的落地灯在世界层投出暖光斑（z0，压在壁纸/地板上、家具后面） ----
+const litLamps = computed(() => room.placed.value.filter(i => i.totemId === 'floor-lamp' && i.on))
+function lampGlowStyle(inst: { id: string; totemId: string; x: number; bottom: number; scale?: number }) {
+  const def = dd(inst)
+  if (!def) return {}
+  const imgH = (def.w / 100) * worldW.value * def.ar * (inst.scale ?? 1)
+  return {
+    left: `${inst.x}%`,
+    bottom: `${(inst.bottom / 100) * worldH.value + imgH * 0.55}px`,
+    width: `${worldW.value * 0.5}px`,
+    height: `${worldW.value * 0.5}px`,
+  }
+}
+
 // ---- 目录弹窗 ----
 const catalogNote = ref('')
 let noteTimer: ReturnType<typeof setTimeout> | undefined
@@ -425,18 +458,20 @@ function photoStyle(def: PalTotemDef) {
 </script>
 
 <template>
-  <div ref="roomEl" class="jr-pal-room" :class="{ mobile: isMobile }" data-testid="pal-room" @pointerdown="deselect">
+  <div ref="roomEl" class="jr-pal-room" :class="{ mobile: isMobile }" :style="roomParallaxStyle" data-testid="pal-room" @pointerdown="deselect" @pointermove="onRoomMove">
     <!-- 壁纸（也是一种 totem，单独铺满整面墙） -->
     <img v-if="room.wallpaper.value" class="room-wallpaper" :src="palTotemDef(room.wallpaper.value.totemId)?.src" alt="" aria-hidden="true" data-testid="pal-wallpaper">
     <div class="room-spotlight" aria-hidden="true"></div>
+    <div class="room-vignette" aria-hidden="true"></div>
     <!-- 夜间氛围：21:00-6:00 房间蒙上夜色（对齐原版随昼夜变化的氛围方向） -->
     <div v-if="night" class="room-night" aria-hidden="true"></div>
 
     <!-- 世界层：固定纵横比，贴底居中；地板/家具/小羊都在同一坐标系里 -->
     <div ref="worldEl" class="room-world" :class="{ 'is-portrait': portrait }" :style="worldStyle">
+      <div v-for="lamp in litLamps" :key="lamp.id" class="lamp-light" :style="lampGlowStyle(lamp)" aria-hidden="true"></div>
       <div class="room-floor" aria-hidden="true"></div>
 
-      <div v-for="inst in room.placed.value" :key="inst.id" class="room-totem" :class="{ sel: selectedId === inst.id, dragging: drag?.id === inst.id }"
+      <div v-for="inst in room.placed.value" :key="inst.id" class="room-totem" :class="{ sel: selectedId === inst.id, dragging: drag?.id === inst.id, noShadow: dd(inst)?.noShadow }"
         :style="totemStyle(inst)" :data-totem-name="palTotemDef(inst.totemId)?.id" :data-inst-id="inst.id"
         role="button" tabindex="0" :aria-label="`家具：${palTotemDef(inst.totemId)?.name}`"
         @pointerdown.stop="onTotemDown(inst, $event)" @pointermove="onTotemMove(inst, $event)" @pointerup="onTotemUp($event)"
@@ -551,7 +586,8 @@ function photoStyle(def: PalTotemDef) {
 <style scoped>
 .jr-pal-room { position: relative; height: 240px; border-radius: 20px; overflow: hidden; isolation: isolate; background: #e9edef; touch-action: none; }
 
-.room-wallpaper { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+.room-wallpaper { position: absolute; inset: -3%; width: 106%; height: 106%; object-fit: cover; z-index: 0; transform: translate(calc(var(--par-x, 0%) * 0.6), calc(var(--par-y, 0%) * 0.6)); }
+.room-vignette { position: absolute; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(120% 120% at 50% 40%, transparent 58%, rgba(10,20,30,0.17) 100%); }
 .room-spotlight { position: absolute; inset: 0; z-index: 1; background: radial-gradient(58% 88% at 50% -6%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.25) 45%, rgba(255,255,255,0) 72%); pointer-events: none; }
 .room-night { position: absolute; inset: 0; z-index: 46; background: linear-gradient(180deg, rgba(18,28,52,0.42) 0%, rgba(18,28,52,0.24) 100%); pointer-events: none; }
 .room-weather { position: absolute; left: 14px; bottom: 36px; z-index: 47; font-size: 12px; background: rgba(255,255,255,0.72); border-radius: 999px; padding: 2px 9px; color: var(--jr-on-surface-variant); }
@@ -561,10 +597,15 @@ function photoStyle(def: PalTotemDef) {
 .room-world { position: absolute; bottom: 0; }
 .room-world.is-portrait .room-mascot { height: 62%; }
 .room-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 14%; background: linear-gradient(180deg, rgba(120,138,146,0) 0%, rgba(120,138,146,0.18) 100%); pointer-events: none; }
+.lamp-light { position: absolute; transform: translate(-50%, 18%); background: radial-gradient(circle at 50% 46%, rgba(255,196,110,0.32) 0%, rgba(255,188,100,0.15) 44%, transparent 70%); pointer-events: none; }
 
 .room-totem { position: absolute; cursor: grab; user-select: none; touch-action: none; }
 .room-totem.dragging { cursor: grabbing; }
 .totem-art { position: relative; width: 100%; transform-origin: center bottom; transition: transform 0.2s ease; }
+/* 接触投影：随画布缩放的椭圆软影（壁挂件由 no-shadow 关闭） */
+.totem-art::before { content: ""; position: absolute; left: 6%; right: 6%; bottom: -1.5%; height: 9%; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(15,25,35,0.30) 0%, rgba(15,25,35,0.12) 55%, transparent 76%); filter: blur(2px); z-index: -1; pointer-events: none; }
+.room-totem.no-shadow .totem-art::before { display: none; }
+.room-totem:hover .totem-art { filter: brightness(1.05); }
 .room-totem.dragging .totem-art { transition: none; }
 .room-totem img { width: 100%; height: auto; display: block; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(40,60,70,0.18)); }
 .room-totem.dragging img { transition: none; }
