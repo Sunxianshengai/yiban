@@ -94,6 +94,8 @@ input, textarea { font-family: inherit; }
 
 /* 桌宠覆盖层：整页必须透明，否则 Electron 透明窗口里会是一块白板 */
 .jr-shell-pet { display: block; background: transparent; }
+/* /welcome 落地页：整页自绘，可滚动、占满视口（shell 默认 flex+overflow:hidden 会裁掉长页） */
+.jr-shell-welcome { display: block; height: 100vh; overflow-y: auto; }
 html.jr-pet-doc, html.jr-pet-doc body, html.jr-pet-doc #__nuxt { background: transparent !important; }
 html.jr-pet-doc body { overflow: hidden; }
 

@@ -8,6 +8,8 @@ const route = useRoute()
 const isPetPage = computed(() => route.name === 'pet' || route.path.replace(/\/+$/, '') === '/pet')
 // /pal 页本身的主角就是小羊（移动场景卡 / 配置后的舞台），悬浮桌宠在这里是重复还会撞场景
 const isPalPage = computed(() => route.path.replace(/\/+$/, '') === '/pal')
+// /welcome 落地页：整页自绘（不套侧栏/移动壳，不挂悬浮桌宠——小羊在 Hero 里）
+const isWelcomePage = computed(() => route.path.replace(/\/+$/, '') === '/welcome')
 
 const onboarded = ref(true)
 const locked = ref(false)
@@ -44,30 +46,33 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="jr-shell" :class="{ 'sidebar-open': sidebarOpen, 'jr-shell-pet': isPetPage }">
+  <div class="jr-shell" :class="{ 'sidebar-open': sidebarOpen, 'jr-shell-pet': isPetPage, 'jr-shell-welcome': isWelcomePage }">
     <NuxtPage v-if="isPetPage" />
     <template v-else-if="locked">
       <LockOverlay @unlocked="locked = false" />
     </template>
     <template v-else>
-      <button v-if="!isMobile" class="jr-sidebar-toggle" type="button" aria-label="打开侧栏" @click="sidebarOpen = !sidebarOpen">
-        <JrIcon :path="mdiMenu" :size="20" />
-      </button>
-      <template v-if="isMobile">
-        <MobileShell>
-          <NuxtPage />
-        </MobileShell>
-      </template>
+      <NuxtPage v-if="isWelcomePage" />
       <template v-else>
-        <AppSidebar @navigate="sidebarOpen = false" />
-        <main class="jr-main" style="position:relative" @click="sidebarOpen = false">
-          <NuxtPage />
-        </main>
+        <button v-if="!isMobile" class="jr-sidebar-toggle" type="button" aria-label="打开侧栏" @click="sidebarOpen = !sidebarOpen">
+          <JrIcon :path="mdiMenu" :size="20" />
+        </button>
+        <template v-if="isMobile">
+          <MobileShell>
+            <NuxtPage />
+          </MobileShell>
+        </template>
+        <template v-else>
+          <AppSidebar @navigate="sidebarOpen = false" />
+          <main class="jr-main" style="position:relative" @click="sidebarOpen = false">
+            <NuxtPage />
+          </main>
+        </template>
       </template>
       <OnboardingModal v-if="!onboarded" @finish="onboarded = true" />
       <MembershipDialog v-if="membershipOpen" @close="membershipOpen = false" />
       <!-- 未锁、已完成引导时才放出来，免得盖住引导层；/pet 独立页已在上面提前返回；/pal 有自己的小羊 -->
-      <PetWidget v-if="petVisible && onboarded && !isPalPage" embedded />
+      <PetWidget v-if="petVisible && onboarded && !isPalPage && !isWelcomePage" embedded />
     </template>
   </div>
 </template>

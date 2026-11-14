@@ -15,6 +15,7 @@ import {
   mdiAccountGroupOutline,
   mdiAccountMultipleOutline,
   mdiTrashCanOutline,
+  mdiInformationOutline,
 } from '@mdi/js'
 import { db } from '~/utils/db'
 import { familyAvatarColor, familyAvatarChar } from '~/utils/familyUi'
@@ -152,6 +153,11 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
       <JrIcon :path="mdiTrashCanOutline" :size="19" />
       <span class="jr-nav-text">回收站</span>
       <span class="jr-badge-sub">{{ trashCount }}</span>
+    </NuxtLink>
+
+    <NuxtLink to="/welcome" class="jr-nav-item" :class="{ active: route.path.startsWith('/welcome') }">
+      <JrIcon :path="mdiInformationOutline" :size="19" />
+      <span class="jr-nav-text">介绍</span>
     </NuxtLink>
 
     <!-- 家庭组卡（M-209 门面）：已加入=成员头像行+最新家人动态+聚合红点；未加入=引导直达设置 -->
