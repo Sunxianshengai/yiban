@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 140">
+  <!-- 猫咪（尾巴轻摆动画）：灰白花猫坐姿 -->
+  <style>
+    #tail { transform-origin: 138px 108px; animation: sway 3.4s ease-in-out infinite alternate; }
+    @keyframes sway { 0% { transform: rotate(-6deg); } 100% { transform: rotate(10deg); } }
+  </style>
+  <defs>
+    <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b9bec4"/>
+      <stop offset="1" stop-color="#8f979f"/>
+    </linearGradient>
+  </defs>
+  <path id="tail" d="M138 108 C158 100 164 76 156 62 C152 56 146 58 148 66 C152 80 148 92 134 98 Z" fill="#8f979f"/>
+  <!-- 身体 -->
+  <path d="M52 122 C48 84 66 62 92 62 C118 62 134 86 132 122 Z" fill="url(#fur)"/>
+  <path d="M70 122 C70 96 78 84 92 84 C106 84 112 98 112 122 Z" fill="#e9ebee"/>
+  <!-- 头 -->
+  <circle cx="84" cy="52" r="26" fill="url(#fur)"/>
+  <path d="M62 40 L58 20 L74 30 Z" fill="#8f979f"/>
+  <path d="M106 40 L110 20 L94 30 Z" fill="#8f979f"/>
+  <path d="M64 36 L62 26 L70 32 Z" fill="#e9ebee"/>
+  <path d="M104 36 L106 26 L98 32 Z" fill="#e9ebee"/>
+  <!-- 脸（闭眼打盹） -->
+  <g stroke="#4c5257" stroke-width="2" stroke-linecap="round" fill="none">
+    <path d="M72 50 Q76 54 80 50"/>
+    <path d="M88 50 Q92 54 96 50"/>
+  </g>
+  <path d="M82 58 L86 58 L84 61 Z" fill="#d98a8a"/>
+  <g stroke="#6b7177" stroke-width="1.4" stroke-linecap="round">
+    <line x1="62" y1="56" x2="52" y2="54"/><line x1="62" y1="60" x2="52" y2="61"/>
+    <line x1="106" y1="56" x2="116" y2="54"/><line x1="106" y1="60" x2="116" y2="61"/>
+  </g>
+  <!-- 前爪 -->
+  <ellipse cx="76" cy="122" rx="9" ry="5" fill="#e9ebee"/>
+  <ellipse cx="100" cy="122" rx="9" ry="5" fill="#e9ebee"/>
+  <!-- 条纹 -->
+  <g stroke="#8f979f" stroke-width="3" stroke-linecap="round" opacity="0.7">
+    <line x1="80" y1="30" x2="80" y2="24"/><line x1="88" y1="31" x2="89" y2="25"/><line x1="96" y1="31" x2="98" y2="26"/>
+  </g>
+</svg>

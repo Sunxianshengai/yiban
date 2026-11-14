@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { mdiRotateRight, mdiFlipHorizontal, mdiArrowUp, mdiArrowDown, mdiWater, mdiTrashCanOutline, mdiClose, mdiLampOutline, mdiRestart } from '@mdi/js'
+import { mdiRotateRight, mdiFlipHorizontal, mdiArrowUp, mdiArrowDown, mdiWater, mdiTrashCanOutline, mdiClose, mdiLampOutline, mdiRestart, mdiImageMultipleOutline, mdiImageOffOutline } from '@mdi/js'
 import { PAL_TOTEMS, PAL_WALLPAPERS, palTotemDef, type PalTotemDef } from '~/utils/palTotemDefs'
 import { palSound } from '~/utils/palSounds'
+import { db } from '~/utils/db'
+import { WEATHER_EMOJI } from '~/utils/services'
 
 /**
  * Pal 房间（M-122）——原版 Journey Pal 页的家具（totems）系统复刻：
@@ -64,12 +66,76 @@ const barStyle = computed(() => {
   if (!sel || !def) return {}
   const imgH = (dims(def).w / 100) * worldW.value * def.ar * (1 + sel.growthStage * 0.16)
   const worldLeft = (roomW.value - worldW.value) / 2
-  // 横向夹紧：动作条 ~7 键宽，贴左右边时会被 overflow:hidden 裁掉按钮（移动端实测 55px）
-  const half = isMobile.value ? 118 : 102
+  // 横向夹紧：动作条 ~9 键宽，贴左右边时会被 overflow:hidden 裁掉按钮（移动端实测 55px）
+  const half = isMobile.value ? 118 : 126
   const left = Math.min(Math.max(worldLeft + (dims(def).x / 100) * worldW.value, half), roomW.value - half)
   const bottom = Math.min((dims(def).bottom / 100) * worldH.value + imgH + 12, roomH.value - 44)
   return { left: `${left}px`, bottom: `${bottom}px` }
 })
+
+// ---- 相框照片（原版 totem 的 photoId 模型）：photoId 指向 mediaFilesV2，渲染时换显示地址 ----
+const stars = usePalStars()
+const photoUrls = ref<Record<string, string>>({})
+const photoResolver = useMediaResolver()
+watch(() => room.instances.value.map(i => `${i.id}:${i.photoId ?? 0}`).join('|'), async () => {
+  for (const inst of room.instances.value) {
+    if (!inst.photoId) { delete photoUrls.value[inst.id]; continue }
+    if (photoUrls.value[inst.id]) continue
+    try {
+      const row = await db.mediaFilesV2.get(inst.photoId)
+      if (!row) continue
+      await photoResolver.prefetch([row])
+      const url = photoResolver.urlForSync(row)
+      if (url) photoUrls.value[inst.id] = url
+    } catch { /* 取不到就先空着，相框留白 */ }
+  }
+}, { immediate: true })
+onBeforeUnmount(() => photoResolver.dispose())
+
+const photoOpen = ref(false)
+const photoRows = ref<{ id: number; url: string; fileName: string }[]>([])
+async function openPhotoPicker() {
+  if (!selected.value) return
+  photoOpen.value = true
+  try {
+    const all = (await db.mediaFilesV2.toArray())
+      .filter(m => m.mimeType?.startsWith('image/'))
+      .sort((a, b) => (b.id ?? 0) - (a.id ?? 0))
+      .slice(0, 80)
+    await photoResolver.prefetch(all)
+    photoRows.value = all.flatMap(m => { const url = photoResolver.urlForSync(m); return url && m.id != null ? [{ id: m.id, url, fileName: m.fileName }] : [] })
+  } catch { photoRows.value = [] }
+}
+function assignPhoto(photoId: number) {
+  if (!selected.value) return
+  room.setPhoto(selected.value.id, photoId)
+  palSound.insert()
+  photoOpen.value = false
+}
+function clearPhoto() {
+  if (!selected.value) return
+  room.setPhoto(selected.value.id, undefined)
+  palSound.remove()
+}
+
+// ---- 昼夜氛围 + 天气徽章（取最近一篇带天气的日记；原版房间随昼夜/季节变化的氛围方向） ----
+const nowHour = ref(new Date().getHours())
+let hourTimer: ReturnType<typeof setInterval> | undefined
+const night = computed(() => nowHour.value >= 21 || nowHour.value < 6)
+const { entries: palEntries, refresh: refreshPalEntries } = useEntries()
+const weatherBadge = computed(() => {
+  const withW = palEntries.value.filter(e => e.weatherIcon).slice(0, 60)
+  if (!withW.length) return ''
+  const latest = withW.reduce((a, b) => (new Date(b.dateOfJournal) > new Date(a.dateOfJournal) ? b : a))
+  const emoji = WEATHER_EMOJI[latest.weatherIcon!] || ''
+  if (!emoji) return ''
+  return latest.weatherDegreeC != null ? `${emoji} ${latest.weatherDegreeC}°C` : emoji
+})
+onMounted(() => {
+  hourTimer = setInterval(() => { nowHour.value = new Date().getHours() }, 60000)
+  if (!palEntries.value.length) void refreshPalEntries()
+})
+onBeforeUnmount(() => clearInterval(hourTimer))
 
 function select(id: string) {
   selectedId.value = id
@@ -116,12 +182,13 @@ function act(id: string, kind: 'rotate' | 'flip' | 'front' | 'back' | 'water' | 
   else if (kind === 'water') doWater(id, def)
 }
 function doWater(id: string, def: ReturnType<typeof palTotemDef>) {
+  const isFeed = def?.growable?.action === 'feed'
   const r = room.water(id)
   if (!r) return
   if (r === 'grow') {
     palSound.water()
     palSound.sparkle()
-    spawnFx(id, 'drop')
+    spawnFx(id, 'drop', isFeed ? '🍤' : '💧')
     setTimeout(() => spawnFx(id, 'star'), 420)
   } else {
     palSound.sparkle()
@@ -129,13 +196,13 @@ function doWater(id: string, def: ReturnType<typeof palTotemDef>) {
   }
 }
 
-// ---- 浇水/生长浮动特效（水滴落下、星星升起） ----
-interface Fx { key: number; totemId: string; kind: 'drop' | 'star' }
+// ---- 浇水/喂鱼/生长浮动特效（水滴/鱼食落下、星星升起） ----
+interface Fx { key: number; totemId: string; kind: 'drop' | 'star'; emoji?: string }
 const fx = ref<Fx[]>([])
 let fxSeq = 0
-function spawnFx(id: string, kind: 'drop' | 'star') {
+function spawnFx(id: string, kind: 'drop' | 'star', emoji?: string) {
   const key = ++fxSeq
-  fx.value = [...fx.value, { key, totemId: id, kind }]
+  fx.value = [...fx.value, { key, totemId: id, kind, emoji }]
   setTimeout(() => { fx.value = fx.value.filter(f => f.key !== key) }, 950)
 }
 
@@ -168,8 +235,24 @@ watch(room.hint, (v) => {
 })
 
 // ---- 目录弹窗 ----
+const catalogNote = ref('')
+let noteTimer: ReturnType<typeof setTimeout> | undefined
+function note(msg: string) {
+  catalogNote.value = msg
+  clearTimeout(noteTimer)
+  noteTimer = setTimeout(() => { catalogNote.value = '' }, 3600)
+}
 function addFromCatalog(totemId: string) {
   if (room.addTotem(totemId, portrait.value)) palSound.insert()
+}
+function onCatalogCard(d: PalTotemDef) {
+  if (!stars.isLocked(d)) { addFromCatalog(d.id); return }
+  if (stars.unlock(d)) {
+    note(`已解锁「${d.name}」，花掉 ${d.cost}⭐。`)
+    addFromCatalog(d.id)
+  } else {
+    note(`「${d.name}」要 ${d.cost}⭐，还差 ${stars.missingFor(d)} 颗——写一篇日记 +1⭐，当天首篇 +2⭐。`)
+  }
 }
 function swapFromCatalog(totemId: string) {
   if (room.swapWallpaper(totemId, portrait.value)) { palSound.insert(); showCatalog.value = false }
@@ -207,6 +290,10 @@ function totemStyle(inst: { x: number; bottom: number; rotation: number; flipped
   }
 }
 function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed(2)})` }
+function photoStyle(def: PalTotemDef) {
+  const p = def.photo!
+  return { left: `${p.ax}%`, top: `${p.ay}%`, width: `${p.aw}%`, height: `${p.ah}%` }
+}
 </script>
 
 <template>
@@ -214,6 +301,8 @@ function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed
     <!-- 壁纸（也是一种 totem，单独铺满整面墙） -->
     <img v-if="room.wallpaper.value" class="room-wallpaper" :src="palTotemDef(room.wallpaper.value.totemId)?.src" alt="" aria-hidden="true" data-testid="pal-wallpaper">
     <div class="room-spotlight" aria-hidden="true"></div>
+    <!-- 夜间氛围：21:00-6:00 房间蒙上夜色（对齐原版随昼夜变化的氛围方向） -->
+    <div v-if="night" class="room-night" aria-hidden="true"></div>
 
     <!-- 世界层：固定纵横比，贴底居中；地板/家具/小羊都在同一坐标系里 -->
     <div ref="worldEl" class="room-world" :class="{ 'is-portrait': portrait }" :style="worldStyle">
@@ -226,7 +315,10 @@ function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed
         @keydown.enter.prevent="select(inst.id)">
         <img :src="palTotemDef(inst.totemId)?.src" :alt="palTotemDef(inst.totemId)?.name" draggable="false"
           :data-growth="palTotemDef(inst.totemId)?.growable ? inst.growthStage : undefined" :style="{ transform: growthScale(inst.growthStage) }">
-        <span v-for="f in fx.filter(f => f.totemId === inst.id)" :key="f.key" class="fx" :class="f.kind" aria-hidden="true">{{ f.kind === 'drop' ? '💧' : '⭐' }}</span>
+        <!-- 相框里的照片（原版 photoId 模型）：钉在素材开口区，跟随旋转/翻转 -->
+        <img v-if="palTotemDef(inst.totemId)?.photo && inst.photoId && photoUrls[inst.id]" class="frame-photo"
+          :src="photoUrls[inst.id]" alt="相框里的照片" :style="photoStyle(palTotemDef(inst.totemId)!)">
+        <span v-for="f in fx.filter(f => f.totemId === inst.id)" :key="f.key" class="fx" :class="f.kind" aria-hidden="true">{{ f.emoji || (f.kind === 'drop' ? '💧' : '⭐') }}</span>
       </div>
 
       <!-- 小羊（吉祥物；点它出反应）。容器不吃点击（透明大盒会挡住摆在中部的家具），命中区缩小到小羊身体 -->
@@ -246,12 +338,15 @@ function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed
       <button :data-act="'flip'" title="水平翻转" aria-label="水平翻转" @click.stop="act(selected.id, 'flip')"><JrIcon :path="mdiFlipHorizontal" :size="15" /></button>
       <button :data-act="'front'" title="置前" aria-label="置前" @click.stop="act(selected.id, 'front')"><JrIcon :path="mdiArrowUp" :size="15" /></button>
       <button :data-act="'back'" title="置后" aria-label="置后" @click.stop="act(selected.id, 'back')"><JrIcon :path="mdiArrowDown" :size="15" /></button>
-      <button v-if="palTotemDef(selected.totemId)?.growable" :data-act="'water'" title="浇水" aria-label="浇水" @click.stop="act(selected.id, 'water')"><JrIcon :path="mdiWater" :size="15" /></button>
+      <button v-if="palTotemDef(selected.totemId)?.photo" :data-act="'pick-photo'" title="选照片" aria-label="选照片" @click.stop="openPhotoPicker()"><JrIcon :path="mdiImageMultipleOutline" :size="15" /></button>
+      <button v-if="palTotemDef(selected.totemId)?.photo && selected.photoId" :data-act="'clear-photo'" title="清除照片" aria-label="清除照片" @click.stop="clearPhoto()"><JrIcon :path="mdiImageOffOutline" :size="15" /></button>
+      <button v-if="palTotemDef(selected.totemId)?.growable" :data-act="'water'" :title="palTotemDef(selected.totemId)?.growable?.label || '浇水'" :aria-label="palTotemDef(selected.totemId)?.growable?.label || '浇水'" @click.stop="act(selected.id, 'water')"><JrIcon :path="mdiWater" :size="15" /></button>
       <button :data-act="'remove'" title="移除" aria-label="移除" @click.stop="act(selected.id, 'remove')"><JrIcon :path="mdiTrashCanOutline" :size="15" /></button>
       <button :data-act="'done'" title="完成" aria-label="完成" @click.stop="deselect()"><JrIcon :path="mdiClose" :size="15" /></button>
     </div>
 
     <span class="jr-pet-caption">{{ caption }}</span>
+    <span v-if="weatherBadge" class="room-weather" :title="'来自最近一篇带天气的日记'">{{ weatherBadge }}</span>
 
     <!-- 舞台角落：家具入口 + 提示 -->
     <button class="room-catalog-btn" data-testid="pal-catalog-btn" title="家具目录" aria-label="打开家具目录" @pointerdown.stop @click.stop="showCatalog = true">
@@ -265,13 +360,14 @@ function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed
         <div class="catalog-panel" role="dialog" aria-modal="true" aria-label="家具目录" data-testid="pal-catalog">
           <header class="catalog-head">
             <h2>家具目录</h2>
+            <span class="catalog-balance" data-pal-stars title="写一篇日记 +1⭐，当天首篇 +2⭐">⭐ {{ stars.count }}</span>
             <button class="catalog-close" aria-label="关闭目录" @click="showCatalog = false"><JrIcon :path="mdiClose" :size="16" /></button>
           </header>
           <div class="catalog-grid">
-            <button v-for="d in PAL_TOTEMS" :key="d.id" class="catalog-card" :data-catalog-item="d.id" @click="addFromCatalog(d.id)">
+            <button v-for="d in PAL_TOTEMS" :key="d.id" class="catalog-card" :data-catalog-item="d.id" :data-locked="stars.isLocked(d) ? '1' : undefined" @click="onCatalogCard(d)">
               <img :src="d.src" :alt="d.name">
               <span class="catalog-name">{{ d.name }}</span>
-              <span class="catalog-state">{{ room.placedCount(d.id) ? `已摆放×${room.placedCount(d.id)}` : '摆上' }}</span>
+              <span class="catalog-state">{{ stars.isLocked(d) ? `🔒 ${d.cost}⭐ 解锁` : room.placedCount(d.id) ? `已摆放×${room.placedCount(d.id)}` : '摆上' }}</span>
             </button>
           </div>
           <h3 class="catalog-sub">壁纸</h3>
@@ -282,10 +378,30 @@ function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed
               <span class="catalog-state">{{ room.wallpaper.value?.totemId === d.id ? '使用中' : '换上' }}</span>
             </button>
           </div>
+          <p v-if="catalogNote" class="catalog-note" role="status">{{ catalogNote }}</p>
           <footer class="catalog-foot">
-            <span>复刻说明：原版更多家具是会员云端目录（代币购买），这里是本地免费目录。</span>
+            <span>复刻说明：原版更多家具是会员云端目录（代币购买），这里写日记攒⭐解锁。</span>
             <button class="catalog-reset" @click="resetRoom"><JrIcon :path="mdiRestart" :size="13" /> 恢复默认摆放</button>
           </footer>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- 选照片弹窗（相框用；照片来自你日记的附件，仅本机） -->
+    <Teleport to="body">
+      <div v-if="photoOpen" class="catalog-overlay" @click.self="photoOpen = false">
+        <div class="catalog-panel" role="dialog" aria-modal="true" aria-label="选择照片" data-testid="pal-photo-picker">
+          <header class="catalog-head">
+            <h2>选择一张照片</h2>
+            <button class="catalog-close" aria-label="关闭" @click="photoOpen = false"><JrIcon :path="mdiClose" :size="16" /></button>
+          </header>
+          <p class="photo-picker-note">来自你日记里的照片（仅本机）。选一张放进相框。</p>
+          <div class="catalog-grid photo-grid">
+            <button v-for="row in photoRows" :key="row.id" class="catalog-card" :data-photo-id="row.id" @click="assignPhoto(row.id)">
+              <img :src="row.url" :alt="row.fileName">
+            </button>
+          </div>
+          <p v-if="!photoRows.length" class="photo-picker-note">还没有带照片的日记——写日记时添几张照片，再来装点房间。</p>
         </div>
       </div>
     </Teleport>
@@ -297,6 +413,9 @@ function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed
 
 .room-wallpaper { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
 .room-spotlight { position: absolute; inset: 0; z-index: 1; background: radial-gradient(58% 88% at 50% -6%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.25) 45%, rgba(255,255,255,0) 72%); pointer-events: none; }
+.room-night { position: absolute; inset: 0; z-index: 46; background: linear-gradient(180deg, rgba(18,28,52,0.42) 0%, rgba(18,28,52,0.24) 100%); pointer-events: none; }
+.room-weather { position: absolute; left: 14px; bottom: 36px; z-index: 47; font-size: 12px; background: rgba(255,255,255,0.72); border-radius: 999px; padding: 2px 9px; color: var(--jr-on-surface-variant); }
+[data-theme="dark"] .room-weather { background: rgba(29,36,39,0.72); }
 
 /* 世界层：固定纵横比，贴底居中（竖高房间上方留墙面） */
 .room-world { position: absolute; bottom: 0; }
@@ -319,6 +438,15 @@ function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed
 .fx { position: absolute; left: 50%; top: 10%; font-size: 15px; pointer-events: none; animation: pal-fx 0.95s ease-out forwards; z-index: 30; }
 .fx.drop { top: 0; animation-name: pal-drop; }
 .fx.star { animation-name: pal-rise; }
+
+.frame-photo { position: absolute; object-fit: cover; pointer-events: none; }
+
+.catalog-balance { font-size: 12.5px; font-weight: 800; color: var(--jr-on-surface); background: var(--jr-surface-variant); border-radius: 999px; padding: 4px 11px; margin-right: auto; margin-left: 10px; }
+.catalog-note { margin: 10px 0 0; font-size: 12px; color: var(--jr-on-surface-variant); background: var(--jr-surface-variant); border-radius: 10px; padding: 8px 11px; }
+.photo-picker-note { margin: 0 0 10px; font-size: 12px; color: var(--jr-on-surface-variant); }
+.photo-grid { max-height: 52vh; overflow-y: auto; }
+.photo-grid .catalog-card { padding: 4px; }
+.photo-grid .catalog-card img { width: 100%; height: 84px; object-fit: cover; border-radius: 8px; }
 
 .room-mascot { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); height: 88%; aspect-ratio: 390 / 525; z-index: 0; pointer-events: none; }
 .mascot-hit { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: 64%; height: 44%; pointer-events: auto; cursor: pointer; background: none; border: 0; padding: 0; border-radius: 14px; }

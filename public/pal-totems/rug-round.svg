@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 70">
+  <!-- 圆地毯（地板层）：同心环+流苏点 -->
+  <ellipse cx="110" cy="36" rx="104" ry="28" fill="#c96a5a"/>
+  <ellipse cx="110" cy="36" rx="84" ry="22" fill="#e8d9c4"/>
+  <ellipse cx="110" cy="36" rx="62" ry="16" fill="#c96a5a"/>
+  <ellipse cx="110" cy="36" rx="40" ry="10" fill="#e8d9c4"/>
+  <ellipse cx="110" cy="36" rx="20" ry="5.5" fill="#a34a3d"/>
+  <g fill="#b98a6a" opacity="0.9">
+    <circle cx="8" cy="36" r="2.4"/><circle cx="212" cy="36" r="2.4"/>
+    <circle cx="20" cy="20" r="2"/><circle cx="200" cy="20" r="2"/>
+    <circle cx="20" cy="52" r="2"/><circle cx="200" cy="52" r="2"/>
+  </g>
+</svg>

@@ -126,6 +126,9 @@ export function useEntries() {
       return key
     })
     await refresh()
+    // Pal 房间星星经济（M-122 扩充）：写一篇日记 +1⭐（当天首篇 +2）。UI 层关注点挂在存储收口处，
+    // 所有保存路径（编辑器/随手记/草稿确认）统一进这里。
+    try { usePalStars().awardForSave() } catch { /* 星星失败不影响日记保存 */ }
     return entryId
   }
 

@@ -24,8 +24,12 @@ export interface PalTotemDef {
   kind: 'wallpaper' | 'furniture' | 'plant'
   /** 纵向布局档（竖房间/竖世界用）：不填则沿用横档尺寸 */
   p?: { w: number; x: number; bottom: number }
+  /** 相框：照片在素材里的开口区（百分比，相对素材框）。有值即可放照片（原版 totem 的 photoId 模型）。 */
+  photo?: { ax: number; ay: number; aw: number; ah: number }
+  /** 星星价格（诚实版代币）：有值的家具要先攒⭐解锁，原版为云端代币购买 */
+  cost?: number
   /** 生长型（盆栽/花）：浇水进阶。占位阶段用缩放表达（原版是每阶段独立素材）。 */
-  growable?: { maxStage: number }
+  growable?: { maxStage: number; action?: 'water' | 'feed'; label?: string }
 }
 
 export const PAL_TOTEMS: PalTotemDef[] = [
@@ -33,15 +37,22 @@ export const PAL_TOTEMS: PalTotemDef[] = [
   { id: 'stack-of-art-books', name: '艺术书堆', src: '/pal-totems/stack-of-art-books.svg', w: 11, ar: 0.59, x: 24, bottom: 40, z: 4, kind: 'furniture', p: { w: 24, x: 22, bottom: 27 } },
   { id: 'potted-fan-palm', name: '棕榈盆栽', src: '/pal-totems/potted-fan-palm.svg', w: 17, ar: 1.3, x: 84, bottom: 3, z: 2, kind: 'plant', p: { w: 36, x: 86, bottom: 4 }, growable: { maxStage: 3 } },
   { id: 'red-tulips-clear-glass-vase', name: '红郁金香花瓶', src: '/pal-totems/red-tulips-clear-glass-vase.svg', w: 9, ar: 1.205, x: 52, bottom: 3, z: 2, kind: 'plant', p: { w: 16, x: 55, bottom: 4 }, growable: { maxStage: 3 } },
-  { id: 'patterned-armchair-burgundy', name: '花纹扶手椅', src: '/pal-totems/patterned-armchair-burgundy.svg', w: 21, ar: 1.033, x: 74, bottom: 3, z: 1, kind: 'furniture', p: { w: 40, x: 79, bottom: 3 } },
+  { id: 'aquarium', name: '鱼缸', src: '/pal-totems/aquarium.svg', w: 16, ar: 0.8, x: 46, bottom: 3, z: 3, kind: 'furniture', p: { w: 30, x: 50, bottom: 5 }, cost: 6, growable: { maxStage: 2, action: 'feed', label: '喂鱼' } },
+  { id: 'bookshelf', name: '木书架', src: '/pal-totems/bookshelf.svg', w: 15, ar: 1.2, x: 12, bottom: 3, z: 3, kind: 'furniture', p: { w: 34, x: 20, bottom: 4 } },
+  { id: 'wall-clock', name: '挂钟', src: '/pal-totems/wall-clock.svg', w: 9, ar: 1.25, x: 30, bottom: 52, z: 1, kind: 'furniture', p: { w: 20, x: 70, bottom: 62 } },
+  { id: 'rug-round', name: '圆地毯', src: '/pal-totems/rug-round.svg', w: 22, ar: 0.318, x: 50, bottom: 1, z: 1, kind: 'furniture', p: { w: 44, x: 30, bottom: 1 } },
+  { id: 'cat-sitting', name: '猫咪', src: '/pal-totems/cat-sitting.svg', w: 12, ar: 0.78, x: 60, bottom: 3, z: 3, kind: 'furniture', p: { w: 22, x: 60, bottom: 3 } },
+  { id: 'patterned-armchair-burgundy', name: '花纹扶手椅', src: '/pal-totems/patterned-armchair-burgundy.svg', w: 21, ar: 1.033, x: 74, bottom: 3, z: 1, kind: 'furniture', p: { w: 40, x: 79, bottom: 3 }, cost: 3 },
   { id: 'arched-glass-window-frame', name: '拱形玻璃窗', src: '/pal-totems/arched-glass-window-frame.svg', w: 12, ar: 1.583, x: 40, bottom: 13, z: 1, kind: 'furniture', p: { w: 30, x: 33, bottom: 42 } },
   { id: 'white-french-double-door', name: '法式双开门', src: '/pal-totems/white-french-double-door.svg', w: 14, ar: 1.417, x: 66, bottom: 1, z: 1, kind: 'furniture', p: { w: 28, x: 67, bottom: 38 } },
-  { id: 'picture-frame-small-square-red', name: '小红相框', src: '/pal-totems/picture-frame-small-square-red.svg', w: 7, ar: 1.0, x: 36, bottom: 52, z: 1, kind: 'furniture', p: { w: 14, x: 38, bottom: 74 } },
-  { id: 'flower-pendant-mustard-yellow', name: '花朵吊灯', src: '/pal-totems/flower-pendant-mustard-yellow.svg', w: 8, ar: 1.5, x: 56, bottom: 58, z: 1, kind: 'furniture', p: { w: 15, x: 52, bottom: 78 } },
+  { id: 'picture-frame-small-square-red', name: '小红相框', src: '/pal-totems/picture-frame-small-square-red.svg', w: 7, ar: 1.0, x: 36, bottom: 52, z: 1, kind: 'furniture', p: { w: 14, x: 38, bottom: 74 }, photo: { ax: 25, ay: 25, aw: 50, ah: 50 } },
+  { id: 'flower-pendant-mustard-yellow', name: '花朵吊灯', src: '/pal-totems/flower-pendant-mustard-yellow.svg', w: 8, ar: 1.5, x: 56, bottom: 58, z: 1, kind: 'furniture', p: { w: 15, x: 52, bottom: 78 }, cost: 5 },
 ]
 
 export const PAL_WALLPAPERS: PalTotemDef[] = [
   { id: 'wallpaper-light-blue-striped', name: '浅蓝条纹壁纸', src: '/pal-totems/wallpaper-light-blue-striped.svg', w: 100, ar: 0.65, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
+  { id: 'wallpaper-sage-leaf', name: '浅绿叶片壁纸', src: '/pal-totems/wallpaper-sage-leaf.svg', w: 100, ar: 0.65, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
+  { id: 'wallpaper-cream-dot', name: '米底圆点壁纸', src: '/pal-totems/wallpaper-cream-dot.svg', w: 100, ar: 0.65, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
 ]
 
 export function palTotemDef(id: string): PalTotemDef | undefined {

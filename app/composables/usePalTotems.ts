@@ -19,6 +19,8 @@ export interface PalTotemInstance {
   z: number
   growthStage: number
   growthUpdatedAt?: number
+  /** 相框里放的照片（mediaFilesV2 行 id，原版 totem 的 photoId 模型） */
+  photoId?: number
 }
 
 const KEY = 'jr.palTotemInstances'
@@ -124,19 +126,27 @@ export function usePalTotems() {
   function front(id: string) { patch(id, i => ({ ...i, z: nextZ() })) }
   function back(id: string) { patch(id, i => ({ ...i, z: Math.max(1, i.z - 1) })) }
 
-  /** 浇水：返回 'grow' | 'max'。原版有 growthUpdatedAt 冷却，复刻按当前阶段直达上限。 */
+  /** 浇水/喂鱼（growable.action 区分）：返回 'grow' | 'max'。原版有 growthUpdatedAt 冷却，复刻按当前阶段直达上限。 */
   function water(id: string): 'grow' | 'max' | null {
     const inst = instances.value.find(i => i.id === id)
     const def = inst ? palTotemDef(inst.totemId) : undefined
     if (!inst || !def?.growable) return null
+    const isFeed = def.growable.action === 'feed'
     if (inst.growthStage >= def.growable.maxStage) {
-      hint.value = `${def.name}已经长到最大啦，谢谢你照顾它。`
+      hint.value = isFeed ? `${def.name}里的鱼吃饱啦，谢谢你照顾它们。` : `${def.name}已经长到最大啦，谢谢你照顾它。`
       return 'max'
     }
     const stage = inst.growthStage + 1
     patch(id, i => ({ ...i, growthStage: stage, growthUpdatedAt: Date.now() }))
-    hint.value = stage >= def.growable.maxStage ? `${def.name}长成啦！` : `${def.name}又长高了一点。`
+    hint.value = stage >= def.growable.maxStage
+      ? (isFeed ? `${def.name}里的鱼都长大啦！` : `${def.name}长成啦！`)
+      : (isFeed ? `${def.name}里的鱼更精神了。` : `${def.name}又长高了一点。`)
     return 'grow'
+  }
+
+  /** 相框放照片 / 清除（photoId 为 mediaFilesV2 行 id） */
+  function setPhoto(id: string, photoId: number | undefined) {
+    patch(id, i => ({ ...i, photoId }))
   }
 
   /** 回到原版空态默认组合（按当前布局档） */
@@ -147,5 +157,5 @@ export function usePalTotems() {
     ]
   }
 
-  return { instances, wallpaper, placed, hint, init, addTotem, swapWallpaper, removeTotem, move, rotate, flip, front, back, water, resetRoom, placedCount }
+  return { instances, wallpaper, placed, hint, init, addTotem, swapWallpaper, removeTotem, move, rotate, flip, front, back, water, setPhoto, resetRoom, placedCount }
 }

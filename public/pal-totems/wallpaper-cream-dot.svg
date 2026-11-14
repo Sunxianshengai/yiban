@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice">
+  <!-- 米底圆点壁纸 -->
+  <defs>
+    <pattern id="dotp" width="48" height="48" patternUnits="userSpaceOnUse">
+      <rect width="48" height="48" fill="#f4efe2"/>
+      <circle cx="12" cy="12" r="5" fill="#dcc9b4"/>
+      <circle cx="36" cy="34" r="3.4" fill="#cbb69c"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="520" fill="url(#dotp)"/>
+</svg>

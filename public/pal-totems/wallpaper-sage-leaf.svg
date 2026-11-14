@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice">
+  <!-- 浅绿叶片纹壁纸 -->
+  <defs>
+    <pattern id="leafp" width="72" height="72" patternUnits="userSpaceOnUse">
+      <rect width="72" height="72" fill="#eef1e8"/>
+      <g fill="#a9c295">
+        <path d="M18 44 C10 34 12 22 22 16 C30 24 30 36 18 44 Z"/>
+        <path d="M54 18 C46 8 48 -4 58 -10 C66 -2 66 10 54 18 Z" transform="translate(0,14)"/>
+        <path d="M50 56 C44 48 46 38 54 34 C60 40 60 50 50 56 Z" opacity="0.7"/>
+      </g>
+      <g stroke="#9db98a" stroke-width="1.6" fill="none" opacity="0.8">
+        <path d="M22 18 C22 28 22 36 18 44"/>
+        <path d="M58 22 C58 30 58 38 54 44"/>
+      </g>
+    </pattern>
+  </defs>
+  <rect width="800" height="520" fill="url(#leafp)"/>
+</svg>
