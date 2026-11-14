@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiRotateRight, mdiFlipHorizontal, mdiArrowUp, mdiArrowDown, mdiWater, mdiTrashCanOutline, mdiClose, mdiLampOutline, mdiRestart, mdiImageMultipleOutline, mdiImageOffOutline } from '@mdi/js'
+import { mdiRotateRight, mdiFlipHorizontal, mdiArrowUp, mdiArrowDown, mdiWater, mdiTrashCanOutline, mdiClose, mdiLampOutline, mdiRestart, mdiImageMultipleOutline, mdiImageOffOutline, mdiMagnifyPlusOutline, mdiMagnifyMinusOutline } from '@mdi/js'
 import { PAL_TOTEMS, PAL_WALLPAPERS, palTotemDef, type PalTotemDef } from '~/utils/palTotemDefs'
 import { palSound } from '~/utils/palSounds'
 import { db } from '~/utils/db'
@@ -76,10 +76,10 @@ const barStyle = computed(() => {
   const sel = selected.value
   const def = sel ? dd(sel) : undefined
   if (!sel || !def) return {}
-  const imgH = (def.w / 100) * worldW.value * def.ar * (1 + sel.growthStage * 0.16)
+  const imgH = (def.w / 100) * worldW.value * def.ar * (1 + sel.growthStage * 0.16) * (sel.scale ?? 1)
   const worldLeft = (roomW.value - worldW.value) / 2
-  // 横向夹紧：动作条 ~10 键宽，贴左右边时会被 overflow:hidden 裁掉按钮（移动端实测 55px）
-  const half = isMobile.value ? 150 : 144
+  // 横向夹紧：动作条 ~12 键宽，贴左右边时会被 overflow:hidden 裁掉按钮（移动端实测 55px）
+  const half = isMobile.value ? 180 : 172
   const left = Math.min(Math.max(worldLeft + (def.x / 100) * worldW.value, half), roomW.value - half)
   const bottom = Math.min((def.bottom / 100) * worldH.value + imgH + 12, roomH.value - 44)
   return { left: `${left}px`, bottom: `${bottom}px` }
@@ -287,6 +287,20 @@ function special(id: string, def: PalTotemDef) {
       room.hint.value = `今天是 ${d.getMonth() + 1} 月 ${d.getDate()} 日，星期${'日一二三四五六'[d.getDay()]}。`
       break
     }
+    case 'knock': palSound.knock(); spawnFx(id, 'star', '🔨'); room.hint.value = '笃笃——木头很结实。'; break
+    case 'page': palSound.page(); spawnFx(id, 'star', '📖'); room.hint.value = '翻了翻书页，都是回忆。'; break
+    case 'sit': squash(id); palSound.pat(); room.hint.value = '扶手椅陷了一下——舒服。'; break
+    case 'sparkle': palSound.sparkle(); spawnFx(id, 'star', '✨'); room.hint.value = '窗明几净。'; break
+    case 'swing': swingTop(id); palSound.tap(); room.hint.value = '吊灯轻轻晃了晃。'; break
+    case 'chime': {
+      const t = new Date()
+      palSound.tick()
+      wiggle(id)
+      room.hint.value = `现在 ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}。`
+      break
+    }
+    case 'pat': palSound.pat(); spawnFx(id, 'star', '✨'); room.hint.value = '拍掉了看不见的灰尘。'; break
+    case 'purr': palSound.purr(); spawnFx(id, 'star', '❤️'); wiggle(id); room.hint.value = '咕噜咕噜——它蹭了蹭你。'; break
   }
 }
 function ballRoll(id: string) {
@@ -309,6 +323,43 @@ function birdHop(id: string) {
     { transform: 'translateY(-8px)' },
     { transform: 'translateY(0)' },
   ], { duration: 700, easing: 'ease-out' })
+}
+/** 小幅摇摆（挂钟报时/撸猫蹭一下） */
+function wiggle(id: string) {
+  const el = document.querySelector(`[data-inst-id="${id}"]`) as HTMLElement | null
+  el?.animate([
+    { transform: 'rotate(0deg)' },
+    { transform: 'rotate(-2.4deg)' },
+    { transform: 'rotate(2.4deg)' },
+    { transform: 'rotate(0deg)' },
+  ], { duration: 650, easing: 'ease-in-out', composite: 'add' })
+}
+/** 座椅下陷回弹（扶手椅小憩） */
+function squash(id: string) {
+  const el = document.querySelector(`[data-inst-id="${id}"]`) as HTMLElement | null
+  el?.animate([
+    { transform: 'scale(1, 1)' },
+    { transform: 'scale(1.05, 0.93)' },
+    { transform: 'scale(1, 1)' },
+  ], { duration: 550, easing: 'ease-in-out', composite: 'add' })
+}
+/** 吊灯从顶摆动（transform-origin 临时切到顶部） */
+function swingTop(id: string) {
+  const el = document.querySelector(`[data-inst-id="${id}"]`) as HTMLElement | null
+  if (!el) return
+  el.style.transformOrigin = '50% 0%'
+  const a = el.animate([
+    { transform: 'rotate(0deg)' },
+    { transform: 'rotate(7deg)' },
+    { transform: 'rotate(-6deg)' },
+    { transform: 'rotate(0deg)' },
+  ], { duration: 950, easing: 'ease-in-out', composite: 'add' })
+  a.onfinish = () => { el.style.transformOrigin = '' }
+}
+/** 缩放：动作条 ±0.1，随摆放持久化 */
+function rescale(id: string, delta: number) {
+  room.setScale(id, delta)
+  palSound.tap()
 }
 
 // ---- 目录弹窗 ----
@@ -366,7 +417,7 @@ function totemStyle(inst: { x: number; bottom: number; rotation: number; flipped
     transform: `translateX(-50%) rotate(${inst.rotation}deg) scaleX(${inst.flipped ? -1 : 1})`,
   }
 }
-function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed(2)})` }
+function userScale(scale: number, stage: number) { return `scale(${(scale * (1 + stage * 0.16)).toFixed(3)})` }
 function photoStyle(def: PalTotemDef) {
   const p = def.photo!
   return { left: `${p.ax}%`, top: `${p.ay}%`, width: `${p.aw}%`, height: `${p.ah}%` }
@@ -391,7 +442,7 @@ function photoStyle(def: PalTotemDef) {
         @pointerdown.stop="onTotemDown(inst, $event)" @pointermove="onTotemMove(inst, $event)" @pointerup="onTotemUp($event)"
         @keydown.enter.prevent="select(inst.id)">
         <img :src="totemSrc(inst)" :alt="palTotemDef(inst.totemId)?.name" draggable="false"
-          :data-growth="palTotemDef(inst.totemId)?.growable ? inst.growthStage : undefined" :style="{ transform: growthScale(inst.growthStage) }">
+          :data-growth="palTotemDef(inst.totemId)?.growable ? inst.growthStage : undefined" :style="{ transform: userScale(inst.scale ?? 1, inst.growthStage) }">
         <!-- 相框里的照片（原版 photoId 模型）：钉在素材开口区，跟随旋转/翻转 -->
         <img v-if="palTotemDef(inst.totemId)?.photo && inst.photoId && photoUrls[inst.id]" class="frame-photo"
           :src="photoUrls[inst.id]" alt="相框里的照片" :style="photoStyle(palTotemDef(inst.totemId)!)">
@@ -421,6 +472,8 @@ function photoStyle(def: PalTotemDef) {
       <button :data-act="'flip'" title="水平翻转" aria-label="水平翻转" @click.stop="act(selected.id, 'flip')"><JrIcon :path="mdiFlipHorizontal" :size="15" /></button>
       <button :data-act="'front'" title="置前" aria-label="置前" @click.stop="act(selected.id, 'front')"><JrIcon :path="mdiArrowUp" :size="15" /></button>
       <button :data-act="'back'" title="置后" aria-label="置后" @click.stop="act(selected.id, 'back')"><JrIcon :path="mdiArrowDown" :size="15" /></button>
+      <button :data-act="'scale-up'" title="放大" aria-label="放大" @click.stop="rescale(selected.id, 0.1)"><JrIcon :path="mdiMagnifyPlusOutline" :size="15" /></button>
+      <button :data-act="'scale-down'" title="缩小" aria-label="缩小" @click.stop="rescale(selected.id, -0.1)"><JrIcon :path="mdiMagnifyMinusOutline" :size="15" /></button>
       <button v-if="selectedDef?.interact" :data-act="'interact'" :title="selectedDef.interact.label" :aria-label="selectedDef.interact.label" @click.stop="special(selected.id, selectedDef)"><JrIcon :path="selectedDef.interact.icon" :size="15" /></button>
       <button v-if="palTotemDef(selected.totemId)?.photo" :data-act="'pick-photo'" title="选照片" aria-label="选照片" @click.stop="openPhotoPicker()"><JrIcon :path="mdiImageMultipleOutline" :size="15" /></button>
       <button v-if="palTotemDef(selected.totemId)?.photo && selected.photoId" :data-act="'clear-photo'" title="清除照片" aria-label="清除照片" @click.stop="clearPhoto()"><JrIcon :path="mdiImageOffOutline" :size="15" /></button>
@@ -508,7 +561,7 @@ function photoStyle(def: PalTotemDef) {
 
 .room-totem { position: absolute; cursor: grab; user-select: none; touch-action: none; }
 .room-totem.dragging { cursor: grabbing; }
-.room-totem img { width: 100%; height: auto; display: block; pointer-events: none; transition: transform 0.2s ease; filter: drop-shadow(0 3px 4px rgba(40,60,70,0.18)); }
+.room-totem img { width: 100%; height: auto; display: block; pointer-events: none; transition: transform 0.2s ease; transform-origin: center bottom; filter: drop-shadow(0 3px 4px rgba(40,60,70,0.18)); }
 .room-totem.dragging img { transition: none; }
 .room-totem.sel img { filter: drop-shadow(0 3px 4px rgba(40,60,70,0.18)) drop-shadow(0 0 0 1px rgba(68,192,255,0.35)); outline: 1.5px dashed rgba(68,192,255,0.7); outline-offset: 3px; border-radius: 6px; }
 

@@ -23,6 +23,8 @@ export interface PalTotemInstance {
   photoId?: number
   /** 家具自身开关状态（落地灯：关/亮两态素材） */
   on?: boolean
+  /** 缩放倍率（0.5–1.8，默认 1），动作条放大/缩小可调 */
+  scale?: number
 }
 
 const KEY = 'jr.palTotemInstances'
@@ -156,6 +158,25 @@ export function usePalTotems() {
     patch(id, i => ({ ...i, on }))
   }
 
+  /** 缩放（±0.1，0.5–1.8 封顶），到顶给提示 */
+  function setScale(id: string, delta: number) {
+    const inst = instances.value.find(i => i.id === id)
+    if (!inst) return
+    const cur = inst.scale ?? 1
+    const next = Math.round((cur + delta) * 10) / 10
+    if (next <= 0.5) {
+      patch(id, i => ({ ...i, scale: 0.5 }))
+      hint.value = '已经最小啦。'
+      return
+    }
+    if (next >= 1.8) {
+      patch(id, i => ({ ...i, scale: 1.8 }))
+      hint.value = '已经最大啦。'
+      return
+    }
+    patch(id, i => ({ ...i, scale: next }))
+  }
+
   /** 回到原版空态默认组合（按当前布局档） */
   function resetRoom(portrait: boolean) {
     instances.value = [
@@ -164,5 +185,5 @@ export function usePalTotems() {
     ]
   }
 
-  return { instances, wallpaper, placed, hint, init, addTotem, swapWallpaper, removeTotem, move, rotate, flip, front, back, water, setPhoto, setOn, resetRoom, placedCount }
+  return { instances, wallpaper, placed, hint, init, addTotem, swapWallpaper, removeTotem, move, rotate, flip, front, back, water, setPhoto, setOn, setScale, resetRoom, placedCount }
 }

@@ -54,4 +54,14 @@ export const palSound = {
   chirp() { tone({ f: 2100, f2: 2800, dur: 0.08, vol: 0.03 }); tone({ f: 2400, f2: 1900, dur: 0.1, vol: 0.028, delay: 0.14 }) },
   /** 壁炉拨火：低沉噼啪 */
   stoke() { tone({ f: 180, f2: 90, dur: 0.14, type: 'triangle', vol: 0.045 }); tone({ f: 320, f2: 140, dur: 0.08, type: 'triangle', vol: 0.03, delay: 0.16 }) },
+  /** 敲木面：笃笃 */
+  knock() { tone({ f: 220, f2: 140, dur: 0.09, type: 'triangle', vol: 0.045 }); tone({ f: 200, f2: 130, dur: 0.09, type: 'triangle', vol: 0.04, delay: 0.14 }) },
+  /** 翻书页：沙沙 */
+  page() { [700, 900, 640].forEach((f, i) => tone({ f, f2: f * 1.3, dur: 0.06, vol: 0.02, delay: i * 0.09, type: 'triangle' })) },
+  /** 拍打：轻拍两下 */
+  pat() { tone({ f: 300, f2: 180, dur: 0.08, type: 'triangle', vol: 0.035 }); tone({ f: 280, f2: 160, dur: 0.08, type: 'triangle', vol: 0.03, delay: 0.12 }) },
+  /** 猫咪呼噜：低频颤音 */
+  purr() { [92, 112, 102].forEach((f, i) => tone({ f, dur: 0.22, vol: 0.03, type: 'sawtooth', delay: i * 0.2 })) },
+  /** 挂钟滴答 */
+  tick() { tone({ f: 1200, dur: 0.05, vol: 0.025 }); tone({ f: 900, dur: 0.05, vol: 0.022, delay: 0.12 }) },
 }
