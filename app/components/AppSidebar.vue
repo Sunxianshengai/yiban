@@ -14,6 +14,7 @@ import {
   mdiImageMultipleOutline,
   mdiAccountGroupOutline,
   mdiAccountMultipleOutline,
+  mdiTrashCanOutline,
 } from '@mdi/js'
 import { db } from '~/utils/db'
 import { familyAvatarColor, familyAvatarChar } from '~/utils/familyUi'
@@ -23,7 +24,7 @@ const { visible: petVisible, toggle: togglePet } = usePetWidget()
 const route = useRoute()
 const search = ref('')
 const tagsOpen = ref(false)
-const { entries, refresh: refreshEntries, listTags } = useEntries()
+const { entries, refresh: refreshEntries, listTags, trashCount, refreshTrashCount } = useEntries()
 const tags = ref<{ id?: number; title: string }[]>([])
 
 const totalCount = computed(() => entries.value.length)
@@ -75,6 +76,7 @@ const streakCount = computed(() => {
 onMounted(async () => {
   tags.value = await listTags()
   photoCount.value = await db.mediaFilesV2.count()
+  await refreshTrashCount()
   if (!entries.value.length) {
     await refreshEntries()
   }
@@ -144,6 +146,12 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
     <NuxtLink to="/atlas" class="jr-nav-item" :class="{ active: route.path.startsWith('/atlas') }">
       <JrIcon :path="mdiMapMarkerOutline" :size="19" />
       <span class="jr-nav-text">位置历史记录</span>
+    </NuxtLink>
+
+    <NuxtLink to="/trash" class="jr-nav-item" :class="{ active: route.path.startsWith('/trash') }">
+      <JrIcon :path="mdiTrashCanOutline" :size="19" />
+      <span class="jr-nav-text">回收站</span>
+      <span class="jr-badge-sub">{{ trashCount }}</span>
     </NuxtLink>
 
     <!-- 家庭组卡（M-209 门面）：已加入=成员头像行+最新家人动态+聚合红点；未加入=引导直达设置 -->

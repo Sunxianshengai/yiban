@@ -1,6 +1,7 @@
 import { cloudApi, type FamilyState, type FamilyFeed } from '~/utils/cloudApi'
 import type { EntryV2, FamilyFeedSocial, FamilyTimelineEntry } from '~/utils/db'
 import { computeTokens, htmlToPreview } from '~/utils/db'
+import { listTombstones } from '~/composables/useEntries'
 
 /**
  * 家庭组（附加功能）：登录后拉取组状态与家人公共日记 feed。
@@ -56,8 +57,11 @@ export function useFamilySync() {
   const familyEntries = computed<FamilyTimelineEntry[]>(() => {
     if (!state.value.group) return []
     const mine = state.value.me?.userId
+    // 自己的公共日记：本地有同 cloudId 行就跳过（不重复显示）；
+    // 本地刚删、墓碑还没同步出去时也跳过——否则刚删的日记会以「家人条目」形态回到自己时间线
+    const deadCloudIds = new Set(listTombstones())
     return feed.value.entries
-      .filter(e => !(mine && e.ownerUserId === mine && localCloudIds.value.has(e.clientId)))
+      .filter(e => !(mine && e.ownerUserId === mine && (localCloudIds.value.has(e.clientId) || deadCloudIds.has(e.clientId))))
       .map((e) => {
         const key = familyKeyOf(e)
         let neg = negativeIds.get(key)

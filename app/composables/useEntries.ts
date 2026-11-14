@@ -77,9 +77,15 @@ function deProxy<T>(obj: T): T {
 
 export function useEntries() {
   const entries = useState<EntryV2[]>('jr.globalEntries', () => [])
+  /** 回收站条数（共享 state）：侧栏角标与回收站页共用 */
+  const trashCount = useState<number>('jr.trashCount', () => 0)
 
   async function refresh() {
     entries.value = await db.entriesV2.orderBy('dateOfJournal').reverse().toArray()
+  }
+
+  async function refreshTrashCount() {
+    trashCount.value = await db.trashesV2.count()
   }
 
   async function saveEntry(id: number | undefined, text: string, date: Date, extra: Partial<EntryV2>, files: File[], removed: number[]) {
@@ -191,6 +197,7 @@ export function useEntries() {
     // 本地自增 id 每台设备都从 1 开始，拿它当墓碑会删错别的设备上的日记。
     addTombstone(row.cloudId || String(id))
     await refresh()
+    await refreshTrashCount()
     return trashId
   }
 
@@ -205,14 +212,21 @@ export function useEntries() {
     // 恢复 = 一次新编辑：dateModified 刷新到当下。云端行可能已按墓碑标删，
     // 旧时间戳推不上去（服务端只收更新的 date_modified），下次 pull 会把刚恢复的本地行删掉。
     const revived: EntryV2 = { ...snapshot, dateModified: new Date(), synced: 0 }
-    await db.transaction('rw', db.entriesV2, db.trashesV2, async () => {
-      await db.entriesV2.add(revived)
+    await db.transaction('rw', db.entriesV2, db.trashesV2, db.mediaFilesV2, async () => {
+      const newId = await db.entriesV2.add(revived)
+      // 附件行还挂在删除前的旧本地 id 上（moveToTrash 不动 media），
+      // 恢复拿到的是新自增 id —— 不重挂的话照片会从这篇日记里消失。
+      // 旧 id 已被别的行占用（理论上不该发生，自增不复用）时不动，宁缺勿错。
+      if (snapshot.id != null && snapshot.id !== newId && !(await db.entriesV2.get(snapshot.id))) {
+        await db.mediaFilesV2.where('jId').equals(snapshot.id).modify({ jId: newId })
+      }
       await db.trashesV2.delete(trashId)
     })
     // 墓碑还没推出去就恢复了：撤掉，否则推送数组里 live 行和墓碑同键并存，
     // 墓碑排后面、时间又相同，服务端会留下"已删除"的那条。
     if (revived.cloudId) clearTombstones([revived.cloudId])
     await refresh()
+    await refreshTrashCount()
   }
 
   // ---- media ----
@@ -302,7 +316,7 @@ export function useEntries() {
 
   return {
     entries, refresh, saveEntry, toggleFavourite, duplicateEntry, saveAsTemplate,
-    moveToTrash, listTrash, restoreFromTrash,
+    moveToTrash, listTrash, restoreFromTrash, trashCount, refreshTrashCount,
     listMediaFor, allMedia, deleteMedia,
     listTags, ensureTag, setEntryTags,
     entriesOn, throwbacks,
