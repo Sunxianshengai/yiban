@@ -21,6 +21,8 @@ export interface PalTotemInstance {
   growthUpdatedAt?: number
   /** 相框里放的照片（mediaFilesV2 行 id，原版 totem 的 photoId 模型） */
   photoId?: number
+  /** 家具自身开关状态（落地灯：关/亮两态素材） */
+  on?: boolean
 }
 
 const KEY = 'jr.palTotemInstances'
@@ -149,6 +151,11 @@ export function usePalTotems() {
     patch(id, i => ({ ...i, photoId }))
   }
 
+  /** 家具自身开关（落地灯亮/灭等） */
+  function setOn(id: string, on: boolean) {
+    patch(id, i => ({ ...i, on }))
+  }
+
   /** 回到原版空态默认组合（按当前布局档） */
   function resetRoom(portrait: boolean) {
     instances.value = [
@@ -157,5 +164,5 @@ export function usePalTotems() {
     ]
   }
 
-  return { instances, wallpaper, placed, hint, init, addTotem, swapWallpaper, removeTotem, move, rotate, flip, front, back, water, setPhoto, resetRoom, placedCount }
+  return { instances, wallpaper, placed, hint, init, addTotem, swapWallpaper, removeTotem, move, rotate, flip, front, back, water, setPhoto, setOn, resetRoom, placedCount }
 }

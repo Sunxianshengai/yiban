@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 340">
+  <!-- 落地灯（亮）：暖光晕+亮灯罩 -->
+  <defs>
+    <linearGradient id="lshadeOn" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff2cf"/>
+      <stop offset="1" stop-color="#ffd98f"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.42" r="0.62">
+      <stop offset="0" stop-color="#ffedb0" stop-opacity="0.75"/>
+      <stop offset="0.6" stop-color="#ffe08f" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#ffe08f" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="100" cy="120" r="120" fill="url(#glow)"/>
+  <path d="M70 30 L130 30 L150 110 L50 110 Z" fill="url(#lshadeOn)"/>
+  <ellipse cx="100" cy="112" rx="52" ry="7" fill="#fff6d8"/>
+  <rect x="96" y="110" width="8" height="200" fill="#5d5f63"/>
+  <rect x="92" y="108" width="16" height="8" rx="3" fill="#4c4e52"/>
+  <path d="M60 306 Q100 296 140 306 L146 316 L54 316 Z" fill="#55575b"/>
+  <ellipse cx="100" cy="318" rx="48" ry="7" fill="#45474b"/>
+</svg>

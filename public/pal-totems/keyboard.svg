@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 120">
+  <!-- 电子琴：白键+黑键（一键轻按动画） -->
+  <style>
+    .kdip { animation: dip 2.4s ease-in-out infinite; }
+    @keyframes dip { 0%, 72%, 100% { transform: translateY(0); } 80%, 90% { transform: translateY(4px); } }
+  </style>
+  <defs>
+    <linearGradient id="kbody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5d4a6e"/>
+      <stop offset="1" stop-color="#463855"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="18" width="224" height="94" rx="10" fill="url(#kbody)"/>
+  <rect x="20" y="28" width="200" height="22" rx="4" fill="#7c6591"/>
+  <g fill="#e8b74a">
+    <circle cx="34" cy="39" r="4"/><circle cx="48" cy="39" r="4"/><circle cx="62" cy="39" r="4"/>
+  </g>
+  <rect x="36" y="42" width="72" height="6" rx="3" fill="#a58bc0" opacity="0.8"/>
+  <g fill="#f6f4ef">
+    <rect x="24" y="62" width="26" height="44" rx="3"/>
+    <rect x="52" y="62" width="26" height="44" rx="3"/>
+    <rect x="80" y="62" width="26" height="44" rx="3"/>
+    <rect x="108" y="62" width="26" height="44" rx="3"/>
+    <rect x="136" y="62" width="26" height="44" rx="3"/>
+    <rect x="164" y="62" width="26" height="44" rx="3"/>
+    <rect x="192" y="62" width="24" height="44" rx="3"/>
+  </g>
+  <g stroke="#c9c4ba" stroke-width="1.4">
+    <line x1="52" y1="62" x2="52" y2="106"/><line x1="80" y1="62" x2="80" y2="106"/><line x1="108" y1="62" x2="108" y2="106"/><line x1="136" y1="62" x2="136" y2="106"/><line x1="164" y1="62" x2="164" y2="106"/><line x1="192" y1="62" x2="192" y2="106"/>
+  </g>
+  <g fill="#2c2733">
+    <rect class="kdip" x="44" y="62" width="16" height="26" rx="2"/>
+    <rect x="72" y="62" width="16" height="26" rx="2"/>
+    <rect x="128" y="62" width="16" height="26" rx="2"/>
+    <rect x="156" y="62" width="16" height="26" rx="2"/>
+    <rect x="184" y="62" width="16" height="26" rx="2"/>
+  </g>
+  <rect x="4" y="108" width="232" height="8" rx="4" fill="#3a2f47"/>
+</svg>

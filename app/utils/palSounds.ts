@@ -46,4 +46,12 @@ export const palSound = {
   sparkle() { [880, 1180, 1480].forEach((f, i) => tone({ f, dur: 0.09, vol: 0.028, delay: i * 0.08 })) },
   /** 点吉祥物出反应 */
   react() { tone({ f: 740, f2: 980, dur: 0.1 }) },
+  /** 音箱点唱：五音符小旋律 */
+  melody() { [523, 659, 784, 659, 880].forEach((f, i) => tone({ f, dur: 0.18, vol: 0.032, delay: i * 0.16, type: 'triangle' })) },
+  /** 电子琴：上行琶音 */
+  arp() { [523, 659, 784, 1047].forEach((f, i) => tone({ f, dur: 0.22, vol: 0.034, delay: i * 0.12 })) },
+  /** 鸟叫：两声啾啾 */
+  chirp() { tone({ f: 2100, f2: 2800, dur: 0.08, vol: 0.03 }); tone({ f: 2400, f2: 1900, dur: 0.1, vol: 0.028, delay: 0.14 }) },
+  /** 壁炉拨火：低沉噼啪 */
+  stoke() { tone({ f: 180, f2: 90, dur: 0.14, type: 'triangle', vol: 0.045 }); tone({ f: 320, f2: 140, dur: 0.08, type: 'triangle', vol: 0.03, delay: 0.16 }) },
 }

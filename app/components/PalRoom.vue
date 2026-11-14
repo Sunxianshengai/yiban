@@ -54,22 +54,34 @@ const worldStyle = computed(() => ({ width: `${worldW.value}px`, height: `${worl
 function dims(def: PalTotemDef) {
   return portrait.value && def.p ? { ...def, w: def.p.w, x: def.p.x, bottom: def.p.bottom } : def
 }
+function dd(inst: { totemId: string }): PalTotemDef | undefined {
+  const def = palTotemDef(inst.totemId)
+  return def ? dims(def) : undefined
+}
+/** 素材地址：灯等开关型家具按实例状态换亮/灭素材 */
+function totemSrc(inst: { totemId: string; on?: boolean }): string {
+  const d = dd(inst)
+  if (!d) return ''
+  if (inst.on && d.interact?.srcOn) return d.interact.srcOn
+  return d.src
+}
 
 onMounted(() => { measureRoom(); room.init(portrait.value); window.addEventListener('resize', measureRoom) })
 onBeforeUnmount(() => window.removeEventListener('resize', measureRoom))
 watch(isMobile, () => nextTick(measureRoom))
 
 const selected = computed(() => room.placed.value.find(i => i.id === selectedId.value) ?? null)
+const selectedDef = computed(() => (selected.value ? dd(selected.value) : undefined))
 const barStyle = computed(() => {
   const sel = selected.value
-  const def = sel ? palTotemDef(sel.totemId) : undefined
+  const def = sel ? dd(sel) : undefined
   if (!sel || !def) return {}
-  const imgH = (dims(def).w / 100) * worldW.value * def.ar * (1 + sel.growthStage * 0.16)
+  const imgH = (def.w / 100) * worldW.value * def.ar * (1 + sel.growthStage * 0.16)
   const worldLeft = (roomW.value - worldW.value) / 2
-  // 横向夹紧：动作条 ~9 键宽，贴左右边时会被 overflow:hidden 裁掉按钮（移动端实测 55px）
-  const half = isMobile.value ? 118 : 126
-  const left = Math.min(Math.max(worldLeft + (dims(def).x / 100) * worldW.value, half), roomW.value - half)
-  const bottom = Math.min((dims(def).bottom / 100) * worldH.value + imgH + 12, roomH.value - 44)
+  // 横向夹紧：动作条 ~10 键宽，贴左右边时会被 overflow:hidden 裁掉按钮（移动端实测 55px）
+  const half = isMobile.value ? 150 : 144
+  const left = Math.min(Math.max(worldLeft + (def.x / 100) * worldW.value, half), roomW.value - half)
+  const bottom = Math.min((def.bottom / 100) * worldH.value + imgH + 12, roomH.value - 44)
   return { left: `${left}px`, bottom: `${bottom}px` }
 })
 
@@ -144,14 +156,17 @@ function select(id: string) {
 function deselect() { selectedId.value = '' }
 
 // ---- 拖动摆放：pointer 指针事件，位移 >4px 才算拖动（否则视为点选） ----
-interface Drag { id: string; moved: boolean }
+// 点「已经选中」的家具且没拖动 → 触发它的专属互动（灯开关/点唱/踢球……）
+interface Drag { id: string; moved: boolean; already: boolean }
 let drag: Drag | null = null
 
 function onTotemDown(inst: { id: string }, e: PointerEvent) {
   if ((e.target as HTMLElement).closest('[data-pal-actions]')) return
+  // already 必须在 select() 之前捕获：否则每次单击都会被当成「再点一次」触发专属互动
+  const wasSelected = selectedId.value === inst.id
   select(inst.id)
   const el = e.currentTarget as HTMLElement
-  drag = { id: inst.id, moved: false }
+  drag = { id: inst.id, moved: false, already: wasSelected }
   el.setPointerCapture(e.pointerId)
 }
 function onTotemMove(inst: { id: string }, e: PointerEvent) {
@@ -165,8 +180,16 @@ function onTotemMove(inst: { id: string }, e: PointerEvent) {
 }
 function onTotemUp(e: PointerEvent) {
   const el = e.currentTarget as HTMLElement
+  const wasMoved = drag?.moved ?? false
+  const dragId = drag?.id
+  const wasAlready = drag?.already ?? false
   if (el.hasPointerCapture?.(e.pointerId)) el.releasePointerCapture(e.pointerId)
   drag = null
+  if (!wasMoved && wasAlready && dragId) {
+    const inst = room.placed.value.find(i => i.id === dragId)
+    const def = inst ? dd(inst) : undefined
+    if (def?.interact) special(dragId, def)
+  }
 }
 
 // ---- 动作条 ----
@@ -233,6 +256,60 @@ watch(room.hint, (v) => {
   if (!v) return
   setTimeout(() => { if (room.hint.value === v) room.hint.value = '' }, 3200)
 })
+
+// ---- 专属互动（每件家具一个独门动作；再点一次已选中的家具同样触发） ----
+const boardIdx = ref(0)
+const boardText = computed(() => {
+  const previews = palEntries.value.map(e => e.previewText?.trim()).filter(Boolean) as string[]
+  if (!previews.length) return '今日也要好好记录呀 ✏️'
+  return previews[boardIdx.value % previews.length].slice(0, 22)
+})
+function boxStyle(box: { ax: number; ay: number; aw: number; ah: number }) {
+  return { left: `${box.ax}%`, top: `${box.ay}%`, width: `${box.aw}%`, height: `${box.ah}%` }
+}
+function special(id: string, def: PalTotemDef) {
+  const it = def.interact!
+  switch (it.kind) {
+    case 'lamp': {
+      const inst = room.instances.value.find(i => i.id === id)
+      room.setOn(id, !inst?.on)
+      palSound.tap()
+      break
+    }
+    case 'fire': palSound.stoke(); spawnFx(id, 'star', '🔥'); break
+    case 'melody': palSound.melody(); spawnFx(id, 'star', '🎵'); setTimeout(() => spawnFx(id, 'star', '🎶'), 500); break
+    case 'arp': palSound.arp(); spawnFx(id, 'star', '🎵'); setTimeout(() => spawnFx(id, 'star', '🎶'), 400); break
+    case 'roll': ballRoll(id); break
+    case 'chirp': palSound.chirp(); birdHop(id); break
+    case 'board': boardIdx.value++; palSound.tap(); break
+    case 'date': {
+      const d = new Date()
+      room.hint.value = `今天是 ${d.getMonth() + 1} 月 ${d.getDate()} 日，星期${'日一二三四五六'[d.getDay()]}。`
+      break
+    }
+  }
+}
+function ballRoll(id: string) {
+  const el = document.querySelector(`[data-inst-id="${id}"]`) as HTMLElement | null
+  if (!el) return
+  el.animate([
+    { transform: 'translateX(0) rotate(0deg)' },
+    { transform: `translateX(${worldW.value * 0.22}px) rotate(320deg)` },
+    { transform: `translateX(${worldW.value * 0.1}px) rotate(150deg)` },
+    { transform: 'translateX(0) rotate(0deg)' },
+  ], { duration: 1400, easing: 'ease-in-out', composite: 'add' })
+  room.hint.value = '球滚出去又滚回来啦！'
+}
+function birdHop(id: string) {
+  const el = document.querySelector(`[data-inst-id="${id}"]`) as HTMLElement | null
+  el?.animate([
+    { transform: 'translateY(0)' },
+    { transform: 'translateY(-14px)' },
+    { transform: 'translateY(0)' },
+    { transform: 'translateY(-8px)' },
+    { transform: 'translateY(0)' },
+  ], { duration: 700, easing: 'ease-out' })
+}
 
 // ---- 目录弹窗 ----
 const catalogNote = ref('')
@@ -309,15 +386,21 @@ function photoStyle(def: PalTotemDef) {
       <div class="room-floor" aria-hidden="true"></div>
 
       <div v-for="inst in room.placed.value" :key="inst.id" class="room-totem" :class="{ sel: selectedId === inst.id, dragging: drag?.id === inst.id }"
-        :style="totemStyle(inst)" :data-totem-name="palTotemDef(inst.totemId)?.id"
+        :style="totemStyle(inst)" :data-totem-name="palTotemDef(inst.totemId)?.id" :data-inst-id="inst.id"
         role="button" tabindex="0" :aria-label="`家具：${palTotemDef(inst.totemId)?.name}`"
         @pointerdown.stop="onTotemDown(inst, $event)" @pointermove="onTotemMove(inst, $event)" @pointerup="onTotemUp($event)"
         @keydown.enter.prevent="select(inst.id)">
-        <img :src="palTotemDef(inst.totemId)?.src" :alt="palTotemDef(inst.totemId)?.name" draggable="false"
+        <img :src="totemSrc(inst)" :alt="palTotemDef(inst.totemId)?.name" draggable="false"
           :data-growth="palTotemDef(inst.totemId)?.growable ? inst.growthStage : undefined" :style="{ transform: growthScale(inst.growthStage) }">
         <!-- 相框里的照片（原版 photoId 模型）：钉在素材开口区，跟随旋转/翻转 -->
         <img v-if="palTotemDef(inst.totemId)?.photo && inst.photoId && photoUrls[inst.id]" class="frame-photo"
           :src="photoUrls[inst.id]" alt="相框里的照片" :style="photoStyle(palTotemDef(inst.totemId)!)">
+        <!-- 黑板：显示最近日记片段（动作条「下一句」翻页） -->
+        <div v-if="dd(inst)?.board" class="board-text" :style="boxStyle(dd(inst)!.board!)">{{ boardText }}</div>
+        <!-- 日历牌：显示今天日期 -->
+        <div v-if="dd(inst)?.dateBox" class="board-text board-date" :style="boxStyle(dd(inst)!.dateBox!)">
+          <span>{{ new Date().getMonth() + 1 }}月</span><strong>{{ new Date().getDate() }}</strong>
+        </div>
         <span v-for="f in fx.filter(f => f.totemId === inst.id)" :key="f.key" class="fx" :class="f.kind" aria-hidden="true">{{ f.emoji || (f.kind === 'drop' ? '💧' : '⭐') }}</span>
       </div>
 
@@ -338,6 +421,7 @@ function photoStyle(def: PalTotemDef) {
       <button :data-act="'flip'" title="水平翻转" aria-label="水平翻转" @click.stop="act(selected.id, 'flip')"><JrIcon :path="mdiFlipHorizontal" :size="15" /></button>
       <button :data-act="'front'" title="置前" aria-label="置前" @click.stop="act(selected.id, 'front')"><JrIcon :path="mdiArrowUp" :size="15" /></button>
       <button :data-act="'back'" title="置后" aria-label="置后" @click.stop="act(selected.id, 'back')"><JrIcon :path="mdiArrowDown" :size="15" /></button>
+      <button v-if="selectedDef?.interact" :data-act="'interact'" :title="selectedDef.interact.label" :aria-label="selectedDef.interact.label" @click.stop="special(selected.id, selectedDef)"><JrIcon :path="selectedDef.interact.icon" :size="15" /></button>
       <button v-if="palTotemDef(selected.totemId)?.photo" :data-act="'pick-photo'" title="选照片" aria-label="选照片" @click.stop="openPhotoPicker()"><JrIcon :path="mdiImageMultipleOutline" :size="15" /></button>
       <button v-if="palTotemDef(selected.totemId)?.photo && selected.photoId" :data-act="'clear-photo'" title="清除照片" aria-label="清除照片" @click.stop="clearPhoto()"><JrIcon :path="mdiImageOffOutline" :size="15" /></button>
       <button v-if="palTotemDef(selected.totemId)?.growable" :data-act="'water'" :title="palTotemDef(selected.totemId)?.growable?.label || '浇水'" :aria-label="palTotemDef(selected.totemId)?.growable?.label || '浇水'" @click.stop="act(selected.id, 'water')"><JrIcon :path="mdiWater" :size="15" /></button>
@@ -440,6 +524,12 @@ function photoStyle(def: PalTotemDef) {
 .fx.star { animation-name: pal-rise; }
 
 .frame-photo { position: absolute; object-fit: cover; pointer-events: none; }
+
+/* 黑板/日历牌的开口区文字（跟随家具变换，不拦截点击） */
+.board-text { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 11px; line-height: 1.45; color: #f4efe2; padding: 3%; pointer-events: none; overflow: hidden; }
+.board-date { color: #43413c; }
+.board-date span { font-size: 9px; font-weight: 700; letter-spacing: 2px; }
+.board-date strong { font-size: 22px; font-weight: 800; line-height: 1; }
 
 .catalog-balance { font-size: 12.5px; font-weight: 800; color: var(--jr-on-surface); background: var(--jr-surface-variant); border-radius: 999px; padding: 4px 11px; margin-right: auto; margin-left: 10px; }
 .catalog-note { margin: 10px 0 0; font-size: 12px; color: var(--jr-on-surface-variant); background: var(--jr-surface-variant); border-radius: 10px; padding: 8px 11px; }

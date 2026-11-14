@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90">
+  <!-- 足球：点击滚出去再滚回来（动画在组件里加） -->
+  <defs>
+    <radialGradient id="bgrad" cx="0.38" cy="0.34" r="0.85">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.75" stop-color="#e8e6e0"/>
+      <stop offset="1" stop-color="#c9c6bd"/>
+    </radialGradient>
+  </defs>
+  <circle cx="45" cy="45" r="40" fill="url(#bgrad)"/>
+  <circle cx="45" cy="45" r="40" fill="none" stroke="#9d9a90" stroke-width="2"/>
+  <g fill="#2c2733">
+    <path d="M45 30 L57 39 L52 53 L38 53 L33 39 Z"/>
+    <path d="M45 8 L52 17 L45 22 L38 17 Z" transform="translate(0,2)"/>
+    <path d="M18 40 L28 36 L34 46 L26 54 L16 48 Z" opacity="0.92"/>
+    <path d="M72 40 L62 36 L56 46 L64 54 L74 48 Z" opacity="0.92"/>
+    <path d="M30 74 L42 68 L52 74 L46 84 L34 84 Z" opacity="0.92"/>
+  </g>
+  <g stroke="#6d6a60" stroke-width="1.6" fill="none">
+    <line x1="45" y1="30" x2="45" y2="22"/><line x1="57" y1="39" x2="66" y2="36"/><line x1="52" y1="53" x2="58" y2="62"/>
+    <line x1="38" y1="53" x2="32" y2="62"/><line x1="33" y1="39" x2="24" y2="36"/>
+  </g>
+</svg>

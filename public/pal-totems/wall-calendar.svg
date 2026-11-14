@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 190">
+  <!-- 日历牌（红色头带+白页，日期数字由组件渲染） -->
+  <rect x="10" y="8" width="120" height="174" rx="8" fill="#f6f4ef" stroke="#ddd6c6" stroke-width="2"/>
+  <rect x="10" y="8" width="120" height="44" rx="8" fill="#c0393b"/>
+  <rect x="10" y="36" width="120" height="16" fill="#c0393b"/>
+  <g fill="#8d2f31">
+    <rect x="34" y="2" width="8" height="16" rx="3"/>
+    <rect x="66" y="2" width="8" height="16" rx="3"/>
+    <rect x="98" y="2" width="8" height="16" rx="3"/>
+  </g>
+  <g stroke="#d8d2c2" stroke-width="1.6">
+    <line x1="22" y1="96" x2="118" y2="96"/>
+    <line x1="22" y1="122" x2="118" y2="122"/>
+    <line x1="22" y1="148" x2="118" y2="148"/>
+  </g>
+  <circle cx="70" cy="106" r="4" fill="#c0393b"/>
+</svg>

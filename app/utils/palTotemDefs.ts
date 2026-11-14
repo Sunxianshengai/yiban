@@ -3,32 +3,41 @@
  *
  * 证据：journey-replica/evidence/derived/pal-totems/（原版 6.0.1 app.asar 解包 + CKWhi-kr.js 交互模型）。
  * 原版完整目录/代币购买走云端（sync.journey.cloud/odyssey/v3 + pal-assets.journey.cloud），
- * 本地只做免费目录：空态四件套 + 会员预览间的家具同名复刻。
+ * 本地只做免费目录 + 写日记攒⭐解锁（诚实版代币经济）。
  *
- * 素材为自绘 SVG 占位（与原版同名、观感对齐），之后用即梦同风格图替换：
+ * 素材为自绘 SVG（与原版同名、观感对齐），之后用即梦同风格图替换：
  * 同名换 .png 时改这里对应 src 一行即可，布局与交互不动。
  */
+import {
+  mdiLightbulbOnOutline, mdiFire, mdiMusicNote, mdiPiano, mdiSoccer, mdiFeather, mdiAutorenew, mdiCalendarMonthOutline,
+} from '@mdi/js'
 
 export interface PalTotemDef {
   id: string
   name: string
   src: string
-  /** 渲染宽度 = 舞台宽度的百分比；高度按素材纵横比自动 */
+  /** 渲染宽度 = 世界宽度的百分比；高度按素材纵横比自动 */
   w: number
   /** 素材纵横比（高/宽），用于把动作条定位在家具顶边（旋转不跟随） */
   ar: number
-  /** 默认摆放：中心 x（%），bottom = 离舞台底部（%）。壁挂件用大 bottom 贴墙。 */
+  /** 默认摆放：中心 x（%），bottom = 离世界底部（%）。壁挂件用大 bottom 贴墙。 */
   x: number
   bottom: number
   z: number
   kind: 'wallpaper' | 'furniture' | 'plant'
   /** 纵向布局档（竖房间/竖世界用）：不填则沿用横档尺寸 */
   p?: { w: number; x: number; bottom: number }
+  /** 专属互动：动作条上多一个专属按钮，再次点击已选中的家具也会触发 */
+  interact?: { kind: 'lamp' | 'fire' | 'melody' | 'arp' | 'roll' | 'chirp' | 'board' | 'date'; icon: string; label: string; srcOn?: string }
   /** 相框：照片在素材里的开口区（百分比，相对素材框）。有值即可放照片（原版 totem 的 photoId 模型）。 */
   photo?: { ax: number; ay: number; aw: number; ah: number }
+  /** 黑板：文字开口区（组件渲染最近日记片段/默认句） */
+  board?: { ax: number; ay: number; aw: number; ah: number }
+  /** 日历牌：日期开口区（组件渲染今天日期） */
+  dateBox?: { ax: number; ay: number; aw: number; ah: number }
   /** 星星价格（诚实版代币）：有值的家具要先攒⭐解锁，原版为云端代币购买 */
   cost?: number
-  /** 生长型（盆栽/花）：浇水进阶。占位阶段用缩放表达（原版是每阶段独立素材）。 */
+  /** 生长型（盆栽/花/鱼缸）：浇水/喂鱼进阶。占位阶段用缩放表达（原版是每阶段独立素材）。 */
   growable?: { maxStage: number; action?: 'water' | 'feed'; label?: string }
 }
 
@@ -42,6 +51,14 @@ export const PAL_TOTEMS: PalTotemDef[] = [
   { id: 'wall-clock', name: '挂钟', src: '/pal-totems/wall-clock.svg', w: 9, ar: 1.25, x: 30, bottom: 52, z: 1, kind: 'furniture', p: { w: 20, x: 70, bottom: 62 } },
   { id: 'rug-round', name: '圆地毯', src: '/pal-totems/rug-round.svg', w: 22, ar: 0.318, x: 50, bottom: 1, z: 1, kind: 'furniture', p: { w: 44, x: 30, bottom: 1 } },
   { id: 'cat-sitting', name: '猫咪', src: '/pal-totems/cat-sitting.svg', w: 12, ar: 0.78, x: 60, bottom: 3, z: 3, kind: 'furniture', p: { w: 22, x: 60, bottom: 3 } },
+  { id: 'floor-lamp', name: '落地灯', src: '/pal-totems/floor-lamp.svg', w: 13, ar: 1.7, x: 8, bottom: 3, z: 3, kind: 'furniture', p: { w: 26, x: 10, bottom: 4 }, interact: { kind: 'lamp', icon: mdiLightbulbOnOutline, label: '开关灯', srcOn: '/pal-totems/floor-lamp-on.svg' } },
+  { id: 'fireplace', name: '壁炉', src: '/pal-totems/fireplace.svg', w: 20, ar: 0.846, x: 88, bottom: 3, z: 2, kind: 'furniture', p: { w: 40, x: 84, bottom: 4 }, cost: 8, interact: { kind: 'fire', icon: mdiFire, label: '拨火' } },
+  { id: 'speaker', name: '音箱', src: '/pal-totems/speaker.svg', w: 11, ar: 1.25, x: 66, bottom: 3, z: 3, kind: 'furniture', p: { w: 20, x: 88, bottom: 4 }, cost: 4, interact: { kind: 'melody', icon: mdiMusicNote, label: '点唱' } },
+  { id: 'keyboard', name: '电子琴', src: '/pal-totems/keyboard.svg', w: 18, ar: 0.5, x: 36, bottom: 3, z: 3, kind: 'furniture', p: { w: 34, x: 38, bottom: 4 }, interact: { kind: 'arp', icon: mdiPiano, label: '弹一段' } },
+  { id: 'soccer-ball', name: '足球', src: '/pal-totems/soccer-ball.svg', w: 7, ar: 1.0, x: 62, bottom: 3, z: 3, kind: 'furniture', p: { w: 13, x: 64, bottom: 3 }, interact: { kind: 'roll', icon: mdiSoccer, label: '踢一下' } },
+  { id: 'birdcage', name: '鸟笼', src: '/pal-totems/birdcage.svg', w: 10, ar: 1.57, x: 88, bottom: 26, z: 1, kind: 'furniture', p: { w: 18, x: 90, bottom: 30 }, interact: { kind: 'chirp', icon: mdiFeather, label: '逗鸟' } },
+  { id: 'blackboard', name: '小黑板', src: '/pal-totems/blackboard.svg', w: 18, ar: 0.75, x: 70, bottom: 46, z: 1, kind: 'furniture', p: { w: 34, x: 72, bottom: 52 }, interact: { kind: 'board', icon: mdiAutorenew, label: '下一句' }, board: { ax: 12, ay: 14, aw: 76, ah: 68 } },
+  { id: 'wall-calendar', name: '日历牌', src: '/pal-totems/wall-calendar.svg', w: 9, ar: 1.36, x: 44, bottom: 52, z: 1, kind: 'furniture', p: { w: 17, x: 44, bottom: 58 }, interact: { kind: 'date', icon: mdiCalendarMonthOutline, label: '报日期' }, dateBox: { ax: 15, ay: 32, aw: 70, ah: 40 } },
   { id: 'patterned-armchair-burgundy', name: '花纹扶手椅', src: '/pal-totems/patterned-armchair-burgundy.svg', w: 21, ar: 1.033, x: 74, bottom: 3, z: 1, kind: 'furniture', p: { w: 40, x: 79, bottom: 3 }, cost: 3 },
   { id: 'arched-glass-window-frame', name: '拱形玻璃窗', src: '/pal-totems/arched-glass-window-frame.svg', w: 12, ar: 1.583, x: 40, bottom: 13, z: 1, kind: 'furniture', p: { w: 30, x: 33, bottom: 42 } },
   { id: 'white-french-double-door', name: '法式双开门', src: '/pal-totems/white-french-double-door.svg', w: 14, ar: 1.417, x: 66, bottom: 1, z: 1, kind: 'furniture', p: { w: 28, x: 67, bottom: 38 } },

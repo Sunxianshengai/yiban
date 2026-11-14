@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 340">
+  <!-- 落地灯（关）：灯杆+灯罩，点开关换 floor-lamp-on.svg -->
+  <defs>
+    <linearGradient id="lshade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8d8f93"/>
+      <stop offset="1" stop-color="#6f7176"/>
+    </linearGradient>
+  </defs>
+  <path d="M70 30 L130 30 L150 110 L50 110 Z" fill="url(#lshade)"/>
+  <rect x="96" y="110" width="8" height="200" fill="#5d5f63"/>
+  <rect x="92" y="108" width="16" height="8" rx="3" fill="#4c4e52"/>
+  <path d="M60 306 Q100 296 140 306 L146 316 L54 316 Z" fill="#55575b"/>
+  <ellipse cx="100" cy="318" rx="48" ry="7" fill="#45474b"/>
+</svg>
