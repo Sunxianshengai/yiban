@@ -1,15 +1,48 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 340">
-  <!-- 拱形玻璃窗 -->
-  <path d="M20 320 L20 130 C20 58 76 20 130 20 C184 20 240 58 240 130 L240 320 Z" fill="#f1efe9" stroke="#d9d4c9" stroke-width="4"/>
-  <path d="M36 306 L36 132 C36 70 84 36 130 36 C176 36 224 70 224 132 L224 306 Z" fill="#d7e6ee"/>
-  <g stroke="#f1efe9" stroke-width="8">
-    <line x1="36" y1="150" x2="224" y2="150"/>
-    <line x1="36" y1="228" x2="224" y2="228"/>
-    <line x1="130" y1="36" x2="130" y2="306"/>
-  </g>
-  <rect x="10" y="316" width="240" height="14" rx="5" fill="#f1efe9" stroke="#d9d4c9" stroke-width="3"/>
-  <g fill="#ffffff" opacity=".5">
-    <path d="M52 130 C52 92 76 62 108 48 L108 130 Z"/>
-    <path d="M130 36 L130 130 L150 130 L150 52 Z" opacity=".4"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 380">
+  <!-- 拱形玻璃窗：白框斜面层次+半圆扇形窗棂+下大玻璃+窗台（对齐原版法式拱窗） -->
+  <defs>
+    <linearGradient id="wf" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.5" stop-color="#f1f1ee"/>
+      <stop offset="1" stop-color="#d9d9d4"/>
+    </linearGradient>
+    <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2f6f7"/>
+      <stop offset="1" stop-color="#e2eaec"/>
+    </linearGradient>
+    <filter id="wsh" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#33414a" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#wsh)">
+    <!-- 外框（拱顶轮廓） -->
+    <path d="M30 356 L30 118 C30 56 70 26 120 26 C170 26 210 56 210 118 L210 356 Z" fill="url(#wf)"/>
+    <!-- 外框斜面高光/阴影 -->
+    <path d="M30 118 C30 56 70 26 120 26 C170 26 210 56 210 118" fill="none" stroke="#ffffff" stroke-width="3"/>
+    <path d="M30 356 L30 118" fill="none" stroke="#c9c9c4" stroke-width="2"/>
+    <path d="M210 356 L210 118" fill="none" stroke="#c9c9c4" stroke-width="2"/>
+    <!-- 内口（玻璃区） -->
+    <path d="M48 340 L48 120 C48 68 82 44 120 44 C158 44 192 68 192 120 L192 340 Z" fill="url(#wg)" stroke="#c6c6c1" stroke-width="2"/>
+    <!-- 玻璃反光 -->
+    <path d="M70 120 L108 60 L124 60 L74 150 Z" fill="#ffffff" opacity="0.35"/>
+    <path d="M120 150 L156 80 L164 84 L130 158 Z" fill="#ffffff" opacity="0.22"/>
+    <!-- 扇形窗棂：横档 + 半圆内环 + 辐条 -->
+    <rect x="46" y="128" width="148" height="10" rx="2" fill="url(#wf)" stroke="#c6c6c1" stroke-width="1.5"/>
+    <path d="M80 128 A40 40 0 0 1 160 128" fill="none" stroke="url(#wf)" stroke-width="9"/>
+    <path d="M80 128 A40 40 0 0 1 160 128" fill="none" stroke="#c6c6c1" stroke-width="1"/>
+    <g stroke="url(#wf)" stroke-width="8" stroke-linecap="round">
+      <line x1="120" y1="128" x2="120" y2="62"/>
+      <line x1="120" y1="128" x2="91" y2="70"/>
+      <line x1="120" y1="128" x2="149" y2="70"/>
+    </g>
+    <g stroke="#c6c6c1" stroke-width="1">
+      <line x1="120" y1="128" x2="120" y2="64"/><line x1="120" y1="128" x2="93" y2="71"/><line x1="120" y1="128" x2="147" y2="71"/>
+    </g>
+    <!-- 竖棂分左右 -->
+    <rect x="117" y="138" width="6" height="202" fill="url(#wf)" stroke="#c6c6c1" stroke-width="1"/>
+    <!-- 窗台 -->
+    <rect x="18" y="352" width="204" height="16" rx="3" fill="url(#wf)" stroke="#c6c6c1" stroke-width="1.5"/>
+    <rect x="18" y="364" width="204" height="4" rx="2" fill="#c2c2bc"/>
   </g>
 </svg>

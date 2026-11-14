@@ -1,22 +1,73 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 300">
-  <!-- 勃艮第花纹扶手椅 -->
-  <g fill="#7d3040">
-    <path d="M60 120 C40 120 32 140 36 166 L44 246 L92 246 L88 150 C86 130 78 120 60 120 Z"/>
-    <path d="M260 120 C280 120 288 140 284 166 L276 246 L228 246 L232 150 C234 130 242 120 260 120 Z"/>
-    <path d="M70 128 C64 96 96 72 160 72 C224 72 256 96 250 128 L246 160 L74 160 Z"/>
-    <rect x="70" y="150" width="180" height="100" rx="18"/>
-    <rect x="56" y="238" width="208" height="26" rx="10"/>
-  </g>
-  <g fill="#94434f">
-    <circle cx="110" cy="110" r="7"/><circle cx="160" cy="100" r="7"/><circle cx="210" cy="110" r="7"/>
-    <circle cx="130" cy="185" r="7"/><circle cx="190" cy="185" r="7"/><circle cx="160" cy="215" r="7"/>
-    <circle cx="105" cy="222" r="7"/><circle cx="215" cy="222" r="7"/>
-  </g>
-  <g fill="none" stroke="#e8d9c8" stroke-width="4" opacity=".85">
-    <path d="M70 128 C64 96 96 72 160 72 C224 72 256 96 250 128"/>
-    <rect x="70" y="150" width="180" height="100" rx="18"/>
-    <rect x="56" y="238" width="208" height="26" rx="10"/>
-  </g>
-  <rect x="60" y="264" width="18" height="14" rx="4" fill="#5d2530"/>
-  <rect x="242" y="264" width="18" height="14" rx="4" fill="#5d2530"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 310">
+  <!-- 勃艮第花纹扶手椅：菱形点链格纹+米色四瓣花+芥木圆心，环抱扶手+白木腿（对齐原版提花布） -->
+  <defs>
+    <linearGradient id="uph" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8d2c46"/>
+      <stop offset="0.55" stop-color="#7d2440"/>
+      <stop offset="1" stop-color="#63182f"/>
+    </linearGradient>
+    <linearGradient id="legG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f5f2ea"/>
+      <stop offset="0.5" stop-color="#e2dccc"/>
+      <stop offset="1" stop-color="#c8c0ab"/>
+    </linearGradient>
+    <pattern id="trellis" width="58" height="58" patternUnits="userSpaceOnUse" patternTransform="rotate(0)">
+      <!-- 点链菱形格 -->
+      <g fill="#dcb9c2" opacity="0.85">
+        <g>
+          <circle cx="6" cy="6" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="18" r="1.5"/><circle cx="24" cy="24" r="1.5"/><circle cx="30" cy="30" r="1.5"/><circle cx="36" cy="36" r="1.5"/><circle cx="42" cy="42" r="1.5"/><circle cx="48" cy="48" r="1.5"/><circle cx="54" cy="54" r="1.5"/>
+        </g>
+        <g>
+          <circle cx="52" cy="6" r="1.5"/><circle cx="46" cy="12" r="1.5"/><circle cx="40" cy="18" r="1.5"/><circle cx="34" cy="24" r="1.5"/><circle cx="28" cy="30" r="0"/><circle cx="24" cy="34" r="1.5"/><circle cx="18" cy="40" r="1.5"/><circle cx="12" cy="46" r="1.5"/><circle cx="6" cy="52" r="1.5"/>
+        </g>
+        <g transform="translate(58,0)"><circle cx="6" cy="6" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="18" r="1.5"/><circle cx="24" cy="24" r="1.5"/><circle cx="30" cy="30" r="1.5"/><circle cx="36" cy="36" r="1.5"/><circle cx="42" cy="42" r="1.5"/><circle cx="48" cy="48" r="1.5"/><circle cx="54" cy="54" r="1.5"/></g>
+        <g transform="translate(0,58)"><circle cx="52" cy="6" r="1.5"/><circle cx="46" cy="12" r="1.5"/><circle cx="40" cy="18" r="1.5"/><circle cx="34" cy="24" r="1.5"/><circle cx="24" cy="34" r="1.5"/><circle cx="18" cy="40" r="1.5"/><circle cx="12" cy="46" r="1.5"/><circle cx="6" cy="52" r="1.5"/></g>
+      </g>
+      <!-- 四瓣花（格心） -->
+      <g transform="translate(29,29)">
+        <ellipse cx="0" cy="-8" rx="3.6" ry="6.5" fill="#efe4d2"/>
+        <ellipse cx="0" cy="8" rx="3.6" ry="6.5" fill="#efe4d2"/>
+        <ellipse cx="-8" cy="0" rx="6.5" ry="3.6" fill="#efe4d2"/>
+        <ellipse cx="8" cy="0" rx="6.5" ry="3.6" fill="#efe4d2"/>
+        <circle cx="0" cy="0" r="3" fill="#c9962e"/>
+      </g>
+      <g transform="translate(58,58)"><ellipse cx="0" cy="-8" rx="3.6" ry="6.5" fill="#efe4d2"/><ellipse cx="0" cy="8" rx="3.6" ry="6.5" fill="#efe4d2"/><ellipse cx="-8" cy="0" rx="6.5" ry="3.6" fill="#efe4d2"/><ellipse cx="8" cy="0" rx="6.5" ry="3.6" fill="#efe4d2"/><circle r="3" fill="#c9962e"/></g>
+      <g transform="translate(0,0)"><ellipse cx="0" cy="-8" rx="3.6" ry="6.5" fill="#efe4d2"/><ellipse cx="0" cy="8" rx="3.6" ry="6.5" fill="#efe4d2"/><ellipse cx="-8" cy="0" rx="6.5" ry="3.6" fill="#efe4d2"/><ellipse cx="8" cy="0" rx="6.5" ry="3.6" fill="#efe4d2"/><circle r="3" fill="#c9962e"/></g>
+    </pattern>
+  </defs>
+
+  <!-- 后腿（先画，被身体压住） -->
+  <path d="M122 232 L116 268 L124 268 L128 236 Z" fill="#ddd6c4"/>
+  <path d="M178 232 L184 268 L176 268 L172 236 Z" fill="#ddd6c4"/>
+
+  <!-- 背壳 -->
+  <path d="M64 168 C52 96 84 44 150 44 C216 44 248 96 236 168 L232 196 L68 196 Z" fill="url(#uph)"/>
+  <!-- 环抱扶手（左右圆鼓） -->
+  <path d="M62 150 C40 148 34 172 36 196 C38 218 50 232 72 232 L96 232 L96 150 C88 146 70 146 62 150 Z" fill="url(#uph)"/>
+  <path d="M238 150 C260 148 266 172 264 196 C262 218 250 232 228 232 L204 232 L204 150 C212 146 230 146 238 150 Z" fill="url(#uph)"/>
+  <!-- 座垫 -->
+  <path d="M68 178 Q150 164 232 178 L236 224 Q150 238 64 224 Z" fill="url(#uph)"/>
+  <!-- 裙座 -->
+  <path d="M58 226 Q150 240 242 226 L246 254 Q150 268 54 254 Z" fill="#5e1629"/>
+  <!-- 提花纹覆盖 -->
+  <path d="M64 168 C52 96 84 44 150 44 C216 44 248 96 236 168 L232 196 L68 196 Z" fill="url(#trellis)" opacity="0.95"/>
+  <path d="M62 150 C40 148 34 172 36 196 C38 218 50 232 72 232 L96 232 L96 150 C88 146 70 146 62 150 Z" fill="url(#trellis)" opacity="0.95"/>
+  <path d="M238 150 C260 148 266 172 264 196 C262 218 250 232 228 232 L204 232 L204 150 C212 146 230 146 238 150 Z" fill="url(#trellis)" opacity="0.95"/>
+  <path d="M68 178 Q150 164 232 178 L236 224 Q150 238 64 224 Z" fill="url(#trellis)" opacity="0.95"/>
+  <!-- 体积明暗 -->
+  <path d="M64 168 C52 96 84 44 150 44 C120 52 96 96 92 196 L68 196 Z" fill="#ffffff" opacity="0.1"/>
+  <path d="M236 168 C248 96 216 44 150 44 C186 54 210 100 212 196 L232 196 Z" fill="#1c0710" opacity="0.22"/>
+  <path d="M36 196 C38 214 48 228 66 231 L72 196 Z" fill="#1c0710" opacity="0.18"/>
+  <path d="M264 196 C262 214 252 228 234 231 L228 196 Z" fill="#1c0710" opacity="0.18"/>
+  <path d="M64 224 Q150 238 236 224 L236 232 Q150 246 64 232 Z" fill="#1c0710" opacity="0.2"/>
+  <!-- 座缝线 -->
+  <path d="M68 178 Q150 164 232 178" fill="none" stroke="#4a0f22" stroke-width="2" opacity="0.6"/>
+
+  <!-- 前腿（白木锥形） -->
+  <path d="M96 252 L88 296 L102 296 L110 254 Z" fill="url(#legG)"/>
+  <path d="M204 252 L212 296 L198 296 L190 254 Z" fill="url(#legG)"/>
+  <path d="M90 292 L100 292 L101 296 L89 296 Z" fill="#b3ab97"/>
+  <path d="M200 292 L210 292 L211 296 L199 296 Z" fill="#b3ab97"/>
+  <!-- 落影 -->
+  <ellipse cx="150" cy="298" rx="92" ry="7" fill="#241016" opacity="0.18"/>
 </svg>

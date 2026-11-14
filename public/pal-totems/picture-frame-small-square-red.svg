@@ -1,7 +1,53 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-  <!-- 小幅红相框 -->
-  <rect x="8" y="8" width="104" height="104" rx="6" fill="#b8443c"/>
-  <rect x="22" y="22" width="76" height="76" rx="3" fill="#efe6d4"/>
-  <path d="M26 92 L54 62 L70 78 L82 66 L94 92 Z" fill="#7ba27b"/>
-  <circle cx="72" cy="42" r="10" fill="#d9e4ec"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- 亮红漆相框：斜面层次+镜面高光+白色内衬（对齐原版空内衬漆框） -->
+  <defs>
+    <linearGradient id="ftop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff6a72"/>
+      <stop offset="0.45" stop-color="#e42a38"/>
+      <stop offset="1" stop-color="#b3121f"/>
+    </linearGradient>
+    <linearGradient id="fbot" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c81524"/>
+      <stop offset="1" stop-color="#8d0b17"/>
+    </linearGradient>
+    <linearGradient id="fsideL" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff5a64"/>
+      <stop offset="0.5" stop-color="#d81e2c"/>
+      <stop offset="1" stop-color="#a50f1c"/>
+    </linearGradient>
+    <linearGradient id="fsideR" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#a50f1c"/>
+      <stop offset="0.5" stop-color="#d81e2c"/>
+      <stop offset="1" stop-color="#ff5a64"/>
+    </linearGradient>
+    <filter id="fsh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#4a0d13" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#fsh)">
+    <!-- 外圈（顶/底/左/右各自渐变模拟斜面受光） -->
+    <rect x="10" y="10" width="180" height="30" fill="url(#ftop)"/>
+    <rect x="10" y="160" width="180" height="30" fill="url(#fbot)"/>
+    <rect x="10" y="10" width="30" height="180" fill="url(#fsideL)"/>
+    <rect x="160" y="10" width="30" height="180" fill="url(#fsideR)"/>
+    <rect x="10" y="10" width="180" height="180" fill="none" stroke="#8d0b17" stroke-width="2"/>
+    <!-- 第二层斜面（内阶） -->
+    <rect x="34" y="34" width="132" height="14" fill="url(#ftop)"/>
+    <rect x="34" y="152" width="132" height="14" fill="url(#fbot)"/>
+    <rect x="34" y="34" width="14" height="132" fill="url(#fsideL)"/>
+    <rect x="152" y="34" width="14" height="132" fill="url(#fsideR)"/>
+    <!-- 镜面高光（角部斜向白条） -->
+    <path d="M14 12 L58 12 L20 50 L14 44 Z" fill="#ffffff" opacity="0.55"/>
+    <path d="M186 12 L142 12 L180 50 L186 44 Z" fill="#ffffff" opacity="0.35"/>
+    <path d="M14 188 L58 188 L20 152 L14 158 Z" fill="#ffffff" opacity="0.3"/>
+    <path d="M186 188 L142 188 L180 152 L186 158 Z" fill="#ffffff" opacity="0.5"/>
+    <rect x="62" y="14" width="44" height="6" rx="3" fill="#ffffff" opacity="0.35"/>
+    <rect x="94" y="180" width="44" height="6" rx="3" fill="#ffffff" opacity="0.3"/>
+    <!-- 内衬（白，内凹阴影） -->
+    <rect x="48" y="48" width="104" height="104" fill="#f4f3f0"/>
+    <rect x="48" y="48" width="104" height="5" fill="#d9d8d4"/>
+    <rect x="48" y="48" width="5" height="104" fill="#e1e0dc"/>
+    <rect x="48" y="147" width="104" height="5" fill="#ffffff" opacity="0.8"/>
+  </g>
 </svg>

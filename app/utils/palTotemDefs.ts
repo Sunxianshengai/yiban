@@ -15,6 +15,8 @@ export interface PalTotemDef {
   src: string
   /** 渲染宽度 = 舞台宽度的百分比；高度按素材纵横比自动 */
   w: number
+  /** 素材纵横比（高/宽），用于把动作条定位在家具顶边（旋转不跟随） */
+  ar: number
   /** 默认摆放：中心 x（%），bottom = 离舞台底部（%）。壁挂件用大 bottom 贴墙。 */
   x: number
   bottom: number
@@ -25,19 +27,19 @@ export interface PalTotemDef {
 }
 
 export const PAL_TOTEMS: PalTotemDef[] = [
-  { id: 'modular-side-table-red', name: '红色边几', src: '/pal-totems/modular-side-table-red.svg', w: 13, x: 24, bottom: 3, z: 3, kind: 'furniture' },
-  { id: 'stack-of-art-books', name: '艺术书堆', src: '/pal-totems/stack-of-art-books.svg', w: 11, x: 24, bottom: 40, z: 4, kind: 'furniture' },
-  { id: 'potted-fan-palm', name: '棕榈盆栽', src: '/pal-totems/potted-fan-palm.svg', w: 17, x: 84, bottom: 3, z: 2, kind: 'plant', growable: { maxStage: 3 } },
-  { id: 'red-tulips-clear-glass-vase', name: '红郁金香花瓶', src: '/pal-totems/red-tulips-clear-glass-vase.svg', w: 9, x: 52, bottom: 3, z: 2, kind: 'plant', growable: { maxStage: 3 } },
-  { id: 'patterned-armchair-burgundy', name: '花纹扶手椅', src: '/pal-totems/patterned-armchair-burgundy.svg', w: 26, x: 74, bottom: 3, z: 1, kind: 'furniture' },
-  { id: 'arched-glass-window-frame', name: '拱形玻璃窗', src: '/pal-totems/arched-glass-window-frame.svg', w: 15, x: 40, bottom: 34, z: 1, kind: 'furniture' },
-  { id: 'white-french-double-door', name: '法式双开门', src: '/pal-totems/white-french-double-door.svg', w: 14, x: 66, bottom: 32, z: 1, kind: 'furniture' },
-  { id: 'picture-frame-small-square-red', name: '小红相框', src: '/pal-totems/picture-frame-small-square-red.svg', w: 7, x: 36, bottom: 52, z: 1, kind: 'furniture' },
-  { id: 'flower-pendant-mustard-yellow', name: '花朵吊灯', src: '/pal-totems/flower-pendant-mustard-yellow.svg', w: 8, x: 56, bottom: 58, z: 1, kind: 'furniture' },
+  { id: 'modular-side-table-red', name: '红色边几', src: '/pal-totems/modular-side-table-red.svg', w: 13, ar: 1.04, x: 24, bottom: 3, z: 3, kind: 'furniture' },
+  { id: 'stack-of-art-books', name: '艺术书堆', src: '/pal-totems/stack-of-art-books.svg', w: 11, ar: 0.59, x: 24, bottom: 40, z: 4, kind: 'furniture' },
+  { id: 'potted-fan-palm', name: '棕榈盆栽', src: '/pal-totems/potted-fan-palm.svg', w: 17, ar: 1.3, x: 84, bottom: 3, z: 2, kind: 'plant', growable: { maxStage: 3 } },
+  { id: 'red-tulips-clear-glass-vase', name: '红郁金香花瓶', src: '/pal-totems/red-tulips-clear-glass-vase.svg', w: 9, ar: 1.205, x: 52, bottom: 3, z: 2, kind: 'plant', growable: { maxStage: 3 } },
+  { id: 'patterned-armchair-burgundy', name: '花纹扶手椅', src: '/pal-totems/patterned-armchair-burgundy.svg', w: 21, ar: 1.033, x: 74, bottom: 3, z: 1, kind: 'furniture' },
+  { id: 'arched-glass-window-frame', name: '拱形玻璃窗', src: '/pal-totems/arched-glass-window-frame.svg', w: 12, ar: 1.583, x: 40, bottom: 13, z: 1, kind: 'furniture' },
+  { id: 'white-french-double-door', name: '法式双开门', src: '/pal-totems/white-french-double-door.svg', w: 14, ar: 1.417, x: 66, bottom: 1, z: 1, kind: 'furniture' },
+  { id: 'picture-frame-small-square-red', name: '小红相框', src: '/pal-totems/picture-frame-small-square-red.svg', w: 7, ar: 1.0, x: 36, bottom: 52, z: 1, kind: 'furniture' },
+  { id: 'flower-pendant-mustard-yellow', name: '花朵吊灯', src: '/pal-totems/flower-pendant-mustard-yellow.svg', w: 8, ar: 1.5, x: 56, bottom: 58, z: 1, kind: 'furniture' },
 ]
 
 export const PAL_WALLPAPERS: PalTotemDef[] = [
-  { id: 'wallpaper-light-blue-striped', name: '浅蓝条纹壁纸', src: '/pal-totems/wallpaper-light-blue-striped.svg', w: 100, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
+  { id: 'wallpaper-light-blue-striped', name: '浅蓝条纹壁纸', src: '/pal-totems/wallpaper-light-blue-striped.svg', w: 100, ar: 0.65, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
 ]
 
 export function palTotemDef(id: string): PalTotemDef | undefined {

@@ -1,10 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice">
-  <!-- 浅蓝竖条纹壁纸（占位手绘，对齐原版 light-blue-striped-wallpaper 的观感） -->
+  <!-- 浅蓝竖条纹壁纸：对齐原版 watercolor 条纹（蓝条约 26px + 白隙，边缘略深） -->
   <defs>
-    <pattern id="stripes" width="34" height="8" patternUnits="userSpaceOnUse">
-      <rect width="34" height="8" fill="#e9edef"/>
-      <rect x="7" width="13" height="8" rx="6" fill="#b3c7d1"/>
+    <linearGradient id="stripe" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#b0cbdc"/>
+      <stop offset="0.22" stop-color="#c4dbe8"/>
+      <stop offset="0.5" stop-color="#cddfe9"/>
+      <stop offset="0.78" stop-color="#c0d6e4"/>
+      <stop offset="1" stop-color="#b5cfdf"/>
+    </linearGradient>
+    <filter id="wc" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.05" numOctaves="2" seed="7" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.45  0 0 0 0 0.55  0 0 0 0 0.62  0 0 0 0.35 0"/>
+      <feComposite operator="in" in2="SourceGraphic"/>
+    </filter>
+    <pattern id="stripes" width="42" height="40" patternUnits="userSpaceOnUse">
+      <rect width="42" height="40" fill="#ffffff"/>
+      <rect x="0" width="27" height="40" fill="url(#stripe)"/>
     </pattern>
   </defs>
   <rect width="800" height="520" fill="url(#stripes)"/>
+  <rect width="800" height="520" fill="#ffffff" filter="url(#wc)" opacity="0.5"/>
 </svg>

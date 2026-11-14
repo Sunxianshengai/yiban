@@ -22,6 +22,25 @@ const roomEl = ref<HTMLElement | null>(null)
 const selectedId = ref('')
 const showCatalog = ref(false)
 
+// 动作条挂在房间根层（不随家具旋转——长条栏转 90° 后远端按钮会被 overflow:hidden 裁掉）
+const roomAspect = ref(760 / 240)
+function measureRoom() {
+  if (roomEl.value) roomAspect.value = roomEl.value.clientWidth / roomEl.value.clientHeight
+}
+onMounted(() => { measureRoom(); window.addEventListener('resize', measureRoom) })
+onBeforeUnmount(() => window.removeEventListener('resize', measureRoom))
+watch(isMobile, () => nextTick(measureRoom))
+
+const selected = computed(() => room.placed.value.find(i => i.id === selectedId.value) ?? null)
+const barStyle = computed(() => {
+  const sel = selected.value
+  const def = sel ? palTotemDef(sel.totemId) : undefined
+  if (!sel || !def) return {}
+  const imgPct = def.w * def.ar * roomAspect.value * (1 + sel.growthStage * 0.16)
+  const bottom = Math.min(Math.max(sel.bottom + imgPct + 2, sel.bottom + 2), 84)
+  return { left: `${sel.x}%`, bottom: `${bottom}%` }
+})
+
 function select(id: string) {
   selectedId.value = id
   palSound.tap()
@@ -176,15 +195,17 @@ function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed
       <img :src="palTotemDef(inst.totemId)?.src" :alt="palTotemDef(inst.totemId)?.name" draggable="false"
         :data-growth="palTotemDef(inst.totemId)?.growable ? inst.growthStage : undefined" :style="{ transform: growthScale(inst.growthStage) }">
       <span v-for="f in fx.filter(f => f.totemId === inst.id)" :key="f.key" class="fx" :class="f.kind" aria-hidden="true">{{ f.kind === 'drop' ? '💧' : '⭐' }}</span>
-      <div v-if="selectedId === inst.id" class="totem-actions" data-pal-actions @pointerdown.stop>
-        <button :data-act="'rotate'" title="旋转" aria-label="旋转" @click.stop="act(inst.id, 'rotate')"><JrIcon :path="mdiRotateRight" :size="15" /></button>
-        <button :data-act="'flip'" title="水平翻转" aria-label="水平翻转" @click.stop="act(inst.id, 'flip')"><JrIcon :path="mdiFlipHorizontal" :size="15" /></button>
-        <button :data-act="'front'" title="置前" aria-label="置前" @click.stop="act(inst.id, 'front')"><JrIcon :path="mdiArrowUp" :size="15" /></button>
-        <button :data-act="'back'" title="置后" aria-label="置后" @click.stop="act(inst.id, 'back')"><JrIcon :path="mdiArrowDown" :size="15" /></button>
-        <button v-if="palTotemDef(inst.totemId)?.growable" :data-act="'water'" title="浇水" aria-label="浇水" @click.stop="act(inst.id, 'water')"><JrIcon :path="mdiWater" :size="15" /></button>
-        <button :data-act="'remove'" title="移除" aria-label="移除" @click.stop="act(inst.id, 'remove')"><JrIcon :path="mdiTrashCanOutline" :size="15" /></button>
-        <button :data-act="'done'" title="完成" aria-label="完成" @click.stop="deselect()"><JrIcon :path="mdiClose" :size="15" /></button>
-      </div>
+    </div>
+
+    <!-- 动作条（房间根层，始终正立，定位在选中家具顶边；不随家具旋转/翻转） -->
+    <div v-if="selected" class="totem-actions" data-pal-actions :style="barStyle" @pointerdown.stop>
+      <button :data-act="'rotate'" title="旋转" aria-label="旋转" @click.stop="act(selected.id, 'rotate')"><JrIcon :path="mdiRotateRight" :size="15" /></button>
+      <button :data-act="'flip'" title="水平翻转" aria-label="水平翻转" @click.stop="act(selected.id, 'flip')"><JrIcon :path="mdiFlipHorizontal" :size="15" /></button>
+      <button :data-act="'front'" title="置前" aria-label="置前" @click.stop="act(selected.id, 'front')"><JrIcon :path="mdiArrowUp" :size="15" /></button>
+      <button :data-act="'back'" title="置后" aria-label="置后" @click.stop="act(selected.id, 'back')"><JrIcon :path="mdiArrowDown" :size="15" /></button>
+      <button v-if="palTotemDef(selected.totemId)?.growable" :data-act="'water'" title="浇水" aria-label="浇水" @click.stop="act(selected.id, 'water')"><JrIcon :path="mdiWater" :size="15" /></button>
+      <button :data-act="'remove'" title="移除" aria-label="移除" @click.stop="act(selected.id, 'remove')"><JrIcon :path="mdiTrashCanOutline" :size="15" /></button>
+      <button :data-act="'done'" title="完成" aria-label="完成" @click.stop="deselect()"><JrIcon :path="mdiClose" :size="15" /></button>
     </div>
 
     <!-- 小羊（吉祥物；点它出反应） -->
@@ -249,7 +270,7 @@ function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed
 .room-totem.dragging img { transition: none; }
 .room-totem.sel img { filter: drop-shadow(0 3px 4px rgba(40,60,70,0.18)) drop-shadow(0 0 0 1px rgba(68,192,255,0.35)); outline: 1.5px dashed rgba(68,192,255,0.7); outline-offset: 3px; border-radius: 6px; }
 
-.totem-actions { position: absolute; top: -16px; left: 50%; transform: translate(-50%, -100%); display: flex; gap: 2px; background: #fff; border: 1px solid var(--jr-outline-variant); border-radius: 999px; padding: 3px 5px; box-shadow: 0 4px 14px rgba(20,40,50,0.16); z-index: 20; }
+.totem-actions { position: absolute; transform: translateX(-50%); display: flex; gap: 2px; background: #fff; border: 1px solid var(--jr-outline-variant); border-radius: 999px; padding: 3px 5px; box-shadow: 0 4px 14px rgba(20,40,50,0.16); z-index: 40; }
 [data-theme="dark"] .totem-actions { background: #232a2d; }
 .totem-actions button { width: 26px; height: 26px; border-radius: 50%; border: 0; background: none; color: var(--jr-on-surface-variant); display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .totem-actions button:hover { background: var(--jr-surface-variant); }

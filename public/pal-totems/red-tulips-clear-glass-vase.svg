@@ -1,19 +1,109 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 220">
-  <!-- 红郁金香玻璃花瓶（可生长） -->
-  <g stroke="#4e7d4c" stroke-width="5" fill="none" stroke-linecap="round">
-    <path d="M78 200 C74 150 70 120 60 96"/>
-    <path d="M90 200 C90 150 92 118 92 84"/>
-    <path d="M102 200 C108 150 112 122 122 98"/>
-    <path d="M84 200 C80 160 66 138 46 118"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 241">
+  <!-- 红郁金香玻璃花瓶：透明玻璃筒+水面+交叉茎+八朵（开杯/花苞）+阔叶（对齐原版照片级布局） -->
+  <defs>
+    <linearGradient id="petal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e23a3a"/>
+      <stop offset="0.55" stop-color="#c02128"/>
+      <stop offset="1" stop-color="#8f1420"/>
+    </linearGradient>
+    <linearGradient id="petalSide" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d53131"/>
+      <stop offset="1" stop-color="#7d0f1a"/>
+    </linearGradient>
+    <linearGradient id="stemG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4e7d3a"/>
+      <stop offset="0.5" stop-color="#6f9c4d"/>
+      <stop offset="1" stop-color="#45702f"/>
+    </linearGradient>
+    <linearGradient id="leafBlade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5d8c42"/>
+      <stop offset="1" stop-color="#3d662c"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#dcecf4" stop-opacity="0.75"/>
+      <stop offset="0.18" stop-color="#ffffff" stop-opacity="0.5"/>
+      <stop offset="0.5" stop-color="#cfe3ee" stop-opacity="0.4"/>
+      <stop offset="0.85" stop-color="#b9d3e2" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#a8c6d6" stop-opacity="0.8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 茎（水上部分） -->
+  <g fill="none" stroke="url(#stemG)" stroke-width="4.4" stroke-linecap="round">
+    <path d="M92 152 C88 118 74 96 58 46"/>
+    <path d="M98 152 C98 110 100 74 102 30"/>
+    <path d="M104 152 C110 116 124 92 142 50"/>
+    <path d="M88 152 C82 122 60 108 40 88"/>
+    <path d="M110 152 C114 128 130 116 152 122"/>
+    <path d="M96 152 C90 132 74 124 62 116"/>
+    <path d="M102 152 C108 132 118 120 130 114"/>
   </g>
-  <g fill="#c0392b">
-    <path d="M60 96 C48 84 50 64 60 58 C70 64 72 84 60 96 Z"/>
-    <path d="M92 84 C80 72 82 50 92 44 C102 50 104 72 92 84 Z"/>
-    <path d="M122 98 C110 86 112 66 122 60 C132 66 134 86 122 98 Z"/>
-    <path d="M46 118 C36 108 38 92 46 86 C54 92 56 108 46 118 Z"/>
-    <path d="M138 112 C128 102 130 86 138 80 C146 86 148 102 138 112 Z"/>
+  <!-- 叶片 -->
+  <g>
+    <path d="M88 150 C60 132 40 138 24 118 C44 118 66 124 86 142 Z" fill="url(#leafBlade)"/>
+    <path d="M104 150 C132 134 152 140 168 122 C148 120 126 128 106 142 Z" fill="url(#leafBlade)"/>
+    <path d="M92 152 C70 148 52 156 36 176 C58 172 78 164 92 154 Z" fill="#4a7a35"/>
+    <path d="M100 152 C122 148 140 156 156 176 C134 172 114 164 100 154 Z" fill="#547f3a"/>
   </g>
-  <path d="M60 176 L120 176 L112 210 L68 210 Z" fill="#cfe0ea" opacity=".8"/>
-  <path d="M60 176 L120 176" stroke="#a9c4d4" stroke-width="4" fill="none"/>
-  <path d="M64 184 L116 184" stroke="#ffffff" stroke-width="3" opacity=".7"/>
+
+  <!-- 花头：开放杯 ×3 -->
+  <g>
+    <!-- 顶部中央 -->
+    <path d="M102 32 C92 24 94 8 102 4 C110 8 112 24 102 32 Z" fill="url(#petalSide)"/>
+    <path d="M102 32 C90 28 86 14 92 6 C100 10 104 20 102 32 Z" fill="url(#petal)"/>
+    <path d="M102 32 C114 28 118 14 112 6 C104 10 100 20 102 32 Z" fill="url(#petalSide)"/>
+    <path d="M94 22 C98 28 106 28 110 22 C108 30 96 30 94 22 Z" fill="#5e0b12"/>
+    <g fill="#22160e"><circle cx="99" cy="24" r="1.2"/><circle cx="103" cy="25" r="1.2"/><circle cx="101" cy="22" r="1.2"/></g>
+    <!-- 左上 -->
+    <path d="M58 48 C48 40 50 24 58 20 C66 24 68 40 58 48 Z" fill="url(#petalSide)"/>
+    <path d="M58 48 C46 44 42 30 48 22 C56 26 60 36 58 48 Z" fill="url(#petal)"/>
+    <path d="M58 48 C70 44 74 30 68 22 C60 26 56 36 58 48 Z" fill="url(#petalSide)"/>
+    <path d="M50 38 C54 44 62 44 66 38 C64 46 52 46 50 38 Z" fill="#5e0b12"/>
+    <!-- 右上 -->
+    <path d="M142 52 C132 44 134 28 142 24 C150 28 152 44 142 52 Z" fill="url(#petalSide)"/>
+    <path d="M142 52 C130 48 126 34 132 26 C140 30 144 40 142 52 Z" fill="url(#petal)"/>
+    <path d="M142 52 C154 48 158 34 152 26 C144 30 140 40 142 52 Z" fill="url(#petalSide)"/>
+    <!-- 中部 -->
+    <path d="M92 92 C82 84 84 68 92 64 C100 68 102 84 92 92 Z" fill="url(#petalSide)"/>
+    <path d="M92 92 C80 88 76 74 82 66 C90 70 94 80 92 92 Z" fill="url(#petal)"/>
+    <path d="M92 92 C104 88 108 74 102 66 C94 70 90 80 92 92 Z" fill="url(#petalSide)"/>
+    <path d="M84 82 C88 88 96 88 100 82 C98 90 86 90 84 82 Z" fill="#5e0b12"/>
+    <g fill="#22160e"><circle cx="89" cy="84" r="1.2"/><circle cx="94" cy="85" r="1.2"/></g>
+  </g>
+  <!-- 花苞 ×4 -->
+  <g>
+    <path d="M40 92 C34 86 35 74 40 71 C45 74 46 86 40 92 Z" fill="url(#petal)"/>
+    <path d="M40 92 C33 88 33 76 38 71 C41 78 42 86 40 92 Z" fill="url(#petalSide)" opacity="0.7"/>
+    <path d="M152 126 C146 120 147 108 152 105 C157 108 158 120 152 126 Z" fill="url(#petal)"/>
+    <path d="M152 126 C145 122 145 110 150 105 C153 112 154 120 152 126 Z" fill="url(#petalSide)" opacity="0.7"/>
+    <path d="M62 120 C56 114 57 102 62 99 C67 102 68 114 62 120 Z" fill="url(#petal)"/>
+    <path d="M130 118 C136 112 135 100 130 97 C125 100 124 112 130 118 Z" fill="url(#petal)"/>
+    <path d="M130 118 C137 114 137 102 132 97 C129 104 128 112 130 118 Z" fill="url(#petalSide)" opacity="0.7"/>
+  </g>
+
+  <!-- 玻璃花瓶（水上茎的折射画在玻璃层下） -->
+  <g>
+    <!-- 瓶内水面下的茎（被玻璃罩住，色深） -->
+    <g fill="none" stroke="#3d662c" stroke-width="4" stroke-linecap="round" opacity="0.75">
+      <path d="M92 152 C88 168 96 186 90 208"/>
+      <path d="M98 152 C98 170 92 190 98 212"/>
+      <path d="M104 152 C108 170 102 188 106 210"/>
+      <path d="M88 152 C84 172 92 190 88 206"/>
+      <path d="M110 152 C114 172 106 192 110 208"/>
+    </g>
+    <!-- 水体 -->
+    <path d="M64 176 L136 176 L136 176 Q136 210 133 226 Q131 234 120 235 L80 235 Q69 234 67 226 Q64 210 64 176 Z" fill="#b9d7e6" opacity="0.45"/>
+    <ellipse cx="100" cy="176" rx="36" ry="4" fill="#cfe6f1" opacity="0.8"/>
+    <ellipse cx="100" cy="176" rx="36" ry="4" fill="none" stroke="#e8f3f8" stroke-width="1" opacity="0.7"/>
+    <!-- 瓶身 -->
+    <path d="M64 152 L64 176 Q64 214 68 228 Q70 238 84 239 L116 239 Q130 238 132 228 Q136 214 136 176 L136 152 Z" fill="url(#glass)"/>
+    <!-- 沿口（双层椭圆） -->
+    <ellipse cx="100" cy="152" rx="36" ry="6" fill="#e8f1f6" opacity="0.9"/>
+    <ellipse cx="100" cy="152" rx="36" ry="6" fill="none" stroke="#b7cfdb" stroke-width="1.4"/>
+    <ellipse cx="100" cy="152" rx="30" ry="4.2" fill="#f6fafc"/>
+    <!-- 高光 -->
+    <rect x="72" y="158" width="7" height="72" rx="3.5" fill="#ffffff" opacity="0.55"/>
+    <rect x="124" y="160" width="4" height="66" rx="2" fill="#ffffff" opacity="0.35"/>
+    <path d="M70 234 Q100 241 130 234 Q118 238 100 238 Q82 238 70 234 Z" fill="#9fc2d3" opacity="0.6"/>
+  </g>
 </svg>

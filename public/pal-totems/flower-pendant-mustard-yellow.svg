@@ -1,14 +1,52 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 260">
-  <!-- 芥末黄花朵吊灯 -->
-  <line x1="80" y1="0" x2="80" y2="120" stroke="#8d959b" stroke-width="5"/>
-  <g fill="#d9a13b">
-    <circle cx="80" cy="96" r="20"/>
-    <ellipse cx="80" cy="70" rx="16" ry="26"/>
-    <ellipse cx="106" cy="88" rx="26" ry="16"/>
-    <ellipse cx="54" cy="88" rx="26" ry="16"/>
-    <ellipse cx="96" cy="114" rx="24" ry="15"/>
-    <ellipse cx="64" cy="114" rx="24" ry="15"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300">
+  <!-- 芥末黄吊灯（Flowerpot 造型）：细吊线+接线圈+主半圆罩+下沿副罩+水彩纹理 -->
+  <defs>
+    <linearGradient id="cordG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#b98d1f"/>
+      <stop offset="0.5" stop-color="#e0b53a"/>
+      <stop offset="1" stop-color="#a87c18"/>
+    </linearGradient>
+    <radialGradient id="domeG" cx="0.38" cy="0.25" r="1.05">
+      <stop offset="0" stop-color="#eec84f"/>
+      <stop offset="0.5" stop-color="#d4a72c"/>
+      <stop offset="0.85" stop-color="#b3891d"/>
+      <stop offset="1" stop-color="#967015"/>
+    </radialGradient>
+    <linearGradient id="domeLow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c3921f"/>
+      <stop offset="1" stop-color="#967014"/>
+    </linearGradient>
+    <filter id="paint" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02 0.03" numOctaves="3" seed="5" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.25  0 0 0 0 0.05  0 0 0 0.3 0"/>
+      <feComposite operator="in" in2="SourceGraphic"/>
+    </filter>
+    <clipPath id="domeClip"><path d="M40 232 A60 60 0 0 1 160 232 L160 236 L40 236 Z"/></clipPath>
+    <clipPath id="lowClip"><path d="M66 236 L134 236 A34 36 0 0 1 66 236 Z" transform="translate(0,0)"/></clipPath>
+  </defs>
+
+  <!-- 吊线 -->
+  <rect x="97.5" y="0" width="5" height="176" fill="url(#cordG)"/>
+  <rect x="98.6" y="0" width="1.4" height="176" fill="#f0d27a" opacity="0.8"/>
+  <!-- 接线圈 -->
+  <rect x="92" y="172" width="16" height="12" rx="3" fill="url(#cordG)"/>
+  <rect x="94" y="173" width="3" height="10" fill="#f0d27a" opacity="0.6"/>
+
+  <!-- 主罩（半圆） -->
+  <g>
+    <path d="M40 236 A60 60 0 0 1 160 236 L160 238 L40 238 Z" fill="url(#domeG)"/>
+    <g clip-path="url(#domeClip)">
+      <rect x="40" y="176" width="120" height="62" fill="#ffffff" filter="url(#paint)" opacity="0.55"/>
+      <path d="M40 200 C60 190 90 190 104 206 C118 220 140 222 160 212 L160 238 L40 238 Z" fill="#967015" opacity="0.25"/>
+    </g>
+    <!-- 沿口 -->
+    <path d="M40 232 L160 232 L160 239 L40 239 Z" fill="#a87f1a"/>
+    <rect x="40" y="232.5" width="120" height="2.2" fill="#e9c356" opacity="0.9"/>
   </g>
-  <circle cx="80" cy="96" r="11" fill="#b8812a"/>
-  <circle cx="80" cy="96" r="5" fill="#f3d9a6"/>
+
+  <!-- 下沿副罩（小半圆垂下） -->
+  <path d="M70 239 L130 239 A30 32 0 0 1 70 239 Z" fill="url(#domeLow)"/>
+  <path d="M70 239 A30 32 0 0 0 130 239" fill="none" stroke="#7d5c10" stroke-width="1.6" opacity="0.7"/>
+  <!-- 内透光 -->
+  <ellipse cx="100" cy="240" rx="26" ry="4" fill="#fff3cf" opacity="0.6"/>
 </svg>

@@ -1,15 +1,82 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 210">
-  <!-- 红色模块边几（USM 风：铬立柱+红面板+圆点拉手） -->
-  <g stroke="#9aa5ab" stroke-width="5" stroke-linecap="round">
-    <line x1="18" y1="16" x2="18" y2="200"/>
-    <line x1="182" y1="16" x2="182" y2="200"/>
-    <line x1="100" y1="16" x2="100" y2="200"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 208">
+  <!-- 红色模块边几（USM 风）：铬管+球节点+红面板+锁孔+黑脚垫，渐变镀铬质感 -->
+  <defs>
+    <linearGradient id="chrome" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#eef3f6"/>
+      <stop offset="0.3" stop-color="#c3cdd4"/>
+      <stop offset="0.5" stop-color="#8b969e"/>
+      <stop offset="0.68" stop-color="#d5dde2"/>
+      <stop offset="1" stop-color="#a9b4bb"/>
+    </linearGradient>
+    <linearGradient id="chromeH" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0f5f8"/>
+      <stop offset="0.35" stop-color="#bcc6cd"/>
+      <stop offset="0.55" stop-color="#87929a"/>
+      <stop offset="0.75" stop-color="#dde4e8"/>
+      <stop offset="1" stop-color="#a5b0b7"/>
+    </linearGradient>
+    <linearGradient id="redPanel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#cf3a41"/>
+      <stop offset="0.55" stop-color="#bb2a32"/>
+      <stop offset="1" stop-color="#a01d26"/>
+    </linearGradient>
+    <radialGradient id="lock" cx="0.38" cy="0.35" r="0.9">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.5" stop-color="#cfd6da"/>
+      <stop offset="1" stop-color="#8d979f"/>
+    </radialGradient>
+    <radialGradient id="ball" cx="0.35" cy="0.3" r="1">
+      <stop offset="0" stop-color="#fbfdfe"/>
+      <stop offset="0.55" stop-color="#c8d1d7"/>
+      <stop offset="1" stop-color="#7f8a92"/>
+    </radialGradient>
+    <filter id="tsh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#5a2226" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <!-- 立柱 -->
+  <g>
+    <rect x="12" y="10" width="10" height="192" rx="5" fill="url(#chrome)"/>
+    <rect x="178" y="10" width="10" height="192" rx="5" fill="url(#chrome)"/>
+    <rect x="13.5" y="12" width="2.4" height="188" rx="1.2" fill="#ffffff" opacity="0.55"/>
+    <rect x="179.5" y="12" width="2.4" height="188" rx="1.2" fill="#ffffff" opacity="0.55"/>
   </g>
-  <rect x="8" y="14" width="184" height="30" rx="3" fill="#c0393b"/>
-  <circle cx="100" cy="29" r="7" fill="#e8e3da" stroke="#8d2f31" stroke-width="2"/>
-  <rect x="8" y="106" width="184" height="14" rx="2" fill="#c0393b"/>
-  <rect x="8" y="170" width="184" height="14" rx="2" fill="#c0393b"/>
-  <g fill="#d7dde0">
-    <circle cx="18" cy="204" r="5"/><circle cx="100" cy="204" r="5"/><circle cx="182" cy="204" r="5"/>
+
+  <!-- 顶板（带透视顶面）+ 抽屉面板 -->
+  <g filter="url(#tsh)">
+    <path d="M17 8 L183 8 L196 18 L4 18 Z" fill="#8f1b23"/>
+    <rect x="4" y="18" width="192" height="86" fill="url(#redPanel)"/>
+    <rect x="4" y="18" width="192" height="3" fill="#d9585e" opacity="0.7"/>
+    <rect x="4" y="101" width="192" height="3" fill="#7c161e" opacity="0.6"/>
   </g>
+  <!-- 锁孔 -->
+  <circle cx="100" cy="61" r="13" fill="url(#lock)" stroke="#6f7a82" stroke-width="1.2"/>
+  <circle cx="100" cy="61" r="13" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.5"/>
+  <circle cx="100" cy="61" r="4.6" fill="#5d666d"/>
+  <rect x="98.6" y="63" width="2.8" height="6" rx="1.4" fill="#5d666d"/>
+
+  <!-- 中层横杆（开放格上沿） -->
+  <rect x="14" y="118" width="172" height="10" rx="5" fill="url(#chromeH)"/>
+  <rect x="14" y="119.4" width="172" height="2.2" rx="1.1" fill="#ffffff" opacity="0.5"/>
+  <circle cx="19" cy="123" r="7.5" fill="url(#ball)"/><circle cx="19" cy="123" r="2.2" fill="#4c565e"/>
+  <circle cx="181" cy="123" r="7.5" fill="url(#ball)"/><circle cx="181" cy="123" r="2.2" fill="#4c565e"/>
+
+  <!-- 底层红搁板（内收） -->
+  <rect x="22" y="160" width="156" height="22" fill="url(#redPanel)"/>
+  <rect x="22" y="160" width="156" height="2.4" fill="#d9585e" opacity="0.6"/>
+  <rect x="22" y="179.6" width="156" height="2.4" fill="#7c161e" opacity="0.6"/>
+
+  <!-- 底横杆 + 黑脚垫 -->
+  <rect x="14" y="188" width="172" height="10" rx="5" fill="url(#chromeH)"/>
+  <rect x="14" y="189.4" width="172" height="2.2" rx="1.1" fill="#ffffff" opacity="0.5"/>
+  <circle cx="19" cy="193" r="7.5" fill="url(#ball)"/><circle cx="19" cy="193" r="2.2" fill="#4c565e"/>
+  <circle cx="181" cy="193" r="7.5" fill="url(#ball)"/><circle cx="181" cy="193" r="2.2" fill="#4c565e"/>
+  <!-- 球节点（顶/底） -->
+  <circle cx="17" cy="16" r="7.5" fill="url(#ball)"/><circle cx="17" cy="16" r="2.2" fill="#4c565e"/>
+  <circle cx="183" cy="16" r="7.5" fill="url(#ball)"/><circle cx="183" cy="16" r="2.2" fill="#4c565e"/>
+  <circle cx="17" cy="199" r="7.5" fill="url(#ball)"/><circle cx="17" cy="199" r="2.2" fill="#4c565e"/>
+  <circle cx="183" cy="199" r="7.5" fill="url(#ball)"/><circle cx="183" cy="199" r="2.2" fill="#4c565e"/>
+  <ellipse cx="17" cy="206" rx="9" ry="3.4" fill="#23282c"/>
+  <ellipse cx="183" cy="206" rx="9" ry="3.4" fill="#23282c"/>
 </svg>
