@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiCalendarBlankOutline, mdiMapMarkerOutline, mdiWeatherSunny, mdiEmoticonOutline, mdiRun, mdiTagOutline, mdiPlus, mdiFormatBold, mdiFormatItalic, mdiFormatStrikethrough, mdiFormatUnderline, mdiFormatAlignLeft, mdiFormatAlignCenter, mdiUndo, mdiRedo, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiClose, mdiCheck, mdiFormatListBulleted, mdiFormatListNumbered, mdiCheckboxMarkedOutline, mdiFormatPilcrow, mdiFormatHeader1, mdiFormatHeader2, mdiFormatHeader3, mdiFormatQuoteOpen, mdiFormatListChecks, mdiLink, mdiImage, mdiTable, mdiBorderHorizontal, mdiPalette, mdiMarker, mdiWaterOff, mdiImageMultipleOutline, mdiApps, mdiFormatAlignRight, mdiCodeTags, mdiFormatIndentIncrease, mdiFormatIndentDecrease } from '@mdi/js'
+import { mdiCalendarBlankOutline, mdiMapMarkerOutline, mdiWeatherSunny, mdiEmoticonOutline, mdiRun, mdiTagOutline, mdiPlus, mdiFormatBold, mdiFormatItalic, mdiFormatStrikethrough, mdiFormatUnderline, mdiFormatAlignLeft, mdiFormatAlignCenter, mdiUndo, mdiRedo, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiClose, mdiCheck, mdiFormatListBulleted, mdiFormatListNumbered, mdiCheckboxMarkedOutline, mdiFormatPilcrow, mdiFormatHeader1, mdiFormatHeader2, mdiFormatHeader3, mdiFormatQuoteOpen, mdiFormatListChecks, mdiLink, mdiImage, mdiTable, mdiBorderHorizontal, mdiPalette, mdiMarker, mdiWaterOff, mdiImageMultipleOutline, mdiApps, mdiFormatAlignRight, mdiCodeTags, mdiFormatIndentIncrease, mdiFormatIndentDecrease, mdiAccountMultipleOutline, mdiLockOutline } from '@mdi/js'
 import type { EntryV2, MediaFileV2, TagWordV2 } from '~/utils/db'
 import { miscDb } from '~/utils/db'
 import { journalFragment, journalHtml, renderJournal } from '~/utils/journalHtml'
@@ -47,7 +47,7 @@ const date = ref(props.initialDate ? new Date(props.initialDate) : new Date())
 const meta = ref<Partial<EntryV2>>({ ...props.initialMeta })
 const popoverLabels = {
   style: '段落样式', insert: '插入', table: '表格', color: '文字颜色', loc: '地点',
-  weather: '天气', mood: '心情', activity: '活动', tags: '标签', media: '媒体',
+  weather: '天气', mood: '心情', activity: '活动', tags: '标签', media: '媒体', family: '共享范围',
 }
 // style/insert/color 在原版是无标题纯菜单（v-menu），不渲染头
 const headlessPops: ReadonlySet<keyof typeof popoverLabels> = new Set(['style', 'insert', 'color'])
@@ -56,6 +56,10 @@ const openPop = ref<keyof typeof popoverLabels | null>(null)
 const WEATHER_ICONS = ['sun', 'partly', 'cloud', 'fog', 'rain', 'snow', 'storm']
 const selectedMood = computed(() => journalSentiment(meta.value.sentiment)?.value)
 const selectedActivity = computed(() => journalActivity(meta.value.activity)?.value)
+
+// 家庭组（附加功能）：加入组后才出现「共享家人」开关；visibility 随 meta 走 saveEntry → fields 上云
+const { state: familyState } = useFamilySync()
+const familyJoined = computed(() => !!familyState.value.group)
 
 const tags = ref<TagWordV2[]>([])
 const tagInput = ref('')
@@ -1246,6 +1250,22 @@ async function save() {
           >{{ t.title }}</button>
         </div>
       </template>
+
+      <template v-else-if="openPop === 'family'">
+        <p class="jr-muted" style="font-size:12px;padding:2px 12px 6px;line-height:1.6">
+          共享后，家人能在自己的时间线看到这篇日记，可以评论、也可以在文末追加段落；原文只有你能改。
+        </p>
+        <button class="jr-pop-item" :class="{ 'jr-on': meta.visibility !== 'family' }" @click="meta.visibility = 'private'; openPop = null">
+          <JrIcon :path="mdiLockOutline" :size="18" class="jr-pop-ico" />
+          <span style="flex:1">仅自己</span>
+          <JrIcon v-if="meta.visibility !== 'family'" :path="mdiCheck" :size="15" class="jr-check" />
+        </button>
+        <button class="jr-pop-item" :class="{ 'jr-on': meta.visibility === 'family' }" @click="meta.visibility = 'family'; openPop = null">
+          <JrIcon :path="mdiAccountMultipleOutline" :size="18" class="jr-pop-ico" />
+          <span style="flex:1">共享给家人</span>
+          <JrIcon v-if="meta.visibility === 'family'" :path="mdiCheck" :size="15" class="jr-check" />
+        </button>
+      </template>
     </div>
 
     <div class="jr-editor-toolbar">
@@ -1266,6 +1286,9 @@ async function save() {
       </button>
       <button class="tb" :class="{ 'jr-open': (meta.tagWordIds || []).length }" title="标签" @click="togglePop('tags', $event)">
         <JrIcon :path="mdiTagOutline" :size="20" />
+      </button>
+      <button v-if="familyJoined" class="tb" :class="{ 'jr-open': meta.visibility === 'family' }" title="共享家人" @click="togglePop('family', $event)">
+        <JrIcon :path="mdiAccountMultipleOutline" :size="20" />
       </button>
       <div class="sep" />
       <button class="body-btn" @click="togglePop('style', $event)">

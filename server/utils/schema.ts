@@ -68,4 +68,42 @@ async function createTables() {
   `
   await q`create index if not exists yiban_media_user_entry on yiban_media (user_id, entry_client_id)`
   await q`create index if not exists yiban_media_user_updated on yiban_media (user_id, updated_at)`
+  // 家庭组（附加功能）：组/成员/公共日记下的评论与追加段落。
+  // 可见性标记不单独建列 —— 它随条目 fields jsonb 上云，这里只按 fields->>'visibility' 过滤。
+  await q`
+    create table if not exists yiban_family_groups (
+      id            uuid primary key default gen_random_uuid(),
+      name          text not null default '我的家庭',
+      invite_code   text not null unique,
+      owner_user_id uuid not null references yiban_users(id) on delete cascade,
+      created_at    timestamptz not null default now()
+    )
+  `
+  await q`
+    create table if not exists yiban_family_members (
+      id        uuid primary key default gen_random_uuid(),
+      group_id  uuid not null references yiban_family_groups(id) on delete cascade,
+      user_id   uuid not null references yiban_users(id) on delete cascade,
+      nickname  text not null default '',
+      role      text not null default 'member',
+      joined_at timestamptz not null default now()
+    )
+  `
+  // 一人一组：同一个人最多出现在一个组里
+  await q`create unique index if not exists yiban_family_members_user on yiban_family_members (user_id)`
+  await q`create index if not exists yiban_family_members_group on yiban_family_members (group_id)`
+  await q`
+    create table if not exists yiban_family_socials (
+      id                  uuid primary key default gen_random_uuid(),
+      group_id            uuid not null references yiban_family_groups(id) on delete cascade,
+      entry_owner_user_id uuid not null,
+      entry_client_id     text not null,
+      author_user_id      uuid not null references yiban_users(id) on delete cascade,
+      author_nickname     text not null default '',
+      kind                text not null check (kind in ('comment','contribution')),
+      content             text not null default '',
+      created_at          timestamptz not null default now()
+    )
+  `
+  await q`create index if not exists yiban_family_socials_entry on yiban_family_socials (group_id, entry_owner_user_id, entry_client_id)`
 }

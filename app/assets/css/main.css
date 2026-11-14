@@ -1238,3 +1238,22 @@ ul.jr-task input[type="checkbox"] { accent-color: var(--jr-primary); margin-righ
 
 /* Day One 中列视图胶囊（ViewPills）在列表列顶部的容器行 */
 .jr-view-pills-row { display: flex; justify-content: center; padding: 14px 0 2px; }
+
+/* ---- 家庭组（附加功能）：成员头像 / 时间线家人角标 / 新互动红点 ---- */
+.jr-family-avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  color: #fff; font-size: 13px; font-weight: 700; flex-shrink: 0;
+  user-select: none;
+}
+.jr-family-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; color: var(--jr-on-surface-variant);
+  max-width: 120px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.jr-family-badge .jr-family-avatar { width: 18px; height: 18px; font-size: 10px; }
+.jr-family-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--jr-primary, #2196f3); flex-shrink: 0;
+  display: inline-block;
+}

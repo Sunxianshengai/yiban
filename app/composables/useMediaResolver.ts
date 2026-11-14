@@ -48,6 +48,24 @@ export function useMediaResolver() {
     }
   }
 
+  /**
+   * 家庭组附件：跨成员路径走 /api/family/media-url（服务端校验同组成员 + 条目仍是共享家人）。
+   * 签好的地址进同一张 signed 表，urlForSync 无需区分来源。
+   */
+  async function prefetchFamily(pathnames: string[]) {
+    const need = [...new Set(pathnames)].filter(p => p && !signed.has(p))
+    if (!need.length) return
+    for (let i = 0; i < need.length; i += 50) {
+      try {
+        const { urls } = await cloudApi.familyMediaUrls(need.slice(i, i + 50))
+        for (const [pathname, url] of Object.entries(urls)) signed.set(pathname, url)
+      } catch {
+        // 未登录/不在组/网络异常：渲染成占位，不影响正文
+        return
+      }
+    }
+  }
+
   /** 需要真实字节时（导出 docx/epub、打印）先用这个取回 blob。 */
   async function fetchBlob(row: MediaFileV2): Promise<Blob | undefined> {
     if (row.blob) return row.blob
@@ -67,5 +85,5 @@ export function useMediaResolver() {
     signed.clear()
   }
 
-  return { urlForSync, prefetch, fetchBlob, dispose }
+  return { urlForSync, prefetch, prefetchFamily, fetchBlob, dispose }
 }

@@ -4,7 +4,9 @@ import { desktopBridge } from '~/utils/desktopBridge'
 import { errorText } from '~/utils/uiText'
 import { getAmapJsKey, getAmapSecurity, getAmapWebKey, resetAmapLoader, setAmapCredentials } from '~/utils/amap'
 import { getPalConfig, setPalConfig } from '~/utils/palClient'
-import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiShieldKeyOutline, mdiDatabaseOutline, mdiHelpCircleOutline, mdiPalette, mdiRuler, mdiMapMarkerOutline, mdiTranslate, mdiSpellcheck, mdiLockOutline, mdiChevronRight, mdiRobotOutline } from '@mdi/js'
+import { cloudApi } from '~/utils/cloudApi'
+import { familyAvatarColor, familyAvatarChar } from '~/utils/familyUi'
+import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiShieldKeyOutline, mdiDatabaseOutline, mdiHelpCircleOutline, mdiPalette, mdiRuler, mdiMapMarkerOutline, mdiTranslate, mdiSpellcheck, mdiLockOutline, mdiChevronRight, mdiRobotOutline, mdiAccountMultipleOutline } from '@mdi/js'
 
 const tab = ref<'general' | 'security' | 'data' | 'help'>('general')
 const isMobile = useIsMobile()
@@ -19,7 +21,7 @@ const mSections = [
 function toggleSection(key: typeof mSections[number]['key']) {
   openSection.value = openSection.value === key ? null : key
 }
-const gen = ref<'appearance' | 'unit' | 'location' | 'pal' | 'locale' | 'spellcheck'>('appearance')
+const gen = ref<'appearance' | 'unit' | 'location' | 'pal' | 'family' | 'locale' | 'spellcheck'>('appearance')
 const { weekStart } = useWeekStart()
 // bug06 修复：计量单位绑定并持久化（原 select 未绑 v-model，选择即丢）
 const { unit } = useUnits()
@@ -34,6 +36,7 @@ const genItems = [
   { key: 'unit', label: '计量单位', icon: mdiRuler },
   { key: 'location', label: '地点', icon: mdiMapMarkerOutline },
   { key: 'pal', label: '日记伙伴', icon: mdiRobotOutline },
+  { key: 'family', label: '家庭组', icon: mdiAccountMultipleOutline },
   { key: 'locale', label: '语言与地区', icon: mdiTranslate },
   { key: 'spellcheck', label: '拼写检查', icon: mdiSpellcheck },
 ] as const
@@ -64,6 +67,70 @@ function savePal() {
 watchEffect(() => {
   localStorage.setItem('jr.spellcheck', spellcheck.value ? '1' : '0')
 })
+
+// 家庭组（附加功能）：创建/加入/成员管理。家人内容是在线特性，由 useFamilySync 负责拉取。
+const { state: familyState, refreshFamily } = useFamilySync()
+const famName = ref('我的家庭')
+const famNickname = ref('')
+const famCode = ref('')
+const famNickDraft = ref('')
+const famBusy = ref(false)
+const famMsg = ref('')
+watch(() => familyState.value.me?.nickname, (n) => { famNickDraft.value = n || '' }, { immediate: true })
+
+async function familyCreate() {
+  if (famBusy.value) return
+  famBusy.value = true
+  famMsg.value = ''
+  try {
+    await cloudApi.familyCreateGroup({ name: famName.value.trim() || '我的家庭', nickname: famNickname.value.trim() })
+    await refreshFamily()
+    famMsg.value = '家庭组已创建，把邀请码发给家人即可加入。'
+  } catch (error) {
+    famMsg.value = errorText(error, '创建失败，请重试。')
+  } finally { famBusy.value = false }
+}
+
+async function familyJoin() {
+  if (famBusy.value) return
+  famBusy.value = true
+  famMsg.value = ''
+  try {
+    await cloudApi.familyJoin({ code: famCode.value.trim().toUpperCase(), nickname: famNickname.value.trim() })
+    await refreshFamily()
+    famMsg.value = '已加入家庭组！'
+  } catch (error) {
+    famMsg.value = errorText(error, '加入失败，请核对邀请码。')
+  } finally { famBusy.value = false }
+}
+
+async function familyRename() {
+  const nickname = famNickDraft.value.trim()
+  if (!nickname) return
+  try {
+    await cloudApi.familySetNickname(nickname)
+    await refreshFamily()
+    famMsg.value = '昵称已更新。'
+  } catch (error) { famMsg.value = errorText(error, '更新失败，请重试。') }
+}
+
+async function familyLeave() {
+  if (!window.confirm('退出家庭组后，家人将看不到你共享的日记（日记本身保留）。确定退出？')) return
+  try {
+    await cloudApi.familyLeave()
+    await refreshFamily()
+    famMsg.value = '已退出家庭组。'
+  } catch (error) { famMsg.value = errorText(error, '退出失败，请重试。') }
+}
+
+async function copyInvite() {
+  const code = familyState.value.group?.inviteCode || ''
+  if (!code) return
+  try {
+    await navigator.clipboard.writeText(code)
+    famMsg.value = '邀请码已复制。'
+  } catch { famMsg.value = code }
+}
 
 // Security — PIN lock (real, local)
 const pinHash = ref(localStorage.getItem('jr.pinHash') || '')
@@ -215,6 +282,38 @@ async function wipeAll() {
           <span v-if="palSaved" class="mnote" role="status">已保存</span>
           <button class="mbtn" @click="savePal">保存日记伙伴服务</button>
         </div>
+        <p class="mnote" style="margin-top:14px"><JrIcon :path="mdiAccountMultipleOutline" :size="14" style="vertical-align:-2px" /> 家庭组：把日记共享给家人，一起评论</p>
+        <template v-if="familyState.group">
+          <div class="mset-row"><span>家庭组</span><span class="mv">{{ familyState.group.name }}</span></div>
+          <div class="mset-row">
+            <span>邀请码</span>
+            <span class="mv" style="display:flex;gap:8px;align-items:center">
+              <b style="letter-spacing:3px">{{ familyState.group.inviteCode }}</b>
+              <button class="mbtn" style="flex:none;padding:6px 14px" @click="copyInvite">复制</button>
+            </span>
+          </div>
+          <div v-for="m in (familyState.members || [])" :key="m.userId" class="mset-row">
+            <span style="display:flex;align-items:center;gap:8px">
+              <span class="jr-family-avatar" :style="{ background: familyAvatarColor(m.userId) }">{{ familyAvatarChar(m.nickname) }}</span>
+              {{ m.nickname }}<span v-if="m.role === 'owner'" class="mv">（组主）</span><span v-else-if="m.userId === familyState.me?.userId" class="mv">（我）</span>
+            </span>
+          </div>
+          <label class="mset-row col"><span>我的昵称</span><input v-model="famNickDraft" class="minput" maxlength="12" spellcheck="false" /></label>
+          <div class="mbtns">
+            <button class="mbtn" @click="familyRename">保存昵称</button>
+            <button class="mbtn" style="background:var(--jr-error,#e05a4e)" @click="familyLeave">退出家庭组</button>
+          </div>
+        </template>
+        <template v-else>
+          <label class="mset-row col"><span>创建家庭组 · 名称</span><input v-model="famName" class="minput" maxlength="30" spellcheck="false" /></label>
+          <label class="mset-row col"><span>或用邀请码加入</span><input v-model="famCode" class="minput" placeholder="6 位邀请码" maxlength="10" spellcheck="false" style="text-transform:uppercase" /></label>
+          <label class="mset-row col"><span>我的昵称</span><input v-model="famNickname" class="minput" maxlength="12" spellcheck="false" /></label>
+          <div class="mbtns">
+            <button class="mbtn" :disabled="famBusy" @click="familyCreate">创建</button>
+            <button class="mbtn" :disabled="famBusy" @click="familyJoin">加入</button>
+          </div>
+        </template>
+        <p v-if="famMsg" class="mnote" role="status">{{ famMsg }}</p>
         <label class="mset-row"><span>写作时检查拼写</span><input v-model="spellcheck" type="checkbox" /></label>
         <label class="mset-row">
           <span>在网页里显示桌宠</span>
@@ -392,6 +491,64 @@ async function wipeAll() {
               密钥只保存在本机浏览器，AI 请求由浏览器直连你填的服务地址，不经过任何中间服务器。
               没有自己的服务时，日记伙伴仍可浏览，发送消息会提示先配置。
             </p>
+          </template>
+
+          <template v-else-if="gen === 'family'">
+            <template v-if="familyState.group">
+              <div class="jr-set-row"><span class="jr-set-cap">家庭组</span><b>{{ familyState.group.name }}</b></div>
+              <div class="jr-set-row"><span class="jr-set-cap">邀请码（发给家人）</span>
+                <span style="display:flex;gap:8px;align-items:center">
+                  <b style="letter-spacing:3px;font-size:16px">{{ familyState.group.inviteCode }}</b>
+                  <button class="jr-btn jr-btn-sm" @click="copyInvite">复制</button>
+                </span>
+              </div>
+              <div class="jr-set-label" style="margin-top:14px">成员（{{ (familyState.members || []).length }}）</div>
+              <div v-for="m in (familyState.members || [])" :key="m.userId" class="jr-set-row">
+                <span class="jr-set-cap" style="display:flex;align-items:center;gap:8px">
+                  <span class="jr-family-avatar" :style="{ background: familyAvatarColor(m.userId) }">{{ familyAvatarChar(m.nickname) }}</span>
+                  <span>{{ m.nickname }}</span>
+                  <span v-if="m.role === 'owner'" class="jr-muted">（组主）</span>
+                  <span v-else-if="m.userId === familyState.me?.userId" class="jr-muted">（我）</span>
+                </span>
+              </div>
+              <label class="jr-set-row" style="display:block;margin-top:6px">
+                <span class="jr-set-cap">我的昵称（家人看到的名字）</span>
+                <span style="display:flex;gap:8px;margin-top:6px">
+                  <input v-model="famNickDraft" class="jr-pop-input" style="width:200px" maxlength="12" spellcheck="false" />
+                  <button class="jr-btn" style="width:auto" @click="familyRename">保存</button>
+                </span>
+              </label>
+              <div class="jr-set-row" style="margin-top:10px">
+                <button class="jr-btn jr-danger" @click="familyLeave">退出家庭组</button>
+              </div>
+              <p class="jr-muted" style="font-size:12px;line-height:1.6;margin-top:8px">
+                写日记时点工具栏的「共享家人」可把一篇日记开放给全家：家人能在自己的时间线里看到它，
+                可以评论、也可以在文末追加自己的段落——原文始终只有你能改。私有日记不会出现在家人的任何界面里。
+              </p>
+            </template>
+            <template v-else>
+              <p class="jr-muted" style="font-size:12.5px;line-height:1.7">
+                加入家庭组后，标为「共享家人」的日记会出现在家人的时间线里，大家可评论、可追加段落。
+                每位家人用自己的账号登录后凭邀请码加入；没有账号可以在云服务页注册。
+              </p>
+              <div class="jr-set-row" style="display:block;margin-top:10px">
+                <span class="jr-set-cap">创建家庭组</span>
+                <span style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+                  <input v-model="famName" class="jr-pop-input" style="width:180px" placeholder="家庭组名称" maxlength="30" spellcheck="false" />
+                  <input v-model="famNickname" class="jr-pop-input" style="width:130px" placeholder="我的昵称" maxlength="12" spellcheck="false" />
+                  <button class="jr-btn" style="width:auto" :disabled="famBusy" @click="familyCreate">创建</button>
+                </span>
+              </div>
+              <div class="jr-set-row" style="display:block;margin-top:12px">
+                <span class="jr-set-cap">用邀请码加入</span>
+                <span style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+                  <input v-model="famCode" class="jr-pop-input" style="width:160px;text-transform:uppercase" placeholder="6 位邀请码" maxlength="10" spellcheck="false" />
+                  <input v-model="famNickname" class="jr-pop-input" style="width:130px" placeholder="我的昵称" maxlength="12" spellcheck="false" />
+                  <button class="jr-btn" style="width:auto" :disabled="famBusy" @click="familyJoin">加入</button>
+                </span>
+              </div>
+            </template>
+            <p v-if="famMsg" class="jr-import-msg" role="status">{{ famMsg }}</p>
           </template>
 
           <template v-else-if="gen === 'locale'">

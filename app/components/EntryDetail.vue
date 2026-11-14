@@ -13,13 +13,15 @@ import {
   mdiMapMarkerOutline,
   mdiWeatherSunny,
   mdiEmoticonOutline,
+  mdiAccountMultipleOutline,
 } from '@mdi/js'
-import type { EntryV2 } from '~/utils/db'
+import type { FamilyTimelineEntry } from '~/utils/db'
 import { exportJournalZip } from '~/utils/journalZip'
 import { weatherLabel } from '~/utils/services'
 import { errorText } from '~/utils/uiText'
+import { familyAvatarColor, familyAvatarChar } from '~/utils/familyUi'
 
-const props = defineProps<{ entry: EntryV2 | null }>()
+const props = defineProps<{ entry: FamilyTimelineEntry | null }>()
 const emit = defineEmits<{
   (e: 'edit'): void
   (e: 'toggleFavourite'): void
@@ -36,6 +38,19 @@ const router = useRouter()
 const tagTitles = ref<Record<number, string>>({})
 const { listTags } = useEntries()
 const { formatTemp } = useUnits()
+
+// 家庭组（附加功能）：家人条目只读（无编辑/导出/删除），底部挂互动区
+const { state: familyState } = useFamilySync()
+const isFamily = computed(() => !!props.entry?.familyAuthor)
+/** 互动区定位：家人条目 → (作者userId, 组合cloudId)；自己的共享日记 → (我的userId, cloudId) */
+const socialTarget = computed(() => {
+  const entry = props.entry
+  if (!entry?.cloudId) return null
+  if (entry.familyAuthor) return { owner: entry.familyAuthor.ownerUserId, clientId: entry.cloudId }
+  const me = familyState.value.me?.userId
+  if (entry.visibility === 'family' && me) return { owner: me, clientId: entry.cloudId }
+  return null
+})
 
 onMounted(async () => {
   const tags = await listTags()
@@ -115,11 +130,12 @@ async function downloadEntry(format: 'zip' | 'docx' | 'epub' | 'pdf') {
         <span class="jr-detail-date-str">{{ fullDateStr }}</span>
         <span class="jr-sync-badge">
           <span class="dot" />
-          <span>{{ entry.synced ? '至本地与云端' : '已保存在本地' }}</span>
+          <span>{{ entry.familyAuthor ? '来自家人' : entry.synced ? '至本地与云端' : '已保存在本地' }}</span>
         </span>
       </div>
 
-      <div class="jr-detail-actions">
+      <!-- 家人条目只读：无编辑/导出/删除等本地操作 -->
+      <div v-if="!isFamily" class="jr-detail-actions">
         <button class="jr-detail-btn" :class="{ on: !!entry.favourite }" title="收藏" @click="emit('toggleFavourite')">
           <JrIcon :path="entry.favourite ? mdiStar : mdiStarOutline" :size="19" />
         </button>
@@ -151,6 +167,14 @@ async function downloadEntry(format: 'zip' | 'docx' | 'epub' | 'pdf') {
 
     <!-- 元数据 Chips 栏 -->
     <div class="jr-detail-chips-bar">
+      <span v-if="entry.familyAuthor" class="jr-mchip" style="font-weight:600">
+        <span class="jr-family-avatar" :style="{ background: familyAvatarColor(entry.familyAuthor.ownerUserId) }">{{ familyAvatarChar(entry.familyAuthor.ownerNickname) }}</span>
+        <span>{{ entry.familyAuthor.ownerNickname }}</span>
+      </span>
+      <span v-else-if="entry.visibility === 'family'" class="jr-mchip" title="家人可见：他们可以评论或在文末追加段落">
+        <JrIcon :path="mdiAccountMultipleOutline" :size="14" style="color:var(--jr-primary);vertical-align:-2px" />
+        <span>共享给家人</span>
+      </span>
       <span v-if="entry.address" class="jr-mchip" :title="entry.address">
         <JrIcon :path="mdiMapMarkerOutline" :size="14" style="color:var(--jr-primary);vertical-align:-2px" />
         <span>{{ entry.address.slice(0, 32) }}</span>
@@ -172,6 +196,11 @@ async function downloadEntry(format: 'zip' | 'docx' | 'epub' | 'pdf') {
     <div class="jr-detail-scroll">
       <h1 v-if="entryTitle && !hasHeadingInBody" class="jr-detail-title">{{ entryTitle }}</h1>
       <JournalBody :entry="entry" />
+      <FamilySocial
+        v-if="socialTarget"
+        :entry-owner-user-id="socialTarget.owner"
+        :entry-client-id="socialTarget.clientId"
+      />
       <p v-if="actionStatus" class="jr-muted" role="status">{{ actionStatus }}</p>
     </div>
   </div>

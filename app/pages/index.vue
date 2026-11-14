@@ -1,17 +1,25 @@
 <script setup lang="ts">
 import { mdiBookmark, mdiSortVariant, mdiCloudUploadOutline, mdiImageOutline, mdiCheck, mdiArrowDown, mdiArrowUp, mdiMapMarkerOutline, mdiStar, mdiStarOutline, mdiPlus, mdiWeatherSunny } from '@mdi/js'
-import type { EntryV2 } from '~/utils/db'
+import type { EntryV2, FamilyTimelineEntry } from '~/utils/db'
 import { WEATHER_EMOJI, weatherLabel } from '~/utils/services'
+import { familyAvatarColor, familyAvatarChar } from '~/utils/familyUi'
 
 const { entries, refresh, toggleFavourite, duplicateEntry, saveAsTemplate, moveToTrash, throwbacks, allMedia } = useEntries()
 const route = useRoute()
 const isMobile = useIsMobile()
 const { formatTemp } = useUnits()
 
+// 家庭组（附加功能）：家人的公共条目混排进同一条时间线，家人条目只读
+const {
+  state: familyState, familyEntries, markFamilySeen,
+  hasFamilyUnseen, hasFamilyUnseenForLocal,
+} = useFamilySync()
+const myUserId = computed(() => familyState.value.me?.userId || '')
+
 const editorOpen = ref(false)
 const inlineEditor = ref<{ discardChanges: () => Promise<boolean> } | null>(null)
 const editing = ref<EntryV2 | null>(null)
-const selected = ref<EntryV2 | null>(null)
+const selected = ref<FamilyTimelineEntry | null>(null)
 const throwbackList = ref<EntryV2[]>([])
 const throwbackLabel = ref('今天没有往日回忆')
 const storiesOpen = ref(false)
@@ -31,7 +39,7 @@ onMounted(async () => {
 })
 
 const thumbs = ref<Record<number, string>>({})
-const { prefetch: prefetchMedia, urlForSync: mediaUrl } = useMediaResolver()
+const { prefetch: prefetchMedia, prefetchFamily, urlForSync: mediaUrl } = useMediaResolver()
 let thumbsGeneration = 0
 function releaseThumbnails() {
   for (const url of Object.values(thumbs.value)) if (url.startsWith('blob:')) URL.revokeObjectURL(url)
@@ -61,13 +69,36 @@ async function loadThumbnails() {
 let oldThumbs: Record<number, string> = {}
 onBeforeUnmount(() => { thumbsGeneration++; releaseThumbnails() })
 
+// 家人条目的行内缩略图：每条取 position 最靠前的照片，走家庭预签名端点
+const familyThumbs = ref<Record<number, string>>({})
+watch(familyEntries, async (list) => {
+  const first = new Map<number, string>()
+  const paths: string[] = []
+  for (const e of list) {
+    const img = (e.familyMedia || [])
+      .filter(m => m.mimeType.startsWith('image/'))
+      .sort((a, b) => a.position - b.position)[0]
+    if (img && e.id != null) { first.set(e.id, img.pathname); paths.push(img.pathname) }
+  }
+  if (!paths.length) { familyThumbs.value = {}; return }
+  await prefetchFamily(paths)
+  const map: Record<number, string> = {}
+  for (const [id, path] of first) {
+    // 伪附件行：只有 remotePathname，urlForSync 换出家庭预签名地址
+    const url = mediaUrl({ linkedAccountId: '', createdAt: new Date(0), fileName: '', mimeType: 'image/', ext: '', position: 0, uploaded: 1, remotePathname: path })
+    if (url) map[id] = url
+  }
+  familyThumbs.value = map
+}, { immediate: true })
+
 // sort menu — faithful to menu-sort.png: "Entry Date" (with direction arrow) / "Last Modified"
 const sortMenuOpen = ref(false)
 const sortKey = ref<'entryDate' | 'lastModified'>(localStorage.getItem('jr.sortKey') === 'lastModified' ? 'lastModified' : 'entryDate')
 const sortDir = ref<'desc' | 'asc'>(localStorage.getItem('jr.sortDir') === 'asc' ? 'asc' : 'desc')
 watch([sortKey, sortDir], ([k, d]) => { localStorage.setItem('jr.sortKey', k); localStorage.setItem('jr.sortDir', d) })
-const sortedEntries = computed(() => {
-  const list = [...entries.value]
+const sortedEntries = computed<FamilyTimelineEntry[]>(() => {
+  // 本地条目 + 家人公共条目混排（未加入家庭组时 familyEntries 为空，行为不变）
+  const list: FamilyTimelineEntry[] = [...entries.value, ...familyEntries.value]
   list.sort((a, b) => {
     if (sortKey.value === 'lastModified') return +new Date(b.dateModified) - +new Date(a.dateModified)
     return sortDir.value === 'desc'
@@ -108,6 +139,7 @@ async function selectEntry(e: EntryV2) {
   if (editorOpen.value && editing.value?.id === e.id) return
   if (!await closeInlineEditor()) return
   selected.value = e
+  if (e.familyAuthor || e.visibility === 'family') markFamilySeen()
 }
 
 async function closeInlineEditor() {
@@ -121,7 +153,7 @@ onBeforeRouteLeave(closeInlineEditor)
 onBeforeRouteUpdate(closeInlineEditor)
 
 // 移动详情：全屏页 + 前后篇导航
-const mobileDetail = ref<EntryV2 | null>(null)
+const mobileDetail = ref<FamilyTimelineEntry | null>(null)
 const mdIndex = computed(() => mobileDetail.value ? sortedEntries.value.findIndex(e => e.id === mobileDetail.value!.id) : -1)
 const mdHasPrev = computed(() => mdIndex.value > 0)
 const mdHasNext = computed(() => mdIndex.value >= 0 && mdIndex.value < sortedEntries.value.length - 1)
@@ -129,8 +161,9 @@ function mdStep(delta: number) {
   const next = sortedEntries.value[mdIndex.value + delta]
   if (next) mobileDetail.value = next
 }
-function openMobileDetail(e: EntryV2) {
+function openMobileDetail(e: FamilyTimelineEntry) {
   mobileDetail.value = e
+  if (e.familyAuthor || e.visibility === 'family') markFamilySeen()
 }
 watch(() => route.query.entry, (target) => {
   const id = Number(target)
@@ -159,7 +192,7 @@ function rowDate(e: EntryV2) {
 const activeFilter = ref<'all' | 'media' | 'starred' | 'location'>('all')
 const filteredEntries = computed(() => {
   return sortedEntries.value.filter(e => {
-    if (activeFilter.value === 'media') return !!thumbs.value[e.id!]
+    if (activeFilter.value === 'media') return !!thumbs.value[e.id!] || !!familyThumbs.value[e.id!]
     if (activeFilter.value === 'starred') return !!e.favourite
     if (activeFilter.value === 'location') return !!e.address || (e.lat != null && e.lng != null)
     return true
@@ -200,10 +233,10 @@ function openNew() {
 }
 function openEdit() {
   const target = mobileDetail.value ?? selected.value
-  if (target) {
-    editing.value = target
-    editorOpen.value = true
-  }
+  // 家人条目只读：原文只有作者能改
+  if (!target || target.familyAuthor) return
+  editing.value = target
+  editorOpen.value = true
 }
 async function onDone(savedId?: number) {
   const previousSelection = selected.value
@@ -221,7 +254,8 @@ async function onDone(savedId?: number) {
 }
 async function onDuplicate() {
   const source = mobileDetail.value ?? selected.value
-  if (source) {
+  // 家人条目只读，复制/模板/收藏/删除等本地操作都不适用
+  if (source && !source.familyAuthor) {
     const copy = await duplicateEntry(source.id!)
     await loadThumbnails()
     const fresh = entries.value.find(e => e.id === copy) ?? null
@@ -231,11 +265,11 @@ async function onDuplicate() {
 }
 function onSaveTemplate() {
   const source = mobileDetail.value ?? selected.value
-  if (source) saveAsTemplate(source.id!)
+  if (source && !source.familyAuthor) saveAsTemplate(source.id!)
 }
 async function onTrash() {
   const source = mobileDetail.value ?? selected.value
-  if (source) {
+  if (source && !source.familyAuthor) {
     await moveToTrash(source.id!)
     mobileDetail.value = null
     selected.value = null
@@ -244,7 +278,7 @@ async function onTrash() {
 async function onFavourite() {
   const source = mobileDetail.value ?? selected.value
   const id = source?.id
-  if (id == null) return
+  if (id == null || source?.familyAuthor) return
   await toggleFavourite(id)
   const fresh = entries.value.find(e => e.id === id) ?? null
   if (mobileDetail.value) mobileDetail.value = fresh
@@ -266,7 +300,7 @@ async function onFavourite() {
         
         <div class="jr-filter-chips-row">
           <button class="jr-chip" :class="{ on: activeFilter === 'all' }" @click="activeFilter = 'all'">
-            全部 ({{ entries.length }})
+            全部 ({{ sortedEntries.length }})
           </button>
           <button class="jr-chip" :class="{ on: activeFilter === 'media' }" @click="activeFilter = 'media'">
             <JrIcon :path="mdiImageOutline" :size="13" />
@@ -322,6 +356,12 @@ async function onFavourite() {
               </span>
               <span class="preview">{{ entrySnippet(e) }}</span>
               <span class="jr-entry-time">
+                <span v-if="e.familyAuthor" class="jr-family-badge" :title="`来自家人 ${e.familyAuthor.ownerNickname}`">
+                  <span class="jr-family-avatar" :style="{ background: familyAvatarColor(e.familyAuthor.ownerUserId) }">{{ familyAvatarChar(e.familyAuthor.ownerNickname) }}</span>
+                  <span>{{ e.familyAuthor.ownerNickname }}</span>
+                  <i v-if="hasFamilyUnseen(e.familyAuthor.ownerUserId, e.cloudId || '', myUserId)" class="jr-family-dot" title="有新评论或追加" />
+                </span>
+                <i v-else-if="hasFamilyUnseenForLocal(e)" class="jr-family-dot" title="家人有新评论或追加" />
                 <span v-if="e.weatherIcon" class="jr-entry-meta" :title="`${weatherLabel(e.weatherDescription)} ${formatTemp(e.weatherDegreeC)}`">
                   <JrIcon :path="mdiWeatherSunny" :size="13" />
                   <span>{{ formatTemp(e.weatherDegreeC) }}</span>
@@ -338,8 +378,8 @@ async function onFavourite() {
                 </span>
               </span>
             </span>
-            <div v-if="thumbs[e.id!]" class="jr-row-polaroid">
-              <img :src="thumbs[e.id!]" alt="" />
+            <div v-if="thumbs[e.id!] || familyThumbs[e.id!]" class="jr-row-polaroid">
+              <img :src="thumbs[e.id!] || familyThumbs[e.id!]" alt="" />
             </div>
           </div>
         </template>
@@ -353,7 +393,7 @@ async function onFavourite() {
           :entry-id="editing?.id"
           :initial-text="editing?.text"
           :initial-date="editing ? new Date(editing.dateOfJournal) : undefined"
-          :initial-meta="editing ? { address: editing.address, lat: editing.lat, lng: editing.lng, locationSource: editing.locationSource, adcode: editing.adcode, sentiment: editing.sentiment, activity: editing.activity, weatherIcon: editing.weatherIcon, weatherDegreeC: editing.weatherDegreeC, weatherDescription: editing.weatherDescription, weatherPlace: editing.weatherPlace, tagWordIds: editing.tagWordIds } : undefined"
+          :initial-meta="editing ? { address: editing.address, lat: editing.lat, lng: editing.lng, locationSource: editing.locationSource, adcode: editing.adcode, sentiment: editing.sentiment, activity: editing.activity, weatherIcon: editing.weatherIcon, weatherDegreeC: editing.weatherDegreeC, weatherDescription: editing.weatherDescription, weatherPlace: editing.weatherPlace, tagWordIds: editing.tagWordIds, visibility: editing.visibility } : undefined"
           @done="onDone"
         />
         <EntryDetail
@@ -417,6 +457,12 @@ async function onFavourite() {
             <span class="prev">{{ e.previewText || '无正文' }}</span>
             <span class="mrow-time">
               {{ timeOf(e) }}
+              <span v-if="e.familyAuthor" class="jr-family-badge" :title="`来自家人 ${e.familyAuthor.ownerNickname}`">
+                <span class="jr-family-avatar" :style="{ background: familyAvatarColor(e.familyAuthor.ownerUserId) }">{{ familyAvatarChar(e.familyAuthor.ownerNickname) }}</span>
+                <span>{{ e.familyAuthor.ownerNickname }}</span>
+                <i v-if="hasFamilyUnseen(e.familyAuthor.ownerUserId, e.cloudId || '', myUserId)" class="jr-family-dot" />
+              </span>
+              <i v-else-if="hasFamilyUnseenForLocal(e)" class="jr-family-dot" title="家人有新评论或追加" />
               <span v-if="!e.synced" class="up" title="等待上传"><JrIcon :path="mdiCloudUploadOutline" :size="14" /></span>
             </span>
           </span>
@@ -446,7 +492,7 @@ async function onFavourite() {
       :entry-id="editing?.id"
       :initial-text="editing?.text"
       :initial-date="editing ? new Date(editing.dateOfJournal) : undefined"
-      :initial-meta="editing ? { address: editing.address, lat: editing.lat, lng: editing.lng, locationSource: editing.locationSource, adcode: editing.adcode, sentiment: editing.sentiment, activity: editing.activity, weatherIcon: editing.weatherIcon, weatherDegreeC: editing.weatherDegreeC, weatherDescription: editing.weatherDescription, weatherPlace: editing.weatherPlace, tagWordIds: editing.tagWordIds } : undefined"
+      :initial-meta="editing ? { address: editing.address, lat: editing.lat, lng: editing.lng, locationSource: editing.locationSource, adcode: editing.adcode, sentiment: editing.sentiment, activity: editing.activity, weatherIcon: editing.weatherIcon, weatherDegreeC: editing.weatherDegreeC, weatherDescription: editing.weatherDescription, weatherPlace: editing.weatherPlace, tagWordIds: editing.tagWordIds, visibility: editing.visibility } : undefined"
       @done="onDone"
     />
 

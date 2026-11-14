@@ -4,6 +4,7 @@
  * 全部走同源请求，会话是 HttpOnly cookie（浏览器自动带），前端不接触 token。
  * Windows 版复用同一套端点，只是把 cookie 换成它自己保存的会话。
  */
+import type { FamilyFeedMedia, FamilyFeedSocial } from './db'
 
 export interface CloudUser {
   id: string
@@ -33,6 +34,48 @@ export interface WireMedia {
   position: number
   deleted: boolean
   updatedAt: string
+}
+
+// ---- 家庭组（附加功能） ----
+
+export interface FamilyMemberInfo {
+  userId: string
+  nickname: string
+  role: string
+  joinedAt?: string
+}
+
+export interface FamilyGroupInfo {
+  id: string
+  name: string
+  inviteCode: string
+  ownerUserId: string
+}
+
+export interface FamilyState {
+  group: FamilyGroupInfo | null
+  me?: { userId: string; nickname: string; role: string }
+  members?: FamilyMemberInfo[]
+}
+
+export interface FamilyFeedEntry {
+  ownerUserId: string
+  ownerNickname: string
+  clientId: string
+  text: string
+  previewText: string
+  timezone: string
+  dateOfJournal: string
+  dateModified: string
+  fields: Record<string, unknown>
+  media: FamilyFeedMedia[]
+}
+
+export interface FamilyFeed {
+  members: FamilyMemberInfo[]
+  entries: FamilyFeedEntry[]
+  socials: FamilyFeedSocial[]
+  serverTime: string
 }
 
 /** 把服务端的错误体翻成人看得懂的一句话。 */
@@ -66,4 +109,15 @@ export const cloudApi = {
     call<{ pathname: string; uploadUrl: string }>('/api/media/upload-url', 'POST', body),
   downloadUrls: (pathnames: string[]) => call<{ urls: Record<string, string> }>('/api/media/url', 'POST', { pathnames }),
   deleteMedia: (clientIds: string[]) => call<{ ok: boolean }>('/api/media/delete', 'POST', { clientIds }),
+
+  // 家庭组：家人内容是在线特性，服务端按组过滤，私有日记永远不出现在这些接口里
+  familyState: () => call<FamilyState>('/api/family/state', 'GET'),
+  familyCreateGroup: (body: { name: string; nickname: string }) => call<FamilyState>('/api/family/group', 'POST', body),
+  familyJoin: (body: { code: string; nickname: string }) => call<FamilyState>('/api/family/join', 'POST', body),
+  familySetNickname: (nickname: string) => call<{ ok: boolean; nickname: string }>('/api/family/nickname', 'POST', { nickname }),
+  familyLeave: () => call<{ ok: boolean; dissolved: boolean }>('/api/family/leave', 'POST', {}),
+  familyFeed: () => call<FamilyFeed>('/api/family/feed', 'GET'),
+  familyMediaUrls: (pathnames: string[]) => call<{ urls: Record<string, string> }>('/api/family/media-url', 'POST', { pathnames }),
+  familySocial: (body: { entryOwnerUserId: string; entryClientId: string; kind: 'comment' | 'contribution'; content: string }) =>
+    call<{ social: FamilyFeedSocial }>('/api/family/social', 'POST', body),
 }

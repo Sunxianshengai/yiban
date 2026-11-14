@@ -47,6 +47,11 @@ export interface EntryV2 {
   type?: string
   alias?: string
   tagWordIds?: number[]
+  /**
+   * 家庭组（附加功能）：'family' = 共享给家人——组内成员可在家庭空间看到这篇，
+   * 并可评论/追加段落。缺省（或 'private'）= 仅自己，家庭接口永远拉不到。
+   */
+  visibility?: 'private' | 'family'
   yearToken?: string
   monthToken?: string
   dayToken?: string
@@ -221,6 +226,43 @@ export function computeTokens(d: Date) {
     hourToken: p(d.getHours()),
     minuteToken: p(d.getMinutes()),
   }
+}
+
+// ---- 家庭组（附加功能） ----
+
+/** 家庭 feed 里的一条附件元数据（家人条目没有本地 blob，靠 pathname 换家庭预签名地址） */
+export interface FamilyFeedMedia {
+  clientId: string
+  pathname: string
+  fileName: string
+  mimeType: string
+  position: number
+}
+
+/** 家庭互动记录：comment = 评论；contribution = 追加段落（都是追加式，原文不可改） */
+export interface FamilyFeedSocial {
+  id: string
+  entryOwnerUserId: string
+  entryClientId: string
+  authorUserId: string
+  authorNickname: string
+  kind: 'comment' | 'contribution'
+  content: string
+  createdAt: string
+}
+
+export interface FamilyAuthorMeta {
+  ownerUserId: string
+  ownerNickname: string
+}
+
+/**
+ * 时间线混排用：家人 feed 条目合成的只读行。
+ * id 是合成稳定负数（不落 Dexie、不上云）；familyAuthor 把它和本地行区分开。
+ */
+export interface FamilyTimelineEntry extends EntryV2 {
+  familyAuthor?: FamilyAuthorMeta
+  familyMedia?: FamilyFeedMedia[]
 }
 
 export function htmlToPreview(html: string, max = 240): string {

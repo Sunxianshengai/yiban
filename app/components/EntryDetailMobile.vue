@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { mdiArrowLeft, mdiStar, mdiStarOutline, mdiPencil, mdiDotsHorizontal, mdiChevronLeft, mdiChevronRight, mdiLinkVariant, mdiContentDuplicate, mdiLabelOutline, mdiTrashCanOutline, mdiCloudUploadOutline, mdiMapMarkerOutline } from '@mdi/js'
-import type { EntryV2 } from '~/utils/db'
+import { mdiArrowLeft, mdiStar, mdiStarOutline, mdiPencil, mdiDotsHorizontal, mdiChevronLeft, mdiChevronRight, mdiLinkVariant, mdiContentDuplicate, mdiLabelOutline, mdiTrashCanOutline, mdiCloudUploadOutline, mdiMapMarkerOutline, mdiAccountMultipleOutline } from '@mdi/js'
+import type { FamilyTimelineEntry } from '~/utils/db'
 import { weatherLabel } from '~/utils/services'
+import { familyAvatarColor, familyAvatarChar } from '~/utils/familyUi'
 
 // 移动详情页对照原版(evidence/mobile-derived/ui-structure.md §4):
 // 顶栏 返回+分享+收藏+编辑+更多;大日数字+日期星期时间+云状态;底部 ‹ › 前后篇
-const props = defineProps<{ entry: EntryV2; hasPrev: boolean; hasNext: boolean; notice?: string; busy?: boolean }>()
+const props = defineProps<{ entry: FamilyTimelineEntry; hasPrev: boolean; hasNext: boolean; notice?: string; busy?: boolean }>()
 const emit = defineEmits<{
   (e: 'back'): void
   (e: 'edit'): void
@@ -23,6 +24,18 @@ const router = useRouter()
 const tagTitles = ref<Record<number, string>>({})
 const { listTags } = useEntries()
 const { formatTemp } = useUnits()
+
+// 家庭组（附加功能）：家人条目只读，底部挂互动区
+const { state: familyState } = useFamilySync()
+const isFamily = computed(() => !!props.entry.familyAuthor)
+const socialTarget = computed(() => {
+  const entry = props.entry
+  if (!entry.cloudId) return null
+  if (entry.familyAuthor) return { owner: entry.familyAuthor.ownerUserId, clientId: entry.cloudId }
+  const me = familyState.value.me?.userId
+  if (entry.visibility === 'family' && me) return { owner: me, clientId: entry.cloudId }
+  return null
+})
 onMounted(async () => {
   const tagList = await listTags()
   const m: Record<number, string> = {}
@@ -62,11 +75,14 @@ watch(() => props.entry.id, () => { menuOpen.value = false; actionStatus.value =
       <button class="ico" aria-label="返回" @click="emit('back')"><JrIcon :path="mdiArrowLeft" :size="22" /></button>
       <span class="sp" />
       <button class="ico" aria-label="复制链接" @click="copyLink"><JrIcon :path="mdiLinkVariant" :size="22" /></button>
-      <button class="ico" :aria-label="entry.favourite ? '取消收藏' : '收藏'" @click="emit('toggleFavourite')">
-        <JrIcon :path="entry.favourite ? mdiStar : mdiStarOutline" :size="22" :style="entry.favourite ? 'color:#e2a03f' : ''" />
-      </button>
-      <button class="ico" aria-label="编辑" :disabled="busy" @click="emit('edit')"><JrIcon :path="mdiPencil" :size="22" /></button>
-      <button class="ico" aria-label="更多" :aria-expanded="menuOpen" :disabled="busy" @click="menuOpen = !menuOpen"><JrIcon :path="mdiDotsHorizontal" :size="22" /></button>
+      <!-- 家人条目只读：收藏/编辑/更多不出现 -->
+      <template v-if="!isFamily">
+        <button class="ico" :aria-label="entry.favourite ? '取消收藏' : '收藏'" @click="emit('toggleFavourite')">
+          <JrIcon :path="entry.favourite ? mdiStar : mdiStarOutline" :size="22" :style="entry.favourite ? 'color:#e2a03f' : ''" />
+        </button>
+        <button class="ico" aria-label="编辑" :disabled="busy" @click="emit('edit')"><JrIcon :path="mdiPencil" :size="22" /></button>
+        <button class="ico" aria-label="更多" :aria-expanded="menuOpen" :disabled="busy" @click="menuOpen = !menuOpen"><JrIcon :path="mdiDotsHorizontal" :size="22" /></button>
+      </template>
       <div v-if="menuOpen" class="jr-menu" @click.stop>
         <button v-for="m in menu" :key="m.key" @click="onMenu(m.key)">
           <JrIcon :path="m.icon" :size="18" />
@@ -90,6 +106,13 @@ watch(() => props.entry.id, () => { menuOpen.value = false; actionStatus.value =
         </span>
       </div>
       <div class="chips">
+        <span v-if="entry.familyAuthor" class="chip" style="font-weight:600;display:inline-flex;align-items:center;gap:6px">
+          <span class="jr-family-avatar" :style="{ background: familyAvatarColor(entry.familyAuthor.ownerUserId), width: 20, height: 20, fontSize: 11 }">{{ familyAvatarChar(entry.familyAuthor.ownerNickname) }}</span>
+          {{ entry.familyAuthor.ownerNickname }}
+        </span>
+        <span v-else-if="entry.visibility === 'family'" class="chip" title="家人可见：他们可以评论或在文末追加段落">
+          <JrIcon :path="mdiAccountMultipleOutline" :size="13" style="vertical-align:-2px" /> 共享给家人
+        </span>
         <span v-if="entry.sentiment" class="chip">{{ { excited: '😆', happy: '😊', calm: '😌', 'so-so': '😐', tired: '😪', sad: '😢', angry: '😠', anxious: '😰' }[entry.sentiment] || entry.sentiment }}</span>
         <span v-if="entry.activity" class="chip">🏃 {{ entry.activity }}</span>
         <span v-if="entry.weatherIcon" class="chip">{{ { sun: '☀️', partly: '🌤', cloud: '☁️', fog: '🌫', rain: '🌧', snow: '🌨', storm: '⛈' }[entry.weatherIcon] }} {{ formatTemp(entry.weatherDegreeC) }} {{ entry.weatherPlace || weatherLabel(entry.weatherDescription) }}</span>
@@ -100,6 +123,11 @@ watch(() => props.entry.id, () => { menuOpen.value = false; actionStatus.value =
         <span v-for="t in (entry.tagWordIds || [])" :key="t" class="chip">#{{ tagTitles[t] || t }}</span>
       </div>
       <JournalBody :entry="entry" />
+      <FamilySocial
+        v-if="socialTarget"
+        :entry-owner-user-id="socialTarget.owner"
+        :entry-client-id="socialTarget.clientId"
+      />
       <p v-if="actionStatus || notice" class="note" role="status">{{ actionStatus || notice }}</p>
     </div>
 
