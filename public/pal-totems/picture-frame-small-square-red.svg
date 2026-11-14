@@ -42,10 +42,15 @@
     <path d="M186 12 L142 12 L180 50 L186 44 Z" fill="#ffffff" opacity="0.35"/>
     <path d="M14 188 L58 188 L20 152 L14 158 Z" fill="#ffffff" opacity="0.3"/>
     <path d="M186 188 L142 188 L180 152 L186 158 Z" fill="#ffffff" opacity="0.5"/>
+  <path d="M40 10 L92 10 L10 82 L10 40 Z" fill="#ffffff" opacity="0.22"/>
+  <path d="M160 190 L108 190 L190 108 L190 160 Z" fill="#ffffff" opacity="0.18"/>
     <rect x="62" y="14" width="44" height="6" rx="3" fill="#ffffff" opacity="0.35"/>
     <rect x="94" y="180" width="44" height="6" rx="3" fill="#ffffff" opacity="0.3"/>
     <!-- 内衬（白，内凹阴影） -->
     <rect x="48" y="48" width="104" height="104" fill="#f4f3f0"/>
+  <g stroke="#e6e4df" stroke-width="1">
+    <line x1="52" y1="70" x2="148" y2="70"/><line x1="52" y1="96" x2="148" y2="96"/><line x1="52" y1="122" x2="148" y2="122"/>
+  </g>
     <rect x="48" y="48" width="104" height="5" fill="#d9d8d4"/>
     <rect x="48" y="48" width="5" height="104" fill="#e1e0dc"/>
     <rect x="48" y="147" width="104" height="5" fill="#ffffff" opacity="0.8"/>

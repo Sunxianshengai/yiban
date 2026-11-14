@@ -94,6 +94,10 @@
     <!-- 水体 -->
     <path d="M64 176 L136 176 L136 176 Q136 210 133 226 Q131 234 120 235 L80 235 Q69 234 67 226 Q64 210 64 176 Z" fill="#b9d7e6" opacity="0.45"/>
     <ellipse cx="100" cy="176" rx="36" ry="4" fill="#cfe6f1" opacity="0.8"/>
+    <g class="caustic" stroke="#e9f6fb" stroke-width="1.6" fill="none" opacity="0.75">
+      <path d="M74 196 Q88 190 100 196 Q114 202 126 196"/>
+      <path d="M78 206 Q92 200 104 206 Q116 212 124 204"/>
+    </g>
     <ellipse cx="100" cy="176" rx="36" ry="4" fill="none" stroke="#e8f3f8" stroke-width="1" opacity="0.7"/>
     <!-- 瓶身 -->
     <path d="M64 152 L64 176 Q64 214 68 228 Q70 238 84 239 L116 239 Q130 238 132 228 Q136 214 136 176 L136 152 Z" fill="url(#glass)"/>

@@ -1,82 +1,95 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 208">
-  <!-- 红色模块边几（USM 风）：铬管+球节点+红面板+锁孔+黑脚垫，渐变镀铬质感 -->
+  <!-- 红色模块边几 v3（写实精修）：光照规范=左上主光 135°，三层=形状渐变/AO/镜面高光；铬管拉丝+球节点+漆面红板 -->
   <defs>
     <linearGradient id="chrome" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#eef3f6"/>
-      <stop offset="0.3" stop-color="#c3cdd4"/>
-      <stop offset="0.5" stop-color="#8b969e"/>
-      <stop offset="0.68" stop-color="#d5dde2"/>
-      <stop offset="1" stop-color="#a9b4bb"/>
+      <stop offset="0" stop-color="#f8fbfd"/>
+      <stop offset="0.16" stop-color="#d5dde2"/>
+      <stop offset="0.4" stop-color="#9aa5ad"/>
+      <stop offset="0.52" stop-color="#6f7a83"/>
+      <stop offset="0.64" stop-color="#ccd5db"/>
+      <stop offset="0.82" stop-color="#eef3f6"/>
+      <stop offset="1" stop-color="#a3aeb5"/>
     </linearGradient>
     <linearGradient id="chromeH" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f0f5f8"/>
-      <stop offset="0.35" stop-color="#bcc6cd"/>
-      <stop offset="0.55" stop-color="#87929a"/>
-      <stop offset="0.75" stop-color="#dde4e8"/>
-      <stop offset="1" stop-color="#a5b0b7"/>
+      <stop offset="0" stop-color="#f4f8fa"/>
+      <stop offset="0.3" stop-color="#bcc6cd"/>
+      <stop offset="0.5" stop-color="#7e8992"/>
+      <stop offset="0.68" stop-color="#dfe6ea"/>
+      <stop offset="1" stop-color="#9faab1"/>
     </linearGradient>
-    <linearGradient id="redPanel" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#cf3a41"/>
-      <stop offset="0.55" stop-color="#bb2a32"/>
-      <stop offset="1" stop-color="#a01d26"/>
+    <linearGradient id="redP" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e05056"/>
+      <stop offset="0.32" stop-color="#c22f38"/>
+      <stop offset="0.72" stop-color="#a91d26"/>
+      <stop offset="1" stop-color="#851320"/>
     </linearGradient>
-    <radialGradient id="lock" cx="0.38" cy="0.35" r="0.9">
+    <linearGradient id="redTop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b02630"/>
+      <stop offset="1" stop-color="#7e111b"/>
+    </linearGradient>
+    <pattern id="brush" width="6" height="2.6" patternUnits="userSpaceOnUse">
+      <rect width="6" height="2.6" fill="none"/>
+      <line x1="0" y1="0.6" x2="6" y2="0.6" stroke="#ffffff" stroke-width="0.5" opacity="0.28"/>
+      <line x1="0" y1="1.8" x2="6" y2="1.8" stroke="#4c565e" stroke-width="0.5" opacity="0.22"/>
+    </pattern>
+    <radialGradient id="ballG" cx="0.34" cy="0.28" r="1">
+      <stop offset="0" stop-color="#fdfeff"/>
+      <stop offset="0.4" stop-color="#cfD8de"/>
+      <stop offset="0.75" stop-color="#8b959d"/>
+      <stop offset="1" stop-color="#666f77"/>
+    </radialGradient>
+    <radialGradient id="lockG" cx="0.36" cy="0.32" r="0.95">
       <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="0.5" stop-color="#cfd6da"/>
-      <stop offset="1" stop-color="#8d979f"/>
+      <stop offset="0.45" stop-color="#d3dade"/>
+      <stop offset="1" stop-color="#828d95"/>
     </radialGradient>
-    <radialGradient id="ball" cx="0.35" cy="0.3" r="1">
-      <stop offset="0" stop-color="#fbfdfe"/>
-      <stop offset="0.55" stop-color="#c8d1d7"/>
-      <stop offset="1" stop-color="#7f8a92"/>
-    </radialGradient>
-    <filter id="tsh" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#5a2226" flood-opacity="0.28"/>
-    </filter>
   </defs>
 
-  <!-- 立柱 -->
-  <g>
-    <rect x="12" y="10" width="10" height="192" rx="5" fill="url(#chrome)"/>
-    <rect x="178" y="10" width="10" height="192" rx="5" fill="url(#chrome)"/>
-    <rect x="13.5" y="12" width="2.4" height="188" rx="1.2" fill="#ffffff" opacity="0.55"/>
-    <rect x="179.5" y="12" width="2.4" height="188" rx="1.2" fill="#ffffff" opacity="0.55"/>
-  </g>
+  <!-- 立柱（拉丝铬） -->
+  <rect x="12" y="10" width="10" height="192" rx="5" fill="url(#chrome)"/>
+  <rect x="178" y="10" width="10" height="192" rx="5" fill="url(#chrome)"/>
+  <rect x="12" y="10" width="10" height="192" rx="5" fill="url(#brush)" opacity="0.5"/>
+  <rect x="178" y="10" width="10" height="192" rx="5" fill="url(#brush)" opacity="0.5"/>
+  <rect x="13.8" y="13" width="2" height="186" rx="1" fill="#ffffff" opacity="0.6"/>
+  <rect x="179.8" y="13" width="2" height="186" rx="1" fill="#ffffff" opacity="0.6"/>
 
-  <!-- 顶板（带透视顶面）+ 抽屉面板 -->
-  <g filter="url(#tsh)">
-    <path d="M17 8 L183 8 L196 18 L4 18 Z" fill="#8f1b23"/>
-    <rect x="4" y="18" width="192" height="86" fill="url(#redPanel)"/>
-    <rect x="4" y="18" width="192" height="3" fill="#d9585e" opacity="0.7"/>
-    <rect x="4" y="101" width="192" height="3" fill="#7c161e" opacity="0.6"/>
-  </g>
-  <!-- 锁孔 -->
-  <circle cx="100" cy="61" r="13" fill="url(#lock)" stroke="#6f7a82" stroke-width="1.2"/>
-  <circle cx="100" cy="61" r="13" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.5"/>
-  <circle cx="100" cy="61" r="4.6" fill="#5d666d"/>
-  <rect x="98.6" y="63" width="2.8" height="6" rx="1.4" fill="#5d666d"/>
+  <!-- 顶面（透视）+ 抽屉面板（漆面：左上镜面条 + 右下 AO） -->
+  <path d="M17 8 L183 8 L196 18 L4 18 Z" fill="url(#redTop)"/>
+  <path d="M17 8 L60 8 L48 18 L4 18 Z" fill="#d8454c" opacity="0.55"/>
+  <rect x="4" y="18" width="192" height="86" fill="url(#redP)"/>
+  <path d="M8 20 L74 20 L30 102 L8 102 Z" fill="#ffffff" opacity="0.14"/>
+  <path d="M84 20 L100 20 L56 102 L44 102 Z" fill="#ffffff" opacity="0.07"/>
+  <rect x="4" y="18" width="192" height="3" fill="#ef7177" opacity="0.75"/>
+  <rect x="4" y="101" width="192" height="3" fill="#701219" opacity="0.7"/>
+  <rect x="3" y="18" width="2" height="86" fill="#701219" opacity="0.5"/>
+  <rect x="195" y="18" width="2" height="86" fill="#701219" opacity="0.5"/>
 
-  <!-- 中层横杆（开放格上沿） -->
+  <!-- 锁（金属径向+高光点+匙孔） -->
+  <circle cx="100" cy="61" r="13.5" fill="url(#lockG)" stroke="#6f7a82" stroke-width="1.2"/>
+  <path d="M90 52 A13.5 13.5 0 0 1 110 52" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.85"/>
+  <circle cx="100" cy="61" r="8" fill="none" stroke="#9aa4ac" stroke-width="1"/>
+  <circle cx="100" cy="60" r="4.6" fill="#525b63"/>
+  <rect x="98.7" y="62.5" width="2.6" height="6" rx="1.3" fill="#525b63"/>
+
+  <!-- 中层横杆 -->
   <rect x="14" y="118" width="172" height="10" rx="5" fill="url(#chromeH)"/>
-  <rect x="14" y="119.4" width="172" height="2.2" rx="1.1" fill="#ffffff" opacity="0.5"/>
-  <circle cx="19" cy="123" r="7.5" fill="url(#ball)"/><circle cx="19" cy="123" r="2.2" fill="#4c565e"/>
-  <circle cx="181" cy="123" r="7.5" fill="url(#ball)"/><circle cx="181" cy="123" r="2.2" fill="#4c565e"/>
+  <rect x="14" y="119.6" width="172" height="2" rx="1" fill="#ffffff" opacity="0.55"/>
+  <circle cx="19" cy="123" r="7.5" fill="url(#ballG)"/><circle cx="19" cy="123" r="2.2" fill="#4c565e"/>
+  <circle cx="181" cy="123" r="7.5" fill="url(#ballG)"/><circle cx="181" cy="123" r="2.2" fill="#4c565e"/>
 
-  <!-- 底层红搁板（内收） -->
-  <rect x="22" y="160" width="156" height="22" fill="url(#redPanel)"/>
-  <rect x="22" y="160" width="156" height="2.4" fill="#d9585e" opacity="0.6"/>
-  <rect x="22" y="179.6" width="156" height="2.4" fill="#7c161e" opacity="0.6"/>
+  <!-- 底层红搁板（内收+前缘亮/后缘暗） -->
+  <rect x="22" y="160" width="156" height="22" fill="url(#redP)"/>
+  <rect x="22" y="160" width="156" height="2.6" fill="#ef7177" opacity="0.6"/>
+  <rect x="22" y="179.4" width="156" height="2.6" fill="#701219" opacity="0.7"/>
 
-  <!-- 底横杆 + 黑脚垫 -->
+  <!-- 底横杆 + 球节点 + 黑脚垫（接地 AO 由房间层画） -->
   <rect x="14" y="188" width="172" height="10" rx="5" fill="url(#chromeH)"/>
-  <rect x="14" y="189.4" width="172" height="2.2" rx="1.1" fill="#ffffff" opacity="0.5"/>
-  <circle cx="19" cy="193" r="7.5" fill="url(#ball)"/><circle cx="19" cy="193" r="2.2" fill="#4c565e"/>
-  <circle cx="181" cy="193" r="7.5" fill="url(#ball)"/><circle cx="181" cy="193" r="2.2" fill="#4c565e"/>
-  <!-- 球节点（顶/底） -->
-  <circle cx="17" cy="16" r="7.5" fill="url(#ball)"/><circle cx="17" cy="16" r="2.2" fill="#4c565e"/>
-  <circle cx="183" cy="16" r="7.5" fill="url(#ball)"/><circle cx="183" cy="16" r="2.2" fill="#4c565e"/>
-  <circle cx="17" cy="199" r="7.5" fill="url(#ball)"/><circle cx="17" cy="199" r="2.2" fill="#4c565e"/>
-  <circle cx="183" cy="199" r="7.5" fill="url(#ball)"/><circle cx="183" cy="199" r="2.2" fill="#4c565e"/>
-  <ellipse cx="17" cy="206" rx="9" ry="3.4" fill="#23282c"/>
-  <ellipse cx="183" cy="206" rx="9" ry="3.4" fill="#23282c"/>
+  <rect x="14" y="189.6" width="172" height="2" rx="1" fill="#ffffff" opacity="0.55"/>
+  <circle cx="17" cy="16" r="7.5" fill="url(#ballG)"/><circle cx="17" cy="16" r="2.2" fill="#4c565e"/>
+  <circle cx="183" cy="16" r="7.5" fill="url(#ballG)"/><circle cx="183" cy="16" r="2.2" fill="#4c565e"/>
+  <circle cx="19" cy="123" r="7.5" fill="url(#ballG)"/><circle cx="181" cy="123" r="7.5" fill="url(#ballG)"/>
+  <circle cx="19" cy="199" r="7.5" fill="url(#ballG)"/><circle cx="19" cy="199" r="2.2" fill="#4c565e"/>
+  <circle cx="181" cy="199" r="7.5" fill="url(#ballG)"/><circle cx="181" cy="199" r="2.2" fill="#4c565e"/>
+  <ellipse cx="17" cy="206" rx="9" ry="3.4" fill="#20262b"/>
+  <ellipse cx="183" cy="206" rx="9" ry="3.4" fill="#20262b"/>
 </svg>

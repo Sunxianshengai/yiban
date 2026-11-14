@@ -26,10 +26,17 @@
     <path d="M88 50 Q92 54 96 50"/>
   </g>
   <path d="M82 58 L86 58 L84 61 Z" fill="#d98a8a"/>
+  <circle cx="83" cy="59.4" r="1" fill="#ffffff" opacity="0.8"/>
   <g stroke="#6b7177" stroke-width="1.4" stroke-linecap="round">
     <line x1="62" y1="56" x2="52" y2="54"/><line x1="62" y1="60" x2="52" y2="61"/>
     <line x1="106" y1="56" x2="116" y2="54"/><line x1="106" y1="60" x2="116" y2="61"/>
   </g>
+  <!-- 毛发丝 + 受光（左上主光） -->
+  <g id="fur-strands" stroke="#e9ebee" stroke-width="1.1" stroke-linecap="round" opacity="0.85">
+    <line x1="76" y1="106" x2="72" y2="114"/><line x1="82" y1="108" x2="79" y2="116"/><line x1="88" y1="106" x2="92" y2="114"/>
+    <line x1="70" y1="46" x2="66" y2="42"/><line x1="98" y1="46" x2="102" y2="42"/>
+  </g>
+  <path d="M64 76 C70 70 78 68 86 70 L84 62 C76 60 68 66 64 76 Z" fill="#d5dae0" opacity="0.7"/>
   <!-- 前爪 -->
   <ellipse cx="76" cy="122" rx="9" ry="5" fill="#e9ebee"/>
   <ellipse cx="100" cy="122" rx="9" ry="5" fill="#e9ebee"/>

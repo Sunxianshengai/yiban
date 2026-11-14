@@ -5,8 +5,16 @@
       <stop offset="0" stop-color="#8d8f93"/>
       <stop offset="1" stop-color="#6f7176"/>
     </linearGradient>
+    <pattern id="shadeTex" width="6" height="5" patternUnits="userSpaceOnUse">
+      <rect width="6" height="5" fill="none"/>
+      <line x1="0" y1="1.4" x2="6" y2="1.4" stroke="#ffffff" stroke-width="0.5" opacity="0.14"/>
+      <line x1="0" y1="3.6" x2="6" y2="3.6" stroke="#2c2e32" stroke-width="0.5" opacity="0.16"/>
+    </pattern>
   </defs>
   <path d="M70 30 L130 30 L150 110 L50 110 Z" fill="url(#lshade)"/>
+  <path d="M70 30 L130 30 L150 110 L50 110 Z" fill="url(#shadeTex)"/>
+  <g stroke="#3a3c40" stroke-width="1.2" opacity="0.6"><line x1="90" y1="30" x2="80" y2="110"/><line x1="110" y1="30" x2="120" y2="110"/></g>
+  <path d="M56 108 L74 108 L60 118 L52 118 Z" fill="#ffffff" opacity="0.12"/>
   <rect x="96" y="110" width="8" height="200" fill="#5d5f63"/>
   <rect x="92" y="108" width="16" height="8" rx="3" fill="#4c4e52"/>
   <path d="M60 306 Q100 296 140 306 L146 316 L54 316 Z" fill="#55575b"/>

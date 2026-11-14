@@ -34,6 +34,11 @@
       <g transform="translate(58,58)"><ellipse cx="0" cy="-8" rx="3.6" ry="6.5" fill="#efe4d2"/><ellipse cx="0" cy="8" rx="3.6" ry="6.5" fill="#efe4d2"/><ellipse cx="-8" cy="0" rx="6.5" ry="3.6" fill="#efe4d2"/><ellipse cx="8" cy="0" rx="6.5" ry="3.6" fill="#efe4d2"/><circle r="3" fill="#c9962e"/></g>
       <g transform="translate(0,0)"><ellipse cx="0" cy="-8" rx="3.6" ry="6.5" fill="#efe4d2"/><ellipse cx="0" cy="8" rx="3.6" ry="6.5" fill="#efe4d2"/><ellipse cx="-8" cy="0" rx="6.5" ry="3.6" fill="#efe4d2"/><ellipse cx="8" cy="0" rx="6.5" ry="3.6" fill="#efe4d2"/><circle r="3" fill="#c9962e"/></g>
     </pattern>
+    <pattern id="weave" width="5" height="5" patternUnits="userSpaceOnUse">
+      <rect width="5" height="5" fill="none"/>
+      <line x1="0" y1="1.2" x2="5" y2="1.2" stroke="#2a0d18" stroke-width="0.5" opacity="0.22"/>
+      <line x1="1.2" y1="0" x2="1.2" y2="5" stroke="#e9d5c8" stroke-width="0.4" opacity="0.16"/>
+    </pattern>
   </defs>
 
   <!-- 后腿（先画，被身体压住） -->
@@ -54,6 +59,10 @@
   <path d="M62 150 C40 148 34 172 36 196 C38 218 50 232 72 232 L96 232 L96 150 C88 146 70 146 62 150 Z" fill="url(#trellis)" opacity="0.95"/>
   <path d="M238 150 C260 148 266 172 264 196 C262 218 250 232 228 232 L204 232 L204 150 C212 146 230 146 238 150 Z" fill="url(#trellis)" opacity="0.95"/>
   <path d="M68 178 Q150 164 232 178 L236 224 Q150 238 64 224 Z" fill="url(#trellis)" opacity="0.95"/>
+  <path d="M64 168 C52 96 84 44 150 44 C216 44 248 96 236 168 L232 196 L68 196 Z" fill="url(#weave)"/>
+  <path d="M62 150 C40 148 34 172 36 196 C38 218 50 232 72 232 L96 232 L96 150 C88 146 70 146 62 150 Z" fill="url(#weave)"/>
+  <path d="M238 150 C260 148 266 172 264 196 C262 218 250 232 228 232 L204 232 L204 150 C212 146 230 146 238 150 Z" fill="url(#weave)"/>
+  <path d="M68 178 Q150 164 232 178 L236 224 Q150 238 64 224 Z" fill="url(#weave)"/>
   <!-- 体积明暗 -->
   <path d="M64 168 C52 96 84 44 150 44 C120 52 96 96 92 196 L68 196 Z" fill="#ffffff" opacity="0.1"/>
   <path d="M236 168 C248 96 216 44 150 44 C186 54 210 100 212 196 L232 196 Z" fill="#1c0710" opacity="0.22"/>
@@ -62,6 +71,9 @@
   <path d="M64 224 Q150 238 236 224 L236 232 Q150 246 64 232 Z" fill="#1c0710" opacity="0.2"/>
   <!-- 座缝线 -->
   <path d="M68 178 Q150 164 232 178" fill="none" stroke="#4a0f22" stroke-width="2" opacity="0.6"/>
+  <path d="M84 200 Q150 190 216 200" fill="none" stroke="#3a0c1c" stroke-width="1.6" opacity="0.45"/>
+  <path d="M96 216 Q150 208 204 216" fill="none" stroke="#3a0c1c" stroke-width="1.4" opacity="0.35"/>
+  <path d="M78 74 C110 56 138 50 168 52" fill="none" stroke="#c76a7e" stroke-width="3" opacity="0.5" stroke-linecap="round"/>
 
   <!-- 前腿（白木锥形） -->
   <path d="M96 252 L88 296 L102 296 L110 254 Z" fill="url(#legG)"/>
