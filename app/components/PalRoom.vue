@@ -383,6 +383,17 @@ function rescale(id: string, delta: number) {
 
 // ---- 灯光照亮房间：点亮的落地灯在世界层投出暖光斑（z0，压在壁纸/地板上、家具后面） ----
 const litLamps = computed(() => room.placed.value.filter(i => i.totemId === 'floor-lamp' && i.on))
+function lampPoolStyle(inst: { id: string; totemId: string; x: number; bottom: number; scale?: number }) {
+  const def = dd(inst)
+  if (!def) return {}
+  const imgH = (def.w / 100) * worldW.value * def.ar * (inst.scale ?? 1)
+  return {
+    left: `${inst.x}%`,
+    bottom: `${Math.max((inst.bottom / 100) * worldH.value - 6, 2)}px`,
+    width: `${worldW.value * 0.42}px`,
+    height: `${worldH.value * 0.1}px`,
+  }
+}
 function lampGlowStyle(inst: { id: string; totemId: string; x: number; bottom: number; scale?: number }) {
   const def = dd(inst)
   if (!def) return {}
@@ -463,11 +474,13 @@ function photoStyle(def: PalTotemDef) {
     <img v-if="room.wallpaper.value" class="room-wallpaper" :src="palTotemDef(room.wallpaper.value.totemId)?.src" alt="" aria-hidden="true" data-testid="pal-wallpaper">
     <div class="room-spotlight" aria-hidden="true"></div>
     <div class="room-vignette" aria-hidden="true"></div>
+    <div class="room-dust" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <!-- 夜间氛围：21:00-6:00 房间蒙上夜色（对齐原版随昼夜变化的氛围方向） -->
     <div v-if="night" class="room-night" aria-hidden="true"></div>
 
     <!-- 世界层：固定纵横比，贴底居中；地板/家具/小羊都在同一坐标系里 -->
     <div ref="worldEl" class="room-world" :class="{ 'is-portrait': portrait }" :style="worldStyle">
+      <div v-for="lamp in litLamps" :key="'p'+lamp.id" class="lamp-pool" :style="lampPoolStyle(lamp)" aria-hidden="true"></div>
       <div v-for="lamp in litLamps" :key="lamp.id" class="lamp-light" :style="lampGlowStyle(lamp)" aria-hidden="true"></div>
       <div class="room-floor" aria-hidden="true"></div>
 
@@ -598,6 +611,18 @@ function photoStyle(def: PalTotemDef) {
 .room-world.is-portrait .room-mascot { height: 62%; }
 .room-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 7%; background: linear-gradient(180deg, rgba(20,30,40,0) 0%, rgba(20,30,40,0.12) 100%); pointer-events: none; }
 .lamp-light { position: absolute; transform: translate(-50%, 18%); background: radial-gradient(circle at 50% 46%, rgba(255,196,110,0.32) 0%, rgba(255,188,100,0.15) 44%, transparent 70%); pointer-events: none; }
+.lamp-pool { position: absolute; transform: translate(-50%, 0); background: radial-gradient(ellipse at 50% 50%, rgba(255,196,110,0.26) 0%, rgba(255,188,100,0.10) 50%, transparent 72%); pointer-events: none; border-radius: 50%; }
+.room-dust { position: absolute; inset: 0 0 30% 0; z-index: 2; pointer-events: none; }
+.room-dust i { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; opacity: 0; animation: dust-float 9s ease-in-out infinite; }
+.room-dust i:nth-child(1) { left: 34%; top: 22%; animation-delay: 0s; }
+.room-dust i:nth-child(2) { left: 42%; top: 34%; width: 2px; height: 2px; animation-delay: 1.6s; }
+.room-dust i:nth-child(3) { left: 50%; top: 18%; width: 2.4px; height: 2.4px; animation-delay: 3.1s; }
+.room-dust i:nth-child(4) { left: 57%; top: 30%; animation-delay: 4.4s; }
+.room-dust i:nth-child(5) { left: 63%; top: 24%; width: 2px; height: 2px; animation-delay: 5.7s; }
+.room-dust i:nth-child(6) { left: 46%; top: 44%; width: 2.2px; height: 2.2px; animation-delay: 2.3s; }
+.room-dust i:nth-child(7) { left: 38%; top: 40%; width: 1.8px; height: 1.8px; animation-delay: 6.6s; }
+.room-dust i:nth-child(8) { left: 55%; top: 46%; width: 1.6px; height: 1.6px; animation-delay: 7.8s; }
+@keyframes dust-float { 0% { opacity: 0; transform: translate(0, 0); } 30% { opacity: 0.55; } 60% { opacity: 0.3; transform: translate(6px, -10px); } 100% { opacity: 0; transform: translate(-4px, -22px); } }
 
 .room-totem { position: absolute; cursor: grab; user-select: none; touch-action: none; }
 .room-totem.dragging { cursor: grabbing; }

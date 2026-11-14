@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice">
-  <!-- rain-fall：完整房间场景（墙面+踢脚线+地板），光照与家具（左上主光）呼应 -->
+  <!-- rain-fall：完整房间场景 v2（墙面板缝/墙角 AO/踢脚线分段+插座/拼板错缝/木纹/节疤），光照与家具呼应 -->
   <style>
     .st { animation: twinkle 2.6s ease-in-out infinite; }
     @keyframes twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
@@ -32,20 +32,49 @@
   <rect width="800" height="395" fill="url(#wp)"/>
   <g fill="#8ba0b2" opacity="0.85"><ellipse cx="180" cy="70" rx="180" ry="24"/><ellipse cx="420" cy="52" rx="150" ry="20"/><ellipse cx="640" cy="80" rx="190" ry="22"/></g>
       <g class="rain" stroke="#d8e5ee" stroke-width="2" stroke-linecap="round" opacity="0.7"><line x1="30" y1="90" x2="22" y2="126"/><line x1="150" y1="120" x2="142" y2="156"/><line x1="270" y1="100" x2="262" y2="136"/><line x1="390" y1="140" x2="382" y2="176"/><line x1="510" y1="110" x2="502" y2="146"/><line x1="630" y1="130" x2="622" y2="166"/><line x1="750" y1="110" x2="742" y2="146"/></g>
+  <!-- 墙面板接缝 + 两侧墙角 AO -->
+  <line x1="160" y1="0" x2="160" y2="388" stroke="#ffffff" stroke-width="1" opacity="0.06"/>
+    <line x1="320" y1="0" x2="320" y2="388" stroke="#ffffff" stroke-width="1" opacity="0.06"/>
+    <line x1="480" y1="0" x2="480" y2="388" stroke="#ffffff" stroke-width="1" opacity="0.06"/>
+    <line x1="640" y1="0" x2="640" y2="388" stroke="#ffffff" stroke-width="1" opacity="0.06"/>
+  <rect width="16" height="388" fill="#0a1420" opacity="0.10"/>
+  <rect x="784" width="16" height="388" fill="#0a1420" opacity="0.10"/>
   <rect width="800" height="395" fill="url(#wallGlow)"/>
   <!-- 墙脚 AO -->
   <rect y="368" width="800" height="20" fill="#0a1420" opacity="0.10"/>
-  <!-- 踢脚线 -->
+  <!-- 踢脚线（分段缝+插座） -->
   <rect y="388" width="800" height="18" fill="#e8eef2"/>
   <rect y="388" width="800" height="3" fill="#ffffff"/>
+  <line x1="200" y1="391" x2="200" y2="403" stroke="#b5c2cd" stroke-width="1.6"/>
+    <line x1="400" y1="391" x2="400" y2="403" stroke="#b5c2cd" stroke-width="1.6"/>
+    <line x1="600" y1="391" x2="600" y2="403" stroke="#b5c2cd" stroke-width="1.6"/>
   <rect y="403" width="800" height="3" fill="#b5c2cd"/>
-  <!-- 地板（拼板线+横向接缝+前缘压暗） -->
+  <g>
+      <rect x="648" y="392" width="14" height="11" rx="2" fill="#ffffff" stroke="#b5c2cd" stroke-width="1"/>
+      <circle cx="652.6" cy="397.5" r="1.5" fill="#a9b6c1"/>
+      <circle cx="657.4" cy="397.5" r="1.5" fill="#a9b6c1"/>
+    </g>
+  <!-- 地板：拼板线 + 行错缝 + 木纹 + 节疤 + 前缘压暗 -->
   <rect y="406" width="800" height="114" fill="#8fa3b2"/>
   <g><line x1="130" y1="406" x2="130" y2="520" stroke="#7e93a4" stroke-width="2.4"/>
-  <line x1="268" y1="406" x2="268" y2="520" stroke="#7e93a4" stroke-width="2.4"/>
-  <line x1="406" y1="406" x2="406" y2="520" stroke="#7e93a4" stroke-width="2.4"/>
-  <line x1="544" y1="406" x2="544" y2="520" stroke="#7e93a4" stroke-width="2.4"/>
-  <line x1="682" y1="406" x2="682" y2="520" stroke="#7e93a4" stroke-width="2.4"/></g>
+    <line x1="268" y1="406" x2="268" y2="520" stroke="#7e93a4" stroke-width="2.4"/>
+    <line x1="406" y1="406" x2="406" y2="520" stroke="#7e93a4" stroke-width="2.4"/>
+    <line x1="544" y1="406" x2="544" y2="520" stroke="#7e93a4" stroke-width="2.4"/>
+    <line x1="682" y1="406" x2="682" y2="520" stroke="#7e93a4" stroke-width="2.4"/></g>
+  <g><line x1="200" y1="470" x2="200" y2="348" stroke="#7e93a4" stroke-width="2"/>
+    <line x1="336" y1="412" x2="336" y2="492" stroke="#7e93a4" stroke-width="2"/>
+    <line x1="612" y1="430" x2="612" y2="508" stroke="#7e93a4" stroke-width="2"/></g>
+  <g><path d="M170 412 C164 436 176 458 170 480" stroke="#74899a" stroke-width="1" fill="none" opacity="0.55"/>
+    <path d="M308 412 C302 436 314 458 308 480" stroke="#74899a" stroke-width="1" fill="none" opacity="0.55"/>
+    <path d="M446 412 C440 436 452 458 446 480" stroke="#74899a" stroke-width="1" fill="none" opacity="0.55"/>
+    <path d="M584 412 C578 436 590 458 584 480" stroke="#74899a" stroke-width="1" fill="none" opacity="0.55"/>
+    <path d="M722 412 C716 436 728 458 722 480" stroke="#74899a" stroke-width="1" fill="none" opacity="0.55"/></g>
+  <g><ellipse cx="168" cy="436" rx="7" ry="4.4" fill="#6d8293" opacity="0.6"/>
+    <ellipse cx="168" cy="436" rx="3.4" ry="2" fill="#6d8293" opacity="0.8"/>
+    <ellipse cx="306" cy="486" rx="7" ry="4.4" fill="#6d8293" opacity="0.6"/>
+    <ellipse cx="306" cy="486" rx="3.4" ry="2" fill="#6d8293" opacity="0.8"/>
+    <ellipse cx="578" cy="448" rx="7" ry="4.4" fill="#6d8293" opacity="0.6"/>
+    <ellipse cx="578" cy="448" rx="3.4" ry="2" fill="#6d8293" opacity="0.8"/></g>
   <rect y="462" width="800" height="2.4" fill="#879cac"/>
   <rect y="406" width="800" height="114" fill="url(#floorShade)"/>
 </svg>
