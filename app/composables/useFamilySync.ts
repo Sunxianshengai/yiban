@@ -113,6 +113,15 @@ export function useFamilySync() {
     return hasFamilyUnseen(me, entry.cloudId, me)
   }
 
+  /** 侧栏家庭卡聚合红点：有任何不是我发的互动晚于上次查看。 */
+  function hasAnyFamilyUnseen() {
+    const me = state.value.me?.userId
+    return feed.value.socials.some((s) => {
+      if (me && s.authorUserId === me) return false
+      return +new Date(s.createdAt) > seenAt.value
+    })
+  }
+
   onMounted(() => {
     // 登录态确认后再拉（Neon 冷启动要 1–5 秒，确认期间别抢先断言未登录）
     watch([user, checking], ([u, c]) => {
@@ -135,6 +144,6 @@ export function useFamilySync() {
   return {
     state, feed, busy, loaded,
     refreshFamily, familyEntries,
-    socialsFor, markFamilySeen, hasFamilyUnseen, hasFamilyUnseenForLocal,
+    socialsFor, markFamilySeen, hasFamilyUnseen, hasFamilyUnseenForLocal, hasAnyFamilyUnseen,
   }
 }

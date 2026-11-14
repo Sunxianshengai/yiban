@@ -21,7 +21,8 @@ const mSections = [
 function toggleSection(key: typeof mSections[number]['key']) {
   openSection.value = openSection.value === key ? null : key
 }
-const gen = ref<'appearance' | 'unit' | 'location' | 'pal' | 'family' | 'locale' | 'spellcheck'>('appearance')
+// 设置二级页用共享 state：侧栏「家人一起记录」引导卡能直跳家庭组页
+const gen = useState<'appearance' | 'unit' | 'location' | 'pal' | 'family' | 'locale' | 'spellcheck'>('jr.settingsGen', () => 'appearance')
 const { weekStart } = useWeekStart()
 // bug06 修复：计量单位绑定并持久化（原 select 未绑 v-model，选择即丢）
 const { unit } = useUnits()

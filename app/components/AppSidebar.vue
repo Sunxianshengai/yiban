@@ -5,13 +5,18 @@ import {
   mdiFeather,
   mdiMapMarkerOutline,
   mdiCalendarBlankOutline,
+  mdiCalendarMonth,
   mdiStarOutline,
   mdiTagOutline,
   mdiPawOutline,
   mdiMagnify,
   mdiCompassOutline,
+  mdiImageMultipleOutline,
+  mdiAccountGroupOutline,
+  mdiAccountMultipleOutline,
 } from '@mdi/js'
 import { db } from '~/utils/db'
+import { familyAvatarColor, familyAvatarChar } from '~/utils/familyUi'
 
 const emit = defineEmits<{ (e: 'navigate'): void }>()
 const { visible: petVisible, toggle: togglePet } = usePetWidget()
@@ -25,8 +30,51 @@ const totalCount = computed(() => entries.value.length)
 const travelSearch = computed(() => (route.query.query ?? route.query.q) === '旅行')
 const starredCount = computed(() => entries.value.filter(e => !!e.favourite).length)
 
+// ---- 家庭组（M-209 门面卡）：成员头像行 + 最新家人动态 + 聚合红点 ----
+const { state: familyState, feed: familyFeed, hasAnyFamilyUnseen, markFamilySeen } = useFamilySync()
+const familyGroup = computed(() => familyState.value.group)
+const familyMembers = computed(() => (familyState.value.members || []).slice(0, 6))
+const familyExtra = computed(() => Math.max(0, (familyState.value.members || []).length - 6))
+const familyUnread = computed(() => hasAnyFamilyUnseen())
+const latestFamilyLine = computed(() => {
+  const mine = familyState.value.me?.userId
+  const e = familyFeed.value.entries.find(x => x.ownerUserId !== mine)
+  if (!e) return ''
+  const text = (e.previewText || e.text || '').replace(/<[^>]*>/g, '').trim()
+  return `${e.ownerNickname}：${text.slice(0, 26) || '写了一篇新日记'}`
+})
+function openFamily() {
+  markFamilySeen()
+  if (familyGroup.value) {
+    // 家人条目混排在自己的时间线里
+    emit('navigate')
+    navigateTo('/')
+  } else {
+    // 直达设置的家庭组页
+    settingsOpen.value = true
+  }
+}
+
+// ---- 本月统计卡：本月篇数 / 照片数 / 连续天数（Streak 语义同 JournalOverview）----
+const photoCount = ref(0)
+const monthCount = computed(() => {
+  const now = new Date()
+  const y = String(now.getFullYear())
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  return entries.value.filter(e => e.yearToken === y && e.monthToken === m).length
+})
+const streakCount = computed(() => {
+  const dates = new Set(entries.value.map(e => new Date(e.dateOfJournal).toDateString()))
+  const d = new Date()
+  if (!dates.has(d.toDateString())) d.setDate(d.getDate() - 1)
+  let n = 0
+  while (dates.has(d.toDateString())) { n++; d.setDate(d.getDate() - 1) }
+  return n
+})
+
 onMounted(async () => {
   tags.value = await listTags()
+  photoCount.value = await db.mediaFilesV2.count()
   if (!entries.value.length) {
     await refreshEntries()
   }
@@ -58,11 +106,21 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
       <input v-model="search" type="text" placeholder="搜索日记、回忆、标签..." />
     </form>
 
-    <!-- 导航：今天 · 时间线 & 写作伙伴 (Pal) -->
+    <!-- 导航：核心视图入口（时间线/相册/日历此前只能从时间线中列的胶囊切换进，现在左侧直达） -->
     <NuxtLink to="/" class="jr-nav-item" :class="{ active: route.path === '/' }">
       <JrIcon :path="mdiCalendarBlankOutline" :size="20" />
       <span class="jr-nav-text">时间线</span>
       <span class="jr-badge">{{ totalCount }}</span>
+    </NuxtLink>
+
+    <NuxtLink to="/media" class="jr-nav-item" :class="{ active: route.path.startsWith('/media') }">
+      <JrIcon :path="mdiImageMultipleOutline" :size="20" />
+      <span class="jr-nav-text">相册</span>
+    </NuxtLink>
+
+    <NuxtLink to="/calendar" class="jr-nav-item" :class="{ active: route.path.startsWith('/calendar') }">
+      <JrIcon :path="mdiCalendarMonth" :size="20" />
+      <span class="jr-nav-text">日历</span>
     </NuxtLink>
 
     <NuxtLink to="/pal" class="jr-nav-item" :class="{ active: route.path.startsWith('/pal') }">
@@ -87,6 +145,33 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
       <JrIcon :path="mdiMapMarkerOutline" :size="19" />
       <span class="jr-nav-text">位置历史记录</span>
     </NuxtLink>
+
+    <!-- 家庭组卡（M-209 门面）：已加入=成员头像行+最新家人动态+聚合红点；未加入=引导直达设置 -->
+    <button type="button" class="jr-side-family-card" @click="openFamily">
+      <span class="jr-fam-head">
+        <JrIcon :path="familyGroup ? mdiAccountGroupOutline : mdiAccountMultipleOutline" :size="16" style="color:var(--jr-primary)" />
+        <span class="jr-fam-title">{{ familyGroup ? familyGroup.name : '家人一起记录' }}</span>
+        <i v-if="familyUnread" class="jr-family-dot" title="家人有新动态" />
+      </span>
+      <span v-if="familyGroup" class="jr-fam-avatars">
+        <span
+          v-for="m in familyMembers" :key="m.userId"
+          class="jr-family-avatar" :style="{ background: familyAvatarColor(m.userId) }"
+        >{{ familyAvatarChar(m.nickname) }}</span>
+        <span v-if="familyExtra" class="jr-fam-extra">+{{ familyExtra }}</span>
+      </span>
+      <span v-if="familyGroup" class="jr-fam-line" :class="{ on: familyUnread }">
+        {{ familyUnread ? '有新互动，去时间线看看' : (latestFamilyLine || '家人还没有共享日记') }}
+      </span>
+      <span v-else class="jr-fam-line">邀请家人，共写一本家庭日记</span>
+    </button>
+
+    <!-- 本月统计卡：本月篇数 / 照片数 / 连续天数（Streak 语义同概览页） -->
+    <div class="jr-side-stats" aria-label="本月统计">
+      <span class="st"><b>{{ monthCount }}</b>本月</span>
+      <span class="st"><b>{{ photoCount }}</b>照片</span>
+      <span class="st"><b>{{ streakCount }}</b>连续天</span>
+    </div>
 
     <div class="jr-nav-sep" />
 
@@ -192,6 +277,93 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
   font-size: 12.5px;
   font-weight: 600;
   color: var(--jr-outline);
+}
+/* 家庭组卡：整卡可点，家人内容在时间线混排 */
+.jr-side-family-card {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--jr-outline-variant);
+  background: var(--jr-surface-variant);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+  font-family: inherit;
+}
+.jr-side-family-card:hover {
+  border-color: var(--jr-primary);
+  background: var(--jr-hover);
+}
+.jr-fam-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.jr-fam-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--jr-on-bg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jr-fam-avatars {
+  display: flex;
+  align-items: center;
+}
+.jr-fam-avatars .jr-family-avatar {
+  width: 22px;
+  height: 22px;
+  font-size: 10.5px;
+  border: 2px solid var(--jr-surface-variant);
+  margin-left: -6px;
+}
+.jr-fam-avatars .jr-family-avatar:first-child { margin-left: 0; }
+.jr-fam-extra {
+  font-size: 10.5px;
+  color: var(--jr-outline);
+  margin-left: 4px;
+}
+.jr-fam-line {
+  font-size: 11.5px;
+  color: var(--jr-on-surface-variant);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jr-fam-line.on {
+  color: var(--jr-primary);
+  font-weight: 600;
+}
+/* 本月统计卡：一行三格 */
+.jr-side-stats {
+  margin-top: 8px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--jr-outline-variant);
+  background: var(--jr-surface-variant);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.jr-side-stats .st {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: 10.5px;
+  color: var(--jr-outline);
+}
+.jr-side-stats .st b {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--jr-on-bg);
+  line-height: 1.1;
 }
 .jr-side-pet-card {
   margin-top: auto;
