@@ -149,10 +149,7 @@ function clearPhoto() {
   palSound.remove()
 }
 
-// ---- 昼夜氛围 + 天气徽章（取最近一篇带天气的日记；原版房间随昼夜/季节变化的氛围方向） ----
-const nowHour = ref(new Date().getHours())
-let hourTimer: ReturnType<typeof setInterval> | undefined
-const night = computed(() => nowHour.value >= 21 || nowHour.value < 6)
+// ---- 天气徽章（取最近一篇带天气的日记） ----
 const { entries: palEntries, refresh: refreshPalEntries } = useEntries()
 const weatherBadge = computed(() => {
   const withW = palEntries.value.filter(e => e.weatherIcon).slice(0, 60)
@@ -162,11 +159,7 @@ const weatherBadge = computed(() => {
   if (!emoji) return ''
   return latest.weatherDegreeC != null ? `${emoji} ${latest.weatherDegreeC}°C` : emoji
 })
-onMounted(() => {
-  hourTimer = setInterval(() => { nowHour.value = new Date().getHours() }, 60000)
-  if (!palEntries.value.length) void refreshPalEntries()
-})
-onBeforeUnmount(() => clearInterval(hourTimer))
+onMounted(() => { if (!palEntries.value.length) void refreshPalEntries() })
 
 function select(id: string) {
   selectedId.value = id
@@ -473,7 +466,7 @@ function photoStyle(def: PalTotemDef) {
     <!-- 壁纸（也是一种 totem，单独铺满整面墙） -->
     <img v-if="room.wallpaper.value" class="room-wallpaper" :src="palTotemDef(room.wallpaper.value.totemId)?.src" alt="" aria-hidden="true" data-testid="pal-wallpaper">
     <div class="room-spotlight" aria-hidden="true"></div>
-    <div class="room-vignette" aria-hidden="true"></div>
+
     <div class="room-dust" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <!-- 夜间氛围：21:00-6:00 房间蒙上夜色（对齐原版随昼夜变化的氛围方向） -->
     <div v-if="night" class="room-night" aria-hidden="true"></div>
@@ -600,9 +593,8 @@ function photoStyle(def: PalTotemDef) {
 .jr-pal-room { position: relative; height: 240px; border-radius: 20px; overflow: hidden; isolation: isolate; background: #e9edef; touch-action: none; }
 
 .room-wallpaper { position: absolute; inset: -3%; width: 106%; height: 106%; object-fit: cover; z-index: 0; transform: translate(calc(var(--par-x, 0%) * 0.6), calc(var(--par-y, 0%) * 0.6)); }
-.room-vignette { position: absolute; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(120% 120% at 50% 40%, transparent 58%, rgba(10,20,30,0.17) 100%); }
+
 .room-spotlight { position: absolute; inset: 0; z-index: 1; background: radial-gradient(58% 88% at 50% -6%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.25) 45%, rgba(255,255,255,0) 72%); pointer-events: none; }
-.room-night { position: absolute; inset: 0; z-index: 46; background: linear-gradient(180deg, rgba(18,28,52,0.42) 0%, rgba(18,28,52,0.24) 100%); pointer-events: none; }
 .room-weather { position: absolute; left: 14px; bottom: 36px; z-index: 47; font-size: 12px; background: rgba(255,255,255,0.72); border-radius: 999px; padding: 2px 9px; color: var(--jr-on-surface-variant); }
 [data-theme="dark"] .room-weather { background: rgba(29,36,39,0.72); }
 
