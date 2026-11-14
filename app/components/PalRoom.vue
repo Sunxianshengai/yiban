@@ -24,8 +24,11 @@ const showCatalog = ref(false)
 
 // 动作条挂在房间根层（不随家具旋转——长条栏转 90° 后远端按钮会被 overflow:hidden 裁掉）
 const roomAspect = ref(760 / 240)
+const roomW = ref(760)
 function measureRoom() {
-  if (roomEl.value) roomAspect.value = roomEl.value.clientWidth / roomEl.value.clientHeight
+  if (!roomEl.value) return
+  roomAspect.value = roomEl.value.clientWidth / roomEl.value.clientHeight
+  roomW.value = roomEl.value.clientWidth
 }
 onMounted(() => { measureRoom(); window.addEventListener('resize', measureRoom) })
 onBeforeUnmount(() => window.removeEventListener('resize', measureRoom))
@@ -38,7 +41,10 @@ const barStyle = computed(() => {
   if (!sel || !def) return {}
   const imgPct = def.w * def.ar * roomAspect.value * (1 + sel.growthStage * 0.16)
   const bottom = Math.min(Math.max(sel.bottom + imgPct + 2, sel.bottom + 2), 84)
-  return { left: `${sel.x}%`, bottom: `${bottom}%` }
+  // 横向夹紧：动作条 ~7 键宽，贴左右边时会被 overflow:hidden 裁掉按钮（移动端实测 55px）
+  const halfPct = ((isMobile.value ? 118 : 102) / roomW.value) * 100
+  const left = Math.min(Math.max(sel.x, halfPct), 100 - halfPct)
+  return { left: `${left}%`, bottom: `${bottom}%` }
 })
 
 function select(id: string) {
@@ -208,13 +214,14 @@ function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed
       <button :data-act="'done'" title="完成" aria-label="完成" @click.stop="deselect()"><JrIcon :path="mdiClose" :size="15" /></button>
     </div>
 
-    <!-- 小羊（吉祥物；点它出反应） -->
-    <div class="room-mascot" data-testid="pal-mascot" :data-stage="props.stage" @pointerdown.stop @click.stop="mascotTap">
+    <!-- 小羊（吉祥物；点它出反应）。容器不吃点击（透明大盒会挡住摆在中部的家具），命中区缩小到小羊身体 -->
+    <div class="room-mascot" :data-stage="props.stage">
       <img v-if="petFallback" src="/pet/lamb-poster.webp" alt="日记伙伴：瞌睡小羊" class="jr-pet-img">
       <Transition v-else name="petfade" mode="out-in">
         <video :key="props.stage" class="jr-pet-video on" :src="petVideos[props.stage]" loop muted playsinline autoplay preload="auto" @error="petFallback = true" />
       </Transition>
       <span v-for="r in reactions" :key="r.key" class="room-reaction" data-pal-reaction aria-hidden="true">{{ r.emoji }}</span>
+      <button class="mascot-hit" data-testid="pal-mascot" aria-label="和小羊互动" @click.stop="mascotTap"></button>
     </div>
     <span class="jr-pet-caption">{{ caption }}</span>
 
@@ -281,7 +288,8 @@ function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed
 .fx.drop { top: 0; animation-name: pal-drop; }
 .fx.star { animation-name: pal-rise; }
 
-.room-mascot { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); height: 88%; aspect-ratio: 390 / 525; z-index: 5; cursor: pointer; }
+.room-mascot { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); height: 88%; aspect-ratio: 390 / 525; z-index: 0; pointer-events: none; }
+.mascot-hit { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: 64%; height: 44%; pointer-events: auto; cursor: pointer; background: none; border: 0; padding: 0; border-radius: 14px; }
 .jr-pal-room.mobile .room-mascot { height: 82%; }
 .jr-pet-video, .jr-pet-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 0.45s ease; }
 .jr-pet-video.on, .jr-pet-img { opacity: 1; }
