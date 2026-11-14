@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 340">
+  <!-- 白色法式双开门 -->
+  <rect x="6" y="6" width="228" height="328" rx="6" fill="#f3f1ec" stroke="#ddd6c9" stroke-width="4"/>
+  <g fill="#d7e6ee" stroke="#f3f1ec" stroke-width="6">
+    <rect x="26" y="26" width="76" height="120" rx="3"/>
+    <rect x="138" y="26" width="76" height="120" rx="3"/>
+    <rect x="26" y="180" width="76" height="120" rx="3"/>
+    <rect x="138" y="180" width="76" height="120" rx="3"/>
+  </g>
+  <g fill="#ffffff" opacity=".55">
+    <rect x="26" y="26" width="76" height="52" rx="3"/>
+    <rect x="138" y="26" width="76" height="52" rx="3"/>
+  </g>
+  <circle cx="116" cy="170" r="7" fill="#c9a24b"/>
+  <circle cx="124" cy="170" r="7" fill="#c9a24b"/>
+</svg>

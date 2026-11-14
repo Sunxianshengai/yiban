@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 220">
+  <!-- 红郁金香玻璃花瓶（可生长） -->
+  <g stroke="#4e7d4c" stroke-width="5" fill="none" stroke-linecap="round">
+    <path d="M78 200 C74 150 70 120 60 96"/>
+    <path d="M90 200 C90 150 92 118 92 84"/>
+    <path d="M102 200 C108 150 112 122 122 98"/>
+    <path d="M84 200 C80 160 66 138 46 118"/>
+  </g>
+  <g fill="#c0392b">
+    <path d="M60 96 C48 84 50 64 60 58 C70 64 72 84 60 96 Z"/>
+    <path d="M92 84 C80 72 82 50 92 44 C102 50 104 72 92 84 Z"/>
+    <path d="M122 98 C110 86 112 66 122 60 C132 66 134 86 122 98 Z"/>
+    <path d="M46 118 C36 108 38 92 46 86 C54 92 56 108 46 118 Z"/>
+    <path d="M138 112 C128 102 130 86 138 80 C146 86 148 102 138 112 Z"/>
+  </g>
+  <path d="M60 176 L120 176 L112 210 L68 210 Z" fill="#cfe0ea" opacity=".8"/>
+  <path d="M60 176 L120 176" stroke="#a9c4d4" stroke-width="4" fill="none"/>
+  <path d="M64 184 L116 184" stroke="#ffffff" stroke-width="3" opacity=".7"/>
+</svg>

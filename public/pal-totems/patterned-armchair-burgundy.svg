@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 300">
+  <!-- 勃艮第花纹扶手椅 -->
+  <g fill="#7d3040">
+    <path d="M60 120 C40 120 32 140 36 166 L44 246 L92 246 L88 150 C86 130 78 120 60 120 Z"/>
+    <path d="M260 120 C280 120 288 140 284 166 L276 246 L228 246 L232 150 C234 130 242 120 260 120 Z"/>
+    <path d="M70 128 C64 96 96 72 160 72 C224 72 256 96 250 128 L246 160 L74 160 Z"/>
+    <rect x="70" y="150" width="180" height="100" rx="18"/>
+    <rect x="56" y="238" width="208" height="26" rx="10"/>
+  </g>
+  <g fill="#94434f">
+    <circle cx="110" cy="110" r="7"/><circle cx="160" cy="100" r="7"/><circle cx="210" cy="110" r="7"/>
+    <circle cx="130" cy="185" r="7"/><circle cx="190" cy="185" r="7"/><circle cx="160" cy="215" r="7"/>
+    <circle cx="105" cy="222" r="7"/><circle cx="215" cy="222" r="7"/>
+  </g>
+  <g fill="none" stroke="#e8d9c8" stroke-width="4" opacity=".85">
+    <path d="M70 128 C64 96 96 72 160 72 C224 72 256 96 250 128"/>
+    <rect x="70" y="150" width="180" height="100" rx="18"/>
+    <rect x="56" y="238" width="208" height="26" rx="10"/>
+  </g>
+  <rect x="60" y="264" width="18" height="14" rx="4" fill="#5d2530"/>
+  <rect x="242" y="264" width="18" height="14" rx="4" fill="#5d2530"/>
+</svg>

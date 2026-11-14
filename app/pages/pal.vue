@@ -40,10 +40,6 @@ function setStage(next: PetStage) {
 }
 onBeforeUnmount(() => clearTimeout(awakeTimer))
 
-const petVideos = { idle: '/pet/lamb-idle.webm', thinking: '/pet/lamb-think.webm', awake: '/pet/lamb-awake.webm' }
-const petFallback = ref(false)
-watch(stage, () => { petFallback.value = false })
-
 // ---- 模式与会话 ----
 type Mode = 'capture' | 'guide' | 'review'
 const mode = ref<Mode>('capture')
@@ -277,6 +273,11 @@ function switchMode(next: Mode) {
   mode.value = next
   error.value = ''
 }
+
+// 点小羊：房间给浮动反应（PalRoom 内），这里顺手叫醒它
+function onMascotTap() {
+  setStage('awake')
+}
 </script>
 
 <template>
@@ -288,14 +289,8 @@ function switchMode(next: Mode) {
       <button v-if="isMobile" class="jr-link-btn" @click="navigateTo('/settings')">去设置</button>
     </div>
 
-    <!-- 小羊舞台 -->
-    <div class="jr-pet-stage" :class="stage">
-      <img v-if="petFallback" src="/pet/lamb-poster.webp" alt="日记伙伴：瞌睡小羊" class="jr-pet-img">
-      <Transition v-else name="petfade" mode="out-in">
-        <video :key="stage" class="jr-pet-video on" :src="petVideos[stage]" loop muted playsinline autoplay preload="auto" @error="petFallback = true" />
-      </Transition>
-      <span class="jr-pet-caption">{{ stage === 'thinking' ? '小羊想一下…' : stage === 'awake' ? '小羊醒着呢' : '小羊打了个盹' }}</span>
-    </div>
+    <!-- Pal 房间：小羊 + 可摆放家具（M-122，动作/持久化在 PalRoom 内） -->
+    <PalRoom :stage="stage" @mascot-tap="onMascotTap" />
 
     <h1 v-if="!isMobile">日记伙伴</h1>
 
@@ -397,16 +392,6 @@ function switchMode(next: Mode) {
 <style scoped>
 .jr-pal { display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
 
-/* 小羊舞台 */
-.jr-pet-stage { position: relative; height: 230px; border-radius: 20px; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; background: linear-gradient(180deg, #dcecf1 0%, #eef4ee 60%, #f7f2e6 100%); }
-[data-theme="dark"] .jr-pet-stage { background: linear-gradient(180deg, #1d282c 0%, #232a26 60%, #2b2921 100%); }
-.jr-pet-video, .jr-pet-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 0.45s ease; }
-.jr-pet-video.on, .jr-pet-img { opacity: 1; }
-.petfade-enter-active, .petfade-leave-active { transition: opacity 0.35s ease; }
-.petfade-enter-from, .petfade-leave-to { opacity: 0 !important; }
-.jr-pet-caption { position: absolute; left: 14px; bottom: 10px; font-size: 12px; color: var(--jr-on-surface-variant); background: rgba(255,255,255,0.6); border-radius: 999px; padding: 3px 10px; }
-[data-theme="dark"] .jr-pet-caption { background: rgba(0,0,0,0.35); }
-
 h1 { margin: 0; font-size: 22px; font-weight: 800; }
 
 /* 模式 tab */
@@ -463,7 +448,6 @@ h1 { margin: 0; font-size: 22px; font-weight: 800; }
 /* ≤600px：舞台变矮、面板通栏（沿用移动抽屉时代的布局约定） */
 @media (max-width: 600px) {
   .jr-pal { padding: 0; gap: 10px; }
-  .jr-pet-stage { height: 150px; border-radius: 16px; }
   .jr-pal-msg { max-width: 92%; }
   .jr-pal-thread { min-height: 40vh; max-height: none; }
 }

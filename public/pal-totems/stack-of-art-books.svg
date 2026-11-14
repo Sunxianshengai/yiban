@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150">
+  <!-- 艺术书堆（五本平放错位） -->
+  <g stroke-linejoin="round">
+    <g transform="rotate(-2 100 132)">
+      <rect x="30" y="118" width="140" height="24" rx="4" fill="#e3d7bf"/><rect x="30" y="118" width="140" height="7" rx="3" fill="#f4ecdc"/>
+    </g>
+    <g transform="rotate(2.5 100 106)">
+      <rect x="42" y="94" width="126" height="22" rx="4" fill="#2e4a6b"/><rect x="42" y="94" width="126" height="6" rx="3" fill="#eef2f6"/>
+    </g>
+    <g transform="rotate(-1.5 100 84)">
+      <rect x="34" y="72" width="132" height="20" rx="4" fill="#b8443c"/><rect x="34" y="72" width="132" height="6" rx="3" fill="#f2e3e0"/>
+    </g>
+    <g transform="rotate(2 100 62)">
+      <rect x="48" y="52" width="112" height="18" rx="4" fill="#c99a2e"/><rect x="48" y="52" width="112" height="6" rx="3" fill="#f6ecd4"/>
+    </g>
+    <g transform="rotate(-2 100 40)">
+      <rect x="52" y="30" width="104" height="18" rx="4" fill="#3f6f74"/><rect x="52" y="30" width="104" height="6" rx="3" fill="#e8f1f2"/>
+    </g>
+  </g>
+</svg>

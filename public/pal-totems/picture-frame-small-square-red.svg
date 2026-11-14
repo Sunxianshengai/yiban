@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- 小幅红相框 -->
+  <rect x="8" y="8" width="104" height="104" rx="6" fill="#b8443c"/>
+  <rect x="22" y="22" width="76" height="76" rx="3" fill="#efe6d4"/>
+  <path d="M26 92 L54 62 L70 78 L82 66 L94 92 Z" fill="#7ba27b"/>
+  <circle cx="72" cy="42" r="10" fill="#d9e4ec"/>
+</svg>

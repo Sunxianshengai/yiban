@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice">
+  <!-- 浅蓝竖条纹壁纸（占位手绘，对齐原版 light-blue-striped-wallpaper 的观感） -->
+  <defs>
+    <pattern id="stripes" width="34" height="8" patternUnits="userSpaceOnUse">
+      <rect width="34" height="8" fill="#e9edef"/>
+      <rect x="7" width="13" height="8" rx="6" fill="#b3c7d1"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="520" fill="url(#stripes)"/>
+</svg>
