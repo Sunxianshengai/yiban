@@ -25,12 +25,13 @@ const KEY = 'jr.palTotemInstances'
 
 function clamp(n: number, lo: number, hi: number) { return Math.min(hi, Math.max(lo, n)) }
 
-function makeInstance(def: PalTotemDef, offset = 0): PalTotemInstance {
+function makeInstance(def: PalTotemDef, portrait: boolean, offset = 0): PalTotemInstance {
+  const d = portrait && def.p ? { ...def, w: def.p.w, x: def.p.x, bottom: def.p.bottom } : def
   return {
     id: `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
     totemId: def.id,
-    x: clamp(def.x + offset, 2, 98),
-    bottom: def.bottom,
+    x: clamp(d.x + offset, 2, 98),
+    bottom: d.bottom,
     rotation: 0,
     flipped: false,
     z: def.kind === 'wallpaper' ? 0 : def.z,
@@ -38,13 +39,26 @@ function makeInstance(def: PalTotemDef, offset = 0): PalTotemInstance {
   }
 }
 
+/** 摆放是否还是某一档的「原始默认组合」（未拖动/旋转/生长过）——跨档切换时可安全重排 */
+function matchesDefaults(items: PalTotemInstance[], portrait: boolean): boolean {
+  const placedItems = items.filter(i => palTotemDef(i.totemId)?.kind !== 'wallpaper')
+  if (placedItems.length !== PAL_ROOM_DEFAULT.totems.length) return false
+  return PAL_ROOM_DEFAULT.totems.every(id => {
+    const inst = placedItems.find(i => i.totemId === id)
+    const raw = palTotemDef(id)!
+    const d = portrait && raw.p ? { x: raw.p.x, bottom: raw.p.bottom } : { x: raw.x, bottom: raw.bottom }
+    return !!inst && Math.abs(inst.x - d.x) < 0.6 && Math.abs(inst.bottom - d.bottom) < 0.6
+      && inst.rotation === 0 && !inst.flipped && inst.growthStage === 0
+  })
+}
+
 export function usePalTotems() {
   const instances = useState<PalTotemInstance[]>('jr.palTotemInstances', () => [])
   const initialized = useState<boolean>('jr.palTotemsInit', () => false)
   const hint = useState<string>('jr.palTotemHint', () => '')
 
-  /** 挂载后从 localStorage 载入；没有记录就摆出原版空态默认组合 */
-  function init() {
+  /** 挂载后从 localStorage 载入；没有记录就摆出原版空态默认组合（按当前布局档取默认摆位） */
+  function init(portrait: boolean) {
     if (initialized.value) return
     initialized.value = true
     let saved: PalTotemInstance[] | null = null
@@ -53,12 +67,13 @@ export function usePalTotems() {
       if (raw) saved = JSON.parse(raw) as PalTotemInstance[]
     } catch { saved = null }
     const valid = (saved ?? []).filter(i => i && palTotemDef(i.totemId))
-    if (saved && valid.length) {
+    if (saved && valid.length && !matchesDefaults(valid, portrait)) {
+      // 原始默认摆位跨布局档（横↔竖）切换时按当前档重排；用户自定义过的摆放原样保留
       instances.value = valid
     } else {
       instances.value = [
-        makeInstance(palTotemDef(PAL_ROOM_DEFAULT.wallpaper)!),
-        ...PAL_ROOM_DEFAULT.totems.map(id => makeInstance(palTotemDef(id)!)),
+        makeInstance(palTotemDef(PAL_ROOM_DEFAULT.wallpaper)!, portrait),
+        ...PAL_ROOM_DEFAULT.totems.map(id => makeInstance(palTotemDef(id)!, portrait)),
       ]
     }
   }
@@ -74,22 +89,22 @@ export function usePalTotems() {
     .sort((a, b) => a.z - b.z))
   const placedCount = (totemId: string) => placed.value.filter(i => i.totemId === totemId).length
 
-  function nextZ() { return placed.value.reduce((m, i) => Math.max(m, i.z), 2) + 1 }
+  function nextZ() { return Math.min(placed.value.reduce((m, i) => Math.max(m, i.z), 2) + 1, 45) } // 封顶，避免盖过房间级动作条(z50)
 
   /** 从目录摆一件；同款已摆会横向错开，避免完全重叠 */
-  function addTotem(totemId: string): boolean {
+  function addTotem(totemId: string, portrait: boolean): boolean {
     const def = palTotemDef(totemId)
     if (!def || def.kind === 'wallpaper') return false
     const offset = (placedCount(totemId) % 4) * 4.5
-    instances.value = [...instances.value, makeInstance(def, offset)]
+    instances.value = [...instances.value, makeInstance(def, portrait, offset)]
     return true
   }
 
-  function swapWallpaper(totemId: string): boolean {
+  function swapWallpaper(totemId: string, portrait: boolean): boolean {
     const def = palTotemDef(totemId)
     if (!def || def.kind !== 'wallpaper') return false
     const next = instances.value.filter(i => palTotemDef(i.totemId)?.kind !== 'wallpaper')
-    instances.value = [makeInstance(def), ...next]
+    instances.value = [makeInstance(def, portrait), ...next]
     return true
   }
 
@@ -124,11 +139,11 @@ export function usePalTotems() {
     return 'grow'
   }
 
-  /** 回到原版空态默认组合 */
-  function resetRoom() {
+  /** 回到原版空态默认组合（按当前布局档） */
+  function resetRoom(portrait: boolean) {
     instances.value = [
-      makeInstance(palTotemDef(PAL_ROOM_DEFAULT.wallpaper)!),
-      ...PAL_ROOM_DEFAULT.totems.map(id => makeInstance(palTotemDef(id)!)),
+      makeInstance(palTotemDef(PAL_ROOM_DEFAULT.wallpaper)!, portrait),
+      ...PAL_ROOM_DEFAULT.totems.map(id => makeInstance(palTotemDef(id)!, portrait)),
     ]
   }
 

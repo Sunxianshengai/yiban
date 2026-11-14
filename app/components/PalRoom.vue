@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { mdiRotateRight, mdiFlipHorizontal, mdiArrowUp, mdiArrowDown, mdiWater, mdiTrashCanOutline, mdiClose, mdiLampOutline, mdiRestart } from '@mdi/js'
-import { PAL_TOTEMS, PAL_WALLPAPERS, palTotemDef } from '~/utils/palTotemDefs'
+import { PAL_TOTEMS, PAL_WALLPAPERS, palTotemDef, type PalTotemDef } from '~/utils/palTotemDefs'
 import { palSound } from '~/utils/palSounds'
 
 /**
  * Pal 房间（M-122）——原版 Journey Pal 页的家具（totems）系统复刻：
  * 壁纸 + 地板 + 小羊 + 可摆放的家具层；点选家具出动作条（旋转/翻转/置前/置后/浇水/移除），
  * 可拖动摆放，localStorage 持久化；点小羊出浮动反应。
+ *
+ * 世界层：家具/小羊住在一个固定纵横比（760:240）的 .room-world 里，贴底居中、
+ * 等比容纳进任何房间尺寸——竖高房间上方留出墙面（与原版"墙+地板场景"观感一致），
+ * 且尺寸(宽%)与位置(高%)始终在同一坐标系，书堆永远落在边几上。
  * 素材是自绘 SVG 占位，等即梦同风格图按原文件名替换（见 palTotemDefs.ts 头注）。
  */
 
@@ -16,21 +20,40 @@ const emit = defineEmits<{ (e: 'mascot-tap'): void }>()
 const isMobile = useIsMobile()
 const room = usePalTotems()
 
-onMounted(() => room.init())
-
 const roomEl = ref<HTMLElement | null>(null)
+const worldEl = ref<HTMLElement | null>(null)
 const selectedId = ref('')
 const showCatalog = ref(false)
 
-// 动作条挂在房间根层（不随家具旋转——长条栏转 90° 后远端按钮会被 overflow:hidden 裁掉）
-const roomAspect = ref(760 / 240)
+// 世界层几何：等比放进房间（贴底居中）
+const DESIGN_ASPECT = 760 / 240
+const PORTRAIT_ASPECT = 0.8
 const roomW = ref(760)
+const roomH = ref(240)
 function measureRoom() {
   if (!roomEl.value) return
-  roomAspect.value = roomEl.value.clientWidth / roomEl.value.clientHeight
-  roomW.value = roomEl.value.clientWidth
+  // 布局未就绪时 clientWidth 可能为 0：保留上一次的有效值，避免世界层量出错尺寸
+  const w = roomEl.value.clientWidth
+  const h = roomEl.value.clientHeight
+  if (w > 0) roomW.value = w
+  if (h > 0) roomH.value = h
 }
-onMounted(() => { measureRoom(); window.addEventListener('resize', measureRoom) })
+
+/** 纵向布局档：房间明显高于宽（桌面双栏右栏）时切竖版世界与摆位（对齐原版移动端场景） */
+const portrait = computed(() => roomH.value > roomW.value * 0.75)
+const worldW = computed(() => {
+  if (portrait.value) { const h = Math.min(roomH.value * 0.95, roomW.value / PORTRAIT_ASPECT); return h * PORTRAIT_ASPECT }
+  return Math.min(roomW.value, roomH.value * DESIGN_ASPECT)
+})
+const worldH = computed(() => portrait.value ? worldW.value / PORTRAIT_ASPECT : worldW.value / DESIGN_ASPECT)
+const worldStyle = computed(() => ({ width: `${worldW.value}px`, height: `${worldH.value}px`, left: `${(roomW.value - worldW.value) / 2}px` }))
+
+/** 当前布局档下的家具尺寸/摆位 */
+function dims(def: PalTotemDef) {
+  return portrait.value && def.p ? { ...def, w: def.p.w, x: def.p.x, bottom: def.p.bottom } : def
+}
+
+onMounted(() => { measureRoom(); room.init(portrait.value); window.addEventListener('resize', measureRoom) })
 onBeforeUnmount(() => window.removeEventListener('resize', measureRoom))
 watch(isMobile, () => nextTick(measureRoom))
 
@@ -39,12 +62,13 @@ const barStyle = computed(() => {
   const sel = selected.value
   const def = sel ? palTotemDef(sel.totemId) : undefined
   if (!sel || !def) return {}
-  const imgPct = def.w * def.ar * roomAspect.value * (1 + sel.growthStage * 0.16)
-  const bottom = Math.min(Math.max(sel.bottom + imgPct + 2, sel.bottom + 2), 84)
+  const imgH = (dims(def).w / 100) * worldW.value * def.ar * (1 + sel.growthStage * 0.16)
+  const worldLeft = (roomW.value - worldW.value) / 2
   // 横向夹紧：动作条 ~7 键宽，贴左右边时会被 overflow:hidden 裁掉按钮（移动端实测 55px）
-  const halfPct = ((isMobile.value ? 118 : 102) / roomW.value) * 100
-  const left = Math.min(Math.max(sel.x, halfPct), 100 - halfPct)
-  return { left: `${left}%`, bottom: `${bottom}%` }
+  const half = isMobile.value ? 118 : 102
+  const left = Math.min(Math.max(worldLeft + (dims(def).x / 100) * worldW.value, half), roomW.value - half)
+  const bottom = Math.min((dims(def).bottom / 100) * worldH.value + imgH + 12, roomH.value - 44)
+  return { left: `${left}px`, bottom: `${bottom}px` }
 })
 
 function select(id: string) {
@@ -66,8 +90,8 @@ function onTotemDown(inst: { id: string }, e: PointerEvent) {
 }
 function onTotemMove(inst: { id: string }, e: PointerEvent) {
   if (!drag || drag.id !== inst.id) return
-  const rect = roomEl.value?.getBoundingClientRect()
-  if (!rect) return
+  const rect = worldEl.value?.getBoundingClientRect()
+  if (!rect || rect.height === 0) return
   drag.moved = true
   const x = ((e.clientX - rect.left) / rect.width) * 100
   const bottom = ((rect.bottom - e.clientY) / rect.height) * 100
@@ -145,13 +169,13 @@ watch(room.hint, (v) => {
 
 // ---- 目录弹窗 ----
 function addFromCatalog(totemId: string) {
-  if (room.addTotem(totemId)) palSound.insert()
+  if (room.addTotem(totemId, portrait.value)) palSound.insert()
 }
 function swapFromCatalog(totemId: string) {
-  if (room.swapWallpaper(totemId)) { palSound.insert(); showCatalog.value = false }
+  if (room.swapWallpaper(totemId, portrait.value)) { palSound.insert(); showCatalog.value = false }
 }
 function resetRoom() {
-  room.resetRoom()
+  room.resetRoom(portrait.value)
   palSound.remove()
   deselect()
   showCatalog.value = false
@@ -177,7 +201,7 @@ function totemStyle(inst: { x: number; bottom: number; rotation: number; flipped
   return {
     left: `${inst.x}%`,
     bottom: `${inst.bottom}%`,
-    width: `${def.w}%`,
+    width: `${dims(def).w}%`,
     zIndex: inst.z,
     transform: `translateX(-50%) rotate(${inst.rotation}deg) scaleX(${inst.flipped ? -1 : 1})`,
   }
@@ -187,20 +211,33 @@ function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed
 
 <template>
   <div ref="roomEl" class="jr-pal-room" :class="{ mobile: isMobile }" data-testid="pal-room" @pointerdown="deselect">
-    <!-- 壁纸（也是一种 totem，单独铺满） -->
+    <!-- 壁纸（也是一种 totem，单独铺满整面墙） -->
     <img v-if="room.wallpaper.value" class="room-wallpaper" :src="palTotemDef(room.wallpaper.value.totemId)?.src" alt="" aria-hidden="true" data-testid="pal-wallpaper">
     <div class="room-spotlight" aria-hidden="true"></div>
-    <div class="room-floor" aria-hidden="true"></div>
 
-    <!-- 家具层 -->
-    <div v-for="inst in room.placed.value" :key="inst.id" class="room-totem" :class="{ sel: selectedId === inst.id, dragging: drag?.id === inst.id }"
-      :style="totemStyle(inst)" :data-totem-name="palTotemDef(inst.totemId)?.id"
-      role="button" tabindex="0" :aria-label="`家具：${palTotemDef(inst.totemId)?.name}`"
-      @pointerdown.stop="onTotemDown(inst, $event)" @pointermove="onTotemMove(inst, $event)" @pointerup="onTotemUp($event)"
-      @keydown.enter.prevent="select(inst.id)">
-      <img :src="palTotemDef(inst.totemId)?.src" :alt="palTotemDef(inst.totemId)?.name" draggable="false"
-        :data-growth="palTotemDef(inst.totemId)?.growable ? inst.growthStage : undefined" :style="{ transform: growthScale(inst.growthStage) }">
-      <span v-for="f in fx.filter(f => f.totemId === inst.id)" :key="f.key" class="fx" :class="f.kind" aria-hidden="true">{{ f.kind === 'drop' ? '💧' : '⭐' }}</span>
+    <!-- 世界层：固定纵横比，贴底居中；地板/家具/小羊都在同一坐标系里 -->
+    <div ref="worldEl" class="room-world" :class="{ 'is-portrait': portrait }" :style="worldStyle">
+      <div class="room-floor" aria-hidden="true"></div>
+
+      <div v-for="inst in room.placed.value" :key="inst.id" class="room-totem" :class="{ sel: selectedId === inst.id, dragging: drag?.id === inst.id }"
+        :style="totemStyle(inst)" :data-totem-name="palTotemDef(inst.totemId)?.id"
+        role="button" tabindex="0" :aria-label="`家具：${palTotemDef(inst.totemId)?.name}`"
+        @pointerdown.stop="onTotemDown(inst, $event)" @pointermove="onTotemMove(inst, $event)" @pointerup="onTotemUp($event)"
+        @keydown.enter.prevent="select(inst.id)">
+        <img :src="palTotemDef(inst.totemId)?.src" :alt="palTotemDef(inst.totemId)?.name" draggable="false"
+          :data-growth="palTotemDef(inst.totemId)?.growable ? inst.growthStage : undefined" :style="{ transform: growthScale(inst.growthStage) }">
+        <span v-for="f in fx.filter(f => f.totemId === inst.id)" :key="f.key" class="fx" :class="f.kind" aria-hidden="true">{{ f.kind === 'drop' ? '💧' : '⭐' }}</span>
+      </div>
+
+      <!-- 小羊（吉祥物；点它出反应）。容器不吃点击（透明大盒会挡住摆在中部的家具），命中区缩小到小羊身体 -->
+      <div class="room-mascot" :data-stage="props.stage">
+        <img v-if="petFallback" src="/pet/lamb-poster.webp" alt="日记伙伴：瞌睡小羊" class="jr-pet-img">
+        <Transition v-else name="petfade" mode="out-in">
+          <video :key="props.stage" class="jr-pet-video on" :src="petVideos[props.stage]" loop muted playsinline autoplay preload="auto" @error="petFallback = true" />
+        </Transition>
+        <span v-for="r in reactions" :key="r.key" class="room-reaction" data-pal-reaction aria-hidden="true">{{ r.emoji }}</span>
+        <button class="mascot-hit" data-testid="pal-mascot" aria-label="和小羊互动" @click.stop="mascotTap"></button>
+      </div>
     </div>
 
     <!-- 动作条（房间根层，始终正立，定位在选中家具顶边；不随家具旋转/翻转） -->
@@ -214,15 +251,6 @@ function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed
       <button :data-act="'done'" title="完成" aria-label="完成" @click.stop="deselect()"><JrIcon :path="mdiClose" :size="15" /></button>
     </div>
 
-    <!-- 小羊（吉祥物；点它出反应）。容器不吃点击（透明大盒会挡住摆在中部的家具），命中区缩小到小羊身体 -->
-    <div class="room-mascot" :data-stage="props.stage">
-      <img v-if="petFallback" src="/pet/lamb-poster.webp" alt="日记伙伴：瞌睡小羊" class="jr-pet-img">
-      <Transition v-else name="petfade" mode="out-in">
-        <video :key="props.stage" class="jr-pet-video on" :src="petVideos[props.stage]" loop muted playsinline autoplay preload="auto" @error="petFallback = true" />
-      </Transition>
-      <span v-for="r in reactions" :key="r.key" class="room-reaction" data-pal-reaction aria-hidden="true">{{ r.emoji }}</span>
-      <button class="mascot-hit" data-testid="pal-mascot" aria-label="和小羊互动" @click.stop="mascotTap"></button>
-    </div>
     <span class="jr-pet-caption">{{ caption }}</span>
 
     <!-- 舞台角落：家具入口 + 提示 -->
@@ -269,7 +297,11 @@ function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed
 
 .room-wallpaper { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
 .room-spotlight { position: absolute; inset: 0; z-index: 1; background: radial-gradient(58% 88% at 50% -6%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.25) 45%, rgba(255,255,255,0) 72%); pointer-events: none; }
-.room-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 14%; z-index: 1; background: linear-gradient(180deg, rgba(120,138,146,0) 0%, rgba(120,138,146,0.18) 100%); pointer-events: none; }
+
+/* 世界层：固定纵横比，贴底居中（竖高房间上方留墙面） */
+.room-world { position: absolute; bottom: 0; }
+.room-world.is-portrait .room-mascot { height: 62%; }
+.room-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 14%; background: linear-gradient(180deg, rgba(120,138,146,0) 0%, rgba(120,138,146,0.18) 100%); pointer-events: none; }
 
 .room-totem { position: absolute; cursor: grab; user-select: none; touch-action: none; }
 .room-totem.dragging { cursor: grabbing; }
@@ -277,7 +309,7 @@ function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed
 .room-totem.dragging img { transition: none; }
 .room-totem.sel img { filter: drop-shadow(0 3px 4px rgba(40,60,70,0.18)) drop-shadow(0 0 0 1px rgba(68,192,255,0.35)); outline: 1.5px dashed rgba(68,192,255,0.7); outline-offset: 3px; border-radius: 6px; }
 
-.totem-actions { position: absolute; transform: translateX(-50%); display: flex; gap: 2px; background: #fff; border: 1px solid var(--jr-outline-variant); border-radius: 999px; padding: 3px 5px; box-shadow: 0 4px 14px rgba(20,40,50,0.16); z-index: 40; }
+.totem-actions { position: absolute; transform: translateX(-50%); display: flex; gap: 2px; background: #fff; border: 1px solid var(--jr-outline-variant); border-radius: 999px; padding: 3px 5px; box-shadow: 0 4px 14px rgba(20,40,50,0.16); z-index: 50; }
 [data-theme="dark"] .totem-actions { background: #232a2d; }
 .totem-actions button { width: 26px; height: 26px; border-radius: 50%; border: 0; background: none; color: var(--jr-on-surface-variant); display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .totem-actions button:hover { background: var(--jr-surface-variant); }
@@ -290,7 +322,6 @@ function growthScale(stage: number) { return `scale(${(1 + stage * 0.16).toFixed
 
 .room-mascot { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); height: 88%; aspect-ratio: 390 / 525; z-index: 0; pointer-events: none; }
 .mascot-hit { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: 64%; height: 44%; pointer-events: auto; cursor: pointer; background: none; border: 0; padding: 0; border-radius: 14px; }
-.jr-pal-room.mobile .room-mascot { height: 82%; }
 .jr-pet-video, .jr-pet-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 0.45s ease; }
 .jr-pet-video.on, .jr-pet-img { opacity: 1; }
 .petfade-enter-active, .petfade-leave-active { transition: opacity 0.35s ease; }

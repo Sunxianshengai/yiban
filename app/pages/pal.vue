@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiSend, mdiMicrophone, mdiImageMultipleOutline, mdiClose, mdiHistory, mdiPencilOutline, mdiAutoFix, mdiBookOpenOutline, mdiCogOutline } from '@mdi/js'
+import { mdiSend, mdiMicrophone, mdiImageMultipleOutline, mdiClose, mdiHistory, mdiPencilOutline, mdiAutoFix, mdiBookOpenOutline, mdiCogOutline, mdiAccount } from '@mdi/js'
 import type { EntryV2 } from '~/utils/db'
 import { useEntries } from '~/composables/useEntries'
 import { useVoiceNote } from '~/composables/useVoiceNote'
@@ -282,24 +282,29 @@ function onMascotTap() {
 
 <template>
   <div class="jr-page jr-pal">
-    <!-- 未配置：一行横幅引导去设置，不挡对话界面（配置表单已挪到 设置 → 日记伙伴） -->
-    <div v-if="!configured" class="jr-pal-noai" role="status">
-      <JrIcon :path="mdiCogOutline" :size="15" />
-      <span>{{ isMobile ? '还没配置 AI 服务：设置 → 通用 → 日记伙伴服务' : '还没配置 AI 服务：侧栏「设置」→ 通用 → 日记伙伴' }}</span>
-      <button v-if="isMobile" class="jr-link-btn" @click="navigateTo('/settings')">去设置</button>
+    <!-- 家具房间：移动端在顶部；桌面（≥901px）grid 放右栏做家具互动界面 -->
+    <div class="jr-pal-room-slot">
+      <PalRoom :stage="stage" @mascot-tap="onMascotTap" />
     </div>
 
-    <!-- Pal 房间：小羊 + 可摆放家具（M-122，动作/持久化在 PalRoom 内） -->
-    <PalRoom :stage="stage" @mascot-tap="onMascotTap" />
+    <!-- 对话列：桌面左栏 = QQ/微信式对话记录框 -->
+    <div class="jr-pal-chat">
+      <!-- 未配置：一行横幅引导去设置，不挡对话界面（配置表单已挪到 设置 → 日记伙伴） -->
+      <div v-if="!configured" class="jr-pal-noai" role="status">
+        <JrIcon :path="mdiCogOutline" :size="15" />
+        <span>{{ isMobile ? '还没配置 AI 服务：设置 → 通用 → 日记伙伴服务' : '还没配置 AI 服务：侧栏「设置」→ 通用 → 日记伙伴' }}</span>
+        <button v-if="isMobile" class="jr-link-btn" @click="navigateTo('/settings')">去设置</button>
+      </div>
 
-    <h1 v-if="!isMobile">日记伙伴</h1>
-
-      <!-- 模式切换 -->
-      <div class="jr-pal-tabs" role="tablist" aria-label="日记伙伴用法">
-        <button v-for="m in modes" :key="m.key" class="jr-pal-tab" :class="{ on: mode === m.key }" role="tab"
-          :aria-selected="mode === m.key" @click="switchMode(m.key)">
-          <JrIcon :path="m.icon" :size="15" /> {{ m.label }}
-        </button>
+      <div class="jr-pal-chathead">
+        <h1 v-if="!isMobile">日记伙伴</h1>
+        <!-- 模式切换 -->
+        <div class="jr-pal-tabs" role="tablist" aria-label="日记伙伴用法">
+          <button v-for="m in modes" :key="m.key" class="jr-pal-tab" :class="{ on: mode === m.key }" role="tab"
+            :aria-selected="mode === m.key" @click="switchMode(m.key)">
+            <JrIcon :path="m.icon" :size="15" /> {{ m.label }}
+          </button>
+        </div>
       </div>
 
       <!-- 随手记 -->
@@ -308,11 +313,15 @@ function onMascotTap() {
           <div v-if="!captureLines.length" class="jr-muted" style="margin:auto;text-align:center">
             <p>发一句话、几张照片或一段语音，小羊帮你收进草稿，确认后存成日记。</p>
           </div>
-          <div v-for="(line, i) in captureLines" :key="i" class="jr-pal-msg" :class="line.role">
-            <div v-if="line.photos?.length" class="line-photos">
-              <img v-for="(url, pi) in line.photos" :key="pi" :src="url" alt="随手记照片">
+          <div v-for="(line, i) in captureLines" :key="i" class="msg-row" :class="line.role">
+            <img v-if="line.role === 'pal'" class="msg-avatar" src="/pet/lamb-poster.webp" alt="小羊头像">
+            <span v-else class="msg-avatar user"><JrIcon :path="mdiAccount" :size="17" /></span>
+            <div class="jr-pal-msg" :class="line.role">
+              <div v-if="line.photos?.length" class="line-photos">
+                <img v-for="(url, pi) in line.photos" :key="pi" :src="url" alt="随手记照片">
+              </div>
+              {{ line.text }}
             </div>
-            {{ line.text }}
           </div>
         </div>
         <div v-if="photoPreviews.length" class="photo-strip">
@@ -338,7 +347,11 @@ function onMascotTap() {
           <div v-if="!guideLines.length" class="jr-muted" style="margin:auto;text-align:center">
             <p>说说今天想写什么（比如"今天去爬山了"），小羊会问你一两个具体的问题，再把回答整理成草稿。</p>
           </div>
-          <div v-for="(line, i) in guideLines" :key="i" class="jr-pal-msg" :class="line.role">{{ line.text }}</div>
+          <div v-for="(line, i) in guideLines" :key="i" class="msg-row" :class="line.role">
+            <img v-if="line.role === 'pal'" class="msg-avatar" src="/pet/lamb-poster.webp" alt="小羊头像">
+            <span v-else class="msg-avatar user"><JrIcon :path="mdiAccount" :size="17" /></span>
+            <div class="jr-pal-msg" :class="line.role">{{ line.text }}</div>
+          </div>
         </div>
         <form v-if="guideTurns === 0" class="jr-pal-input" @submit.prevent="guideSend">
           <input v-model="guideText" type="text" placeholder="今天想写什么？一句话就够…" aria-label="开场话题">
@@ -374,7 +387,11 @@ function onMascotTap() {
           <div v-if="!reviewLines.length" class="jr-muted" style="margin:auto;text-align:center">
             <p>先在上面选择一篇日记。只有你主动选中的这一篇会被分享给伙伴，其余日记不会离开这台设备。</p>
           </div>
-          <div v-for="(line, i) in reviewLines" :key="i" class="jr-pal-msg" :class="line.role">{{ line.text }}</div>
+          <div v-for="(line, i) in reviewLines" :key="i" class="msg-row" :class="line.role">
+            <img v-if="line.role === 'pal'" class="msg-avatar" src="/pet/lamb-poster.webp" alt="小羊头像">
+            <span v-else class="msg-avatar user"><JrIcon :path="mdiAccount" :size="17" /></span>
+            <div class="jr-pal-msg" :class="line.role">{{ line.text }}</div>
+          </div>
         </div>
         <div class="jr-pal-input">
           <button class="jr-btn" :disabled="busy || !sharedEntry" @click="reviewAction('look')">帮我回顾</button>
@@ -386,13 +403,34 @@ function onMascotTap() {
       <PalDraftCard v-if="draft" :draft="draft" :saving="saving" style="margin:14px 0" @save="acceptDraft" @discard="draft = null" />
 
       <p v-if="error" class="jr-import-msg" role="alert">{{ error }}</p>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .jr-pal { display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
+.jr-pal-room-slot { display: flex; }
+/* 房间子元素全为绝对定位，无内容宽度：必须 flex:1 撑满槽位，否则量出 0 宽 */
+.jr-pal-room-slot .jr-pal-room { flex: 1; min-width: 0; }
+.jr-pal-chat { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.jr-pal-chathead { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+/* QQ/微信式消息行：头像 + 气泡，用户侧右对齐 */
+.msg-row { display: flex; align-items: flex-end; gap: 8px; }
+.msg-row.user { flex-direction: row-reverse; }
+.msg-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex: none; background: var(--jr-surface-variant); color: var(--jr-on-surface-variant); display: flex; align-items: center; justify-content: center; border: 1px solid var(--jr-outline-variant); overflow: hidden; }
 
 h1 { margin: 0; font-size: 22px; font-weight: 800; }
+
+/* 桌面双栏（≥901px）：左=对话记录框（会话区填满、输入钉底），右=家具互动房间 */
+@media (min-width: 901px) {
+  .jr-pal { display: grid; grid-template-columns: minmax(400px, 1fr) minmax(440px, 560px); gap: 18px; max-width: 1280px; align-items: stretch; }
+  .jr-pal-room-slot { grid-column: 2; grid-row: 1; }
+  .jr-pal-room-slot .jr-pal-room { flex: 1; height: auto; min-height: 0; }
+  .jr-pal-chat { grid-column: 1; grid-row: 1; height: max(600px, calc(100vh - 150px)); }
+  .jr-pal-pane { flex: 1; min-height: 0; }
+  .jr-pal-pane .jr-pal-thread { flex: 1; min-height: 0; max-height: none; }
+}
 
 /* 模式 tab */
 .jr-pal-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
