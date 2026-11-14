@@ -2,6 +2,7 @@
   <!-- 日历牌（红色头带+白页，日期数字由组件渲染） -->
   <rect x="10" y="8" width="120" height="174" rx="8" fill="#f6f4ef" stroke="#ddd6c6" stroke-width="2"/>
   <rect x="10" y="8" width="120" height="44" rx="8" fill="#c0393b"/>
+  <rect x="10" y="8" width="120" height="12" rx="6" fill="#e05a54" opacity="0.55"/>
   <rect x="10" y="36" width="120" height="16" fill="#c0393b"/>
   <g fill="#8d2f31">
     <rect x="34" y="2" width="8" height="16" rx="3"/>
@@ -14,4 +15,5 @@
     <line x1="22" y1="148" x2="118" y2="148"/>
   </g>
   <circle cx="70" cy="106" r="4" fill="#c0393b"/>
+  <path d="M112 182 Q124 176 128 164 L130 182 Z" fill="#8d8471" opacity="0.4"/>
 </svg>

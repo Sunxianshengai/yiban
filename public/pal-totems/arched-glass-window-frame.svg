@@ -24,6 +24,7 @@
     <path d="M210 356 L210 118" fill="none" stroke="#c9c9c4" stroke-width="2"/>
     <!-- 内口（玻璃区） -->
     <path d="M48 340 L48 120 C48 68 82 44 120 44 C158 44 192 68 192 120 L192 340 Z" fill="url(#wg)" stroke="#c6c6c1" stroke-width="2"/>
+  <path d="M52 336 L52 122 C52 72 84 48 120 46 C98 56 62 76 60 122 L60 336 Z" fill="#9aa5ab" opacity="0.14"/>
     <!-- 玻璃反光 -->
     <path d="M70 120 L108 60 L124 60 L74 150 Z" fill="#ffffff" opacity="0.35"/>
     <path d="M120 150 L156 80 L164 84 L130 158 Z" fill="#ffffff" opacity="0.22"/>

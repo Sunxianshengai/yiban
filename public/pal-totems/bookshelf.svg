@@ -6,11 +6,18 @@
       <stop offset="0.5" stop-color="#c39a68"/>
       <stop offset="1" stop-color="#8f6439"/>
     </linearGradient>
+    <pattern id="grain" width="7" height="14" patternUnits="userSpaceOnUse">
+      <rect width="7" height="14" fill="none"/>
+      <path d="M2 0 C3 5 1 9 3 14" stroke="#6b4e33" stroke-width="0.7" fill="none" opacity="0.35"/>
+      <path d="M5 0 C4 6 6 10 5 14" stroke="#e0c89a" stroke-width="0.5" fill="none" opacity="0.3"/>
+    </pattern>
   </defs>
   <rect x="18" y="10" width="14" height="222" fill="url(#wood)"/>
   <rect x="168" y="10" width="14" height="222" fill="url(#wood)"/>
   <g fill="url(#wood)">
     <rect x="18" y="10" width="164" height="12" rx="2"/>
+    <rect x="18" y="10" width="164" height="12" rx="2" fill="url(#grain)" opacity="0.5"/>
+    <rect x="18" y="10" width="164" height="2" rx="1" fill="#ffe2b0" opacity="0.5"/>
     <rect x="18" y="82" width="164" height="10" rx="2"/>
     <rect x="18" y="154" width="164" height="10" rx="2"/>
     <rect x="18" y="226" width="164" height="8" rx="2"/>

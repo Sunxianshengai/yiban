@@ -10,8 +10,14 @@
       <stop offset="0.5" stop-color="#4d555c"/>
       <stop offset="1" stop-color="#31373d"/>
     </linearGradient>
+    <pattern id="brushM" width="4" height="3" patternUnits="userSpaceOnUse">
+      <rect width="4" height="3" fill="none"/>
+      <line x1="0" y1="0.8" x2="4" y2="0.8" stroke="#8b959e" stroke-width="0.5" opacity="0.3"/>
+      <line x1="0" y1="2.2" x2="4" y2="2.2" stroke="#20262c" stroke-width="0.5" opacity="0.3"/>
+    </pattern>
   </defs>
   <rect x="26" y="12" width="108" height="176" rx="12" fill="url(#sbox)"/>
+  <rect x="26" y="12" width="108" height="176" rx="12" fill="url(#brushM)" opacity="0.55"/>
   <rect x="34" y="20" width="92" height="160" rx="8" fill="none" stroke="#5c656d" stroke-width="2"/>
   <circle cx="80" cy="60" r="20" fill="#22282d"/>
   <circle cx="80" cy="60" r="12" fill="#39434b"/>
@@ -21,4 +27,5 @@
   <circle cx="80" cy="140" r="9" fill="#6b7680"/>
   <circle cx="80" cy="140" r="3" fill="#e8b74a"/>
   <rect x="60" y="26" width="40" height="4" rx="2" fill="#e8b74a" opacity="0.8"/>
+  <circle cx="80" cy="28" r="7" fill="#e8b74a" opacity="0.22"/>
 </svg>

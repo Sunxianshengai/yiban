@@ -5,6 +5,7 @@
   <ellipse cx="110" cy="36" rx="62" ry="16" fill="#c96a5a"/>
   <ellipse cx="110" cy="36" rx="40" ry="10" fill="#e8d9c4"/>
   <ellipse cx="110" cy="36" rx="20" ry="5.5" fill="#a34a3d"/>
+  <ellipse cx="96" cy="32" rx="26" ry="6" fill="#ffffff" opacity="0.14"/>
   <g fill="#b98a6a" opacity="0.9">
     <circle cx="8" cy="36" r="2.4"/><circle cx="212" cy="36" r="2.4"/>
     <circle cx="20" cy="20" r="2"/><circle cx="200" cy="20" r="2"/>

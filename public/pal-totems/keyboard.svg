@@ -9,8 +9,13 @@
       <stop offset="0" stop-color="#5d4a6e"/>
       <stop offset="1" stop-color="#463855"/>
     </linearGradient>
+    <linearGradient id="kshade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1826" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#1c1826" stop-opacity="0"/>
+    </linearGradient>
   </defs>
   <rect x="8" y="18" width="224" height="94" rx="10" fill="url(#kbody)"/>
+  <rect x="12" y="22" width="216" height="10" rx="5" fill="#ffffff" opacity="0.08"/>
   <rect x="20" y="28" width="200" height="22" rx="4" fill="#7c6591"/>
   <g fill="#e8b74a">
     <circle cx="34" cy="39" r="4"/><circle cx="48" cy="39" r="4"/><circle cx="62" cy="39" r="4"/>
@@ -25,6 +30,7 @@
     <rect x="164" y="62" width="26" height="44" rx="3"/>
     <rect x="192" y="62" width="24" height="44" rx="3"/>
   </g>
+  <rect x="24" y="62" width="192" height="44" fill="url(#kshade)" opacity="0.5"/>
   <g stroke="#c9c4ba" stroke-width="1.4">
     <line x1="52" y1="62" x2="52" y2="106"/><line x1="80" y1="62" x2="80" y2="106"/><line x1="108" y1="62" x2="108" y2="106"/><line x1="136" y1="62" x2="136" y2="106"/><line x1="164" y1="62" x2="164" y2="106"/><line x1="192" y1="62" x2="192" y2="106"/>
   </g>

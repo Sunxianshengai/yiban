@@ -26,7 +26,9 @@
 
   <!-- 缸体 -->
   <rect x="8" y="8" width="184" height="128" rx="10" fill="url(#water)"/>
+  <path d="M14 118 Q80 112 186 118 L186 122 Q100 128 14 122 Z" fill="#dceee6" opacity="0.5"/>
   <path d="M14 122 Q60 128 100 122 Q150 116 186 122 L186 128 Q100 136 14 128 Z" fill="#e0cfa8"/>
+  <ellipse cx="100" cy="124" rx="88" ry="6" fill="#3c5058" opacity="0.35"/>
   <g fill="#c4ae82">
     <ellipse cx="34" cy="122" rx="7" ry="3"/><ellipse cx="58" cy="124" rx="6" ry="2.6"/><ellipse cx="86" cy="122" rx="7" ry="3"/>
     <ellipse cx="116" cy="124" rx="6" ry="2.6"/><ellipse cx="146" cy="122" rx="7" ry="3"/><ellipse cx="170" cy="124" rx="5" ry="2.4"/>
@@ -61,6 +63,7 @@
   </g>
   <!-- 玻璃 -->
   <rect x="8" y="8" width="184" height="128" rx="10" fill="url(#glass)"/>
+  <path d="M12 12 Q12 70 12 132" stroke="#ffffff" stroke-width="2.4" opacity="0.5" fill="none"/>
   <rect x="4" y="136" width="192" height="12" rx="4" fill="#8d6f4e"/>
   <rect x="4" y="136" width="192" height="4" rx="2" fill="#a5825c"/>
 </svg>

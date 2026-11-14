@@ -9,6 +9,8 @@
   </defs>
   <circle cx="45" cy="45" r="40" fill="url(#bgrad)"/>
   <circle cx="45" cy="45" r="40" fill="none" stroke="#9d9a90" stroke-width="2"/>
+  <ellipse cx="32" cy="28" rx="14" ry="9" fill="#ffffff" opacity="0.65"/>
+  <path d="M20 70 A32 32 0 0 0 70 70" stroke="#5c5a52" stroke-width="3" fill="none" opacity="0.35"/>
   <g fill="#2c2733">
     <path d="M45 30 L57 39 L52 53 L38 53 L33 39 Z"/>
     <path d="M45 8 L52 17 L45 22 L38 17 Z" transform="translate(0,2)"/>
