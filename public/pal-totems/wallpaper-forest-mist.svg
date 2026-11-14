@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice">
+  <!-- 森林晨雾：层叠山脊剪影+雾气呼吸 -->
+  <style>
+    .mist1 { animation: mbreath 9s ease-in-out infinite alternate; }
+    .mist2 { animation: mbreath 12s ease-in-out infinite alternate; animation-delay: 2s; }
+    @keyframes mbreath { 0% { opacity: 0.35; } 100% { opacity: 0.75; } }
+  </style>
+  <defs>
+    <linearGradient id="fsky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e9f2df"/>
+      <stop offset="1" stop-color="#cfe3c2"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="520" fill="url(#fsky)"/>
+  <path d="M0 300 Q140 220 300 280 Q470 340 620 260 Q720 220 800 250 L800 520 L0 520 Z" fill="#b9d4b0" opacity="0.75"/>
+  <path d="M0 380 Q180 300 380 370 Q560 430 800 350 L800 520 L0 520 Z" fill="#8fb98a" opacity="0.85"/>
+  <path d="M0 450 Q220 390 440 450 Q640 500 800 440 L800 520 L0 520 Z" fill="#6f9e6a"/>
+  <g class="mist1" fill="#ffffff">
+    <ellipse cx="240" cy="330" rx="260" ry="16" opacity="0.55"/>
+    <ellipse cx="600" cy="400" rx="220" ry="14" opacity="0.45"/>
+  </g>
+  <g class="mist2" fill="#ffffff">
+    <ellipse cx="420" cy="470" rx="300" ry="18" opacity="0.5"/>
+    <ellipse cx="140" cy="430" rx="160" ry="12" opacity="0.45"/>
+  </g>
+</svg>

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice">
+  <!-- 雨天：青灰渐变+雨丝落下+云层 -->
+  <style>
+    .rain { animation: fall 1.5s linear infinite; }
+    .rain.r2 { animation-duration: 1.9s; animation-delay: 0.6s; opacity: 0.7; }
+    @keyframes fall { 0% { transform: translateY(-520px); } 100% { transform: translateY(0); } }
+    .cl3 { animation: drift3 30s ease-in-out infinite alternate; }
+    @keyframes drift3 { 0% { transform: translateX(-30px); } 100% { transform: translateX(40px); } }
+  </style>
+  <defs>
+    <linearGradient id="rsky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a9bccb"/>
+      <stop offset="1" stop-color="#7e94a7"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="520" fill="url(#rsky)"/>
+  <g class="cl3" fill="#8ba0b2" opacity="0.85">
+    <ellipse cx="180" cy="80" rx="180" ry="26"/>
+    <ellipse cx="420" cy="60" rx="150" ry="22"/>
+    <ellipse cx="640" cy="90" rx="190" ry="24"/>
+  </g>
+  <g class="rain" stroke="#d8e5ee" stroke-width="2" stroke-linecap="round" opacity="0.75">
+    <line x1="30" y1="40" x2="22" y2="76"/><line x1="90" y1="10" x2="82" y2="46"/><line x1="150" y1="60" x2="142" y2="96"/>
+    <line x1="210" y1="20" x2="202" y2="56"/><line x1="270" y1="80" x2="262" y2="116"/><line x1="330" y1="30" x2="322" y2="66"/>
+    <line x1="390" y1="90" x2="382" y2="126"/><line x1="450" y1="40" x2="442" y2="76"/><line x1="510" y1="100" x2="502" y2="136"/>
+    <line x1="570" y1="20" x2="562" y2="56"/><line x1="630" y1="70" x2="622" y2="106"/><line x1="690" y1="30" x2="682" y2="66"/>
+    <line x1="750" y1="90" x2="742" y2="126"/><line x1="60" y1="140" x2="52" y2="176"/><line x1="240" y1="150" x2="232" y2="186"/>
+    <line x1="420" y1="160" x2="412" y2="196"/><line x1="600" y1="150" x2="592" y2="186"/><line x1="720" y1="170" x2="712" y2="206"/>
+  </g>
+  <g class="rain r2" stroke="#c3d4e0" stroke-width="2" stroke-linecap="round">
+    <line x1="120" y1="120" x2="112" y2="156"/><line x1="300" y1="190" x2="292" y2="226"/><line x1="480" y1="230" x2="472" y2="266"/>
+    <line x1="660" y1="200" x2="652" y2="236"/><line x1="180" y1="260" x2="172" y2="296"/><line x1="540" y1="290" x2="532" y2="326"/>
+    <line x1="360" y1="320" x2="352" y2="356"/><line x1="700" y1="330" x2="692" y2="366"/><line x1="90" y1="380" x2="82" y2="416"/>
+    <line x1="260" y1="400" x2="252" y2="436"/><line x1="500" y1="410" x2="492" y2="446"/><line x1="640" y1="440" x2="632" y2="476"/>
+  </g>
+</svg>

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice">
+  <!-- 樱花粉：粉渐变+枝头花簇+飘落花瓣 -->
+  <style>
+    .pt { animation: petal 7s linear infinite; }
+    .pt.p2 { animation-duration: 9s; animation-delay: 2.4s; }
+    .pt.p3 { animation-duration: 8s; animation-delay: 4.6s; }
+    @keyframes petal {
+      0% { transform: translate(0, -30px) rotate(0deg); opacity: 0; }
+      12% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { transform: translate(-70px, 560px) rotate(320deg); opacity: 0; }
+    }
+  </style>
+  <defs>
+    <linearGradient id="psky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffeef2"/>
+      <stop offset="1" stop-color="#fbd3df"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="520" fill="#fbe4ea"/>
+  <rect width="800" height="520" fill="url(#psky)" opacity="0.8"/>
+  <!-- 枝头 -->
+  <path d="M-10 60 C120 90 240 60 330 120 C280 96 200 92 140 110 C90 124 30 96 -10 84 Z" fill="#9c6b5a"/>
+  <g fill="#f7b1c8">
+    <circle cx="120" cy="92" r="12"/><circle cx="150" cy="76" r="10"/><circle cx="176" cy="96" r="13"/>
+    <circle cx="242" cy="84" r="11"/><circle cx="268" cy="104" r="9"/><circle cx="300" cy="124" r="12"/>
+    <circle cx="90" cy="70" r="9"/>
+  </g>
+  <g fill="#fce0ea">
+    <circle cx="132" cy="84" r="6"/><circle cx="164" cy="88" r="5.4"/><circle cx="254" cy="92" r="6"/><circle cx="290" cy="118" r="5.4"/>
+  </g>
+  <!-- 飘落花瓣（原点画瓣，动画负责落+转） -->
+  <g class="pt"><path d="M400 30 C392 20 396 8 406 6 C412 16 410 26 400 30 Z" fill="#f7b1c8"/></g>
+  <g class="pt p2"><path d="M560 20 C552 10 556 -2 566 -4 C572 6 570 16 560 20 Z" fill="#f9c3d4"/></g>
+  <g class="pt p3"><path d="M300 10 C292 0 296 -12 306 -14 C312 -4 310 6 300 10 Z" fill="#f7b1c8"/></g>
+  <g class="pt"><path d="M660 40 C652 30 656 18 666 16 C672 26 670 36 660 40 Z" fill="#fce0ea"/></g>
+  <g class="pt p2"><path d="M480 50 C472 40 476 28 486 26 C492 36 490 46 480 50 Z" fill="#f9c3d4"/></g>
+</svg>

@@ -370,8 +370,8 @@ function photoStyle(def: PalTotemDef) {
               <span class="catalog-state">{{ stars.isLocked(d) ? `🔒 ${d.cost}⭐ 解锁` : room.placedCount(d.id) ? `已摆放×${room.placedCount(d.id)}` : '摆上' }}</span>
             </button>
           </div>
-          <h3 class="catalog-sub">壁纸</h3>
-          <div class="catalog-grid">
+          <h3 class="catalog-sub">背景（点击切换）</h3>
+          <div class="catalog-grid wallpaper-grid">
             <button v-for="d in PAL_WALLPAPERS" :key="d.id" class="catalog-card" :data-catalog-item="d.id" @click="swapFromCatalog(d.id)">
               <img :src="d.src" :alt="d.name">
               <span class="catalog-name">{{ d.name }}</span>
@@ -477,6 +477,8 @@ function photoStyle(def: PalTotemDef) {
 .catalog-head h2 { margin: 0; font-size: 16px; font-weight: 800; }
 .catalog-close { border: 0; background: none; color: var(--jr-on-surface-variant); cursor: pointer; padding: 4px; }
 .catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.wallpaper-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
+.wallpaper-grid .catalog-card img { width: 100%; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--jr-outline-variant); }
 .catalog-card { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 1px solid var(--jr-outline-variant); background: var(--jr-surface); border-radius: 12px; padding: 8px 6px; cursor: pointer; }
 .catalog-card:hover { background: var(--jr-surface-variant); }
 .catalog-card img { height: 52px; width: auto; max-width: 84px; object-fit: contain; }

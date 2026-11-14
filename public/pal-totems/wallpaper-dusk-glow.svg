@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice">
+  <!-- 黄昏暖阳：暖色渐变+落日光晕+缓移云带 -->
+  <style>
+    .cl1 { animation: drift1 26s ease-in-out infinite alternate; }
+    .cl2 { animation: drift2 34s ease-in-out infinite alternate; }
+    @keyframes drift1 { 0% { transform: translateX(-40px); } 100% { transform: translateX(60px); } }
+    @keyframes drift2 { 0% { transform: translateX(50px); } 100% { transform: translateX(-50px); } }
+  </style>
+  <defs>
+    <linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe3b8"/>
+      <stop offset="0.45" stop-color="#f9b9ad"/>
+      <stop offset="0.8" stop-color="#cf9fbd"/>
+      <stop offset="1" stop-color="#9d8ec6"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff3cf" stop-opacity="0.95"/>
+      <stop offset="0.55" stop-color="#ffdf9e" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffdf9e" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="520" fill="url(#dusk)"/>
+  <circle cx="560" cy="400" r="150" fill="url(#sun)"/>
+  <circle cx="560" cy="418" r="46" fill="#ffedb8" opacity="0.92"/>
+  <g class="cl1" fill="#ffffff" opacity="0.5">
+    <ellipse cx="150" cy="120" rx="120" ry="20"/>
+    <ellipse cx="260" cy="100" rx="80" ry="14"/>
+  </g>
+  <g class="cl2" fill="#ffffff" opacity="0.35">
+    <ellipse cx="520" cy="200" rx="140" ry="16"/>
+    <ellipse cx="640" cy="182" rx="70" ry="12"/>
+  </g>
+  <g class="cl1" fill="#f7c9c0" opacity="0.45">
+    <ellipse cx="360" cy="300" rx="170" ry="18"/>
+  </g>
+</svg>

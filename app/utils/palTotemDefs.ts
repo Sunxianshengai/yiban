@@ -50,9 +50,15 @@ export const PAL_TOTEMS: PalTotemDef[] = [
 ]
 
 export const PAL_WALLPAPERS: PalTotemDef[] = [
-  { id: 'wallpaper-light-blue-striped', name: '浅蓝条纹壁纸', src: '/pal-totems/wallpaper-light-blue-striped.svg', w: 100, ar: 0.65, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
-  { id: 'wallpaper-sage-leaf', name: '浅绿叶片壁纸', src: '/pal-totems/wallpaper-sage-leaf.svg', w: 100, ar: 0.65, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
-  { id: 'wallpaper-cream-dot', name: '米底圆点壁纸', src: '/pal-totems/wallpaper-cream-dot.svg', w: 100, ar: 0.65, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
+  { id: 'wallpaper-light-blue-striped', name: '浅蓝条纹', src: '/pal-totems/wallpaper-light-blue-striped.svg', w: 100, ar: 0.65, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
+  { id: 'wallpaper-sage-leaf', name: '浅绿叶片', src: '/pal-totems/wallpaper-sage-leaf.svg', w: 100, ar: 0.65, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
+  { id: 'wallpaper-cream-dot', name: '米底圆点', src: '/pal-totems/wallpaper-cream-dot.svg', w: 100, ar: 0.65, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
+  { id: 'wallpaper-dusk-glow', name: '黄昏暖阳', src: '/pal-totems/wallpaper-dusk-glow.svg', w: 100, ar: 0.65, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
+  { id: 'wallpaper-night-sky', name: '星空夜幕', src: '/pal-totems/wallpaper-night-sky.svg', w: 100, ar: 0.65, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
+  { id: 'wallpaper-rain-fall', name: '雨天雨声', src: '/pal-totems/wallpaper-rain-fall.svg', w: 100, ar: 0.65, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
+  { id: 'wallpaper-sakura', name: '樱花', src: '/pal-totems/wallpaper-sakura.svg', w: 100, ar: 0.65, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
+  { id: 'wallpaper-mint-sky', name: '晴空薄荷', src: '/pal-totems/wallpaper-mint-sky.svg', w: 100, ar: 0.65, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
+  { id: 'wallpaper-forest-mist', name: '森林晨雾', src: '/pal-totems/wallpaper-forest-mist.svg', w: 100, ar: 0.65, x: 50, bottom: 0, z: 0, kind: 'wallpaper' },
 ]
 
 export function palTotemDef(id: string): PalTotemDef | undefined {

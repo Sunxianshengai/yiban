@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice">
+  <!-- 晴空薄荷：薄荷渐变+缓移白云+柔光 -->
+  <style>
+    .mc1 { animation: mdrift1 28s ease-in-out infinite alternate; }
+    .mc2 { animation: mdrift2 36s ease-in-out infinite alternate; }
+    @keyframes mdrift1 { 0% { transform: translateX(30px); } 100% { transform: translateX(-60px); } }
+    @keyframes mdrift2 { 0% { transform: translateX(-40px); } 100% { transform: translateX(70px); } }
+  </style>
+  <defs>
+    <linearGradient id="mint" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d8f3ec"/>
+      <stop offset="0.6" stop-color="#e7f6ef"/>
+      <stop offset="1" stop-color="#f4faf3"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="520" fill="url(#mint)"/>
+  <circle cx="640" cy="110" r="52" fill="#ffeaa6" opacity="0.9"/>
+  <circle cx="640" cy="110" r="74" fill="#fff3c4" opacity="0.35"/>
+  <g class="mc1" fill="#ffffff" opacity="0.9">
+    <ellipse cx="170" cy="130" rx="110" ry="22"/>
+    <ellipse cx="250" cy="112" rx="70" ry="16"/>
+    <ellipse cx="110" cy="112" rx="55" ry="14"/>
+  </g>
+  <g class="mc2" fill="#ffffff" opacity="0.7">
+    <ellipse cx="470" cy="230" rx="130" ry="18"/>
+    <ellipse cx="560" cy="214" rx="70" ry="13"/>
+  </g>
+  <g class="mc1" fill="#ffffff" opacity="0.5">
+    <ellipse cx="330" cy="350" rx="180" ry="16"/>
+  </g>
+</svg>
