@@ -441,16 +441,19 @@ function photoStyle(def: PalTotemDef) {
         role="button" tabindex="0" :aria-label="`家具：${palTotemDef(inst.totemId)?.name}`"
         @pointerdown.stop="onTotemDown(inst, $event)" @pointermove="onTotemMove(inst, $event)" @pointerup="onTotemUp($event)"
         @keydown.enter.prevent="select(inst.id)">
-        <img :src="totemSrc(inst)" :alt="palTotemDef(inst.totemId)?.name" draggable="false"
-          :data-growth="palTotemDef(inst.totemId)?.growable ? inst.growthStage : undefined" :style="{ transform: userScale(inst.scale ?? 1, inst.growthStage) }">
-        <!-- 相框里的照片（原版 photoId 模型）：钉在素材开口区，跟随旋转/翻转 -->
-        <img v-if="palTotemDef(inst.totemId)?.photo && inst.photoId && photoUrls[inst.id]" class="frame-photo"
-          :src="photoUrls[inst.id]" alt="相框里的照片" :style="photoStyle(palTotemDef(inst.totemId)!)">
-        <!-- 黑板：显示最近日记片段（动作条「下一句」翻页） -->
-        <div v-if="dd(inst)?.board" class="board-text" :style="boxStyle(dd(inst)!.board!)">{{ boardText }}</div>
-        <!-- 日历牌：显示今天日期 -->
-        <div v-if="dd(inst)?.dateBox" class="board-text board-date" :style="boxStyle(dd(inst)!.dateBox!)">
-          <span>{{ new Date().getMonth() + 1 }}月</span><strong>{{ new Date().getDate() }}</strong>
+        <!-- 画布层：缩放+生长都作用在这一层（origin 底部=贴地），相框照片/黑板/日历钉在同坐标系里随之缩放 -->
+        <div class="totem-art" :style="{ transform: userScale(inst.scale ?? 1, inst.growthStage) }">
+          <img :src="totemSrc(inst)" :alt="palTotemDef(inst.totemId)?.name" draggable="false"
+            :data-growth="palTotemDef(inst.totemId)?.growable ? inst.growthStage : undefined">
+          <!-- 相框里的照片（原版 photoId 模型）：钉在素材开口区，跟随旋转/翻转/缩放 -->
+          <img v-if="palTotemDef(inst.totemId)?.photo && inst.photoId && photoUrls[inst.id]" class="frame-photo"
+            :src="photoUrls[inst.id]" alt="相框里的照片" :style="photoStyle(palTotemDef(inst.totemId)!)">
+          <!-- 黑板：显示最近日记片段（动作条「下一句」翻页） -->
+          <div v-if="dd(inst)?.board" class="board-text" :style="boxStyle(dd(inst)!.board!)">{{ boardText }}</div>
+          <!-- 日历牌：显示今天日期 -->
+          <div v-if="dd(inst)?.dateBox" class="board-text board-date" :style="boxStyle(dd(inst)!.dateBox!)">
+            <span>{{ new Date().getMonth() + 1 }}月</span><strong>{{ new Date().getDate() }}</strong>
+          </div>
         </div>
         <span v-for="f in fx.filter(f => f.totemId === inst.id)" :key="f.key" class="fx" :class="f.kind" aria-hidden="true">{{ f.emoji || (f.kind === 'drop' ? '💧' : '⭐') }}</span>
       </div>
@@ -561,7 +564,9 @@ function photoStyle(def: PalTotemDef) {
 
 .room-totem { position: absolute; cursor: grab; user-select: none; touch-action: none; }
 .room-totem.dragging { cursor: grabbing; }
-.room-totem img { width: 100%; height: auto; display: block; pointer-events: none; transition: transform 0.2s ease; transform-origin: center bottom; filter: drop-shadow(0 3px 4px rgba(40,60,70,0.18)); }
+.totem-art { position: relative; width: 100%; transform-origin: center bottom; transition: transform 0.2s ease; }
+.room-totem.dragging .totem-art { transition: none; }
+.room-totem img { width: 100%; height: auto; display: block; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(40,60,70,0.18)); }
 .room-totem.dragging img { transition: none; }
 .room-totem.sel img { filter: drop-shadow(0 3px 4px rgba(40,60,70,0.18)) drop-shadow(0 0 0 1px rgba(68,192,255,0.35)); outline: 1.5px dashed rgba(68,192,255,0.7); outline-offset: 3px; border-radius: 6px; }
 
