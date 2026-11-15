@@ -1,7 +1,7 @@
 import {
   Box3, BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, Color, CylinderGeometry, Group, Mesh,
   MeshBasicMaterial, MeshStandardMaterial, NoColorSpace, PlaneGeometry, PointLight, Points, PointsMaterial,
-  RepeatWrapping, SphereGeometry, SRGBColorSpace, type Material, type Object3D,
+  RepeatWrapping, SphereGeometry, SRGBColorSpace, Vector2, type Material, type Object3D, type Texture,
 } from 'three'
 import { floorRise, halfDepth, halfWidth, houseDepth, houseLevels, houseWidth, porch, stairs, type Bounds2D } from './familyHouseLayout'
 
@@ -69,7 +69,24 @@ function makeContactShadowTexture() {
   return new CanvasTexture(canvas)
 }
 
-export function buildFamilyHouse(source: Object3D, extras: Record<string, Object3D | null> = {}) {
+export interface PbrTextureSet {
+  diff: Texture
+  nor: Texture
+  rough: Texture
+}
+
+export interface HousePbrTextures {
+  wood: PbrTextureSet
+  plaster: PbrTextureSet
+  tile: PbrTextureSet
+  grass: PbrTextureSet
+}
+
+export function buildFamilyHouse(
+  source: Object3D,
+  extras: Record<string, Object3D | null> = {},
+  pbrTextures: Partial<HousePbrTextures> = {},
+) {
   const house = new Group()
   house.name = 'Three-storey family home'
   const ground = new Group()
@@ -92,7 +109,7 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   ground.name = 'Entrance garden'
   roof.name = 'Flat roof and parapet'
 
-  type MaterialKind = 'matte' | 'plaster' | 'oak' | 'fabric' | 'ceramic' | 'metal' | 'curtain' | 'lamp' | 'screen'
+  type MaterialKind = 'matte' | 'plaster' | 'oak' | 'fabric' | 'ceramic' | 'metal' | 'curtain' | 'lamp' | 'screen' | 'tile' | 'grass'
   const oakTex = makeCanvasTexture(256, 3, 2, (ctx, s) => {
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, s, s)
@@ -208,14 +225,42 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
     let found = materials.get(key)
     if (!found) {
       if (kind === 'oak') {
-        found = new MeshStandardMaterial({
-          color, map: oakTex, bumpMap: oakBumpTex, bumpScale: .015, roughnessMap: oakRoughTex,
-          roughness: .54, envMapIntensity: .90,
-        })
+        const wood = pbrTextures.wood
+        found = wood
+          ? new MeshStandardMaterial({
+            color: '#eedcc4', map: wood.diff, normalMap: wood.nor, normalScale: new Vector2(.68, .68),
+            roughnessMap: wood.rough, roughness: .72, envMapIntensity: .85,
+          })
+          : new MeshStandardMaterial({
+            color, map: oakTex, bumpMap: oakBumpTex, bumpScale: .015, roughnessMap: oakRoughTex,
+            roughness: .54, envMapIntensity: .90,
+          })
       } else if (kind === 'plaster') {
-        found = new MeshStandardMaterial({
-          color, map: plasterTex, bumpMap: plasterBumpTex, bumpScale: .007, roughness: .88, envMapIntensity: .70,
-        })
+        const plas = pbrTextures.plaster
+        found = plas
+          ? new MeshStandardMaterial({
+            color, map: plas.diff, normalMap: plas.nor, normalScale: new Vector2(.42, .42),
+            roughnessMap: plas.rough, roughness: .92, envMapIntensity: .65,
+          })
+          : new MeshStandardMaterial({
+            color, map: plasterTex, bumpMap: plasterBumpTex, bumpScale: .007, roughness: .88, envMapIntensity: .70,
+          })
+      } else if (kind === 'tile') {
+        const tl = pbrTextures.tile
+        found = tl
+          ? new MeshStandardMaterial({
+            color, map: tl.diff, normalMap: tl.nor, normalScale: new Vector2(.78, .78),
+            roughnessMap: tl.rough, roughness: .42, envMapIntensity: 1.05,
+          })
+          : new MeshStandardMaterial({ color, roughness: .22, metalness: .04, envMapIntensity: 1.15 })
+      } else if (kind === 'grass') {
+        const gr = pbrTextures.grass
+        found = gr
+          ? new MeshStandardMaterial({
+            color, map: gr.diff, normalMap: gr.nor, normalScale: new Vector2(.82, .82),
+            roughnessMap: gr.rough, roughness: .95, envMapIntensity: .45,
+          })
+          : new MeshStandardMaterial({ color, roughness: .94, envMapIntensity: .45 })
       } else if (kind === 'fabric') {
         found = new MeshStandardMaterial({
           color, map: fabricTex, bumpMap: fabricBumpTex, bumpScale: .014, roughness: .94, envMapIntensity: .55,
@@ -463,7 +508,8 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
     box(parent, name, [(cursor + right) / 2, 1.35, z], [right - cursor, 2.7, .17], plaster, 'plaster')
   }
   function plankFloor(parent: Group, x: number, z: number, w: number, d: number) {
-    box(parent, 'Oak floor slab', [x, -.078, z], [w, .156, d], '#bd9a70', 'oak')
+    box(parent, 'Oak floor slab', [x, -.078, z], [w, .156, d], '#e8d6be', 'oak')
+    if (pbrTextures.wood) return
     const rows = Math.ceil(d / .34)
     for (let i = 0; i < rows; i++) {
       const depth = d / rows
@@ -569,7 +615,7 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   for (let i = 0; i < 6; i++) {
     box(roof, 'Pergola beam', [-3.8, 10.92, -3.0 + i * .68], [4.0, .08, .09], oak, 'oak')
   }
-  box(ground, 'Garden base', [0, -.27, .48], [houseWidth + 2.2, .21, houseDepth + 2.1], '#cbd0b8')
+  box(ground, 'Garden base', [0, -.27, .48], [houseWidth + 2.2, .21, houseDepth + 2.1], '#dce3ce', 'grass')
   box(ground, 'Garden path', [porch.position[0], -.154, halfDepth + .76], [1.65, .028, 1.50], '#c8bfb0')
   box(ground, 'Doorstep', [porch.position[0], -.068, halfDepth + .24], [1.68, .156, .55], '#bcb2a1')
   box(ground, 'Coconut coir doormat', [porch.position[0], .015, halfDepth + .25], [.78, .022, .36], '#83694b', 'fabric')
@@ -650,6 +696,7 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   plant(living, -5.25, 3.65, 1.28)
   plant(living, -1.65, -3.70, .90)
   box(living, 'Kitchen counter', [1.10, .91, -3.68], [4.20, .075, .69], '#f0ebe0', 'ceramic')
+  box(living, 'Kitchen tile backsplash', [1.10, 1.48, -4.06], [4.20, 1.06, .025], '#eef2f0', 'tile')
   for (let i = 0; i < 6; i++) {
     const x = -.62 + .685 * i
     box(living, 'Sage kitchen cabinet', [x, .45, -3.69], [.66, .88, .60], green, 'matte')
@@ -764,7 +811,7 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
     box(sleeping, 'Wooden toy block', [.28 + (i % 3) * .14, .07 + Math.floor(i / 3) * .116, 1.50],
       [.117, .12, .12], [clay, blue, green][i % 3]!, 'matte').rotateY(i * .2)
   }
-  box(sleeping, 'Bathroom floor', [3.26, .011, -2.60], [2.40, .028, 2.90], tile, 'ceramic')
+  box(sleeping, 'Bathroom floor', [3.26, .011, -2.60], [2.40, .028, 2.90], '#eef2f0', 'tile')
   box(sleeping, 'Bathroom side partition', [2.05, 1.33, -2.60], [.12, 2.66, 2.92], plaster, 'plaster')
   box(sleeping, 'Bathroom front partition', [2.58, 1.34, -1.15], [1.06, 2.68, .12], plaster, 'plaster')
   box(sleeping, 'Bathroom stair partition', [4.44, 1.34, -2.60], [.10, 2.68, 2.92], plaster, 'plaster')

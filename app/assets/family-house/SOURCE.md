@@ -35,4 +35,11 @@
 - `models/wardrobe.glb`：Wardrobe with named doors (25759)
 - `models/fridge.glb`：Kitchen Fridge (35213)
 
+## 真实建筑 PBR 材质贴图（Poly Haven CC0 1K JPG）
+
+- `textures/wood-{diff,nor,rough}.jpg`：`laminate_floor_02`（实木地板漫反射 / 法线 / 粗糙度）
+- `textures/plaster-{diff,nor,rough}.jpg`：`grey_plaster_02`（建筑抹灰墙面漫反射 / 法线 / 粗糙度）
+- `textures/tile-{diff,nor,rough}.jpg`：`blue_floor_tiles_01`（卫浴与厨房瓷砖漫反射 / 法线 / 粗糙度）
+- `textures/grass-{diff,nor,rough}.jpg`：`grass_ground`（户外庭院草坪漫反射 / 法线 / 粗糙度）
+
 四层建筑、楼梯、厨房、卫浴和各活动角落在 `familyHouseModel.ts` 中组装，平面坐标使用米。

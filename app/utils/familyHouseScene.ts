@@ -1,6 +1,7 @@
 import {
   ACESFilmicToneMapping, Color, DirectionalLight, Euler, Float32BufferAttribute, Group, HemisphereLight, MathUtils,
-  Mesh, OrthographicCamera, PCFShadowMap, PerspectiveCamera, PMREMGenerator, Scene, Texture, Vector3, WebGLRenderer,
+  Mesh, NoColorSpace, OrthographicCamera, PCFShadowMap, PerspectiveCamera, PMREMGenerator, RepeatWrapping, Scene,
+  SRGBColorSpace, Texture, TextureLoader, Vector3, WebGLRenderer,
   type BufferAttribute, type BufferGeometry, type Material, type Object3D,
 } from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
@@ -29,6 +30,18 @@ import catTreeUrl from '~/assets/family-house/models/cat-tree.glb?url'
 import tvUnitUrl from '~/assets/family-house/models/tv-unit.glb?url'
 import shoeRackUrl from '~/assets/family-house/models/shoe-rack.glb?url'
 import sofa3SeatUrl from '~/assets/family-house/models/sofa-3seat.glb?url'
+import woodDiffUrl from '~/assets/family-house/textures/wood-diff.jpg?url'
+import woodNorUrl from '~/assets/family-house/textures/wood-nor.jpg?url'
+import woodRoughUrl from '~/assets/family-house/textures/wood-rough.jpg?url'
+import plasterDiffUrl from '~/assets/family-house/textures/plaster-diff.jpg?url'
+import plasterNorUrl from '~/assets/family-house/textures/plaster-nor.jpg?url'
+import plasterRoughUrl from '~/assets/family-house/textures/plaster-rough.jpg?url'
+import tileDiffUrl from '~/assets/family-house/textures/tile-diff.jpg?url'
+import tileNorUrl from '~/assets/family-house/textures/tile-nor.jpg?url'
+import tileRoughUrl from '~/assets/family-house/textures/tile-rough.jpg?url'
+import grassDiffUrl from '~/assets/family-house/textures/grass-diff.jpg?url'
+import grassNorUrl from '~/assets/family-house/textures/grass-nor.jpg?url'
+import grassRoughUrl from '~/assets/family-house/textures/grass-rough.jpg?url'
 import sofa2SeatUrl from '~/assets/family-house/models/sofa-2seat.glb?url'
 import coffeeTableUrl from '~/assets/family-house/models/coffee-table.glb?url'
 import armchairUrl from '~/assets/family-house/models/armchair.glb?url'
@@ -37,7 +50,7 @@ import diningChairUrl from '~/assets/family-house/models/dining-chair.glb?url'
 import doubleBedUrl from '~/assets/family-house/models/double-bed.glb?url'
 import wardrobeUrl from '~/assets/family-house/models/wardrobe.glb?url'
 import fridgeUrl from '~/assets/family-house/models/fridge.glb?url'
-import { buildFamilyHouse, sceneBackdrop } from './familyHouseModel'
+import { buildFamilyHouse, sceneBackdrop, type HousePbrTextures, type PbrTextureSet } from './familyHouseModel'
 import { createHouseAudio } from './familyHouseAudio'
 
 const extraModelUrls: Record<string, string> = {
@@ -178,11 +191,42 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
       extras[key] = null
     }
   }))
+  const texLoader = new TextureLoader()
+  const loadTexSet = async (diffUrl: string, norUrl: string, roughUrl: string, rx: number, ry: number): Promise<PbrTextureSet> => {
+    const [diff, nor, rough] = await Promise.all([
+      texLoader.loadAsync(diffUrl),
+      texLoader.loadAsync(norUrl),
+      texLoader.loadAsync(roughUrl),
+    ])
+    for (const [tex, isColor] of [[diff, true], [nor, false], [rough, false]] as const) {
+      tex.wrapS = RepeatWrapping
+      tex.wrapT = RepeatWrapping
+      tex.repeat.set(rx, ry)
+      tex.colorSpace = isColor ? SRGBColorSpace : NoColorSpace
+      tex.needsUpdate = true
+    }
+    return { diff, nor, rough }
+  }
+
+  let pbrTextures: Partial<HousePbrTextures> = {}
+  try {
+    const [wood, plaster, tile, grass] = await Promise.all([
+      loadTexSet(woodDiffUrl, woodNorUrl, woodRoughUrl, 4, 3),
+      loadTexSet(plasterDiffUrl, plasterNorUrl, plasterRoughUrl, 3, 2),
+      loadTexSet(tileDiffUrl, tileNorUrl, tileRoughUrl, 4, 4),
+      loadTexSet(grassDiffUrl, grassNorUrl, grassRoughUrl, 6, 5),
+    ])
+    pbrTextures = { wood, plaster, tile, grass }
+  } catch {
+    pbrTextures = {}
+  }
+
   let renderer: WebGLRenderer
   try {
     options.signal.throwIfAborted()
     renderer = new WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' })
   } catch (error) {
+    Object.values(pbrTextures).forEach(set => { set?.diff.dispose(); set?.nor.dispose(); set?.rough.dispose() })
     disposeTrees(source, ...extraRoots)
     throw error
   }
@@ -193,8 +237,13 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   renderer.toneMapping = ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.08
   let model: ReturnType<typeof buildFamilyHouse>
-  try { model = buildFamilyHouse(source, extras) }
-  catch (error) { renderer.dispose(); disposeTrees(source, ...extraRoots); throw error }
+  try { model = buildFamilyHouse(source, extras, pbrTextures) }
+  catch (error) {
+    Object.values(pbrTextures).forEach(set => { set?.diff.dispose(); set?.nor.dispose(); set?.rough.dispose() })
+    renderer.dispose()
+    disposeTrees(source, ...extraRoots)
+    throw error
+  }
   scene.add(model.house)
   const dynamic = new Set<Object3D>(model.doors.map(door => door.hinge))
   for (const floor of model.floors) dynamic.add(floor.front)
