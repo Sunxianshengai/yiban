@@ -34,6 +34,8 @@
 - `models/double-bed.glb`：Double Bed Upholstered (38770)
 - `models/wardrobe.glb`：Wardrobe with named doors (25759)
 - `models/fridge.glb`：Kitchen Fridge (35213)
+- `models/steel-shelf.glb`：Poly Haven `steel_frame_shelves_01`（CC0，极简钢木开放书架）
+- `models/display-shelf.glb`：Poly Haven `wooden_display_shelves_01`（CC0，原木展示书架）
 
 ## 真实建筑 PBR 材质贴图（Poly Haven CC0 1K JPG）
 

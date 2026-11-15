@@ -19,6 +19,8 @@ import petDogUrl from '~/assets/family-house/models/pet-dog.glb?url'
 import smallPlantUrl from '~/assets/family-house/models/small-plant.glb?url'
 import tallPlantUrl from '~/assets/family-house/models/tall-plant.glb?url'
 import bookshelfUrl from '~/assets/family-house/models/bookshelf.glb?url'
+import steelShelfUrl from '~/assets/family-house/models/steel-shelf.glb?url'
+import displayShelfUrl from '~/assets/family-house/models/display-shelf.glb?url'
 import floorLampUrl from '~/assets/family-house/models/floor-lamp.glb?url'
 import coffeeMakerUrl from '~/assets/family-house/models/coffee-maker.glb?url'
 import microwaveUrl from '~/assets/family-house/models/microwave.glb?url'
@@ -65,6 +67,8 @@ const extraModelUrls: Record<string, string> = {
   'pet-bed': petBedUrl,
   'patio-table': patioTableUrl,
   'bookshelf': bookshelfUrl,
+  'steel-shelf': steelShelfUrl,
+  'display-shelf': displayShelfUrl,
   'floor-lamp': floorLampUrl,
   'coffee-maker': coffeeMakerUrl,
   'microwave': microwaveUrl,
@@ -173,6 +177,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   onPet?: (pet: HousePetState) => void
   onAction?: (message: string) => void
   onPropsChange?: (activeLabels: string[]) => void
+  onOpenJournal?: (context: { propId: string; title: string }) => void
 }) {
   const loader = new GLTFLoader()
   const response = await fetch(url, { signal: options.signal })
@@ -755,6 +760,13 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
     if (hint.kind === 'prop') {
       const prop = model.props.find(item => item.id === hint?.id)
       if (!prop) return
+      if (prop.kind === 'journal') {
+        releaseLook()
+        audio.playChime()
+        options.onOpenJournal?.({ propId: prop.id, title: prop.label })
+        dirty = true
+        return
+      }
       const active = activeProps.has(prop.id)
       if (active) activeProps.delete(prop.id)
       else activeProps.add(prop.id)
@@ -965,6 +977,10 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   emitActiveProps()
   return {
     enter, setView, interact, resetOrbit, lockLook, releaseLook, callPet,
+    syncJournalBooks(totalEntries: number, starredEntries: number) {
+      model.syncJournalBooks(totalEntries, starredEntries)
+      dirty = true
+    },
     setLookSensitivity(multiplier: number) { lookSensitivity = baseLookSensitivity * multiplier },
     setLamps(value: boolean) { lampsOn = value; audio.playSwitch(value); updateHint(); refreshScene() },
     setEvening(value: boolean) { evening = value; audio.playChime(); refreshScene() },

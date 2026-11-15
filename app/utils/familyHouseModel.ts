@@ -30,7 +30,7 @@ export interface HouseProp {
   floor: number
   x: number
   z: number
-  kind: 'tv' | 'coffee' | 'tap' | 'pc' | 'telescope' | 'fridge' | 'microwave' | 'bathtub' | 'pet-feed'
+  kind: 'tv' | 'coffee' | 'tap' | 'pc' | 'telescope' | 'fridge' | 'microwave' | 'bathtub' | 'pet-feed' | 'journal'
   update: (active: boolean, time: number) => void
 }
 
@@ -648,7 +648,10 @@ export function buildFamilyHouse(
   placeExtra(living, 'keyboard-mouse', -4.45, -3.53, { y: .74, scale: .92 })
   placeExtra(living, 'desk-lamp', -4.98, -3.70, { y: .74, angle: .35 })
   placeExtra(living, 'ergo-chair', -4.45, -2.85, { angle: Math.PI, floorForSolid: 0 })
-  placeExtra(living, 'bookshelf', -6.22, -2.10, { angle: Math.PI / 2, floorForSolid: 0 })
+  if (!placeExtra(living, 'steel-shelf', -6.22, -2.10, { angle: Math.PI / 2, floorForSolid: 0 })) {
+    placeExtra(living, 'bookshelf', -6.22, -2.10, { angle: Math.PI / 2, floorForSolid: 0 })
+  }
+  placeExtra(living, 'display-shelf', -1.55, 2.85, { angle: Math.PI / 2, floorForSolid: 0 })
   plant(living, -2.70, -3.65, .92)
   for (let i = 0; i < 4; i++) {
     const cx = -5.10 + i * .56
@@ -1252,7 +1255,43 @@ export function buildFamilyHouse(
       floor: 3, x: -5.55, z: -1.25, kind: 'telescope',
       update() {},
     },
+    {
+      id: 'study-journal-shelf', label: '翻阅工作间日记书架', offLabel: '翻阅工作间日记书架', shortLabel: '📖 日记书架',
+      floor: 0, x: -6.22, z: -2.10, kind: 'journal',
+      update() {},
+    },
+    {
+      id: 'living-journal-shelf', label: '浏览客厅日记展示架', offLabel: '浏览客厅日记展示架', shortLabel: '📖 日记展示架',
+      floor: 0, x: -1.55, z: 2.85, kind: 'journal',
+      update() {},
+    },
   ]
+
+  // 根据真实日记条数在客厅展示架上动态摆放彩色书脊（星标日记为金色书脊）
+  const diaryBooksGroup = new Group()
+  diaryBooksGroup.name = 'Dynamic diary books'
+  propsGroup.add(diaryBooksGroup)
+  const bookPalette = ['#6ab399', '#e2946d', '#6d8fb3', '#e5c16c', '#b4879f', '#527966']
+  function syncJournalBooks(totalEntries: number, starredEntries: number) {
+    while (diaryBooksGroup.children.length) diaryBooksGroup.remove(diaryBooksGroup.children[0]!)
+    const visibleBooks = Math.min(18, Math.max(3, totalEntries))
+    const goldCount = Math.min(visibleBooks, starredEntries)
+    for (let i = 0; i < visibleBooks; i++) {
+      const shelfRow = Math.floor(i / 6)
+      const col = i % 6
+      const y = .46 + shelfRow * .44
+      const z = 2.48 + col * .12
+      const isGold = i < goldCount
+      const h = .22 + (i % 3) * .03
+      const spine = new Mesh(
+        boxGeo(.16, h, .045),
+        material(isGold ? '#e0b44f' : bookPalette[i % bookPalette.length]!, isGold ? 'metal' : 'matte'),
+      )
+      spine.position.set(-1.55, y + h / 2, z)
+      diaryBooksGroup.add(spine)
+    }
+  }
+  syncJournalBooks(3, 1)
 
   const seats: HouseSeat[] = [
     { id: 'living-sofa', label: '客厅沙发', floor: 0, x: -3.95, z: .72, seatX: -3.95, seatZ: .92, eyeY: 1.12, look: [-3.95, 3.72] },
@@ -1272,7 +1311,7 @@ export function buildFamilyHouse(
     { id: 'reading', label: '阅读灯', floor: 2, x: -1.55, z: -1.65, light: reading },
     { id: 'terrace-lounge', label: '露台氛围灯', floor: 3, x: -3.35, z: 1.15, light: terraceLounge },
   ]
-  return { house, ground, roof, propsGroup, skyGroup, clockHands, floors, doors, localLamps, seats, props, emissiveMaterials, pet }
+  return { house, ground, roof, propsGroup, skyGroup, clockHands, floors, doors, localLamps, seats, props, emissiveMaterials, pet, syncJournalBooks }
 }
 
 export const sceneBackdrop = new Color('#dde5e3')

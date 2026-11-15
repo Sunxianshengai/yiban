@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import {
-  mdiArrowLeft, mdiCameraOutline, mdiCubeOutline, mdiDoorOpen, mdiDownload, mdiFullscreen, mdiFullscreenExit,
+  mdiArrowLeft, mdiBookOpenOutline, mdiCameraOutline, mdiClose, mdiCubeOutline, mdiDoorOpen, mdiDownload, mdiFullscreen, mdiFullscreenExit,
   mdiGestureTap, mdiHelpCircleOutline, mdiHomeOutline, mdiLightbulbOutline, mdiMapOutline,
-  mdiMoonWaningCrescent, mdiMouse, mdiPaw, mdiRestore, mdiSofa, mdiTune, mdiVolumeHigh, mdiVolumeOff, mdiWalk,
+  mdiMoonWaningCrescent, mdiMouse, mdiPaw, mdiPlus, mdiRestore, mdiSofa, mdiStar, mdiStarOutline, mdiTune, mdiVolumeHigh, mdiVolumeOff, mdiWalk,
 } from '@mdi/js'
 import furnitureUrl from '~/assets/family-house/furniture.glb?url'
 import { houseLevels, houseStops, porch, stairStops, type HouseStop } from '~/utils/familyHouseLayout'
@@ -25,6 +25,57 @@ const muted = ref(false)
 const activePropsLabels = shallowRef<string[]>([])
 const mapOpen = ref(true)
 const toolsOpen = ref(false)
+const journalOpen = ref(false)
+const journalTitle = ref('日记书架')
+const journalQuery = ref('')
+const journalFilter = ref<'all' | 'starred'>('all')
+const draftText = ref('')
+const draftStarred = ref(false)
+const savingDraft = ref(false)
+const { entries, refresh: refreshEntries, saveEntry } = useEntries()
+const filteredEntries = computed(() => {
+  const q = journalQuery.value.trim().toLowerCase()
+  return entries.value.filter(entry => {
+    if (journalFilter.value === 'starred' && !entry.favourite) return false
+    if (!q) return true
+    return (entry.previewText || '').toLowerCase().includes(q)
+      || (entry.tags || []).some(tag => tag.toLowerCase().includes(q))
+  }).slice(0, 40)
+})
+function openJournalDrawer(title = '日记书架') {
+  journalTitle.value = title
+  journalOpen.value = true
+  toolsOpen.value = false
+  void refreshEntries()
+}
+function escapeHtml(raw: string) {
+  return raw.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+}
+async function submitQuickJournal() {
+  const content = draftText.value.trim()
+  if (!content || savingDraft.value) return
+  savingDraft.value = true
+  try {
+    const html = content.split(/\n+/).map(line => `<p>${escapeHtml(line)}</p>`).join('')
+    await saveEntry(undefined, html, new Date(), { favourite: draftStarred.value ? 1 : 0 }, [], [])
+    await refreshEntries()
+    draftText.value = ''
+    draftStarred.value = false
+    showActionToast('已记录新日记并上架到书架！')
+  } catch (error) {
+    console.error('Failed to save quick journal entry', error)
+    alertText.value = '日记保存失败，请重试。'
+  } finally {
+    savingDraft.value = false
+  }
+}
+function formatJournalDate(date: Date | string) {
+  const d = date instanceof Date ? date : new Date(date)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', weekday: 'short' })
+}
+watch(entries, list => {
+  game?.syncJournalBooks(list.length, list.filter(item => item.favourite).length)
+}, { deep: false })
 const mouseLocked = ref(false)
 const fullscreen = ref(false)
 const sensitivityKey = 'jr.familyHouseLookSensitivity'
@@ -99,9 +150,11 @@ async function initialize() {
       onPet: value => { petState.value = value },
       onAction: showActionToast,
       onPropsChange: labels => { activePropsLabels.value = labels },
+      onOpenJournal: ctx => { openJournalDrawer(ctx.title) },
     })
     if (attempt.signal.aborted) { result.dispose(); return }
     game = result
+    game.syncJournalBooks(entries.value.length, entries.value.filter(item => item.favourite).length)
     applySensitivity()
     view.value = 'walk'
     overviewFloor.value = 'all'
@@ -129,6 +182,7 @@ watch(canOpen3DHouse, async allowed => {
   await initialize()
 })
 onMounted(() => {
+  void refreshEntries()
   void initialize()
   document.addEventListener('fullscreenchange', syncFullscreen)
 })
@@ -318,6 +372,9 @@ async function download() {
         </div>
 
         <div v-if="toolsOpen" class="house-tools-menu house-hud" role="menu" aria-label="场景功能菜单">
+          <button type="button" @click="openJournalDrawer('日记书架')">
+            <JrIcon :path="mdiBookOpenOutline" :size="18" /><span>打开日记书架 ({{ entries.length }})</span>
+          </button>
           <button v-if="view === 'overview'" type="button" :aria-pressed="outside" @click="toggleOutside">
             <JrIcon :path="mdiHomeOutline" :size="18" /><span>{{ outside ? '剖面预览' : '完整外观' }}</span>
           </button>
@@ -372,6 +429,59 @@ async function download() {
           </div>
         </div>
         <button type="button" @click="game?.callPet(); if (view === 'walk') focusScene()">叫过来</button>
+      </aside>
+
+      <aside v-if="journalOpen" class="house-journal-drawer house-hud" aria-label="日记书架">
+        <div class="journal-drawer-head">
+          <div>
+            <strong>{{ journalTitle }}</strong>
+            <small>共 {{ entries.length }} 篇日常记忆</small>
+          </div>
+          <button type="button" class="journal-close" aria-label="关闭日记书架" @click="journalOpen = false; focusScene()">
+            <JrIcon :path="mdiClose" :size="18" />
+          </button>
+        </div>
+
+        <form class="journal-compose" @submit.prevent="submitQuickJournal">
+          <textarea v-model="draftText" rows="3" placeholder="在这里写下今天的随笔或小确幸，保存后会自动上架到书架…" />
+          <div class="journal-compose-bar">
+            <button type="button" class="journal-star-btn" :aria-pressed="draftStarred" @click="draftStarred = !draftStarred">
+              <JrIcon :path="draftStarred ? mdiStar : mdiStarOutline" :size="16" />
+              <span>{{ draftStarred ? '已星标' : '加星标' }}</span>
+            </button>
+            <button type="submit" class="journal-save-btn" :disabled="savingDraft || !draftText.trim()">
+              <JrIcon :path="mdiPlus" :size="16" />
+              <span>{{ savingDraft ? '保存中…' : '存入书架' }}</span>
+            </button>
+          </div>
+        </form>
+
+        <div class="journal-filter-row">
+          <input v-model="journalQuery" type="search" placeholder="搜索日记内容或标签…" />
+          <button type="button" :aria-pressed="journalFilter === 'all'" @click="journalFilter = 'all'">全部</button>
+          <button type="button" :aria-pressed="journalFilter === 'starred'" @click="journalFilter = 'starred'">星标</button>
+        </div>
+
+        <ul class="journal-list">
+          <li v-if="!filteredEntries.length" class="journal-empty">书架这一层还没有匹配的日记，写一篇吧。</li>
+          <li v-for="item in filteredEntries" :key="item.id ?? item.cloudId" class="journal-item">
+            <div class="journal-item-meta">
+              <span>{{ formatJournalDate(item.dateOfJournal) }}</span>
+              <JrIcon v-if="item.favourite" :path="mdiStar" :size="14" class="journal-item-star" />
+            </div>
+            <p>{{ item.previewText || '（空白日记）' }}</p>
+            <div v-if="item.tags?.length" class="journal-tags">
+              <span v-for="tag in item.tags.slice(0, 3)" :key="tag">#{{ tag }}</span>
+            </div>
+          </li>
+        </ul>
+
+        <nav class="journal-quick-links" aria-label="快捷入口">
+          <NuxtLink to="/">完整时间线</NuxtLink>
+          <NuxtLink to="/calendar">日历</NuxtLink>
+          <NuxtLink to="/atlas">足迹</NuxtLink>
+          <NuxtLink to="/media">相册</NuxtLink>
+        </nav>
       </aside>
       <p id="house-controls" class="sr-only">
         W A S D 移动，拖动或移动鼠标看四周，E 交互，1 2 切换视角，M 开关小地图，P 拍明信片
@@ -463,6 +573,37 @@ async function download() {
 .house-action-toast { position: absolute; top: 82px; left: 50%; transform: translateX(-50%); z-index: 3; margin: 0; border-radius: 10px; padding: 7px 15px; background: rgba(34, 52, 42, 0.88); color: #ffffff; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16); backdrop-filter: blur(12px); font-size: .80rem; font-weight: 550; pointer-events: none; white-space: nowrap; }
 .house-interaction:hover { background: rgba(255, 255, 255, 0.94); }
 .house-interaction kbd { min-width: 24px; min-height: 24px; border-radius: 6px; color: #ffffff; background: var(--house-accent); border: 0; }
+.house-journal-drawer {
+  position: absolute; top: 76px; right: 22px; bottom: 92px; width: min(350px, calc(100vw - 44px));
+  z-index: 5; display: flex; flex-direction: column; gap: 10px; padding: 15px; border-radius: 18px;
+}
+.journal-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.journal-drawer-head strong { display: block; font-size: .96rem; font-weight: 650; }
+.journal-drawer-head small { display: block; font-size: .72rem; color: #5b6c61; margin-top: 2px; }
+.journal-close { width: 32px; height: 32px; border: 0; border-radius: 9px; display: grid; place-items: center; background: transparent; }
+.journal-close:hover { background: #e3ece5; }
+.journal-compose { display: grid; gap: 8px; padding: 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.72); border: 1px solid rgba(43, 81, 62, 0.12); }
+.journal-compose textarea { width: 100%; resize: none; border: 0; background: transparent; font: inherit; font-size: .82rem; color: var(--house-text); outline: none; }
+.journal-compose-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.journal-star-btn, .journal-save-btn { display: inline-flex; align-items: center; gap: 4px; border: 0; border-radius: 8px; padding: 5px 10px; font-size: .76rem; font-weight: 600; }
+.journal-star-btn { background: #edf2ee; color: #475a4e; }
+.journal-star-btn[aria-pressed="true"] { background: #fdf0d2; color: #996615; }
+.journal-save-btn { background: var(--house-accent); color: #ffffff; }
+.journal-filter-row { display: flex; gap: 6px; align-items: center; }
+.journal-filter-row input { flex: 1; min-width: 0; border: 1px solid rgba(43, 81, 62, 0.18); border-radius: 9px; padding: 6px 10px; font: inherit; font-size: .78rem; background: rgba(255, 255, 255, 0.78); color: var(--house-text); }
+.journal-filter-row button { border: 0; border-radius: 8px; padding: 6px 10px; font-size: .74rem; background: #e9efe9; color: #36493d; }
+.journal-filter-row button[aria-pressed="true"] { background: var(--house-accent); color: #ffffff; font-weight: 600; }
+.journal-list { flex: 1; min-height: 0; overflow-y: auto; margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; align-content: start; }
+.journal-empty { padding: 18px 10px; text-align: center; font-size: .78rem; color: #647469; }
+.journal-item { padding: 10px 11px; border-radius: 12px; background: rgba(255, 255, 255, 0.76); border: 1px solid rgba(43, 81, 62, 0.08); }
+.journal-item-meta { display: flex; justify-content: space-between; align-items: center; font-size: .70rem; color: #647469; margin-bottom: 4px; }
+.journal-item-star { color: #d4962a; }
+.journal-item p { margin: 0; font-size: .80rem; line-height: 1.45; color: #24332a; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.journal-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.journal-tags span { font-size: .68rem; padding: 1px 6px; border-radius: 999px; background: #e2eee5; color: #2b513e; }
+.journal-quick-links { display: flex; justify-content: space-between; gap: 6px; padding-top: 4px; border-top: 1px solid rgba(43, 81, 62, 0.10); }
+.journal-quick-links a { flex: 1; text-align: center; padding: 6px 4px; border-radius: 8px; font-size: .74rem; font-weight: 550; background: #edf3ee; color: #2b513e; }
+.journal-quick-links a:hover { background: #dceae0; }
 .house-cover { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 18px; }
 .house-cover button, .house-help form button { border: 0; border-radius: 8px; padding: 9px 14px; background: var(--house-accent); color: #fffdf5; justify-self: center; }
 .house-alert { position: absolute; top: 83px; right: 22px; border-radius: 8px; padding: 10px; }
