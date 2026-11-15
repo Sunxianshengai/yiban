@@ -239,11 +239,11 @@ export function buildFamilyHouse(
         const plas = pbrTextures.plaster
         found = plas
           ? new MeshStandardMaterial({
-            color, map: plas.diff, normalMap: plas.nor, normalScale: new Vector2(.24, .24),
-            roughnessMap: plas.rough, roughness: .90, envMapIntensity: .72,
+            color, normalMap: plas.nor, normalScale: new Vector2(.14, .14),
+            roughnessMap: plas.rough, roughness: .92, envMapIntensity: .68,
           })
           : new MeshStandardMaterial({
-            color, map: plasterTex, bumpMap: plasterBumpTex, bumpScale: .007, roughness: .88, envMapIntensity: .70,
+            color, map: plasterTex, bumpMap: plasterBumpTex, bumpScale: .005, roughness: .90, envMapIntensity: .68,
           })
       } else if (kind === 'tile') {
         const tl = pbrTextures.tile
@@ -349,7 +349,7 @@ export function buildFamilyHouse(
     parent.add(shadow)
     return shadow
   }
-  const plaster = '#eeeae0'
+  const plaster = '#f4f5f2'
   const frame = '#57635e'
   const oak = '#c5a276'
   const green = '#a9b6a3'
@@ -516,8 +516,9 @@ export function buildFamilyHouse(
     }
     box(parent, name, [(cursor + right) / 2, 1.35, z], [right - cursor, 2.7, .17], plaster, 'plaster')
   }
-  function plankFloor(parent: Group, x: number, z: number, w: number, d: number) {
+  function plankFloor(parent: Group, x: number, z: number, w: number, d: number, withCeiling = false) {
     box(parent, 'Oak floor slab', [x, -.078, z], [w, .156, d], '#e8d6be', 'oak')
+    if (withCeiling) box(parent, 'White ceiling soffit', [x, -.162, z], [w, .012, d], '#f6f7f4', 'plaster')
     if (pbrTextures.wood) return
     const rows = Math.ceil(d / .34)
     for (let i = 0; i < rows; i++) {
@@ -529,13 +530,14 @@ export function buildFamilyHouse(
 
   for (const [index, floor] of floors.entries()) {
     const isTerrace = index === 3
-    plankFloor(floor.root, (stairs.left - halfWidth) / 2, 0, stairs.left + halfWidth, houseDepth)
+    const hasCeiling = index > 0
+    plankFloor(floor.root, (stairs.left - halfWidth) / 2, 0, stairs.left + halfWidth, houseDepth, hasCeiling)
     const stairWidth = halfWidth - stairs.left
     const stairCenter = stairs.left + stairWidth / 2
-    if (index === 0) plankFloor(floor.root, stairCenter, 0, stairWidth, houseDepth)
+    if (index === 0) plankFloor(floor.root, stairCenter, 0, stairWidth, houseDepth, false)
     else {
-      plankFloor(floor.root, stairCenter, (-halfDepth + stairs.back) / 2, stairWidth, stairs.back + halfDepth)
-      plankFloor(floor.root, stairCenter, (halfDepth + stairs.front) / 2, stairWidth, halfDepth - stairs.front)
+      plankFloor(floor.root, stairCenter, (-halfDepth + stairs.back) / 2, stairWidth, stairs.back + halfDepth, hasCeiling)
+      plankFloor(floor.root, stairCenter, (halfDepth + stairs.front) / 2, stairWidth, halfDepth - stairs.front, hasCeiling)
     }
     const wallZ = halfDepth - .03
     const wallX = halfWidth - .08
