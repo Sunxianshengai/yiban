@@ -17,6 +17,20 @@ import petBedUrl from '~/assets/family-house/models/pet-bed.glb?url'
 import petDogUrl from '~/assets/family-house/models/pet-dog.glb?url'
 import smallPlantUrl from '~/assets/family-house/models/small-plant.glb?url'
 import tallPlantUrl from '~/assets/family-house/models/tall-plant.glb?url'
+import bookshelfUrl from '~/assets/family-house/models/bookshelf.glb?url'
+import floorLampUrl from '~/assets/family-house/models/floor-lamp.glb?url'
+import coffeeMakerUrl from '~/assets/family-house/models/coffee-maker.glb?url'
+import microwaveUrl from '~/assets/family-house/models/microwave.glb?url'
+import bathtubUrl from '~/assets/family-house/models/bathtub.glb?url'
+import toiletUrl from '~/assets/family-house/models/toilet.glb?url'
+import sideboardUrl from '~/assets/family-house/models/sideboard.glb?url'
+import petBowlsUrl from '~/assets/family-house/models/pet-bowls.glb?url'
+import catTreeUrl from '~/assets/family-house/models/cat-tree.glb?url'
+import tvUnitUrl from '~/assets/family-house/models/tv-unit.glb?url'
+import shoeRackUrl from '~/assets/family-house/models/shoe-rack.glb?url'
+import houseCozyUrl from '~/assets/family-house/models/house-cozy.glb?url'
+import houseCottageUrl from '~/assets/family-house/models/house-cottage.glb?url'
+import houseCoastalUrl from '~/assets/family-house/models/house-coastal.glb?url'
 import { buildFamilyHouse, sceneBackdrop } from './familyHouseModel'
 
 const extraModelUrls: Record<string, string> = {
@@ -30,6 +44,20 @@ const extraModelUrls: Record<string, string> = {
   'pet-dog': petDogUrl,
   'pet-bed': petBedUrl,
   'patio-table': patioTableUrl,
+  'bookshelf': bookshelfUrl,
+  'floor-lamp': floorLampUrl,
+  'coffee-maker': coffeeMakerUrl,
+  'microwave': microwaveUrl,
+  'bathtub': bathtubUrl,
+  'toilet': toiletUrl,
+  'sideboard': sideboardUrl,
+  'pet-bowls': petBowlsUrl,
+  'cat-tree': catTreeUrl,
+  'tv-unit': tvUnitUrl,
+  'shoe-rack': shoeRackUrl,
+  'house-cozy': houseCozyUrl,
+  'house-cottage': houseCottageUrl,
+  'house-coastal': houseCoastalUrl,
 }
 import { blocksWalk, floorRise, hasStairFootprint, houseStops, porch, stairHeight, stairLane, stairs, stairStops, type HouseStop } from './familyHouseLayout'
 
@@ -193,7 +221,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   player.rotation.order = 'YXZ'
   const orbit = new OrbitControls(overview, canvas)
   orbit.enablePan = false
-  orbit.minZoom = .73
+  orbit.minZoom = .38
   orbit.maxZoom = 2.70
   orbit.maxPolarAngle = Math.PI / 2 - .045
 

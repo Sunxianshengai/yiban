@@ -391,8 +391,17 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   for (let i = 0; i < 5; i++) {
     box(roof, 'Pergola beam', [-3.2, 10.92, -2.5 + i * .68], [3.2, .08, .09], oak, 'oak')
   }
-  box(ground, 'Garden base', [0, -.27, .43], [12.8, .21, 8.58], '#cbd0b8')
-  box(ground, 'Garden path', [2.47, -.154, 4.01], [1.59, .028, 1.39], '#c8bfb0')
+  box(ground, 'Garden base', [0, -.27, .43], [38, .21, 28], '#cbd0b8')
+  box(ground, 'Garden path', [2.47, -.154, 4.45], [1.59, .028, 2.3], '#c8bfb0')
+  // 通往一层周边邻居家小屋的社区石板步道
+  box(ground, 'Neighborhood walkway', [0, -.158, 5.75], [26.5, .024, 1.35], '#c9c0b1')
+  box(ground, 'West cottage path', [-10.5, -.158, 2.6], [1.3, .024, 6.2], '#c9c0b1')
+  box(ground, 'East cottage path', [10.8, -.158, 2.6], [1.3, .024, 6.2], '#c9c0b1')
+  // 一层周边多个开源完整 3D 小屋模型（庭院聚落）
+  placeExtra(ground, 'house-cozy', -11.5, -1.6, { y: -.16, angle: Math.PI / 2, scale: .88 })
+  placeExtra(ground, 'house-coastal', 11.4, -1.5, { y: -.16, angle: -Math.PI / 2, scale: .92 })
+  placeExtra(ground, 'house-cottage', -9.8, 10.2, { y: -.16, angle: .28, scale: 1.05 })
+  placeExtra(ground, 'house-coastal', 10.2, 10.4, { y: -.16, angle: -.36, scale: .88 })
   box(ground, 'Doorstep', [2.47, -.068, 3.54], [1.63, .156, .55], '#bcb2a1')
   box(ground, 'Coconut coir doormat', [2.47, .015, 3.55], [.78, .022, .36], '#83694b', 'fabric')
   for (let stripe = 0; stripe < 5; stripe++)
@@ -426,6 +435,14 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   contactShadow(living, -2.95, -.64, 1.55, .95)
   contactShadow(living, .89, .73, 1.85, 1.35)
   placeExtra(living, 'pet-bed', -1.85, .55, { scale: .92 })
+  placeExtra(living, 'pet-bowls', -1.25, .62, { scale: .85 })
+  placeExtra(living, 'tv-unit', -2.95, 2.86, { angle: Math.PI, floorForSolid: 0 })
+  placeExtra(living, 'floor-lamp', -4.72, -2.55, { floorForSolid: 0 })
+  placeExtra(living, 'sideboard', 2.48, .75, { angle: -Math.PI / 2, floorForSolid: 0 })
+  placeExtra(living, 'cat-tree', -4.65, 1.55, { floorForSolid: 0 })
+  placeExtra(living, 'shoe-rack', 1.92, 2.95, { angle: Math.PI, floorForSolid: 0 })
+  placeExtra(living, 'coffee-maker', .02, -2.84, { y: .95 })
+  placeExtra(living, 'microwave', 2.28, -2.84, { y: .95 })
   plant(living, -4.76, 2.42, 1.26)
   plant(living, -1.10, -2.85, .86)
   box(living, 'Kitchen counter', [1.05, .91, -2.8], [3.36, .075, .69], '#f0ebe0', 'ceramic')
@@ -518,6 +535,8 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
     box(sleeping, 'Cabinet handle', [cx + .18, 2.12, -2.77], [.018, .12, .018], '#2b2d30', 'metal')
   }
   box(sleeping, 'Bedroom rug', [-3.2, .008, .55], [2.1, .012, 1.5], '#dde3dc', 'fabric')
+  placeExtra(sleeping, 'floor-lamp', -4.65, -2.55, { floorForSolid: 1 })
+  placeExtra(sleeping, 'bookshelf', -4.85, 1.85, { angle: Math.PI / 2, floorForSolid: 1 })
   box(sleeping, 'Playroom rug', [.88, .008, 1.85], [1.75, .012, 1.65], '#ede3d1', 'fabric')
   mesh(sleeping, 'Bedside lamp shade', cylGeo(.11, .14, .16, 14), [-1.95, .88, -2.23], '#fff2d8', 'lamp')
   const bedside = warm(1, 'Bedside lamp glow', -1.95, .88, -2.23, 5.5)
@@ -540,10 +559,12 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   footprint(1, 1.43, -2.05, .12, 2.40)
   footprint(1, 1.78, -.86, .73, .12)
   footprint(1, 3.06, -2.02, .10, 2.42)
-  box(sleeping, 'White bathtub base', [1.85, .15, -2.42], [.65, .29, 1.37], '#f3f0e8', 'ceramic')
-  for (const side of [-1, 1]) {
-    box(sleeping, 'White bathtub rim', [1.85 + side * .28, .40, -2.42], [.09, .23, 1.37], '#f3f0e8', 'ceramic')
-    box(sleeping, 'White bathtub end', [1.85, .40, -2.42 + side * .64], [.48, .23, .09], '#f3f0e8', 'ceramic')
+  if (!placeExtra(sleeping, 'bathtub', 1.85, -2.42, { angle: Math.PI / 2 })) {
+    box(sleeping, 'White bathtub base', [1.85, .15, -2.42], [.65, .29, 1.37], '#f3f0e8', 'ceramic')
+    for (const side of [-1, 1]) {
+      box(sleeping, 'White bathtub rim', [1.85 + side * .28, .40, -2.42], [.09, .23, 1.37], '#f3f0e8', 'ceramic')
+      box(sleeping, 'White bathtub end', [1.85, .40, -2.42 + side * .64], [.48, .23, .09], '#f3f0e8', 'ceramic')
+    }
   }
   box(sleeping, 'Bath mat', [2.42, .028, -2.20], [.44, .01, .72], '#d4ddd6', 'fabric')
   box(sleeping, 'Basin vanity', [2.65, .41, -2.87], [.55, .82, .50], oak, 'oak')
@@ -552,9 +573,11 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   box(sleeping, 'Bath mirror light bar', [2.65, 1.90, -3.14], [.48, .04, .05], '#fff4db', 'lamp')
   box(sleeping, 'Folded towel', [2.78, .926, -2.75], [.22, .035, .19], green, 'fabric')
   mesh(sleeping, 'Toothbrush cup', cylGeo(.035, .030, .09, 12), [2.47, .955, -2.96], blue, 'ceramic')
-  const toilet = mesh(sleeping, 'Porcelain toilet', sphGeo(1, 18, 10), [1.78, .30, -1.42], '#faf7ef', 'ceramic')
-  toilet.scale.set(.23, .195, .28)
-  box(sleeping, 'Toilet cistern', [1.64, .58, -1.42], [.19, .32, .40], '#faf7ef', 'ceramic')
+  if (!placeExtra(sleeping, 'toilet', 1.78, -1.42, { angle: Math.PI / 2 })) {
+    const toilet = mesh(sleeping, 'Porcelain toilet', sphGeo(1, 18, 10), [1.78, .30, -1.42], '#faf7ef', 'ceramic')
+    toilet.scale.set(.23, .195, .28)
+    box(sleeping, 'Toilet cistern', [1.64, .58, -1.42], [.19, .32, .40], '#faf7ef', 'ceramic')
+  }
   footprint(1, 1.78, -1.42, .46, .56)
   footprint(1, 1.85, -2.42, .65, 1.37)
   footprint(1, 2.65, -2.87, .55, .51)
@@ -616,6 +639,8 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
     box(top, 'Ergo chair back', [-3.45, .82, -1.96], [.42, .56, .08], '#787d82', 'fabric')
   }
   box(top, 'Loft rug', [-3.05, .008, 1.75], [2.55, .012, 1.85], '#e3dacb', 'fabric')
+  placeExtra(top, 'bookshelf', -1.85, -2.95, { floorForSolid: 2 })
+  placeExtra(top, 'floor-lamp', -4.70, 1.45, { floorForSolid: 2 })
   box(top, 'Loft pillow', [-3.55, .56, 2.66], [.32, .28, .14], green, 'fabric').rotateZ(-.12)
   box(top, 'Loft pillow', [-2.45, .56, 2.66], [.32, .28, .14], clay, 'fabric').rotateZ(.15)
   contactShadow(top, -3.05, 1.14, 1.45, .90)
