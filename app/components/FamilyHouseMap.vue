@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { mdiMinus, mdiStairs } from '@mdi/js'
-import { houseLevels, houseStops, houseWidth, mapPlanShapes, mapRooms, stairs, stairStops, type Bounds2D, type HouseStop } from '~/utils/familyHouseLayout'
+import { halfDepth, halfWidth, houseDepth, houseLevels, houseStops, houseWidth, mapPlanShapes, mapRooms, porch, stairs, stairStops, type Bounds2D, type HouseStop } from '~/utils/familyHouseLayout'
 import type { HouseFloor, HousePosition, HouseView } from '~/utils/familyHouseScene'
 
 const props = defineProps<{ floor: HouseFloor; view: HouseView; position: HousePosition; room: string }>()
@@ -8,9 +8,9 @@ const emit = defineEmits<{ floor: [HouseFloor]; visit: [HouseStop]; hide: [] }>(
 const mapFloor = computed(() => props.floor === 'all' ? 0 : props.floor)
 const planShapes = computed(() => mapPlanShapes[mapFloor.value] ?? [])
 const showPlayer = computed(() => props.view === 'walk' && props.position.floor === mapFloor.value)
-const depth = 7.72
-const xPercent = (x: number) => (x + houseWidth / 2) / houseWidth * 100
-const zPercent = (z: number) => (z + 3.32) / depth * 100
+const depth = houseDepth + 1.12
+const xPercent = (x: number) => (x + halfWidth) / houseWidth * 100
+const zPercent = (z: number) => (z + halfDepth + .02) / depth * 100
 const outline = (box: Bounds2D) => ({
   left: `${xPercent(box.left)}%`, top: `${zPercent(box.back)}%`,
   width: `${xPercent(box.right) - xPercent(box.left)}%`, height: `${zPercent(box.front) - zPercent(box.back)}%`,
@@ -28,17 +28,17 @@ function visit(id: string) {
       <button type="button" class="map-collapse" title="收起小地图" aria-label="收起小地图" @click="emit('hide')"><JrIcon :path="mdiMinus" :size="17" /></button>
     </div>
     <div class="map-plan" :aria-label="`${houseLevels[mapFloor]}平面图`">
-      <div class="map-building" :style="outline({ left: -5.4, right: 5.4, back: -3.3, front: 3.3 })" />
+      <div class="map-building" :style="outline({ left: -halfWidth, right: halfWidth, back: -halfDepth, front: halfDepth })" />
       <button v-for="area in mapRooms[mapFloor]" :key="area.stop" type="button" class="map-room" :class="area.color" :style="outline(area)"
         :aria-label="`去${houseStops.find(item => item.id === area.stop)?.label}`" :aria-current="view === 'walk' && room === area.stop ? 'location' : undefined" @click="visit(area.stop)">
         <span>{{ area.short }}</span>
       </button>
       <span v-for="(shape, idx) in planShapes" :key="idx" class="map-shape" :class="[`is-${shape.kind}`, { 'is-round': shape.round }]"
         :style="outline(shape)" aria-hidden="true" />
-      <button type="button" class="map-stairs" :style="outline({ left: stairs.left, right: stairs.right, back: -3.16, front: 3.16 })"
+      <button type="button" class="map-stairs" :style="outline({ left: stairs.left, right: stairs.right, back: -halfDepth + .14, front: halfDepth - .14 })"
         :aria-label="`去${houseLevels[mapFloor]}楼梯口`" :aria-current="view === 'walk' && (room === 'stairs' || room === `stair-${mapFloor}`) ? 'location' : undefined"
         @click="emit('visit', stairStops[mapFloor]!)"><JrIcon :path="mdiStairs" :size="16" /><span>楼梯</span></button>
-      <span v-if="mapFloor === 0" class="map-entry" :style="outline({ left: 1.83, right: 3.10, back: 3.26, front: 3.62 })">入户</span>
+      <span v-if="mapFloor === 0" class="map-entry" :style="outline({ left: porch.position[0] - .64, right: porch.position[0] + .64, back: halfDepth - .04, front: halfDepth + .32 })">入户</span>
       <span v-if="showPlayer" class="map-player" aria-hidden="true"
         :style="{ left: `${xPercent(position.x)}%`, top: `${zPercent(position.z)}%`, transform: `translate(-50%, -50%) rotate(${-position.yaw}rad)` }" />
     </div>

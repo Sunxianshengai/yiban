@@ -53,7 +53,7 @@ const extraModelUrls: Record<string, string> = {
   'tv-unit': tvUnitUrl,
   'shoe-rack': shoeRackUrl,
 }
-import { blocksWalk, floorRise, hasStairFootprint, houseStops, porch, stairHeight, stairLane, stairs, stairStops, type HouseStop } from './familyHouseLayout'
+import { blocksWalk, floorRise, halfDepth, halfWidth, hasStairFootprint, houseStops, porch, stairHeight, stairLane, stairs, stairStops, type HouseStop } from './familyHouseLayout'
 
 export type HouseView = 'overview' | 'walk'
 type HouseDirection = 'forward' | 'back' | 'left' | 'right'
@@ -215,7 +215,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   player.rotation.order = 'YXZ'
   const orbit = new OrbitControls(overview, canvas)
   orbit.enablePan = false
-  orbit.minZoom = .62
+  orbit.minZoom = .52
   orbit.maxZoom = 2.70
   orbit.maxPolarAngle = Math.PI / 2 - .045
 
@@ -296,13 +296,13 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
     orbit.target.set(0, y, displayedFloor === 'all' ? .35 : 0)
     if (displayedFloor === 'all') overview.position.set(8.6, y + (exterior ? 9.5 : 5.6), 21)
     else overview.position.set(8.3, y + 12.6, 16)
-    overview.zoom = displayedFloor === 'all' ? (exterior ? .82 : .86) : 1.07
+    overview.zoom = displayedFloor === 'all' ? (exterior ? .72 : .76) : .92
     overview.updateProjectionMatrix()
     orbit.update()
     dirty = true
   }
   function nearestRoom() {
-    if (stairBase !== null || player.position.z > 3.34) {
+    if (stairBase !== null || player.position.z > halfDepth + .04) {
       const id = stairBase === null ? 'porch' : 'stairs'
       if (id !== currentRoom) { currentRoom = id; options.onRoom(id) }
       return
@@ -395,8 +395,8 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
     refreshScene()
   }
   function canStand(x: number, z: number, floor: number) {
-    if (x < -5.13 || x > 5.07 || z < -3.05) return false
-    if (z > 3.08 && (floor !== 0 || x < 2.01 || x > 2.93 || z > 4.37)) return false
+    if (x < -(halfWidth - .27) || x > halfWidth - .33 || z < -(halfDepth - .25)) return false
+    if (z > halfDepth - .22 && (floor !== 0 || x < porch.position[0] - .46 || x > porch.position[0] + .46 || z > halfDepth + 1.07)) return false
     if (model.doors.some(door => door.floor === floor && blocksWalk(x, z, openDoors.has(door.id) ? door.open : door.closed))) return false
     return !model.floors[floor]!.solids.some(bounds => blocksWalk(x, z, bounds))
   }
@@ -423,7 +423,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
     if (!surface) return false
     currentFloor = surface.floor
     stairBase = surface.stairBase
-    const porchDrop = surface.floor === 0 && z > 3.55 ? Math.min(.14, (z - 3.55) * .75) : 0
+    const porchDrop = surface.floor === 0 && z > halfDepth + .25 ? Math.min(.14, (z - (halfDepth + .25)) * .75) : 0
     eyeHeight = 1.62 + surface.height - porchDrop
     player.position.x = x
     player.position.z = z
