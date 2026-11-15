@@ -109,7 +109,7 @@ export function buildFamilyHouse(
   ground.name = 'Entrance garden'
   roof.name = 'Flat roof and parapet'
 
-  type MaterialKind = 'matte' | 'plaster' | 'oak' | 'fabric' | 'ceramic' | 'metal' | 'curtain' | 'lamp' | 'screen' | 'tile' | 'grass'
+  type MaterialKind = 'matte' | 'plaster' | 'stone-brick' | 'oak' | 'fabric' | 'ceramic' | 'metal' | 'curtain' | 'lamp' | 'screen' | 'tile' | 'grass'
   const oakTex = makeCanvasTexture(256, 3, 2, (ctx, s) => {
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, s, s)
@@ -190,6 +190,76 @@ export function buildFamilyHouse(
       ctx.fillRect(x, y, 2, 2)
     }
   }, false)
+  // 真实石砖条纹纹理（交错条石砌筑 + 石材矿物颗粒 + 凹陷灰缝凹凸与粗糙度贴图）
+  const stoneBrickShades = ['#f1ede4', '#e8e3d9', '#ede9e0', '#e3ded4', '#eae6dc', '#f4f0e8']
+  function drawStoneBrickCourses(s: number, drawBlock: (x: number, y: number, w: number, h: number, row: number, col: number) => void) {
+    const rows = 10
+    const rowH = s / rows
+    for (let r = 0; r < rows; r++) {
+      const y = r * rowH
+      const offset = (r % 2) * (s / 6) + ((r * 37) % 19)
+      const cols = 4
+      const baseW = s / cols
+      for (let c = -1; c <= cols; c++) {
+        const jitter = ((r * 13 + c * 29) % 14) - 7
+        const x = c * baseW + offset + jitter
+        drawBlock(x, y, baseW, rowH, r, c + 1)
+      }
+    }
+  }
+  const stoneBrickTex = makeCanvasTexture(512, 1, 1, (ctx, s) => {
+    ctx.fillStyle = '#cbc5b9'
+    ctx.fillRect(0, 0, s, s)
+    drawStoneBrickCourses(s, (x, y, w, h, r, c) => {
+      const shade = stoneBrickShades[(r * 5 + c * 3) % stoneBrickShades.length]!
+      ctx.fillStyle = shade
+      ctx.fillRect(x + 2, y + 2.5, w - 4, h - 5)
+      // 顶部微亮倒角 + 底部微暗阴影形成立体条石条纹
+      ctx.fillStyle = 'rgba(255,255,255,0.34)'
+      ctx.fillRect(x + 2, y + 2.5, w - 4, 2)
+      ctx.fillStyle = 'rgba(70,62,50,0.12)'
+      ctx.fillRect(x + 2, y + h - 4.5, w - 4, 2)
+      // 横向石材天然拉丝条纹
+      for (let k = 0; k < 4; k++) {
+        const sy = y + 6 + ((r * 11 + c * 7 + k * 9) % Math.max(8, Math.floor(h - 10)))
+        ctx.fillStyle = k % 2 ? 'rgba(95,88,75,0.055)' : 'rgba(255,255,255,0.08)'
+        ctx.fillRect(x + 4, sy, w - 8, 1.5)
+      }
+    })
+    for (let i = 0; i < 3200; i++) {
+      const px = (i * 137) % s
+      const py = (i * 293) % s
+      ctx.fillStyle = i % 3 === 0 ? 'rgba(60,54,44,0.06)' : 'rgba(255,255,255,0.05)'
+      ctx.fillRect(px, py, 2, 2)
+    }
+  })
+  const stoneBrickBumpTex = makeCanvasTexture(512, 1, 1, (ctx, s) => {
+    ctx.fillStyle = '#383838'
+    ctx.fillRect(0, 0, s, s)
+    drawStoneBrickCourses(s, (x, y, w, h, r, c) => {
+      const val = 192 + ((r * 17 + c * 23) % 24)
+      ctx.fillStyle = `rgb(${val},${val},${val})`
+      ctx.fillRect(x + 2.5, y + 3, w - 5, h - 6)
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'
+      ctx.fillRect(x + 2.5, y + 3, w - 5, 2)
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'
+      ctx.fillRect(x + 2.5, y + h - 5, w - 5, 2)
+    })
+    for (let i = 0; i < 2800; i++) {
+      const px = (i * 149) % s
+      const py = (i * 257) % s
+      ctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'
+      ctx.fillRect(px, py, 2, 2)
+    }
+  }, false)
+  const stoneBrickRoughTex = makeCanvasTexture(512, 1, 1, (ctx, s) => {
+    ctx.fillStyle = '#e8e8e8'
+    ctx.fillRect(0, 0, s, s)
+    drawStoneBrickCourses(s, (x, y, w, h) => {
+      ctx.fillStyle = '#bcbcbc'
+      ctx.fillRect(x + 2.5, y + 3, w - 5, h - 6)
+    })
+  }, false)
   const fabricTex = makeCanvasTexture(128, 10, 10, (ctx, s) => {
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, s, s)
@@ -235,6 +305,16 @@ export function buildFamilyHouse(
             color, map: oakTex, bumpMap: oakBumpTex, bumpScale: .015, roughnessMap: oakRoughTex,
             roughness: .54, envMapIntensity: .90,
           })
+      } else if (kind === 'stone-brick') {
+        found = new MeshStandardMaterial({
+          color,
+          map: stoneBrickTex,
+          bumpMap: stoneBrickBumpTex,
+          bumpScale: .024,
+          roughnessMap: stoneBrickRoughTex,
+          roughness: .84,
+          envMapIntensity: .76,
+        })
       } else if (kind === 'plaster') {
         const plas = pbrTextures.plaster
         found = plas
@@ -338,9 +418,39 @@ export function buildFamilyHouse(
     parent.add(object)
     return object
   }
+  // 按真实物理尺寸（米）重映射盒体 UV，确保大小墙面石砖条纹比例完全一致不拉伸
+  function worldStoneBoxGeo(w: number, h: number, d: number) {
+    const geo = new BoxGeometry(w, h, d)
+    const pos = geo.attributes.position!
+    const norm = geo.attributes.normal!
+    const uv = geo.attributes.uv!
+    const tileW = 1.65
+    const tileH = 1.35
+    for (let i = 0; i < pos.count; i++) {
+      const nx = Math.abs(norm.getX(i))
+      const ny = Math.abs(norm.getY(i))
+      const x = pos.getX(i)
+      const y = pos.getY(i)
+      const z = pos.getZ(i)
+      if (nx > 0.5) {
+        uv.setXY(i, (z + d / 2) / tileW, (y + h / 2) / tileH)
+      } else if (ny > 0.5) {
+        uv.setXY(i, (x + w / 2) / tileW, (z + d / 2) / tileH)
+      } else {
+        uv.setXY(i, (x + w / 2) / tileW, (y + h / 2) / tileH)
+      }
+    }
+    uv.needsUpdate = true
+    return geo
+  }
   const box = (parent: Group, name: string, p: [number, number, number], size: [number, number, number],
-    color: string, kind: MaterialKind = 'matte') =>
-    mesh(parent, name, boxGeo(...size), p, color, kind)
+    color: string, kind: MaterialKind = 'matte') => {
+    const isStoneWall = kind === 'stone-brick' || (kind === 'plaster' && color === '#f4f5f2')
+    if (isStoneWall) {
+      return mesh(parent, name, worldStoneBoxGeo(...size), p, color, 'stone-brick')
+    }
+    return mesh(parent, name, boxGeo(...size), p, color, kind)
+  }
   function contactShadow(parent: Group, x: number, z: number, w: number, d: number, y = .006) {
     const shadow = new Mesh(new PlaneGeometry(w, d), contactShadowMat)
     shadow.name = 'Contact shadow'
