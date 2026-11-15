@@ -38,6 +38,7 @@ import doubleBedUrl from '~/assets/family-house/models/double-bed.glb?url'
 import wardrobeUrl from '~/assets/family-house/models/wardrobe.glb?url'
 import fridgeUrl from '~/assets/family-house/models/fridge.glb?url'
 import { buildFamilyHouse, sceneBackdrop } from './familyHouseModel'
+import { createHouseAudio } from './familyHouseAudio'
 
 const extraModelUrls: Record<string, string> = {
   'ergo-chair': ergoChairUrl,
@@ -158,6 +159,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   onLock: (locked: boolean) => void
   onPet?: (pet: HousePetState) => void
   onAction?: (message: string) => void
+  onPropsChange?: (activeLabels: string[]) => void
 }) {
   const loader = new GLTFLoader()
   const response = await fetch(url, { signal: options.signal })
@@ -274,9 +276,14 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   const openDoors = new Set<string>()
   const switchedOff = new Set<string>()
   const activeProps = new Set<string>(['study-pc'])
+  const audio = createHouseAudio()
   let activeSeatId: string | null = null
   let standUpPos: [number, number] | null = null
   let stargazing = false
+  let bobPhase = 0
+  function emitActiveProps() {
+    options.onPropsChange?.(model.props.filter(p => activeProps.has(p.id)).map(p => p.shortLabel))
+  }
   const switchId = new Map(model.localLamps.map(lamp => [lamp.light, lamp.id]))
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 
@@ -309,7 +316,8 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
     }
     model.ground.visible = walking || displayedFloor === 'all'
     model.roof.visible = (walking && shownFloor === 3) || exterior
-    scene.background = evening ? new Color('#424e66') : walking ? new Color('#dce7e6') : sceneBackdrop
+    model.skyGroup.visible = evening
+    scene.background = evening ? new Color('#232d42') : walking ? new Color('#dce7e6') : sceneBackdrop
     scene.environmentIntensity = evening ? .26 : walking ? .68 : .52
     const targetY = walking ? shownFloor * floorRise : 3.5
     sun.target.position.set(0, targetY, 0)
@@ -668,6 +676,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
     if (!hint || mode !== 'walk') return
     if (hint.kind === 'pet') {
       petState.happyUntil = performance.now() + 1400
+      audio.playPetBark()
       options.onAction?.('摸了摸小柴，它开心地摇起了尾巴！')
       dirty = true
       return
@@ -675,6 +684,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
     if (hint.kind === 'seat') {
       if (activeSeatId) {
         standUp(true)
+        audio.playChime()
         return
       }
       const seat = model.seats.find(item => item.id === hint?.id)
@@ -687,6 +697,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
       targetYaw = yaw = Math.atan2(seat.seatX - seat.look[0], seat.seatZ - seat.look[1])
       targetPitch = pitch = -.06
       player.rotation.set(pitch, yaw, 0, 'YXZ')
+      audio.playChime()
       options.onAction?.(seat.id === 'master-bed' ? `已躺到${seat.label}上休息（按 E 或移动起身）` : `已坐到${seat.label}上（按 E 或移动起身）`)
       updateHint()
       dirty = true
@@ -706,6 +717,29 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
           targetPitch = pitch = .32
           player.rotation.set(pitch, yaw, 0, 'YXZ')
         }
+        audio.playChime()
+      } else if (prop.kind === 'coffee') {
+        if (nowActive) audio.playCoffee()
+        else audio.playSwitch(false)
+      } else if (prop.kind === 'tap' || prop.kind === 'bathtub') {
+        audio.playWater(nowActive)
+      } else if (prop.kind === 'microwave') {
+        audio.playMicrowave(nowActive)
+      } else if (prop.kind === 'pet-feed') {
+        if (nowActive) {
+          petState.floor = 0
+          petState.targetX = -1.45
+          petState.targetZ = .95
+          petState.called = true
+          petState.moving = true
+          petState.happyUntil = performance.now() + 2600
+          emitPetState()
+          audio.playPetBark()
+        } else {
+          audio.playSwitch(false)
+        }
+      } else {
+        audio.playSwitch(nowActive)
       }
       const actionMessages: Record<typeof prop.kind, [string, string]> = {
         tv: ['已打开客厅电视', '已关闭客厅电视'],
@@ -713,7 +747,12 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
         tap: ['已打开厨房水龙头', '已关掉厨房水龙头'],
         pc: ['已唤醒工作间双屏显示器', '工作间双屏已休眠'],
         telescope: ['已开启露台望远镜观星视角（按 E 退出）', '已退出观星视角'],
+        fridge: ['已打开冰箱冷白照明', '已关闭冰箱照明'],
+        microwave: ['微波炉开始加热…', '微波炉加热完成！'],
+        bathtub: ['浴缸正在注满温暖热水…', '已排空浴缸热水'],
+        'pet-feed': ['已给小柴倒好狗粮，它跑过来啦！', '已清理空食盆'],
       }
+      emitActiveProps()
       options.onAction?.(actionMessages[prop.kind][nowActive ? 0 : 1])
       updateHint()
       dirty = true
@@ -726,12 +765,15 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
       if (blocksWalk(player.position.x, player.position.z, open ? door.closed : door.open)) return
       if (open) openDoors.delete(door.id)
       else openDoors.add(door.id)
+      audio.playDoor(!open)
       options.onAction?.(`${open ? '已关上' : '已打开'}${door.label}`)
     } else if (switchedOff.has(hint.id)) {
       switchedOff.delete(hint.id)
+      audio.playSwitch(true)
       options.onAction?.(`已打开${hint.label.replace(/^打开/, '')}`)
     } else {
       switchedOff.add(hint.id)
+      audio.playSwitch(false)
       options.onAction?.(`已关掉${hint.label.replace(/^关掉/, '')}`)
     }
     updateHint()
@@ -816,6 +858,15 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   renderer.setAnimationLoop((time) => {
     const delta = Math.min(last ? (time - last) / 1000 : 0, .16)
     last = time
+    const now = new Date()
+    const mins = now.getMinutes() + now.getSeconds() / 60
+    const hrs = (now.getHours() % 12) + mins / 60
+    model.clockHands.minuteGroup.rotation.z = -(mins / 60) * Math.PI * 2
+    model.clockHands.hourGroup.rotation.z = -(hrs / 12) * Math.PI * 2
+    if (evening && !reducedMotion.matches) {
+      model.skyGroup.rotation.y = time * .000015
+      dirty = true
+    }
     if (mode === 'walk') {
       animateWalk(delta, time)
       const baseFov = player.aspect < 1 ? 78 : 64
@@ -825,15 +876,25 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
         player.updateProjectionMatrix()
         dirty = true
       }
-      if (Math.abs(player.position.y - eyeHeight) > .003) {
-        player.position.y = MathUtils.damp(player.position.y, eyeHeight, 14, delta)
+      const speedSq = walkVelocity.lengthSq()
+      let bobOffset = 0
+      if (!reducedMotion.matches && !activeSeatId && stairBase === null && speedSq > .04) {
+        bobPhase += delta * 10.5
+        bobOffset = Math.sin(bobPhase) * .022
+        dirty = true
+      } else {
+        bobPhase = 0
+      }
+      const targetY = eyeHeight + bobOffset
+      if (Math.abs(player.position.y - targetY) > .002) {
+        player.position.y = MathUtils.damp(player.position.y, targetY, 16, delta)
         dirty = true
       }
     }
     for (const prop of model.props) {
       const active = activeProps.has(prop.id)
       prop.update(active, time)
-      if (active && (prop.kind === 'tv' || prop.kind === 'coffee' || prop.kind === 'tap')) dirty = true
+      if (active && (prop.kind === 'tv' || prop.kind === 'coffee' || prop.kind === 'tap' || prop.kind === 'microwave' || prop.kind === 'bathtub')) dirty = true
     }
     updatePet(delta, time)
     for (const door of model.doors) {
@@ -852,11 +913,22 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   enter(porch)
   resetOrbit()
   resize()
+  emitActiveProps()
   return {
     enter, setView, interact, resetOrbit, lockLook, releaseLook, callPet,
     setLookSensitivity(multiplier: number) { lookSensitivity = baseLookSensitivity * multiplier },
-    setLamps(value: boolean) { lampsOn = value; updateHint(); refreshScene() },
-    setEvening(value: boolean) { evening = value; refreshScene() },
+    setLamps(value: boolean) { lampsOn = value; audio.playSwitch(value); updateHint(); refreshScene() },
+    setEvening(value: boolean) { evening = value; audio.playChime(); refreshScene() },
+    setMuted(value: boolean) { audio.setMuted(value) },
+    takePostcard() {
+      renderer.render(scene, mode === 'walk' ? player : overview)
+      const link = document.createElement('a')
+      link.download = `family-house-${Date.now()}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+      audio.playShutter()
+      options.onAction?.('已保存小家明信片截图！')
+    },
     async exportModel() {
       const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js')
       // Export all groups, regardless of the current cutaway or floor filter.
@@ -887,6 +959,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
       document.removeEventListener('pointerlockchange', onLockChange)
       document.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('blur', clearKeys)
+      audio.dispose()
       disposeTrees(source, model.house, ...extraRoots)
       environmentMap.dispose()
       renderer.dispose()

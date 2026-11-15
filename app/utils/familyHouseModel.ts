@@ -1,7 +1,7 @@
 import {
-  Box3, BoxGeometry, CanvasTexture, Color, CylinderGeometry, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial,
-  NoColorSpace, PlaneGeometry, PointLight, RepeatWrapping, SphereGeometry, SRGBColorSpace,
-  type BufferGeometry, type Material, type Object3D,
+  Box3, BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, Color, CylinderGeometry, Group, Mesh,
+  MeshBasicMaterial, MeshStandardMaterial, NoColorSpace, PlaneGeometry, PointLight, Points, PointsMaterial,
+  RepeatWrapping, SphereGeometry, SRGBColorSpace, type Material, type Object3D,
 } from 'three'
 import { floorRise, halfDepth, halfWidth, houseDepth, houseLevels, houseWidth, porch, stairs, type Bounds2D } from './familyHouseLayout'
 
@@ -26,10 +26,11 @@ export interface HouseProp {
   id: string
   label: string
   offLabel: string
+  shortLabel: string
   floor: number
   x: number
   z: number
-  kind: 'tv' | 'coffee' | 'tap' | 'pc' | 'telescope'
+  kind: 'tv' | 'coffee' | 'tap' | 'pc' | 'telescope' | 'fridge' | 'microwave' | 'bathtub' | 'pet-feed'
   update: (active: boolean, time: number) => void
 }
 
@@ -385,10 +386,34 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   }
   function picture(parent: Group, x: number, y: number, z: number, accent: string, width = .47) {
     box(parent, 'Oak picture frame', [x, y, z], [width, .49, .033], oak, 'oak')
-    box(parent, 'Artwork paper', [x, y, z + .021], [width - .048, .438, .010], '#faf0dd', 'matte')
-    const shape = mesh(parent, 'Artwork color patch', sphGeo(1, 14, 7), [x - .053, y + .035, z + .028], accent, 'matte')
-    shape.scale.set(.106, .123, .004)
-    box(parent, 'Artwork color patch', [x + .057, y - .083, z + .031], [.16, .072, .006], green, 'matte').rotateZ(.19)
+    const artTex = makeCanvasTexture(128, 1, 1, (ctx, s) => {
+      ctx.fillStyle = '#faf3e4'
+      ctx.fillRect(0, 0, s, s)
+      const grad = ctx.createLinearGradient(0, 0, 0, s)
+      grad.addColorStop(0, '#f7ebd5')
+      grad.addColorStop(1, '#e8dcc6')
+      ctx.fillStyle = grad
+      ctx.fillRect(10, 10, s - 20, s - 20)
+      ctx.fillStyle = accent
+      ctx.beginPath()
+      ctx.arc(s * .45, s * .42, s * .22, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = green
+      ctx.beginPath()
+      ctx.moveTo(14, s - 14)
+      ctx.quadraticCurveTo(s * .5, s * .56, s - 14, s - 14)
+      ctx.fill()
+      ctx.strokeStyle = '#6f7c6b'
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.moveTo(s * .68, s - 16)
+      ctx.quadraticCurveTo(s * .66, s * .48, s * .76, s * .30)
+      ctx.stroke()
+    })
+    const artMat = new MeshStandardMaterial({ map: artTex, roughness: .75 })
+    const artMesh = new Mesh(boxGeo(width - .05, .435, .012), artMat)
+    artMesh.position.set(x, y, z + .020)
+    parent.add(artMesh)
   }
   function cups(parent: Group, x: number, y: number, z: number) {
     for (const [i, color] of [blue, clay].entries()) {
@@ -407,8 +432,15 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
     rim.rotation.x = Math.PI / 2
     const face = mesh(parent, 'Wall clock face', cylGeo(.175, .175, .036, 20), [x, y, z + .002], '#fbf8f1', 'matte')
     face.rotation.x = Math.PI / 2
-    box(parent, 'Clock hand', [x, y + .04, z + .024], [.012, .09, .008], frame, 'metal')
-    box(parent, 'Clock hand', [x + .04, y, z + .024], [.08, .010, .008], clay, 'metal')
+    const hourGroup = new Group()
+    hourGroup.position.set(x, y, z + .024)
+    propsGroup.add(hourGroup)
+    box(hourGroup, 'Clock hour hand', [0, .042, 0], [.014, .084, .008], frame, 'metal')
+    const minuteGroup = new Group()
+    minuteGroup.position.set(x, y, z + .028)
+    propsGroup.add(minuteGroup)
+    box(minuteGroup, 'Clock minute hand', [0, .058, 0], [.010, .116, .008], clay, 'metal')
+    return { hourGroup, minuteGroup }
   }
   function alongX(parent: Group, name: string, left: number, right: number, z: number, windows: [number, number][], withCurtains = false) {
     let cursor = left
@@ -590,8 +622,16 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   box(living, 'Living woven rug', [-3.95, .008, 1.85], [3.40, .012, 2.50], '#dfd6c5', 'fabric')
   box(living, 'Sofa pillow', [-4.45, .56, .78], [.34, .30, .14], clay, 'fabric').rotateZ(.14)
   box(living, 'Sofa pillow', [-3.35, .56, .78], [.34, .30, .14], blue, 'fabric').rotateZ(-.12)
-  wallClock(living, 1.10, 1.95, -4.065)
+  const clockHands = wallClock(living, 1.10, 1.95, -4.065)
   box(living, 'Entrance tray', [1.20, .81, 3.71], [.28, .022, .18], oak, 'oak')
+  // 餐桌花瓶与果盘 + 玄关伞桶与门铃
+  mesh(living, 'Dining vase', cylGeo(.045, .062, .16, 12), [1.25, .86, .45], '#e9e2d4', 'ceramic')
+  mesh(living, 'Dining flower', sphGeo(.075, 10, 8), [1.25, .98, .45], '#7a9e6d', 'matte')
+  mesh(living, 'Fruit bowl', cylGeo(.12, .07, .055, 14), [1.58, .81, .38], oak, 'oak')
+  mesh(living, 'Fruit', sphGeo(.035, 8, 6), [1.55, .85, .37], clay, 'matte')
+  mesh(living, 'Fruit', sphGeo(.032, 8, 6), [1.61, .85, .40], '#e0b85c', 'matte')
+  mesh(living, 'Umbrella stand', cylGeo(.11, .10, .44, 12), [1.65, .22, 3.82], '#5f6b64', 'metal')
+  box(living, 'Doorbell button', [3.55, 1.32, 4.18], [.06, .09, .02], '#e8e4da', 'ceramic')
   box(living, 'Cutting board', [1.15, .96, -3.64], [.34, .018, .24], oak, 'oak')
   box(living, 'Kettle', [2.55, 1.04, -3.72], [.16, .18, .16], '#e6e2d8', 'ceramic')
   box(living, 'Spice jar', [1.46, .99, -3.82], [.06, .10, .06], clay, 'ceramic')
@@ -708,6 +748,9 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   placeExtra(sleeping, 'bookshelf', -6.20, 2.75, { angle: Math.PI / 2, floorForSolid: 1 })
   box(sleeping, 'Playroom rug', [.55, .008, 1.35], [2.05, .012, 1.85], '#ede3d1', 'fabric')
   mesh(sleeping, 'Bedside lamp shade', cylGeo(.11, .14, .16, 14), [-2.55, .88, -2.65], '#fff2d8', 'lamp')
+  // 床头小闹钟与睡前读物
+  box(sleeping, 'Bedside alarm clock', [-2.36, .60, -2.62], [.09, .08, .04], '#4f5a55', 'metal')
+  box(sleeping, 'Bedside book', [-2.68, .57, -2.55], [.18, .035, .14], clay, 'matte').rotateY(.12)
   const bedside = warm(1, 'Bedside lamp glow', -2.55, .88, -2.65, 5.5)
   warm(1, 'Bedroom ceiling light', -3.85, 2.4, -.65, 14)
 
@@ -824,6 +867,8 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   for (const [i, color] of [clay, blue, green].entries()) {
     box(top, 'Sketchbook', [2.18 + i * .015, .77 + i * .022, -3.55], [.26, .021, .20], color, 'matte').rotateY(i * .16)
   }
+  box(top, 'Paint palette', [2.62, .77, -3.50], [.22, .016, .16], '#f3ede0', 'oak')
+  mesh(top, 'Brush jar', cylGeo(.04, .038, .10, 10), [2.82, .81, -3.62], blue, 'ceramic')
   picture(top, -.95, 1.79, -4.064, blue, .54)
   picture(top, -1.70, 1.69, -4.064, clay, .49)
   cups(top, -3.73, .456, 1.91)
@@ -912,9 +957,38 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   pet.root.position.set(-1.75, 0, .55)
   house.add(pet.root)
 
+  // 夜晚星空与弯月（夜景模式下显形）
+  const skyGroup = new Group()
+  skyGroup.name = 'Night sky stars'
+  skyGroup.visible = false
+  house.add(skyGroup)
+  const starCount = 260
+  const starPositions = new Float32Array(starCount * 3)
+  for (let i = 0; i < starCount; i++) {
+    const angle = (i * 2.39996) % (Math.PI * 2)
+    const radius = 14 + (i % 19) * .85
+    starPositions[i * 3] = Math.cos(angle) * radius
+    starPositions[i * 3 + 1] = 13 + (i % 13) * .95
+    starPositions[i * 3 + 2] = Math.sin(angle) * radius
+  }
+  const starGeo = new BufferGeometry()
+  starGeo.setAttribute('position', new BufferAttribute(starPositions, 3))
+  const starMat = new PointsMaterial({ color: '#fff3d4', size: .24, transparent: true, opacity: .88, sizeAttenuation: true })
+  skyGroup.add(new Points(starGeo, starMat))
+  const moonMesh = new Mesh(sphGeo(.62, 16, 12), new MeshBasicMaterial({ color: '#fff4d6' }))
+  moonMesh.position.set(-7.5, 17.5, -14.5)
+  skyGroup.add(moonMesh)
+
   // 交互式家具与生活道具（按 E 触发实时 3D 动效）
+  const tvCanvas = document.createElement('canvas')
+  tvCanvas.width = 160
+  tvCanvas.height = 90
+  const tvCtx = tvCanvas.getContext('2d')!
+  const tvTex = new CanvasTexture(tvCanvas)
+  tvTex.colorSpace = SRGBColorSpace
+  let lastTvDraw = -1000
   const tvScreenMat = new MeshStandardMaterial({
-    color: '#222831', emissive: '#6db7e8', emissiveIntensity: 0, roughness: .18,
+    map: tvTex, emissiveMap: tvTex, emissive: '#ffffff', emissiveIntensity: 0, roughness: .18,
   })
   const tvScreen = new Mesh(boxGeo(1.02, .56, .016), tvScreenMat)
   tvScreen.position.set(-3.95, 1.06, 3.55)
@@ -947,8 +1021,21 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   waterStream.visible = false
   propsGroup.add(waterStream)
 
+  const pcTex = makeCanvasTexture(256, 1, 1, (ctx, s) => {
+    ctx.fillStyle = '#1b222c'
+    ctx.fillRect(0, 0, s, s)
+    ctx.fillStyle = '#25303f'
+    ctx.fillRect(8, 12, s * .42, s - 24)
+    ctx.fillRect(s * .52, 12, s * .42, s - 24)
+    const cols = ['#7dd3fc', '#a7f3d0', '#fca5a5', '#fde68a']
+    for (let i = 0; i < 12; i++) {
+      ctx.fillStyle = cols[i % cols.length]!
+      ctx.fillRect(18, 28 + i * 16, 40 + (i * 23) % 52, 6)
+      ctx.fillRect(s * .55, 28 + i * 16, 36 + (i * 19) % 56, 6)
+    }
+  })
   const pcGlowMat = new MeshStandardMaterial({
-    color: '#1e242b', emissive: '#a6d8ef', emissiveIntensity: 0, roughness: .22,
+    map: pcTex, emissiveMap: pcTex, emissive: '#d8f0ff', emissiveIntensity: 0, roughness: .22,
   })
   const pcScreen = new Mesh(boxGeo(.82, .30, .014), pcGlowMat)
   pcScreen.position.set(-4.45, 1.06, -3.72)
@@ -958,14 +1045,69 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   deskLampGlow.position.set(-4.85, 1.18, -3.65)
   floors[0]!.root.add(deskLampGlow)
 
+  const fridgeLight = new PointLight('#dff4ff', 0, 2.8, 2)
+  fridgeLight.position.set(3.85, 1.15, -3.20)
+  floors[0]!.root.add(fridgeLight)
+  const fridgeStripMat = new MeshBasicMaterial({ color: '#e6f7ff' })
+  const fridgeStrip = new Mesh(boxGeo(.03, 1.25, .02), fridgeStripMat)
+  fridgeStrip.position.set(3.85, .95, -3.35)
+  fridgeStrip.visible = false
+  propsGroup.add(fridgeStrip)
+
+  const microLight = new PointLight('#ffba66', 0, 2.0, 2)
+  microLight.position.set(2.65, 1.15, -3.50)
+  floors[0]!.root.add(microLight)
+  const microWindowMat = new MeshBasicMaterial({ color: '#ffcb77', transparent: true, opacity: .78 })
+  const microWindow = new Mesh(boxGeo(.28, .16, .015), microWindowMat)
+  microWindow.position.set(2.65, 1.09, -3.56)
+  microWindow.visible = false
+  propsGroup.add(microWindow)
+
+  const bathWaterMat = new MeshStandardMaterial({
+    color: '#a3d8e6', roughness: .08, metalness: .05, transparent: true, opacity: .74,
+  })
+  const bathWater = new Mesh(boxGeo(.52, .04, 1.14), bathWaterMat)
+  bathWater.position.set(2.62, floorRise + .16, -2.95)
+  bathWater.visible = false
+  propsGroup.add(bathWater)
+  const bathSteams = [0, 1, 2].map(() => {
+    const puff = new Mesh(sphGeo(.055, 8, 6), steamMat)
+    puff.visible = false
+    propsGroup.add(puff)
+    return puff
+  })
+
+  const kibbleMound = new Mesh(sphGeo(.08, 10, 6), material('#7a5338', 'matte'))
+  kibbleMound.scale.set(1.2, .45, 1.2)
+  kibbleMound.position.set(-1.45, .06, .65)
+  kibbleMound.visible = false
+  propsGroup.add(kibbleMound)
+
   const props: HouseProp[] = [
     {
-      id: 'living-tv', label: '打开客厅电视', offLabel: '关掉客厅电视', floor: 0, x: -3.95, z: 3.72, kind: 'tv',
+      id: 'living-tv', label: '打开客厅电视', offLabel: '关掉客厅电视', shortLabel: '📺 电视',
+      floor: 0, x: -3.95, z: 3.72, kind: 'tv',
       update(active, time) {
         tvScreen.visible = active
         if (active) {
-          const pulse = .85 + Math.sin(time * .004) * .18
-          tvScreenMat.emissiveIntensity = pulse
+          if (time - lastTvDraw > 75) {
+            lastTvDraw = time
+            const t = time * .0012
+            const grad = tvCtx.createLinearGradient(0, 0, 160, 90)
+            grad.addColorStop(0, `hsl(${(t * 24) % 360}, 58%, 42%)`)
+            grad.addColorStop(.5, `hsl(${(t * 24 + 55) % 360}, 64%, 52%)`)
+            grad.addColorStop(1, `hsl(${(t * 24 + 120) % 360}, 52%, 34%)`)
+            tvCtx.fillStyle = grad
+            tvCtx.fillRect(0, 0, 160, 90)
+            tvCtx.fillStyle = 'rgba(255,255,255,0.28)'
+            tvCtx.beginPath()
+            tvCtx.arc(80 + Math.sin(t) * 32, 38 + Math.cos(t * 1.3) * 12, 16, 0, Math.PI * 2)
+            tvCtx.fill()
+            tvCtx.fillStyle = 'rgba(20, 32, 46, 0.45)'
+            tvCtx.fillRect(0, 66, 160, 24)
+            tvTex.needsUpdate = true
+          }
+          tvScreenMat.emissiveIntensity = .95
           tvGlow.intensity = 3.6 + Math.sin(time * .005) * .6
         } else {
           tvScreenMat.emissiveIntensity = 0
@@ -974,7 +1116,8 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
       },
     },
     {
-      id: 'kitchen-coffee', label: '冲泡热美式咖啡', offLabel: '停止咖啡机', floor: 0, x: -.45, z: -3.72, kind: 'coffee',
+      id: 'kitchen-coffee', label: '冲泡热美式咖啡', offLabel: '停止咖啡机', shortLabel: '☕ 咖啡机',
+      floor: 0, x: -.45, z: -3.72, kind: 'coffee',
       update(active, time) {
         coffeeLed.visible = active
         coffeeLedMat.emissiveIntensity = active ? 1.4 : 0
@@ -988,7 +1131,8 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
       },
     },
     {
-      id: 'kitchen-tap', label: '打开厨房水龙头', offLabel: '关掉厨房水龙头', floor: 0, x: .25, z: -3.70, kind: 'tap',
+      id: 'kitchen-tap', label: '打开厨房水龙头', offLabel: '关掉厨房水龙头', shortLabel: '💧 水龙头',
+      floor: 0, x: .25, z: -3.70, kind: 'tap',
       update(active, time) {
         waterStream.visible = active
         if (active) {
@@ -998,15 +1142,55 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
       },
     },
     {
-      id: 'study-pc', label: '唤醒工作间双屏', offLabel: '休眠工作间双屏', floor: 0, x: -4.45, z: -3.65, kind: 'pc',
+      id: 'study-pc', label: '唤醒工作间双屏', offLabel: '休眠工作间双屏', shortLabel: '💻 双屏电脑',
+      floor: 0, x: -4.45, z: -3.65, kind: 'pc',
       update(active) {
         pcScreen.visible = active
-        pcGlowMat.emissiveIntensity = active ? .95 : 0
+        pcGlowMat.emissiveIntensity = active ? 1.05 : 0
         deskLampGlow.intensity = active ? 4.5 : 0
       },
     },
     {
-      id: 'terrace-scope', label: '用望远镜观星', offLabel: '退出观星视角', floor: 3, x: -5.55, z: -1.25, kind: 'telescope',
+      id: 'kitchen-fridge', label: '打开冰箱冷灯', offLabel: '关上冰箱', shortLabel: '🧊 冰箱',
+      floor: 0, x: 3.85, z: -3.68, kind: 'fridge',
+      update(active) {
+        fridgeStrip.visible = active
+        fridgeLight.intensity = active ? 3.8 : 0
+      },
+    },
+    {
+      id: 'kitchen-microwave', label: '微波炉加热', offLabel: '停止微波炉', shortLabel: '🍽 微波炉',
+      floor: 0, x: 2.65, z: -3.72, kind: 'microwave',
+      update(active, time) {
+        microWindow.visible = active
+        microLight.intensity = active ? (3.2 + Math.sin(time * .018) * .5) : 0
+      },
+    },
+    {
+      id: 'pet-feed', label: '给小柴加狗粮', offLabel: '清理空食盆', shortLabel: '🦴 已加粮',
+      floor: 0, x: -1.45, z: .65, kind: 'pet-feed',
+      update(active) {
+        kibbleMound.visible = active
+      },
+    },
+    {
+      id: 'bath-tub', label: '放一池热水澡', offLabel: '排空浴缸热水', shortLabel: '🛁 泡澡水',
+      floor: 1, x: 2.62, z: -2.95, kind: 'bathtub',
+      update(active, time) {
+        bathWater.visible = active
+        if (active) bathWater.position.y = floorRise + .28 + Math.sin(time * .003) * .01
+        bathSteams.forEach((puff, idx) => {
+          puff.visible = active
+          if (!active) return
+          const cycle = ((time * .00048) + idx * .33) % 1
+          puff.position.set(2.55 + Math.sin(cycle * 5 + idx) * .09, floorRise + .42 + cycle * .55, -2.95 + (idx - 1) * .25)
+          puff.scale.setScalar(.8 + cycle * 1.1)
+        })
+      },
+    },
+    {
+      id: 'terrace-scope', label: '用望远镜观星', offLabel: '退出观星视角', shortLabel: '🔭 观星中',
+      floor: 3, x: -5.55, z: -1.25, kind: 'telescope',
       update() {},
     },
   ]
@@ -1029,7 +1213,7 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
     { id: 'reading', label: '阅读灯', floor: 2, x: -1.55, z: -1.65, light: reading },
     { id: 'terrace-lounge', label: '露台氛围灯', floor: 3, x: -3.35, z: 1.15, light: terraceLounge },
   ]
-  return { house, ground, roof, propsGroup, floors, doors, localLamps, seats, props, emissiveMaterials, pet }
+  return { house, ground, roof, propsGroup, skyGroup, clockHands, floors, doors, localLamps, seats, props, emissiveMaterials, pet }
 }
 
 export const sceneBackdrop = new Color('#e9e4da')

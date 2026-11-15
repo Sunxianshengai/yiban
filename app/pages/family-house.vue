@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import {
-  mdiArrowLeft, mdiCubeOutline, mdiDoorOpen, mdiDownload, mdiFullscreen, mdiFullscreenExit,
+  mdiArrowLeft, mdiCameraOutline, mdiCubeOutline, mdiDoorOpen, mdiDownload, mdiFullscreen, mdiFullscreenExit,
   mdiGestureTap, mdiHelpCircleOutline, mdiHomeOutline, mdiLightbulbOutline, mdiMapOutline,
-  mdiMoonWaningCrescent, mdiMouse, mdiPaw, mdiRestore, mdiSofa, mdiTune, mdiWalk,
+  mdiMoonWaningCrescent, mdiMouse, mdiPaw, mdiRestore, mdiSofa, mdiTune, mdiVolumeHigh, mdiVolumeOff, mdiWalk,
 } from '@mdi/js'
 import furnitureUrl from '~/assets/family-house/furniture.glb?url'
 import { houseLevels, houseStops, porch, stairStops, type HouseStop } from '~/utils/familyHouseLayout'
@@ -21,6 +21,8 @@ const overviewFloor = ref<HouseFloor>('all')
 const outside = ref(false)
 const lit = ref(true)
 const evening = ref(false)
+const muted = ref(false)
+const activePropsLabels = shallowRef<string[]>([])
 const mapOpen = ref(true)
 const mouseLocked = ref(false)
 const fullscreen = ref(false)
@@ -95,6 +97,7 @@ async function initialize() {
       onLock: value => { mouseLocked.value = value },
       onPet: value => { petState.value = value },
       onAction: showActionToast,
+      onPropsChange: labels => { activePropsLabels.value = labels },
     })
     if (attempt.signal.aborted) { result.dispose(); return }
     game = result
@@ -241,6 +244,12 @@ function shortcuts(event: KeyboardEvent) {
   if (event.code === 'Digit2') { changeView('overview'); return }
   if (event.code === 'KeyV') changeView(view.value === 'walk' ? 'overview' : 'walk')
   if (event.code === 'KeyM') mapOpen.value = !mapOpen.value
+  if (event.code === 'KeyP') game?.takePostcard()
+}
+function toggleMute() {
+  muted.value = !muted.value
+  game?.setMuted(muted.value)
+  showActionToast(muted.value ? '已开启静音' : '已恢复小家音效')
 }
 async function download() {
   if (!game || exporting.value) return
@@ -308,6 +317,8 @@ async function download() {
           @click="mouseLocked ? game?.releaseLook() : game?.lockLook()"><JrIcon :path="mdiMouse" :size="20" /></button>
         <button type="button" :aria-pressed="lit" aria-label="室内暖灯" title="室内暖灯" @click="toggleLamps"><JrIcon :path="mdiLightbulbOutline" :size="21" /></button>
         <button type="button" :aria-pressed="evening" aria-label="夜景" title="夜景" @click="toggleEvening"><JrIcon :path="mdiMoonWaningCrescent" :size="19" /></button>
+        <button type="button" :aria-pressed="muted" :aria-label="muted ? '取消静音' : '静音'" :title="muted ? '取消静音' : '音效静音'" @click="toggleMute"><JrIcon :path="muted ? mdiVolumeOff : mdiVolumeHigh" :size="20" /></button>
+        <button type="button" aria-label="拍明信片" title="拍明信片 · P" @click="game?.takePostcard(); focusScene()"><JrIcon :path="mdiCameraOutline" :size="20" /></button>
         <button type="button" :aria-pressed="mapOpen" aria-label="小地图" title="小地图 · M" @click="mapOpen = !mapOpen"><JrIcon :path="mdiMapOutline" :size="21" /></button>
         <button type="button" aria-label="按键说明" title="按键说明" @click="showHelp"><JrIcon :path="mdiHelpCircleOutline" :size="21" /></button>
         <button type="button" :aria-label="fullscreen ? '退出全屏' : '全屏'" :title="fullscreen ? '退出全屏' : '全屏'" @click="toggleFullscreen">
@@ -319,6 +330,9 @@ async function download() {
     <template v-if="status === 'ready'">
       <div v-if="view === 'walk'" class="house-location" aria-live="polite">
         {{ houseLevels[position.floor] }} · {{ actualRoom }}
+      </div>
+      <div v-if="activePropsLabels.length" class="house-active-props house-hud" aria-label="运行中的家居">
+        <span>{{ activePropsLabels.join(' · ') }}</span>
       </div>
       <div v-if="view === 'walk'" class="house-reticle" aria-hidden="true" />
       <FamilyHouseMap v-if="mapOpen" class="house-map-wrap house-hud" :floor="mapFloor" :room="room" :position="position" :view="view"
@@ -369,9 +383,9 @@ async function download() {
       <dl>
         <dt>移动</dt><dd><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> 或方向键</dd>
         <dt>看四周</dt><dd>窗口内拖动鼠标，第一人称全屏后直接移动鼠标。<kbd>Esc</kbd> 释放鼠标。</dd>
-        <dt>互动</dt><dd>靠近门、灯具、沙发/床铺、电视、咖啡机、水龙头、工作台或望远镜后，按 <kbd>E</kbd> 或点击提示即可互动；靠近小柴还能摸摸它。</dd>
+        <dt>互动</dt><dd>靠近门、灯具、沙发/床铺、电视、咖啡机、水龙头、冰箱、微波炉、浴缸、工作台、望远镜或宠物食盆后，按 <kbd>E</kbd> 或点击提示即可互动；靠近小柴还能摸摸它。</dd>
         <dt>上下楼</dt><dd>走进楼梯的对应一侧，到半层平台后折返。也能在小地图切楼层。</dd>
-        <dt>视角与地图</dt><dd><kbd>V</kbd> 切视角，<kbd>M</kbd> 显示或收起小地图。</dd>
+        <dt>视角与功能</dt><dd><kbd>1</kbd>/<kbd>2</kbd> 或 <kbd>V</kbd> 切视角，<kbd>M</kbd> 开关小地图，<kbd>P</kbd> 拍下当前小家明信片。</dd>
       </dl>
       <form method="dialog"><button type="submit">回到小家</button></form>
     </dialog>
@@ -428,6 +442,7 @@ async function download() {
 .house-mode button[aria-pressed="true"] .mode-key { background: #ffffff2e; border-color: #ffffff44; color: #fffdf6; }
 .house-toolbar button[aria-pressed="true"] { background: #dce9dc; color: #294533; }
 .house-location { position: absolute; top: 89px; left: 50%; transform: translateX(-50%); padding: 7px 13px; background: #2c4839f0; color: #fffdf4; border-radius: 8px; font-size: .8rem; white-space: nowrap; pointer-events: none; }
+.house-active-props { position: absolute; top: 96px; left: 22px; max-width: min(320px, calc(50vw - 90px)); padding: 5px 11px; border-radius: 999px; font-size: .74rem; color: #3d5244; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 .house-reticle { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; transform: translate(-50%, -50%); border-radius: 50%; background: #fffef0; box-shadow: 0 0 0 1px #36503b88, 0 0 4px #29352e5e; pointer-events: none; }
 .house-map-wrap { position: absolute; left: 22px; bottom: 88px; }
 .house-pet { position: absolute; right: 22px; bottom: 88px; display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 12px; border-radius: 12px; }
