@@ -235,7 +235,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   scene.background = sceneBackdrop.clone()
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.65))
   renderer.toneMapping = ACESFilmicToneMapping
-  renderer.toneMappingExposure = 1.08
+  renderer.toneMappingExposure = 1.14
   let model: ReturnType<typeof buildFamilyHouse>
   try { model = buildFamilyHouse(source, extras, pbrTextures) }
   catch (error) {
@@ -260,14 +260,14 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   generator.dispose()
   environment.dispose()
   scene.environment = environmentMap.texture
-  const sun = new DirectionalLight('#fff1dd', 2.45)
+  const sun = new DirectionalLight('#fffaf2', 2.15)
   sun.position.set(-3, 12, 8)
   sun.castShadow = true
   sun.shadow.mapSize.set(2048, 2048)
   Object.assign(sun.shadow.camera, { left: -11, right: 11, top: 11, bottom: -11, near: .5, far: 32 })
   sun.shadow.normalBias = .032
   sun.shadow.bias = -.00010
-  sun.shadow.radius = 2.4
+  sun.shadow.radius = 2.8
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = PCFShadowMap
   renderer.shadowMap.autoUpdate = false
@@ -286,7 +286,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
       }
     }
   })
-  const ambient = new HemisphereLight('#fff7ee', '#afa69a', 1.22)
+  const ambient = new HemisphereLight('#ffffff', '#dcdad2', 1.35)
   scene.add(sun, sun.target, ambient)
 
   const overview = new OrthographicCamera(-8, 8, 6, -6, .025, 90)

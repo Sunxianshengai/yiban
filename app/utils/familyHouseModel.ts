@@ -228,8 +228,8 @@ export function buildFamilyHouse(
         const wood = pbrTextures.wood
         found = wood
           ? new MeshStandardMaterial({
-            color: '#eedcc4', map: wood.diff, normalMap: wood.nor, normalScale: new Vector2(.68, .68),
-            roughnessMap: wood.rough, roughness: .72, envMapIntensity: .85,
+            color: '#ebd4b4', map: wood.diff, normalMap: wood.nor, normalScale: new Vector2(.55, .55),
+            roughnessMap: wood.rough, roughness: .68, envMapIntensity: .88,
           })
           : new MeshStandardMaterial({
             color, map: oakTex, bumpMap: oakBumpTex, bumpScale: .015, roughnessMap: oakRoughTex,
@@ -239,8 +239,8 @@ export function buildFamilyHouse(
         const plas = pbrTextures.plaster
         found = plas
           ? new MeshStandardMaterial({
-            color, map: plas.diff, normalMap: plas.nor, normalScale: new Vector2(.42, .42),
-            roughnessMap: plas.rough, roughness: .92, envMapIntensity: .65,
+            color, map: plas.diff, normalMap: plas.nor, normalScale: new Vector2(.24, .24),
+            roughnessMap: plas.rough, roughness: .90, envMapIntensity: .72,
           })
           : new MeshStandardMaterial({
             color, map: plasterTex, bumpMap: plasterBumpTex, bumpScale: .007, roughness: .88, envMapIntensity: .70,
@@ -467,9 +467,18 @@ export function buildFamilyHouse(
     }
   }
   function curtains(parent: Group, x: number, z: number, width: number, offsetZ: number) {
-    box(parent, 'Curtain rod', [x, 2.34, z + offsetZ], [width + .34, .024, .024], frame, 'metal')
+    box(parent, 'Curtain rod', [x, 2.34, z + offsetZ], [width + .34, .024, .024], '#242829', 'metal')
+    if (width > 1.8) {
+      const blindColors = ['#e7b9bc', '#242829', '#f4f3ee', '#6db399', '#f4f3ee']
+      const panelW = Math.min(.42, (width - .22) / blindColors.length)
+      const startX = x - (blindColors.length - 1) * panelW * .52
+      blindColors.forEach((col, i) => {
+        const dropH = i % 2 === 1 ? .74 : .64
+        box(parent, 'Color block blind', [startX + i * panelW * 1.04, 2.32 - dropH / 2, z + offsetZ], [panelW - .02, dropH, .016], col, 'fabric')
+      })
+    }
     for (const side of [-1, 1]) {
-      box(parent, 'Linen curtain', [x + side * (width / 2 - .07), 1.56, z + offsetZ], [.24, 1.52, .045], '#f3ede0', 'curtain')
+      box(parent, 'Linen curtain', [x + side * (width / 2 - .07), 1.56, z + offsetZ], [.22, 1.52, .04], '#f4f2ec', 'curtain')
     }
   }
   function wallClock(parent: Group, x: number, y: number, z: number) {
@@ -664,10 +673,13 @@ export function buildFamilyHouse(
   placeExtra(living, 'dining-chair', 2.05, 1.15, { angle: Math.PI, floorForSolid: 0 })
   furniture(0, 39, 1.25, .45, { y: 1.43 })
   furniture(0, 32, 1.20, 3.72, { angle: Math.PI / 2, scale: .76, solid: true })
-  // 一楼细节：地毯、抱枕、时钟、玄关托盘、接触阴影、厨房小家电
-  box(living, 'Living woven rug', [-3.95, .008, 1.85], [3.40, .012, 2.50], '#dfd6c5', 'fabric')
-  box(living, 'Sofa pillow', [-4.45, .56, .78], [.34, .30, .14], clay, 'fabric').rotateZ(.14)
-  box(living, 'Sofa pillow', [-3.35, .56, .78], [.34, .30, .14], blue, 'fabric').rotateZ(-.12)
+  // 一楼细节：薄荷绿拼色几何地毯、抱枕、时钟、玄关托盘、接触阴影、厨房小家电
+  box(living, 'Living woven rug', [-3.95, .008, 1.85], [3.50, .012, 2.55], '#eef2ee', 'fabric')
+  box(living, 'Living rug mint block A', [-4.68, .015, 1.25], [1.22, .004, 1.15], '#6ab399', 'fabric')
+  box(living, 'Living rug mint block B', [-3.12, .015, 2.40], [1.32, .004, 1.18], '#cfe3d8', 'fabric')
+  box(living, 'Living rug accent strip', [-3.95, .015, 2.42], [.72, .004, .98], '#6ab399', 'fabric')
+  box(living, 'Sofa pillow', [-4.45, .56, .78], [.34, .30, .14], '#68b096', 'fabric').rotateZ(.14)
+  box(living, 'Sofa pillow', [-3.35, .56, .78], [.34, .30, .14], '#f5f6f2', 'fabric').rotateZ(-.12)
   const clockHands = wallClock(living, 1.10, 1.95, -4.065)
   box(living, 'Entrance tray', [1.20, .81, 3.71], [.28, .022, .18], oak, 'oak')
   // 餐桌花瓶与果盘 + 玄关伞桶与门铃
@@ -1263,4 +1275,4 @@ export function buildFamilyHouse(
   return { house, ground, roof, propsGroup, skyGroup, clockHands, floors, doors, localLamps, seats, props, emissiveMaterials, pet }
 }
 
-export const sceneBackdrop = new Color('#e9e4da')
+export const sceneBackdrop = new Color('#dde5e3')

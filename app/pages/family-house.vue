@@ -24,6 +24,7 @@ const evening = ref(false)
 const muted = ref(false)
 const activePropsLabels = shallowRef<string[]>([])
 const mapOpen = ref(true)
+const toolsOpen = ref(false)
 const mouseLocked = ref(false)
 const fullscreen = ref(false)
 const sensitivityKey = 'jr.familyHouseLookSensitivity'
@@ -306,44 +307,65 @@ async function download() {
         </button>
       </div>
 
-      <div v-if="status === 'ready'" class="house-toolbar house-hud" role="group" aria-label="场景工具">
-        <button v-if="view === 'overview'" type="button" :aria-pressed="outside" aria-label="显示完整外观" title="显示完整外观" @click="toggleOutside">
-          <JrIcon :path="mdiHomeOutline" :size="21" />
-        </button>
-        <button v-if="view === 'overview'" type="button" aria-label="重置全景视角" title="重置全景视角" @click="game?.resetOrbit()">
-          <JrIcon :path="mdiRestore" :size="20" />
-        </button>
-        <button v-if="view === 'walk'" type="button" :aria-pressed="mouseLocked" aria-label="鼠标自由转视角" title="鼠标自由转视角 · Esc 退出"
-          @click="mouseLocked ? game?.releaseLook() : game?.lockLook()"><JrIcon :path="mdiMouse" :size="20" /></button>
-        <button type="button" :aria-pressed="lit" aria-label="室内暖灯" title="室内暖灯" @click="toggleLamps"><JrIcon :path="mdiLightbulbOutline" :size="21" /></button>
-        <button type="button" :aria-pressed="evening" aria-label="夜景" title="夜景" @click="toggleEvening"><JrIcon :path="mdiMoonWaningCrescent" :size="19" /></button>
-        <button type="button" :aria-pressed="muted" :aria-label="muted ? '取消静音' : '静音'" :title="muted ? '取消静音' : '音效静音'" @click="toggleMute"><JrIcon :path="muted ? mdiVolumeOff : mdiVolumeHigh" :size="20" /></button>
-        <button type="button" aria-label="拍明信片" title="拍明信片 · P" @click="game?.takePostcard(); focusScene()"><JrIcon :path="mdiCameraOutline" :size="20" /></button>
-        <button type="button" :aria-pressed="mapOpen" aria-label="小地图" title="小地图 · M" @click="mapOpen = !mapOpen"><JrIcon :path="mdiMapOutline" :size="21" /></button>
-        <button type="button" aria-label="按键说明" title="按键说明" @click="showHelp"><JrIcon :path="mdiHelpCircleOutline" :size="21" /></button>
-        <button type="button" :aria-label="fullscreen ? '退出全屏' : '全屏'" :title="fullscreen ? '退出全屏' : '全屏'" @click="toggleFullscreen">
-          <JrIcon :path="fullscreen ? mdiFullscreenExit : mdiFullscreen" :size="23" />
-        </button>
+      <div v-if="status === 'ready'" class="house-toolbar-wrap">
+        <div class="house-toolbar house-hud" role="group" aria-label="场景工具">
+          <button type="button" :aria-pressed="mapOpen" aria-label="小地图" title="小地图 · M" @click="mapOpen = !mapOpen"><JrIcon :path="mdiMapOutline" :size="20" /></button>
+          <button type="button" :aria-pressed="toolsOpen" aria-label="更多功能" title="场景设置与工具" @click="toolsOpen = !toolsOpen"><JrIcon :path="mdiTune" :size="20" /></button>
+          <button type="button" aria-label="按键说明" title="按键说明" @click="toolsOpen = false; showHelp()"><JrIcon :path="mdiHelpCircleOutline" :size="20" /></button>
+          <button type="button" :aria-label="fullscreen ? '退出全屏' : '全屏'" :title="fullscreen ? '退出全屏' : '全屏'" @click="toggleFullscreen">
+            <JrIcon :path="fullscreen ? mdiFullscreenExit : mdiFullscreen" :size="21" />
+          </button>
+        </div>
+
+        <div v-if="toolsOpen" class="house-tools-menu house-hud" role="menu" aria-label="场景功能菜单">
+          <button v-if="view === 'overview'" type="button" :aria-pressed="outside" @click="toggleOutside">
+            <JrIcon :path="mdiHomeOutline" :size="18" /><span>{{ outside ? '剖面预览' : '完整外观' }}</span>
+          </button>
+          <button v-if="view === 'overview'" type="button" @click="game?.resetOrbit()">
+            <JrIcon :path="mdiRestore" :size="18" /><span>重置全景视角</span>
+          </button>
+          <button v-if="view === 'walk'" type="button" :aria-pressed="mouseLocked" @click="mouseLocked ? game?.releaseLook() : game?.lockLook(); toolsOpen = false">
+            <JrIcon :path="mdiMouse" :size="18" /><span>{{ mouseLocked ? '释放鼠标视角' : '锁定鼠标视角' }}</span>
+          </button>
+          <button v-if="view === 'walk'" type="button" @click="visit(livingStop); toolsOpen = false">
+            <JrIcon :path="mdiSofa" :size="18" /><span>回到客厅</span>
+          </button>
+          <button type="button" :aria-pressed="lit" @click="toggleLamps">
+            <JrIcon :path="mdiLightbulbOutline" :size="18" /><span>{{ lit ? '关闭室内暖灯' : '打开室内暖灯' }}</span>
+          </button>
+          <button type="button" :aria-pressed="evening" @click="toggleEvening">
+            <JrIcon :path="mdiMoonWaningCrescent" :size="18" /><span>{{ evening ? '切回白天' : '切到夜景' }}</span>
+          </button>
+          <button type="button" :aria-pressed="muted" @click="toggleMute">
+            <JrIcon :path="muted ? mdiVolumeOff : mdiVolumeHigh" :size="18" /><span>{{ muted ? '取消静音' : '静音音效' }}</span>
+          </button>
+          <button type="button" @click="game?.takePostcard(); toolsOpen = false; focusScene()">
+            <JrIcon :path="mdiCameraOutline" :size="18" /><span>拍明信片 (P)</span>
+          </button>
+          <button v-if="fullscreen && view === 'walk'" type="button" @click="toolsOpen = false; openSensitivity()">
+            <JrIcon :path="mdiTune" :size="18" /><span>鼠标灵敏度 {{ sensitivity }}%</span>
+          </button>
+          <button type="button" :disabled="exporting" @click="download">
+            <JrIcon :path="mdiDownload" :size="18" /><span>{{ exporting ? '导出中…' : '导出 3D 模型' }}</span>
+          </button>
+        </div>
       </div>
     </header>
 
     <template v-if="status === 'ready'">
-      <div v-if="view === 'walk'" class="house-location" aria-live="polite">
-        {{ houseLevels[position.floor] }} · {{ actualRoom }}
-      </div>
       <div v-if="activePropsLabels.length" class="house-active-props house-hud" aria-label="运行中的家居">
         <span>{{ activePropsLabels.join(' · ') }}</span>
       </div>
       <div v-if="view === 'walk'" class="house-reticle" aria-hidden="true" />
       <FamilyHouseMap v-if="mapOpen" class="house-map-wrap house-hud" :floor="mapFloor" :room="room" :position="position" :view="view"
         @floor="selectFloor" @visit="visit" @hide="mapOpen = false; focusScene()" />
-      <p v-if="view === 'walk' && actionToast" class="house-action-toast house-hud" role="status">{{ actionToast }}</p>
+      <p v-if="view === 'walk' && actionToast" class="house-action-toast" role="status">{{ actionToast }}</p>
       <button v-if="view === 'walk' && hint" type="button" class="house-interaction house-hud" :aria-label="hint.label" aria-keyshortcuts="E" @click="game?.interact(); focusScene()">
         <kbd>E</kbd><JrIcon :path="hint.kind === 'door' ? mdiDoorOpen : hint.kind === 'pet' ? mdiPaw : hint.kind === 'seat' ? mdiSofa : hint.kind === 'prop' ? mdiGestureTap : mdiLightbulbOutline" :size="18" />{{ hint.label }}
       </button>
       <aside class="house-pet house-hud" aria-label="家里的小伙伴">
         <div class="house-pet-info">
-          <JrIcon :path="mdiPaw" :size="17" class="house-pet-icon" />
+          <JrIcon :path="mdiPaw" :size="18" class="house-pet-icon" />
           <div>
             <strong>家里的小伙伴</strong>
             <small>{{ petStatusText }}</small>
@@ -351,30 +373,9 @@ async function download() {
         </div>
         <button type="button" @click="game?.callPet(); if (view === 'walk') focusScene()">叫过来</button>
       </aside>
-      <footer class="house-footer house-hud">
-        <p id="house-controls">
-          <template v-if="view === 'walk'">
-            <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动
-            <span class="house-divider" />
-            <template v-if="mouseLocked">移动鼠标看四周 <span class="house-divider" /><kbd>Esc</kbd> 释放鼠标</template>
-            <template v-else>{{ fullscreen ? '点击画面恢复鼠标转向' : '拖动看四周' }}</template>
-            <span class="house-divider" /><kbd>E</kbd> 交互
-            <template v-if="fullscreen && mouseLocked"><span class="house-divider" /><kbd>−</kbd><kbd>+</kbd> 调灵敏度</template>
-          </template>
-          <template v-else>拖动旋转 <span class="house-divider" /> 滚轮缩放</template>
-        </p>
-        <div class="house-footer-actions">
-          <button v-if="view === 'walk'" type="button" @click="visit(livingStop)">
-            回到客厅
-          </button>
-          <button v-if="fullscreen && view === 'walk'" type="button" aria-haspopup="dialog" @click="openSensitivity">
-            <JrIcon :path="mdiTune" :size="18" /> 鼠标灵敏度 {{ sensitivity }}%
-          </button>
-          <button type="button" :disabled="exporting" @click="download">
-            <JrIcon :path="mdiDownload" :size="18" /> {{ exporting ? '导出中' : '下载模型' }}
-          </button>
-        </div>
-      </footer>
+      <p id="house-controls" class="sr-only">
+        W A S D 移动，拖动或移动鼠标看四周，E 交互，1 2 切换视角，M 开关小地图，P 拍明信片
+      </p>
     </template>
     <p v-if="alertText" class="house-alert house-hud" role="alert">{{ alertText }}</p>
 
@@ -405,63 +406,63 @@ async function download() {
 
 <style scoped>
 .house-stage {
-  --house-panel: #faf8efd9;
-  --house-control: #eeeee3;
-  --house-text: #29372e;
-  --house-accent: #42634e;
-  --house-line: #fffdf3a6;
+  --house-panel: rgba(255, 255, 255, 0.80);
+  --house-control: #edf2ee;
+  --house-text: #223228;
+  --house-accent: #2b513e;
+  --house-line: rgba(255, 255, 255, 0.72);
   position: relative; width: 100%; height: 100%; min-width: 0; overflow: hidden; isolation: isolate;
-  background: #e9e4da; color: var(--house-text);
+  background: #dce3e1; color: var(--house-text);
 }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
 .house-canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
 .house-canvas:active { cursor: grabbing; }
 .house-canvas.mouse-locked { cursor: none; }
 .house-canvas:focus { outline: none; }
 .house-canvas:focus-visible { box-shadow: inset 0 0 0 2px #526b57; }
-.house-stage :is(button, a):focus-visible { outline: 2px solid #355b44; outline-offset: 2px; }
+.house-stage :is(button, a):focus-visible { outline: 2px solid #2b513e; outline-offset: 2px; }
 .house-stage button, .house-stage a { color: inherit; font: inherit; text-decoration: none; cursor: pointer; }
 .house-stage button:disabled { opacity: .55; cursor: default; }
-.house-hud { background: var(--house-panel); border: 1px solid var(--house-line); color: var(--house-text); box-shadow: 0 4px 15px #24382b22; backdrop-filter: blur(12px); }
-.house-top { position: absolute; inset: 22px 22px auto; display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 14px; pointer-events: none; }
+.house-hud { background: var(--house-panel); border: 1px solid var(--house-line); color: var(--house-text); box-shadow: 0 8px 28px rgba(24, 38, 30, 0.10); backdrop-filter: blur(16px); }
+.house-top { position: absolute; inset: 20px 22px auto; display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 14px; pointer-events: none; z-index: 4; }
 .house-top > * { pointer-events: auto; }
-.house-brand { display: flex; align-items: center; gap: 9px; width: max-content; padding: 7px 10px 7px 7px; border-radius: 12px; }
-.house-brand-icon { width: 38px; height: 38px; border-radius: 8px; display: grid; place-items: center; color: #fffff3; background: var(--house-accent); }
-.house-brand strong { display: flex; align-items: center; gap: 6px; font-size: 1.04rem; line-height: 1.15; }
-.house-brand-tag { font-style: normal; font-size: .68rem; font-weight: 500; color: #4e6354; }
-.house-brand small { display: block; margin-top: 4px; color: #536055; font-size: .69rem; }
-.house-back-icon { margin-left: 5px; }
-.house-brand:hover { background: #fffcf4; }
-.house-mode, .house-toolbar { display: flex; gap: 3px; padding: 4px; border-radius: 12px; }
-.house-toolbar { justify-self: end; flex-wrap: wrap; justify-content: end; }
-.house-mode button, .house-toolbar button, .house-footer button { display: inline-flex; justify-content: center; align-items: center; gap: 5px; min-height: 42px; border: 0; border-radius: 8px; background: transparent; white-space: nowrap; }
-.house-mode button { padding: 0 16px; font-size: .87rem; }
-.house-toolbar button { width: 41px; padding: 0; }
-.house-mode button:hover, .house-toolbar button:hover, .house-footer button:hover { background: #e4ebe0; }
-.house-mode button[aria-pressed="true"] { background: var(--house-accent); color: #fffdf6; }
-.house-mode .mode-key { min-width: 17px; min-height: 17px; font-size: .66rem; margin-left: 2px; opacity: .82; }
-.house-mode button[aria-pressed="true"] .mode-key { background: #ffffff2e; border-color: #ffffff44; color: #fffdf6; }
-.house-toolbar button[aria-pressed="true"] { background: #dce9dc; color: #294533; }
-.house-location { position: absolute; top: 89px; left: 50%; transform: translateX(-50%); padding: 7px 13px; background: #2c4839f0; color: #fffdf4; border-radius: 8px; font-size: .8rem; white-space: nowrap; pointer-events: none; }
-.house-active-props { position: absolute; top: 96px; left: 22px; max-width: min(320px, calc(50vw - 90px)); padding: 5px 11px; border-radius: 999px; font-size: .74rem; color: #3d5244; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-.house-reticle { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; transform: translate(-50%, -50%); border-radius: 50%; background: #fffef0; box-shadow: 0 0 0 1px #36503b88, 0 0 4px #29352e5e; pointer-events: none; }
-.house-map-wrap { position: absolute; left: 22px; bottom: 88px; }
-.house-pet { position: absolute; right: 22px; bottom: 88px; display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 12px; border-radius: 12px; }
-.house-pet-info { display: flex; align-items: center; gap: 8px; }
-.house-pet-icon { color: #b67641; flex: none; }
-.house-pet strong { display: block; font-size: .78rem; line-height: 1.2; }
-.house-pet small { display: block; font-size: .70rem; color: #536055; margin-top: 2px; }
-.house-pet button { padding: 5px 10px; border: 0; border-radius: 8px; background: var(--house-accent); color: #fffdf6; font-size: .76rem; white-space: nowrap; }
-.house-pet button:hover { filter: brightness(1.07); }
-.house-footer { position: absolute; bottom: 22px; left: 22px; right: 22px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 8px 4px 13px; border-radius: 12px; }
-.house-footer p { min-width: 0; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; font-size: .77rem; color: #465447; }
-.house-footer button { padding: 0 9px; font-size: .8rem; }
-.house-footer-actions { display: flex; flex: none; gap: 4px; }
-.house-divider { height: 17px; width: 1px; margin: 0 6px; background: #89968760; }
-.house-stage kbd { display: inline-grid; min-width: 20px; min-height: 20px; place-items: center; padding: 0 3px; border-radius: 4px; border: 1px solid #b7c1b2; background: #fcfbf4; font: 700 .72rem var(--jr-font); color: #334f3e; }
-.house-stage .house-interaction { position: absolute; bottom: 14%; left: 50%; transform: translateX(-50%); min-height: 45px; display: flex; align-items: center; gap: 8px; border-radius: 10px; padding: 6px 11px; color: var(--house-text); font-size: .87rem; white-space: nowrap; }
-.house-action-toast { position: absolute; bottom: calc(14% + 56px); left: 50%; transform: translateX(-50%); margin: 0; border-radius: 999px; padding: 6px 14px; font-size: .82rem; font-weight: 550; color: var(--house-text); pointer-events: none; white-space: nowrap; }
-.house-interaction:hover { background: #fffcf4; }
-.house-interaction kbd { color: #fffdf7; background: var(--house-accent); border: 0; }
+.house-brand { display: flex; align-items: center; gap: 10px; width: max-content; padding: 8px 12px 8px 8px; border-radius: 16px; }
+.house-brand-icon { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; color: #ffffff; background: var(--house-accent); }
+.house-brand strong { display: flex; align-items: center; gap: 6px; font-size: 1.02rem; line-height: 1.15; font-weight: 650; }
+.house-brand-tag { font-style: normal; font-size: .68rem; font-weight: 500; color: #54665b; }
+.house-brand small { display: block; margin-top: 3px; color: #5c6d62; font-size: .71rem; }
+.house-back-icon { margin-left: 4px; opacity: .68; }
+.house-brand:hover { background: rgba(255, 255, 255, 0.92); }
+.house-mode { display: flex; gap: 4px; padding: 4px; border-radius: 14px; }
+.house-toolbar-wrap { position: relative; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.house-toolbar { display: flex; gap: 4px; padding: 4px; border-radius: 14px; }
+.house-mode button, .house-toolbar button { display: inline-flex; justify-content: center; align-items: center; gap: 6px; min-height: 38px; border: 0; border-radius: 10px; background: transparent; white-space: nowrap; }
+.house-mode button { padding: 0 15px; font-size: .85rem; font-weight: 550; }
+.house-toolbar button { width: 38px; padding: 0; color: #36493d; }
+.house-mode button:hover, .house-toolbar button:hover { background: #e4ede6; }
+.house-mode button[aria-pressed="true"] { background: var(--house-accent); color: #ffffff; }
+.house-mode .mode-key { min-width: 17px; min-height: 17px; font-size: .66rem; margin-left: 1px; opacity: .82; }
+.house-mode button[aria-pressed="true"] .mode-key { background: rgba(255, 255, 255, 0.22); border-color: rgba(255, 255, 255, 0.34); color: #ffffff; }
+.house-toolbar button[aria-pressed="true"] { background: #dcebe0; color: #224432; }
+.house-tools-menu { display: grid; gap: 3px; min-width: 176px; padding: 6px; border-radius: 14px; }
+.house-tools-menu button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px 10px; border: 0; border-radius: 9px; background: transparent; font-size: .80rem; text-align: left; }
+.house-tools-menu button:hover { background: #e6efe8; }
+.house-tools-menu button[aria-pressed="true"] { background: #dcebe0; color: #224432; font-weight: 600; }
+.house-active-props { position: absolute; top: 88px; left: 22px; max-width: min(320px, calc(50vw - 90px)); padding: 5px 12px; border-radius: 999px; font-size: .73rem; color: #354b3d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.house-reticle { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; transform: translate(-50%, -50%); border-radius: 50%; background: #ffffff; box-shadow: 0 0 0 1.5px rgba(43, 81, 62, 0.55), 0 0 6px rgba(0, 0, 0, 0.25); pointer-events: none; }
+.house-map-wrap { position: absolute; left: 22px; bottom: 20px; z-index: 3; }
+.house-pet { position: absolute; right: 22px; bottom: 20px; z-index: 3; display: flex; align-items: center; gap: 14px; padding: 10px 12px 10px 14px; border-radius: 16px; }
+.house-pet-info { display: flex; align-items: center; gap: 9px; }
+.house-pet-icon { color: #365945; flex: none; }
+.house-pet strong { display: block; font-size: .82rem; font-weight: 650; line-height: 1.2; color: #233329; }
+.house-pet small { display: block; font-size: .71rem; color: #5b6c61; margin-top: 3px; }
+.house-pet button { padding: 7px 14px; border: 0; border-radius: 10px; background: #e2eee5; color: #2b513e; font-size: .78rem; font-weight: 650; white-space: nowrap; }
+.house-pet button:hover { background: #d4e6d9; }
+.house-stage kbd { display: inline-grid; min-width: 20px; min-height: 20px; place-items: center; padding: 0 4px; border-radius: 5px; border: 1px solid #b7c3b9; background: #ffffff; font: 700 .72rem var(--jr-font); color: #2b513e; }
+.house-stage .house-interaction { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 3; min-height: 44px; display: flex; align-items: center; gap: 9px; border-radius: 12px; padding: 7px 15px 7px 10px; color: var(--house-text); font-size: .87rem; font-weight: 550; white-space: nowrap; }
+.house-action-toast { position: absolute; top: 82px; left: 50%; transform: translateX(-50%); z-index: 3; margin: 0; border-radius: 10px; padding: 7px 15px; background: rgba(34, 52, 42, 0.88); color: #ffffff; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16); backdrop-filter: blur(12px); font-size: .80rem; font-weight: 550; pointer-events: none; white-space: nowrap; }
+.house-interaction:hover { background: rgba(255, 255, 255, 0.94); }
+.house-interaction kbd { min-width: 24px; min-height: 24px; border-radius: 6px; color: #ffffff; background: var(--house-accent); border: 0; }
 .house-cover { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 18px; }
 .house-cover button, .house-help form button { border: 0; border-radius: 8px; padding: 9px 14px; background: var(--house-accent); color: #fffdf5; justify-self: center; }
 .house-alert { position: absolute; top: 83px; right: 22px; border-radius: 8px; padding: 10px; }
