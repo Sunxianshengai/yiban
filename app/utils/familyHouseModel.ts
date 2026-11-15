@@ -1,6 +1,7 @@
 import {
   Box3, BoxGeometry, CanvasTexture, Color, CylinderGeometry, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial,
-  PlaneGeometry, PointLight, RepeatWrapping, SphereGeometry, SRGBColorSpace, type BufferGeometry, type Object3D,
+  NoColorSpace, PlaneGeometry, PointLight, RepeatWrapping, SphereGeometry, SRGBColorSpace,
+  type BufferGeometry, type Material, type Object3D,
 } from 'three'
 import { floorRise, halfDepth, halfWidth, houseDepth, houseLevels, houseWidth, porch, stairs, type Bounds2D } from './familyHouseLayout'
 
@@ -16,7 +17,10 @@ export interface HousePetRig {
   head: Group | null
 }
 
-function makeCanvasTexture(size: number, repeatX: number, repeatY: number, draw: (ctx: CanvasRenderingContext2D, s: number) => void) {
+function makeCanvasTexture(
+  size: number, repeatX: number, repeatY: number,
+  draw: (ctx: CanvasRenderingContext2D, s: number) => void, srgb = true,
+) {
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = size
   const ctx = canvas.getContext('2d')!
@@ -24,7 +28,7 @@ function makeCanvasTexture(size: number, repeatX: number, repeatY: number, draw:
   const tex = new CanvasTexture(canvas)
   tex.wrapS = tex.wrapT = RepeatWrapping
   tex.repeat.set(repeatX, repeatY)
-  tex.colorSpace = SRGBColorSpace
+  tex.colorSpace = srgb ? SRGBColorSpace : NoColorSpace
   return tex
 }
 
@@ -62,43 +66,110 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   roof.name = 'Flat roof and parapet'
 
   type MaterialKind = 'matte' | 'plaster' | 'oak' | 'fabric' | 'ceramic' | 'metal' | 'curtain' | 'lamp' | 'screen'
-  const oakTex = makeCanvasTexture(128, 3, 2, (ctx, s) => {
+  const oakTex = makeCanvasTexture(256, 3, 2, (ctx, s) => {
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, s, s)
-    ctx.strokeStyle = 'rgba(130, 95, 55, 0.14)'
-    ctx.lineWidth = 1.5
-    for (let y = 0; y < s; y += 16) {
+    // 细密木纹纤维与年轮层次
+    for (let i = 0; i < 64; i++) {
+      const y = (i * 13) % s
+      ctx.strokeStyle = i % 3 === 0 ? 'rgba(116, 82, 46, 0.14)' : 'rgba(138, 102, 62, 0.08)'
+      ctx.lineWidth = i % 5 === 0 ? 2 : 1
+      ctx.beginPath()
+      ctx.moveTo(0, y)
+      ctx.bezierCurveTo(s * 0.3, y + ((i % 2 ? 1 : -1) * 4), s * 0.7, y + ((i % 2 ? -1 : 1) * 4), s, y)
+      ctx.stroke()
+    }
+    ctx.strokeStyle = 'rgba(105, 74, 42, 0.22)'
+    ctx.lineWidth = 2
+    for (let y = 0; y < s; y += 32) {
       ctx.beginPath()
       ctx.moveTo(0, y)
       ctx.lineTo(s, y)
       ctx.stroke()
     }
-    ctx.strokeStyle = 'rgba(120, 88, 52, 0.08)'
-    for (let i = 0; i < 24; i++) {
-      const y = (i * 19) % s
+    // 细微木结
+    for (const [kx, ky, kr] of [[68, 48, 8], [192, 144, 6], [124, 208, 7]] as const) {
+      const grad = ctx.createRadialGradient(kx, ky, 1, kx, ky, kr * 2)
+      grad.addColorStop(0, 'rgba(110, 78, 46, 0.20)')
+      grad.addColorStop(1, 'rgba(110, 78, 46, 0)')
+      ctx.fillStyle = grad
       ctx.beginPath()
-      ctx.moveTo(0, y)
-      ctx.bezierCurveTo(s * 0.35, y + 3, s * 0.7, y - 3, s, y)
-      ctx.stroke()
+      ctx.ellipse(kx, ky, kr * 2.2, kr, 0.1, 0, Math.PI * 2)
+      ctx.fill()
     }
   })
-  const plasterTex = makeCanvasTexture(128, 4, 4, (ctx, s) => {
+  const oakBumpTex = makeCanvasTexture(256, 3, 2, (ctx, s) => {
+    ctx.fillStyle = '#808080'
+    ctx.fillRect(0, 0, s, s)
+    for (let i = 0; i < 64; i++) {
+      const y = (i * 13) % s
+      ctx.strokeStyle = i % 2 ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.18)'
+      ctx.lineWidth = 1.2
+      ctx.beginPath()
+      ctx.moveTo(0, y)
+      ctx.bezierCurveTo(s * 0.35, y + 3, s * 0.65, y - 3, s, y)
+      ctx.stroke()
+    }
+    ctx.strokeStyle = 'rgba(0,0,0,0.42)'
+    ctx.lineWidth = 2
+    for (let y = 0; y < s; y += 32) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(s, y); ctx.stroke()
+    }
+  }, false)
+  const oakRoughTex = makeCanvasTexture(256, 3, 2, (ctx, s) => {
+    ctx.fillStyle = '#8a8a8a'
+    ctx.fillRect(0, 0, s, s)
+    for (let i = 0; i < 48; i++) {
+      const y = (i * 17) % s
+      ctx.strokeStyle = i % 2 ? 'rgba(255,255,255,0.18)' : 'rgba(40,40,40,0.22)'
+      ctx.lineWidth = 1.5
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(s, y); ctx.stroke()
+    }
+  }, false)
+  const plasterTex = makeCanvasTexture(256, 4, 4, (ctx, s) => {
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, s, s)
-    for (let i = 0; i < 260; i++) {
-      const x = (i * 53) % s
-      const y = (i * 97) % s
-      ctx.fillStyle = i % 2 ? 'rgba(0,0,0,0.025)' : 'rgba(255,255,255,0.04)'
+    for (let i = 0; i < 900; i++) {
+      const x = (i * 73) % s
+      const y = (i * 139) % s
+      ctx.fillStyle = i % 2 ? 'rgba(0,0,0,0.024)' : 'rgba(255,255,255,0.04)'
       ctx.fillRect(x, y, 2, 2)
     }
   })
-  const fabricTex = makeCanvasTexture(64, 6, 6, (ctx, s) => {
+  const plasterBumpTex = makeCanvasTexture(256, 4, 4, (ctx, s) => {
+    ctx.fillStyle = '#808080'
+    ctx.fillRect(0, 0, s, s)
+    for (let i = 0; i < 1100; i++) {
+      const x = (i * 67) % s
+      const y = (i * 127) % s
+      ctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'
+      ctx.fillRect(x, y, 2, 2)
+    }
+  }, false)
+  const fabricTex = makeCanvasTexture(128, 10, 10, (ctx, s) => {
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, s, s)
-    ctx.fillStyle = 'rgba(0,0,0,0.045)'
-    for (let y = 0; y < s; y += 4) ctx.fillRect(0, y, s, 1)
-    for (let x = 0; x < s; x += 4) ctx.fillRect(x, 0, 1, s)
+    for (let y = 0; y < s; y += 4) {
+      ctx.fillStyle = y % 8 === 0 ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.02)'
+      ctx.fillRect(0, y, s, 1)
+    }
+    for (let x = 0; x < s; x += 4) {
+      ctx.fillStyle = x % 8 === 0 ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.04)'
+      ctx.fillRect(x, 0, 1, s)
+    }
   })
+  const fabricBumpTex = makeCanvasTexture(128, 10, 10, (ctx, s) => {
+    ctx.fillStyle = '#808080'
+    ctx.fillRect(0, 0, s, s)
+    for (let y = 0; y < s; y += 4) {
+      ctx.fillStyle = y % 8 === 0 ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.18)'
+      ctx.fillRect(0, y, s, 2)
+    }
+    for (let x = 0; x < s; x += 4) {
+      ctx.fillStyle = x % 8 === 0 ? 'rgba(255,255,255,0.20)' : 'rgba(0,0,0,0.16)'
+      ctx.fillRect(x, 0, 2, s)
+    }
+  }, false)
   const contactShadowTex = makeContactShadowTexture()
   const contactShadowMat = new MeshBasicMaterial({
     map: contactShadowTex, transparent: true, depthWrite: false, opacity: .68,
@@ -109,22 +180,64 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
     const key = `${kind}:${color}`
     let found = materials.get(key)
     if (!found) {
-      if (kind === 'oak') found = new MeshStandardMaterial({ color, map: oakTex, roughness: .44 })
-      else if (kind === 'plaster') found = new MeshStandardMaterial({ color, map: plasterTex, roughness: .88 })
-      else if (kind === 'fabric') found = new MeshStandardMaterial({ color, map: fabricTex, roughness: .93 })
-      else if (kind === 'ceramic') found = new MeshStandardMaterial({ color, roughness: .16, metalness: .04 })
-      else if (kind === 'metal') found = new MeshStandardMaterial({ color, roughness: .26, metalness: .78 })
-      else if (kind === 'curtain') found = new MeshStandardMaterial({ color, roughness: .85, transparent: true, opacity: .74, depthWrite: false })
-      else if (kind === 'lamp') {
+      if (kind === 'oak') {
+        found = new MeshStandardMaterial({
+          color, map: oakTex, bumpMap: oakBumpTex, bumpScale: .015, roughnessMap: oakRoughTex,
+          roughness: .54, envMapIntensity: .90,
+        })
+      } else if (kind === 'plaster') {
+        found = new MeshStandardMaterial({
+          color, map: plasterTex, bumpMap: plasterBumpTex, bumpScale: .007, roughness: .88, envMapIntensity: .70,
+        })
+      } else if (kind === 'fabric') {
+        found = new MeshStandardMaterial({
+          color, map: fabricTex, bumpMap: fabricBumpTex, bumpScale: .014, roughness: .94, envMapIntensity: .55,
+        })
+      } else if (kind === 'ceramic') {
+        found = new MeshStandardMaterial({ color, roughness: .14, metalness: .04, envMapIntensity: 1.25 })
+      } else if (kind === 'metal') {
+        found = new MeshStandardMaterial({ color, roughness: .24, metalness: .82, envMapIntensity: 1.20 })
+      } else if (kind === 'curtain') {
+        found = new MeshStandardMaterial({
+          color, map: fabricTex, roughness: .86, transparent: true, opacity: .76, depthWrite: false,
+        })
+      } else if (kind === 'lamp') {
         found = new MeshStandardMaterial({ color, emissive: '#ffd7a3', emissiveIntensity: 1.25, roughness: .42 })
         emissiveMaterials.push(found)
       } else if (kind === 'screen') {
         found = new MeshStandardMaterial({ color, emissive: '#9dc4d8', emissiveIntensity: .55, roughness: .22 })
         emissiveMaterials.push(found)
-      } else found = new MeshStandardMaterial({ color, roughness: .79 })
+      } else found = new MeshStandardMaterial({ color, roughness: .78, envMapIntensity: .75 })
       materials.set(key, found)
     }
     return found
+  }
+  const enhancedMaterials = new WeakSet<Material>()
+  const hslScratch = { h: 0, s: 0, l: 0 }
+  function enhanceGlbObject(root: Object3D) {
+    root.traverse(child => {
+      if (!(child instanceof Mesh)) return
+      const hasUv = Boolean(child.geometry?.getAttribute('uv'))
+      const mats = Array.isArray(child.material) ? child.material : [child.material]
+      for (const mat of mats) {
+        if (!(mat instanceof MeshStandardMaterial) || enhancedMaterials.has(mat)) continue
+        enhancedMaterials.add(mat)
+        mat.envMapIntensity = mat.metalness >= .45 || mat.roughness < .28 ? 1.25 : .92
+        if (hasUv && !mat.map && !mat.normalMap && !mat.bumpMap) {
+          mat.color.getHSL(hslScratch)
+          const isWarmWood = mat.metalness < .2 && mat.roughness >= .32 && mat.roughness < .74
+            && hslScratch.h >= .03 && hslScratch.h <= .15 && hslScratch.s >= .18
+          if (isWarmWood) {
+            mat.bumpMap = oakBumpTex
+            mat.bumpScale = .011
+          } else if (mat.metalness < .2 && mat.roughness >= .72) {
+            mat.bumpMap = fabricBumpTex
+            mat.bumpScale = .010
+          }
+        }
+        mat.needsUpdate = true
+      }
+    })
   }
   const geoCache = new Map<string, BufferGeometry>()
   const boxGeo = (w: number, h: number, d: number) => {
@@ -187,6 +300,7 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
     const template = templates.get(id)
     if (!template) throw new Error(`Furniture ${id} is missing from the reference GLB`)
     const object = template.clone(true)
+    enhanceGlbObject(object)
     object.position.set(x, options.y ?? 0, z)
     object.rotation.y += options.angle ?? 0
     object.scale.multiplyScalar(options.scale ?? 1)
@@ -202,6 +316,7 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
     const template = extras[key]
     if (!template) return null
     const object = template.clone(true)
+    enhanceGlbObject(object)
     const scale = options.scale ?? 1
     object.scale.multiplyScalar(scale)
     object.rotation.y += options.angle ?? 0

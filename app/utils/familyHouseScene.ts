@@ -211,19 +211,28 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   const sun = new DirectionalLight('#fff1dd', 2.45)
   sun.position.set(-3, 12, 8)
   sun.castShadow = true
-  sun.shadow.mapSize.set(1024, 1024)
-  Object.assign(sun.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: .5, far: 29 })
-  sun.shadow.normalBias = .035
-  sun.shadow.bias = -.00012
-  sun.shadow.radius = 2
+  sun.shadow.mapSize.set(2048, 2048)
+  Object.assign(sun.shadow.camera, { left: -11, right: 11, top: 11, bottom: -11, near: .5, far: 32 })
+  sun.shadow.normalBias = .032
+  sun.shadow.bias = -.00010
+  sun.shadow.radius = 2.4
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = PCFShadowMap
   renderer.shadowMap.autoUpdate = false
+  const anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy())
   model.house.traverse(object => {
     if (!(object instanceof Mesh)) return
     const mats = Array.isArray(object.material) ? object.material : [object.material]
     object.castShadow = mats.every(mat => !mat.transparent)
     object.receiveShadow = true
+    for (const mat of mats) {
+      for (const value of Object.values(mat)) {
+        if (value instanceof Texture && value.anisotropy < anisotropy) {
+          value.anisotropy = anisotropy
+          value.needsUpdate = true
+        }
+      }
+    }
   })
   const ambient = new HemisphereLight('#fff7ee', '#afa69a', 1.22)
   scene.add(sun, sun.target, ambient)
