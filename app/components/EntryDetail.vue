@@ -134,6 +134,7 @@ async function downloadEntry(format: 'zip' | 'docx' | 'epub' | 'pdf') {
         </span>
       </div>
 
+      <slot name="actions" />
       <!-- 家人条目只读：无编辑/导出/删除等本地操作 -->
       <div v-if="!isFamily" class="jr-detail-actions">
         <button class="jr-detail-btn" :class="{ on: !!entry.favourite }" title="收藏" @click="emit('toggleFavourite')">

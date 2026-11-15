@@ -1,7 +1,8 @@
 <script setup lang="ts">
 const router = useRouter()
+const route = useRoute()
 </script>
 
 <template>
-  <SettingsView @close="router.back()" />
+  <SettingsView :open-family="route.query.section === 'family'" @close="router.back()" />
 </template>

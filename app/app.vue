@@ -10,6 +10,7 @@ const isPetPage = computed(() => route.name === 'pet' || route.path.replace(/\/+
 const isPalPage = computed(() => route.path.replace(/\/+$/, '') === '/pal')
 // /welcome 落地页：整页自绘（不套侧栏/移动壳，不挂悬浮桌宠——小羊在 Hero 里）
 const isWelcomePage = computed(() => route.path.replace(/\/+$/, '') === '/welcome')
+const isFamilyHousePage = computed(() => route.name === 'family-house')
 
 const onboarded = ref(true)
 const locked = ref(false)
@@ -52,7 +53,7 @@ onMounted(async () => {
       <LockOverlay @unlocked="locked = false" />
     </template>
     <template v-else>
-      <NuxtPage v-if="isWelcomePage" />
+      <NuxtPage v-if="isWelcomePage || isFamilyHousePage" />
       <template v-else>
         <button v-if="!isMobile" class="jr-sidebar-toggle" type="button" aria-label="打开侧栏" @click="sidebarOpen = !sidebarOpen">
           <JrIcon :path="mdiMenu" :size="20" />
@@ -72,7 +73,7 @@ onMounted(async () => {
       <OnboardingModal v-if="!onboarded" @finish="onboarded = true" />
       <MembershipDialog v-if="membershipOpen" @close="membershipOpen = false" />
       <!-- 未锁、已完成引导时才放出来，免得盖住引导层；/pet 独立页已在上面提前返回；/pal 有自己的小羊 -->
-      <PetWidget v-if="petVisible && onboarded && !isPalPage && !isWelcomePage" embedded />
+      <PetWidget v-if="petVisible && onboarded && !isPalPage && !isWelcomePage && !isFamilyHousePage" embedded />
     </template>
   </div>
 </template>

@@ -100,8 +100,8 @@ export const cloudApi = {
 
   pull: (since?: string) =>
     call<{ entries: WireEntry[]; serverTime: string }>(`/api/entries${since ? `?since=${encodeURIComponent(since)}` : ''}`, 'GET'),
-  push: (entries: WireEntry[]) =>
-    call<{ entries: WireEntry[]; serverTime: string }>('/api/entries/push', 'POST', { entries }),
+  push: (entries: WireEntry[], family?: { groupId: string; userId: string }) =>
+    call<{ entries: WireEntry[]; serverTime: string }>('/api/entries/push', 'POST', { entries, family }),
 
   pullMedia: (since?: string) =>
     call<{ media: WireMedia[]; serverTime: string }>(`/api/media${since ? `?since=${encodeURIComponent(since)}` : ''}`, 'GET'),
@@ -117,6 +117,8 @@ export const cloudApi = {
   familySetNickname: (nickname: string) => call<{ ok: boolean; nickname: string }>('/api/family/nickname', 'POST', { nickname }),
   familyLeave: () => call<{ ok: boolean; dissolved: boolean }>('/api/family/leave', 'POST', {}),
   familyFeed: () => call<FamilyFeed>('/api/family/feed', 'GET'),
+  familyRemoveEntry: (body: { clientId: string; ownerUserId: string; action: 'withdraw' | 'trash' }) =>
+    call<{ dateModified: string }>('/api/family/remove-entry', 'POST', body),
   familyMediaUrls: (pathnames: string[]) => call<{ urls: Record<string, string> }>('/api/family/media-url', 'POST', { pathnames }),
   familySocial: (body: { entryOwnerUserId: string; entryClientId: string; kind: 'comment' | 'contribution'; content: string }) =>
     call<{ social: FamilyFeedSocial }>('/api/family/social', 'POST', body),

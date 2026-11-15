@@ -24,6 +24,7 @@ export const entrySchema = z.object({
 
 export const pushSchema = z.object({
   entries: z.array(entrySchema).max(500).default([]),
+  family: z.object({ groupId: z.uuid(), userId: z.uuid() }).optional(),
 })
 
 export function toWire(row: Record<string, unknown>) {

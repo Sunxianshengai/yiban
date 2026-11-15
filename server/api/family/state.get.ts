@@ -5,6 +5,7 @@ import { listMembers } from '../../utils/family'
 
 /** GET /api/family/state → 我的组 + 成员列表 + 我的身份；没加入时返回 { group: null }。 */
 export default defineEventHandler(async (event) => {
+  setResponseHeader(event, 'Cache-Control', 'private, no-store')
   const user = await requireUser(event)
   await ensureSchema()
   const rows = await sql()`

@@ -10,7 +10,7 @@ import { cloudApi } from '~/utils/cloudApi'
  */
 export function useMediaResolver() {
   /** pathname → 预签名地址 */
-  const signed = new Map<string, string>()
+  const signed = new Map<string, { url: string; expiresAt: number }>()
   /** 本地 blob → objectURL，卸载时统一释放 */
   const objects = new Map<Blob, string>()
 
@@ -23,9 +23,15 @@ export function useMediaResolver() {
   }
 
   /** 同步取地址：本地 blob 优先，其次用已经 prefetch 过的预签名地址。 */
+  function signedUrl(pathname: string) {
+    const cached = signed.get(pathname)
+    if (cached && Date.now() < cached.expiresAt) return cached.url
+    signed.delete(pathname)
+  }
+
   function urlForSync(row: MediaFileV2): string | undefined {
     if (row.blob) return objectUrl(row.blob)
-    return row.remotePathname ? signed.get(row.remotePathname) : undefined
+    return row.remotePathname ? signedUrl(row.remotePathname) : undefined
   }
 
   /**
@@ -34,13 +40,13 @@ export function useMediaResolver() {
    */
   async function prefetch(rows: MediaFileV2[]) {
     const need = [...new Set(rows.flatMap(row => (!row.blob && row.remotePathname ? [row.remotePathname] : [])))]
-      .filter(pathname => !signed.has(pathname))
+      .filter(pathname => !signedUrl(pathname))
     if (!need.length) return
     // 服务端一次最多签 50 个，分批避免超限
     for (let i = 0; i < need.length; i += 50) {
       try {
         const { urls } = await cloudApi.downloadUrls(need.slice(i, i + 50))
-        for (const [pathname, url] of Object.entries(urls)) signed.set(pathname, url)
+        for (const [pathname, url] of Object.entries(urls)) signed.set(pathname, { url, expiresAt: Date.now() + 9 * 60_000 })
       } catch {
         // 未登录或网络异常：这些附件就渲染成占位，不影响正文
         return
@@ -53,12 +59,12 @@ export function useMediaResolver() {
    * 签好的地址进同一张 signed 表，urlForSync 无需区分来源。
    */
   async function prefetchFamily(pathnames: string[]) {
-    const need = [...new Set(pathnames)].filter(p => p && !signed.has(p))
+    const need = [...new Set(pathnames)].filter(p => p && !signedUrl(p))
     if (!need.length) return
     for (let i = 0; i < need.length; i += 50) {
       try {
         const { urls } = await cloudApi.familyMediaUrls(need.slice(i, i + 50))
-        for (const [pathname, url] of Object.entries(urls)) signed.set(pathname, url)
+        for (const [pathname, url] of Object.entries(urls)) signed.set(pathname, { url, expiresAt: Date.now() + 9 * 60_000 })
       } catch {
         // 未登录/不在组/网络异常：渲染成占位，不影响正文
         return
@@ -85,5 +91,5 @@ export function useMediaResolver() {
     signed.clear()
   }
 
-  return { urlForSync, prefetch, prefetchFamily, fetchBlob, dispose }
+  return { urlForSync, signedUrl, prefetch, prefetchFamily, fetchBlob, dispose }
 }

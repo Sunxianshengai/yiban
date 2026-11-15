@@ -2,7 +2,7 @@
 // Day One 移动壳（W1 采集 40-mobile-main/41/56 证据 + ledger O14）：
 // 顶栏=左日记本图标(开导航抽屉)+中视图胶囊+右搜索；无底部 tab；FAB 右下圆角方块。
 // 安卓原生 APK 未采成（Cloudflare 拦，ledger U2），移动形态以 Day One web 移动视口 390x844 为准。
-import { mdiBookOutline, mdiMagnify, mdiCogOutline, mdiCloudOutline, mdiRobotOutline, mdiMapMarkerOutline, mdiPawOutline, mdiPawOffOutline, mdiWalletGiftcard } from '@mdi/js'
+import { mdiBookOutline, mdiMagnify, mdiCogOutline, mdiCloudOutline, mdiRobotOutline, mdiMapMarkerOutline, mdiPawOutline, mdiPawOffOutline, mdiWalletGiftcard, mdiAccountGroupOutline } from '@mdi/js'
 
 const route = useRoute()
 const drawerOpen = ref(false)
@@ -36,6 +36,9 @@ const { visible: petVisible, toggle: togglePet } = usePetWidget()
               <JrIcon :path="mdiCloudOutline" :size="21" />
             </NuxtLink>
           </div>
+          <NuxtLink to="/family" class="drow" :class="{ on: route.path.startsWith('/family') }" @click="drawerOpen = false">
+            <JrIcon :path="mdiAccountGroupOutline" :size="20" /><span>我们的小家</span>
+          </NuxtLink>
           <NuxtLink to="/pal" class="drow" :class="{ on: route.path.startsWith('/pal') }" @click="drawerOpen = false">
             <JrIcon :path="mdiRobotOutline" :size="20" /><span>日记伙伴</span>
           </NuxtLink>

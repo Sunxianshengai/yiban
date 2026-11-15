@@ -33,7 +33,7 @@ const travelSearch = computed(() => (route.query.query ?? route.query.q) === '�
 const starredCount = computed(() => entries.value.filter(e => !!e.favourite).length)
 
 // ---- 家庭组（M-209 门面卡）：成员头像行 + 最新家人动态 + 聚合红点 ----
-const { state: familyState, feed: familyFeed, hasAnyFamilyUnseen, markFamilySeen } = useFamilySync()
+const { state: familyState, feed: familyFeed, hasAnyFamilyUnseen } = useFamilySync()
 const familyGroup = computed(() => familyState.value.group)
 const familyMembers = computed(() => (familyState.value.members || []).slice(0, 6))
 const familyExtra = computed(() => Math.max(0, (familyState.value.members || []).length - 6))
@@ -45,18 +45,6 @@ const latestFamilyLine = computed(() => {
   const text = (e.previewText || e.text || '').replace(/<[^>]*>/g, '').trim()
   return `${e.ownerNickname}：${text.slice(0, 26) || '写了一篇新日记'}`
 })
-function openFamily() {
-  markFamilySeen()
-  if (familyGroup.value) {
-    // 家人条目混排在自己的时间线里
-    emit('navigate')
-    navigateTo('/')
-  } else {
-    // 直达设置的家庭组页
-    settingsOpen.value = true
-  }
-}
-
 // ---- 本月统计卡：本月篇数 / 照片数 / 连续天数（Streak 语义同 JournalOverview）----
 const photoCount = ref(0)
 const monthCount = computed(() => {
@@ -160,11 +148,10 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
       <span class="jr-nav-text">介绍</span>
     </NuxtLink>
 
-    <!-- 家庭组卡（M-209 门面）：已加入=成员头像行+最新家人动态+聚合红点；未加入=引导直达设置 -->
-    <button type="button" class="jr-side-family-card" @click="openFamily">
+    <NuxtLink to="/family" class="jr-side-family-card" aria-label="我们的小家">
       <span class="jr-fam-head">
         <JrIcon :path="familyGroup ? mdiAccountGroupOutline : mdiAccountMultipleOutline" :size="16" style="color:var(--jr-primary)" />
-        <span class="jr-fam-title">{{ familyGroup ? familyGroup.name : '家人一起记录' }}</span>
+        <span class="jr-fam-title">我们的小家</span>
         <i v-if="familyUnread" class="jr-family-dot" title="家人有新动态" />
       </span>
       <span v-if="familyGroup" class="jr-fam-avatars">
@@ -175,10 +162,10 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
         <span v-if="familyExtra" class="jr-fam-extra">+{{ familyExtra }}</span>
       </span>
       <span v-if="familyGroup" class="jr-fam-line" :class="{ on: familyUnread }">
-        {{ familyUnread ? '有新互动，去时间线看看' : (latestFamilyLine || '家人还没有共享日记') }}
+        {{ familyUnread ? '有新互动' : (latestFamilyLine || familyGroup.name) }}
       </span>
       <span v-else class="jr-fam-line">邀请家人，共写一本家庭日记</span>
-    </button>
+    </NuxtLink>
 
     <!-- 本月统计卡：本月篇数 / 照片数 / 连续天数（Streak 语义同概览页） -->
     <div class="jr-side-stats" aria-label="本月统计">
@@ -292,8 +279,9 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
   font-weight: 600;
   color: var(--jr-outline);
 }
-/* 家庭组卡：整卡可点，家人内容在时间线混排 */
+/* 小家入口与最近动态 */
 .jr-side-family-card {
+  text-decoration: none;
   margin-top: 10px;
   padding: 10px 12px;
   border-radius: 12px;
@@ -308,7 +296,7 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
   width: 100%;
   font-family: inherit;
 }
-.jr-side-family-card:hover {
+.jr-side-family-card:hover, .jr-side-family-card.router-link-active {
   border-color: var(--jr-primary);
   background: var(--jr-hover);
 }

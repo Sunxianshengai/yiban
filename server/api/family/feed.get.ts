@@ -11,6 +11,7 @@ import { iso } from '../../utils/entries'
  * 私有日记永远不出现在这个接口里。
  */
 export default defineEventHandler(async (event) => {
+  setResponseHeader(event, 'Cache-Control', 'private, no-store')
   const ctx = await requireFamilyMember(event)
   await ensureSchema()
   const members = await listMembers(ctx.group.id)
@@ -40,10 +41,12 @@ export default defineEventHandler(async (event) => {
     : []
 
   const socialRows = await sql()`
-    select id, entry_owner_user_id, entry_client_id, author_user_id, author_nickname, kind, content, created_at
-    from yiban_family_socials
-    where group_id = ${ctx.group.id}
-    order by created_at asc
+    select s.id, s.entry_owner_user_id, s.entry_client_id, s.author_user_id, s.author_nickname, s.kind, s.content, s.created_at
+    from yiban_family_socials s
+    join yiban_entries e on e.user_id = s.entry_owner_user_id and e.client_id = s.entry_client_id
+    where s.group_id = ${ctx.group.id} and e.user_id = any(${memberIds})
+      and e.deleted_at is null and e.fields->>'visibility' = 'family'
+    order by s.created_at asc
     limit 2000
   ` as Record<string, unknown>[]
 

@@ -74,7 +74,8 @@ watch(() => props.entry.id, () => { menuOpen.value = false; actionStatus.value =
     <div class="bar">
       <button class="ico" aria-label="返回" @click="emit('back')"><JrIcon :path="mdiArrowLeft" :size="22" /></button>
       <span class="sp" />
-      <button class="ico" aria-label="复制链接" @click="copyLink"><JrIcon :path="mdiLinkVariant" :size="22" /></button>
+      <slot name="actions" />
+      <button v-if="!isFamily" class="ico" aria-label="复制链接" @click="copyLink"><JrIcon :path="mdiLinkVariant" :size="22" /></button>
       <!-- 家人条目只读：收藏/编辑/更多不出现 -->
       <template v-if="!isFamily">
         <button class="ico" :aria-label="entry.favourite ? '取消收藏' : '收藏'" @click="emit('toggleFavourite')">

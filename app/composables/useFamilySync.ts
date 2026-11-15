@@ -31,37 +31,41 @@ export function useFamilySync() {
   // useState 必须在 setup 上下文里调用（不能放模块顶层），跨组件共享靠同一个 key
   const state = useState<FamilyState>('jr.familyState', () => ({ group: null }))
   const feed = useState<FamilyFeed>('jr.familyFeed', () => ({ ...EMPTY_FEED }))
-  const busy = ref(false)
-  const loaded = ref(false)
+  const busy = useState('jr.familyBusy', () => false)
+  const loaded = useState('jr.familyLoaded', () => false)
+  const error = useState('jr.familyError', () => '')
   const { user, checking } = useCloudSync()
   const { entries } = useEntries()
 
-  /** 拉组状态 + 家人 feed（全量）。失败静默：保持上一次的内容。 */
+  /** 拉组状态和时间线，只有当前账号的最新请求可以写入。 */
   async function refreshFamily() {
-    if (busy.value) return
+    const userId = user.value?.id
+    if (!userId) return false
     const gen = ++generation
     busy.value = true
+    error.value = ''
     try {
       const s = await cloudApi.familyState()
-      if (gen !== generation) return
+      if (gen !== generation || user.value?.id !== userId) return false
+      if (state.value.group?.id !== s.group?.id) feed.value = { ...EMPTY_FEED }
       state.value = s
-      feed.value = s.group ? await cloudApi.familyFeed() : { ...EMPTY_FEED }
+      const next = s.group ? await cloudApi.familyFeed() : { ...EMPTY_FEED }
+      if (gen !== generation || user.value?.id !== userId) return false
+      feed.value = next
       loaded.value = true
-    } catch { /* 未登录或网络异常：保持现状 */ }
-    finally { if (gen === generation) busy.value = false }
+      return true
+    } catch {
+      if (gen === generation) error.value = '无法刷新小家，请重试。'
+      return false
+    } finally { if (gen === generation) busy.value = false }
   }
 
   const localCloudIds = computed(() => new Set(entries.value.map(e => e.cloudId).filter((v): v is string => !!v)))
 
-  /** feed 条目 → 时间线可用的只读行（EntryV2 形状 + familyAuthor 标记）。 */
-  const familyEntries = computed<FamilyTimelineEntry[]>(() => {
+  /** 家庭时间线以服务端已发布的版本为准。 */
+  const sharedEntries = computed<FamilyTimelineEntry[]>(() => {
     if (!state.value.group) return []
-    const mine = state.value.me?.userId
-    // 自己的公共日记：本地有同 cloudId 行就跳过（不重复显示）；
-    // 本地刚删、墓碑还没同步出去时也跳过——否则刚删的日记会以「家人条目」形态回到自己时间线
-    const deadCloudIds = new Set(listTombstones())
     return feed.value.entries
-      .filter(e => !(mine && e.ownerUserId === mine && (localCloudIds.value.has(e.clientId) || deadCloudIds.has(e.clientId))))
       .map((e) => {
         const key = familyKeyOf(e)
         let neg = negativeIds.get(key)
@@ -88,12 +92,20 @@ export function useFamilySync() {
       })
   })
 
+  // 原有时间线与本地条目混排，同一篇只显示一次。
+  const familyEntries = computed(() => {
+    const mine = state.value.me?.userId
+    const deadCloudIds = new Set(listTombstones())
+    return sharedEntries.value.filter(e => e.familyAuthor?.ownerUserId !== mine || !e.cloudId
+      || (!localCloudIds.value.has(e.cloudId) && !deadCloudIds.has(e.cloudId)))
+  })
+
   /** 某条家庭日记下的全部互动（评论 + 追加段落，按时间升序）。 */
   function socialsFor(ownerUserId: string, entryClientId: string): FamilyFeedSocial[] {
     return feed.value.socials.filter(s => s.entryOwnerUserId === ownerUserId && s.entryClientId === entryClientId)
   }
 
-  const seenAt = ref(typeof localStorage === 'undefined' ? 0 : Number(localStorage.getItem(SEEN_KEY) || 0))
+  const seenAt = useState('jr.familySeenAt', () => Number(localStorage.getItem(SEEN_KEY) || 0))
 
   /** 打开一篇家庭相关日记时调用：从此刻起新互动才算未读。 */
   function markFamilySeen() {
@@ -130,24 +142,22 @@ export function useFamilySync() {
     // 登录态确认后再拉（Neon 冷启动要 1–5 秒，确认期间别抢先断言未登录）
     watch([user, checking], ([u, c]) => {
       if (c) return
-      if (u) {
-        if (lastAutoUser !== u.id) {
-          lastAutoUser = u.id
-          void refreshFamily()
-        }
-      } else {
-        generation++
-        lastAutoUser = ''
-        state.value = { group: null }
-        feed.value = { ...EMPTY_FEED }
-        loaded.value = false
-      }
+      const userId = u?.id || ''
+      if (lastAutoUser === userId) return
+      generation++
+      lastAutoUser = userId
+      state.value = { group: null }
+      feed.value = { ...EMPTY_FEED }
+      busy.value = false
+      loaded.value = false
+      error.value = ''
+      if (userId) void refreshFamily()
     }, { immediate: true })
   })
 
   return {
-    state, feed, busy, loaded,
-    refreshFamily, familyEntries,
+    state, feed, busy, loaded, error,
+    refreshFamily, familyEntries, sharedEntries,
     socialsFor, markFamilySeen, hasFamilyUnseen, hasFamilyUnseenForLocal, hasAnyFamilyUnseen,
   }
 }

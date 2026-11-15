@@ -1,5 +1,6 @@
 <script setup lang="ts">
 defineEmits<{ (e: 'close'): void }>()
+const props = defineProps<{ openFamily?: boolean }>()
 import { desktopBridge } from '~/utils/desktopBridge'
 import { errorText } from '~/utils/uiText'
 import { getAmapJsKey, getAmapSecurity, getAmapWebKey, resetAmapLoader, setAmapCredentials } from '~/utils/amap'
@@ -21,8 +22,13 @@ const mSections = [
 function toggleSection(key: typeof mSections[number]['key']) {
   openSection.value = openSection.value === key ? null : key
 }
-// 设置二级页用共享 state：侧栏「家人一起记录」引导卡能直跳家庭组页
 const gen = useState<'appearance' | 'unit' | 'location' | 'pal' | 'family' | 'locale' | 'spellcheck'>('jr.settingsGen', () => 'appearance')
+const mobileFamily = ref<HTMLElement[]>()
+if (props.openFamily) {
+  gen.value = 'family'
+  openSection.value = 'general'
+  onMounted(() => mobileFamily.value?.[0]?.scrollIntoView({ block: 'start' }))
+}
 const { weekStart } = useWeekStart()
 // bug06 修复：计量单位绑定并持久化（原 select 未绑 v-model，选择即丢）
 const { unit } = useUnits()
@@ -283,7 +289,7 @@ async function wipeAll() {
           <span v-if="palSaved" class="mnote" role="status">已保存</span>
           <button class="mbtn" @click="savePal">保存日记伙伴服务</button>
         </div>
-        <p class="mnote" style="margin-top:14px"><JrIcon :path="mdiAccountMultipleOutline" :size="14" style="vertical-align:-2px" /> 家庭组：把日记共享给家人，一起评论</p>
+        <p ref="mobileFamily" class="mnote" style="margin-top:14px"><JrIcon :path="mdiAccountMultipleOutline" :size="14" style="vertical-align:-2px" /> 家庭组：把日记共享给家人，一起评论</p>
         <template v-if="familyState.group">
           <div class="mset-row"><span>家庭组</span><span class="mv">{{ familyState.group.name }}</span></div>
           <div class="mset-row">
@@ -523,14 +529,12 @@ async function wipeAll() {
                 <button class="jr-btn jr-danger" @click="familyLeave">退出家庭组</button>
               </div>
               <p class="jr-muted" style="font-size:12px;line-height:1.6;margin-top:8px">
-                写日记时点工具栏的「共享家人」可把一篇日记开放给全家：家人能在自己的时间线里看到它，
-                可以评论、也可以在文末追加自己的段落——原文始终只有你能改。私有日记不会出现在家人的任何界面里。
+                在「我们的小家」可以发日记、看家人分享的照片，也能评论或追加段落。你可以随时撤回自己分享的日记。
               </p>
             </template>
             <template v-else>
               <p class="jr-muted" style="font-size:12.5px;line-height:1.7">
-                加入家庭组后，标为「共享家人」的日记会出现在家人的时间线里，大家可评论、可追加段落。
-                每位家人用自己的账号登录后凭邀请码加入；没有账号可以在云服务页注册。
+                创建家庭组后，可以在「我们的小家」分享日记和照片。每位家人用自己的账号登录后凭邀请码加入。
               </p>
               <div class="jr-set-row" style="display:block;margin-top:10px">
                 <span class="jr-set-cap">创建家庭组</span>

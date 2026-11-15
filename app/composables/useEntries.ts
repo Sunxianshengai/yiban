@@ -152,7 +152,7 @@ export function useEntries() {
       const now = new Date()
       const { id: _id, externalId: _externalId, cloudId: _cloudId, ...rest } = row
       // 副本是独立日记：必须换新 cloudId，否则推送时会覆盖原日记的云端行
-      const copyId = await db.entriesV2.add({ ...rest, cloudId: newCloudId(), dateOfJournal: now, dateModified: now, synced: 0, ...computeTokens(now) })
+      const copyId = await db.entriesV2.add({ ...rest, cloudId: newCloudId(), visibility: 'private', dateOfJournal: now, dateModified: now, synced: 0, ...computeTokens(now) })
       const map = new Map<number, number>()
       for (const media of await listMediaFor(id)) {
         const { id: mediaId, externalId: _mediaExternalId, cloudId: _mediaCloudId, ...file } = media

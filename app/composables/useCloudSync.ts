@@ -1,7 +1,7 @@
 import type { EntryV2, MediaFileV2 } from '~/utils/db'
 import { db, computeTokens, htmlToPreview, newCloudId } from '~/utils/db'
 import { listTombstones, clearTombstones, listMediaTombstones, clearMediaTombstones } from '~/composables/useEntries'
-import { cloudApi, type CloudUser, type WireEntry, type WireMedia } from '~/utils/cloudApi'
+import { cloudApi, type CloudUser, type FamilyFeedEntry, type WireEntry, type WireMedia } from '~/utils/cloudApi'
 
 /**
  * 云同步：本地优先，用户显式开启后才上传。
@@ -56,6 +56,7 @@ function toWire(entry: EntryV2, tagTitles: string[]): WireEntry {
     fields: rest as Record<string, unknown>,
     tagTitles,
     deleted: false,
+    updatedAt: new Date(entry.dateModified).toISOString(),
   }
 }
 
@@ -151,16 +152,17 @@ export function useCloudSync() {
       fields: {},
       tagTitles: [],
       deleted: true,
+      updatedAt: new Date().toISOString(),
     }))
     return [...live, ...tombstones]
   }
 
   /** 服务端条目写回本地：本地没有就新建，云端更新更晚就覆盖正文与字段。 */
-  async function applyRemote(entry: WireEntry) {
+  async function applyRemote(entry: WireEntry, matchLegacyId = true) {
     const fields = (entry.fields ?? {}) as Partial<EntryV2>
     // 按 cloudId 找本地行；早先用自增 id 当主键的旧行会被 v3 迁移补上 cloudId
     const existing = await db.entriesV2.where('cloudId').equals(entry.clientId).first()
-      ?? (Number.isFinite(Number(entry.clientId)) ? await db.entriesV2.get(Number(entry.clientId)) : undefined)
+      ?? (matchLegacyId && Number.isFinite(Number(entry.clientId)) ? await db.entriesV2.get(Number(entry.clientId)) : undefined)
     if (entry.deleted) {
       if (existing?.id != null) await db.entriesV2.delete(existing.id)
       return 0
@@ -188,43 +190,43 @@ export function useCloudSync() {
     return 1
   }
 
+  async function uploadMedia(row: MediaFileV2, entry: EntryV2, expectedOwner?: string) {
+    if (!row.blob || row.id == null || row.remotePathname || entry.id == null) return false
+    // 附件路径使用跨设备稳定的日记与附件标识。
+    if (!entry.cloudId) {
+      entry.cloudId = newCloudId()
+      await db.entriesV2.update(entry.id, { cloudId: entry.cloudId })
+    }
+    if (!row.cloudId) {
+      row.cloudId = newCloudId()
+      await db.mediaFilesV2.update(row.id, { cloudId: row.cloudId })
+    }
+    const mimeType = row.mimeType || 'application/octet-stream'
+    const { pathname, uploadUrl } = await cloudApi.uploadUrl({
+      mediaClientId: row.cloudId,
+      entryClientId: entry.cloudId,
+      fileName: row.fileName,
+      mimeType,
+      sizeBytes: row.blob.size,
+      position: row.position,
+    })
+    if (expectedOwner && !pathname.startsWith(`u/${expectedOwner}/`)) throw new Error('账号已切换，请重新打开小家。')
+    const res = await fetch(uploadUrl, { method: 'PUT', headers: { 'content-type': mimeType }, body: row.blob })
+    if (!res.ok) throw new Error(`附件上传失败（${res.status}）`)
+    await db.mediaFilesV2.update(row.id, { remotePathname: pathname, uploaded: 1 })
+    return true
+  }
+
   /** 上传还没传过的附件（只传本地有 blob 的）。 */
   async function uploadPendingMedia(): Promise<number> {
     const rows = await db.mediaFilesV2.toArray()
     let uploaded = 0
     for (const row of rows) {
-      if (!row.blob || row.id == null || row.jId == null) continue
-      if (row.remotePathname) continue
+      if (!row.blob || row.jId == null || row.remotePathname) continue
       const entry = await db.entriesV2.get(row.jId)
-      if (!entry?.id) continue
-      // 附件路径要挂在稳定的 cloudId 下，否则另一台设备算出来的路径对不上
-      if (!entry.cloudId) {
-        entry.cloudId = newCloudId()
-        await db.entriesV2.update(entry.id, { cloudId: entry.cloudId })
-      }
-      if (!row.cloudId) {
-        row.cloudId = newCloudId()
-        await db.mediaFilesV2.update(row.id, { cloudId: row.cloudId })
-      }
-      const entryClientId = entry.cloudId
-      const mediaClientId = row.cloudId
+      if (!entry) continue
       try {
-        const { pathname, uploadUrl } = await cloudApi.uploadUrl({
-          mediaClientId,
-          entryClientId,
-          fileName: row.fileName,
-          mimeType: row.mimeType || 'application/octet-stream',
-          sizeBytes: row.blob.size,
-          position: row.position,
-        })
-        const res = await fetch(uploadUrl, {
-          method: 'PUT',
-          headers: { 'content-type': row.mimeType || 'application/octet-stream' },
-          body: row.blob,
-        })
-        if (!res.ok) throw new Error(`附件上传失败（${res.status}）`)
-        await db.mediaFilesV2.update(row.id, { remotePathname: pathname, uploaded: 1 })
-        uploaded++
+        if (await uploadMedia(row, entry)) uploaded++
       } catch (e) {
         error.value = (e as Error).message
         break
@@ -264,6 +266,47 @@ export function useCloudSync() {
       remotePathname: media.pathname,
     })
     return 1
+  }
+
+  /** 只发布这一篇及其附件，不触发个人日记的整库同步。 */
+  async function publishFamilyEntry(id: number, family: { groupId: string; userId: string }, previousMediaIds: string[]) {
+    if (user.value?.id !== family.userId) throw new Error('账号已切换，请重新打开小家。')
+    if (busy.value) throw new Error('正在同步，请稍候重试。')
+    busy.value = true
+    try {
+      const entry = await db.entriesV2.get(id)
+      if (!entry || entry.visibility !== 'family') throw new Error('找不到要发布的日记。')
+      const media = await db.mediaFilesV2.where('jId').equals(id).toArray()
+      for (const item of media) await uploadMedia(item, entry, family.userId)
+      const tags = await db.tagWordsV2.bulkGet(entry.tagWordIds || [])
+      const wire = toWire(entry, tags.flatMap(tag => tag ? [tag.title] : []))
+      const { entries: result } = await cloudApi.push([wire], family)
+      const published = result[0]
+      if (!published || published.deleted || published.fields.visibility !== 'family' || +new Date(published.dateModified) !== +entry.dateModified) {
+        throw new Error('这篇日记有更新的云端版本，请关闭编辑器后重试。')
+      }
+      const kept = new Set(media.map(item => item.cloudId))
+      const removed = previousMediaIds.filter(clientId => !kept.has(clientId))
+      if (removed.length && user.value?.id === family.userId) await cloudApi.deleteMedia(removed)
+      await db.entriesV2.update(id, { synced: 1 })
+    } finally {
+      busy.value = false
+    }
+  }
+
+  /** 作者从另一台设备进入小家时，按需取回自己的这一篇。 */
+  async function loadOwnFamilyEntry(shared: FamilyFeedEntry) {
+    if (user.value?.id !== shared.ownerUserId) throw new Error('只有作者可以编辑。')
+    await applyRemote({ ...shared, fields: { ...shared.fields, cloudId: shared.clientId, visibility: 'family' },
+      tagTitles: [], deleted: false, updatedAt: shared.dateModified }, false)
+    const local = await db.entriesV2.where('cloudId').equals(shared.clientId).first()
+    if (!local || local.id == null) throw new Error('找不到要编辑的日记。')
+    if (+local.dateModified <= +new Date(shared.dateModified)) {
+      for (const photo of shared.media) {
+        await applyRemoteMedia({ ...photo, entryClientId: shared.clientId, sizeBytes: 0, deleted: false, updatedAt: shared.dateModified })
+      }
+    }
+    return local
   }
 
   /** 全部同步：推本地 → 拉云端 → 传附件 → 拉附件清单。 */
@@ -320,5 +363,5 @@ export function useCloudSync() {
   // 只在首次挂载时问一次服务端；之后由登录/登出自己更新，避免每次进页面都等 Neon
   onMounted(() => { if (!refreshed) refreshUser() })
 
-  return { user, enabled, lastSyncAt, busy, error, checking, refreshUser, register, login, logout, setEnabled, syncAll }
+  return { user, enabled, lastSyncAt, busy, error, checking, refreshUser, register, login, logout, setEnabled, syncAll, publishFamilyEntry, loadOwnFamilyEntry }
 }

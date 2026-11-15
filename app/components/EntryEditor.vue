@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { mdiCalendarBlankOutline, mdiMapMarkerOutline, mdiWeatherSunny, mdiEmoticonOutline, mdiRun, mdiTagOutline, mdiPlus, mdiFormatBold, mdiFormatItalic, mdiFormatStrikethrough, mdiFormatUnderline, mdiFormatAlignLeft, mdiFormatAlignCenter, mdiUndo, mdiRedo, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiClose, mdiCheck, mdiFormatListBulleted, mdiFormatListNumbered, mdiCheckboxMarkedOutline, mdiFormatPilcrow, mdiFormatHeader1, mdiFormatHeader2, mdiFormatHeader3, mdiFormatQuoteOpen, mdiFormatListChecks, mdiLink, mdiImage, mdiTable, mdiBorderHorizontal, mdiPalette, mdiMarker, mdiWaterOff, mdiImageMultipleOutline, mdiApps, mdiFormatAlignRight, mdiCodeTags, mdiFormatIndentIncrease, mdiFormatIndentDecrease, mdiAccountMultipleOutline, mdiLockOutline } from '@mdi/js'
 import type { EntryV2, MediaFileV2, TagWordV2 } from '~/utils/db'
-import { miscDb } from '~/utils/db'
+import { db, miscDb } from '~/utils/db'
 import { journalFragment, journalHtml, renderJournal } from '~/utils/journalHtml'
 import { WEATHER_EMOJI } from '~/utils/services'
 import { amapInfoHint, amapWeatherIcon, fetchAmapWeather, getAmapWebKey, reverseGeocodeAmap, searchAmapPlacesResult } from '~/utils/amap'
@@ -30,11 +30,20 @@ const dpMonth = ref(new Date().getMonth() + 1)
 const dpYear = ref(new Date().getFullYear())
 const dpTime = ref('')
 
-const props = defineProps<{ entryId?: number; initialText?: string; initialDate?: Date; initialMeta?: Partial<EntryV2>; inline?: boolean }>()
+const props = defineProps<{
+  entryId?: number
+  initialText?: string
+  initialDate?: Date
+  initialMeta?: Partial<EntryV2>
+  inline?: boolean
+  family?: { groupId: string; userId: string; previousMediaIds: string[] }
+}>()
 const emit = defineEmits<{ (e: 'done', savedId?: number): void }>()
 const isMobile = useIsMobile()
 const { listMediaFor, listTags, ensureTag, saveEntry } = useEntries()
 const { urlForSync: mediaUrl, prefetch: prefetchMedia } = useMediaResolver()
+const { publishFamilyEntry } = useCloudSync()
+const pendingFamilyId = ref<number>()
 
 const area = ref<HTMLElement | null>(null)
 const editorPane = ref<HTMLElement | null>(null)
@@ -44,7 +53,11 @@ const chars = ref(0)
 const hasContent = ref(false)
 const date = ref(props.initialDate ? new Date(props.initialDate) : new Date())
 
-const meta = ref<Partial<EntryV2>>({ ...props.initialMeta })
+const meta = ref<Partial<EntryV2>>({
+  ...(props.entryId == null ? { visibility: 'private' } : {}),
+  ...props.initialMeta,
+  ...(props.family ? { visibility: 'family' } : {}),
+})
 const popoverLabels = {
   style: '段落样式', insert: '插入', table: '表格', color: '文字颜色', loc: '地点',
   weather: '天气', mood: '心情', activity: '活动', tags: '标签', media: '媒体', family: '共享范围',
@@ -147,7 +160,11 @@ const locLabel = computed(() => meta.value.address || (meta.value.lat != null ? 
 
 onMounted(async () => {
   unsubscribeSave = desktop?.on('saveAndCloseIfDirty', () => { void save() })
-  if (props.entryId != null) savedMedia.value = await listMediaFor(props.entryId)
+  if (props.entryId != null) {
+    const [media, saved] = await Promise.all([listMediaFor(props.entryId), db.entriesV2.get(props.entryId)])
+    savedMedia.value = media
+    if (!props.family) meta.value.visibility = saved?.visibility ?? 'private'
+  }
   if (disposed) return
   // 云端来的附件没有本地 blob，先换预签名地址，否则编辑器里看不到
   await prefetchMedia(savedMedia.value)
@@ -183,7 +200,7 @@ onMounted(async () => {
     } else {
       try {
         const raw = localStorage.getItem('jr.draft')
-        if (raw && props.entryId == null) {
+        if (raw && props.entryId == null && !props.family) {
           const d = JSON.parse(raw)
           area.value.innerHTML = d.text
           if (d.date) date.value = new Date(d.date)
@@ -218,7 +235,10 @@ onBeforeUnmount(() => {
 const DRAFT_KEY = 'jr.draft' // v1 遗留键，仅作旧数据迁移来源
 let draftTimer: ReturnType<typeof setTimeout> | undefined
 const draftRestored = ref('')
-function draftKey() { return props.entryId == null ? 'new' : `entry:${props.entryId}` }
+function draftKey() {
+  const entry = props.entryId == null ? 'new' : `entry:${props.entryId}`
+  return props.family ? `family:${props.family.userId}:${props.family.groupId}:${entry}` : entry
+}
 async function loadDraft(key: string) {
   try {
     return await miscDb.drafts.get(key)
@@ -267,7 +287,7 @@ async function persistDraft() {
 function clearDraft() {
   clearTimeout(draftTimer)
   draftTimer = undefined
-  localStorage.removeItem(DRAFT_KEY)
+  if (!props.family) localStorage.removeItem(DRAFT_KEY)
   void miscDb.drafts.delete(draftKey()).catch(() => {})
 }
 // 元数据/附件变化也触发草稿（日期、天气、标签、增删照片——不只正文输入）
@@ -615,6 +635,7 @@ function dpPick(day: number) {
 }
 
 function pickFile() {
+  if (pendingFamilyId.value != null || saving.value) return
   if (desktop) { void pickDesktopFiles(); return }
   const input = document.createElement('input')
   input.type = 'file'
@@ -753,6 +774,7 @@ function removeAttachment(id: number) {
 }
 
 function onFileDrop(event: DragEvent) {
+  if (saving.value || pendingFamilyId.value != null) return
   if (!event.dataTransfer?.files.length) return
   event.preventDefault()
   const files = Array.from(event.dataTransfer.files)
@@ -970,12 +992,22 @@ async function save() {
     return
   }
   saving.value = true
+  openPop.value = null
+  datePop.value = false
   try {
-    const savedId = await saveEntry(props.entryId, empty ? '' : text, date.value, meta.value, staged.value, removedMedia.value)
+    attachmentNote.value = ''
+    const fields = props.family ? { ...meta.value, visibility: 'family' as const } : meta.value
+    const savedId = pendingFamilyId.value
+      ?? await saveEntry(props.entryId, empty ? '' : text, date.value, fields, staged.value, removedMedia.value)
     clearDraft()
+    if (props.family) {
+      pendingFamilyId.value = savedId
+      await publishFamilyEntry(savedId, props.family, props.family.previousMediaIds)
+    }
     emit('done', savedId)
   } catch (error) {
-    attachmentNote.value = errorText(error, '无法保存日记，请重试。')
+    const message = errorText(error, '无法保存日记，请重试。')
+    attachmentNote.value = pendingFamilyId.value == null ? message : `已保存到本机。小家发布未完成，${message}`
   } finally {
     saving.value = false
   }
@@ -993,13 +1025,21 @@ async function save() {
     </dialog>
     <p v-if="draftRestored" class="jr-draft-note" role="status">{{ draftRestored }}</p>
     <div class="jr-editor-head">
-      <button class="dt" @click="openDatePicker">
+      <button class="dt" :disabled="!!pendingFamilyId" @click="openDatePicker">
         <JrIcon :path="mdiCalendarBlankOutline" :size="19" />
         <span>{{ dateLabel }}</span>
         <JrIcon :path="mdiChevronDown" :size="18" />
       </button>
       <button class="jr-icon-btn" type="button" title="取消编辑（Esc）" aria-label="取消编辑" :disabled="saving" @click="discardEntry"><JrIcon :path="mdiClose" :size="20" /></button>
-      <button class="done" :disabled="!initialReady || saving || checkingFiles || nativePicking || recordingStatus !== 'idle'" @click="save">{{ saving ? '正在保存…' : '完成' }}</button>
+      <div class="editor-save">
+        <span v-if="family || familyJoined" class="editor-audience">
+          <JrIcon :path="family || meta.visibility === 'family' ? mdiAccountMultipleOutline : mdiLockOutline" :size="13" />
+          {{ family || meta.visibility === 'family' ? '家人可见' : '仅自己可见' }}
+        </span>
+        <button class="done" :disabled="!initialReady || saving || checkingFiles || nativePicking || recordingStatus !== 'idle'" @click="save">
+          {{ saving ? (family ? '正在发布…' : '正在保存…') : pendingFamilyId ? '重试发布' : family ? (entryId == null ? '发布到小家' : '保存修改') : '完成' }}
+        </button>
+      </div>
       <div v-if="datePop" class="jr-pop jr-dp" @click.stop>
         <div class="jr-pop-head">
           <button class="tb" @click="dpPrev"><JrIcon :path="mdiChevronLeft" :size="16" /></button>
@@ -1027,7 +1067,7 @@ async function save() {
       </div>
     </div>
 
-    <div class="jr-editor-body" style="position:relative">
+    <div class="jr-editor-body" :inert="family && (saving || pendingFamilyId != null)" style="position:relative">
       <div v-if="!touched && !hasContent && !attachmentCount" class="jr-editor-ph">
         开始写日记，或选择 <button class="jr-template-chip" @click.stop="openTemplates"><JrIcon :path="mdiApps" :size="13" /> 模板</button>。
       </div>
@@ -1051,7 +1091,7 @@ async function save() {
 
     <!-- popovers -->
     <div v-if="attachmentCount || attachmentNote || recordingStatus !== 'idle'" class="jr-attachments" aria-label="日记附件">
-      <div v-if="attachmentCount" class="jr-attachment-list">
+      <div v-if="attachmentCount" class="jr-attachment-list" :inert="family && (saving || pendingFamilyId != null)">
         <div v-for="file in activeMedia" :key="file.id" class="jr-attachment">
           <span :title="file.fileName">{{ file.fileName }}</span>
           <button class="jr-icon-btn" :aria-label="`移除 ${file.fileName}`" @click="removeAttachment(file.id!)"><JrIcon :path="mdiClose" :size="15" /></button>
@@ -1268,7 +1308,7 @@ async function save() {
       </template>
     </div>
 
-    <div class="jr-editor-toolbar">
+    <div class="jr-editor-toolbar" :inert="family && (saving || pendingFamilyId != null)">
       <button class="tb" :class="{ 'jr-open': attachmentCount || staged.length }" title="媒体" @click="togglePop('media', $event)">
         <JrIcon :path="mdiImageMultipleOutline" :size="20" />
       </button>
@@ -1287,7 +1327,7 @@ async function save() {
       <button class="tb" :class="{ 'jr-open': (meta.tagWordIds || []).length }" title="标签" @click="togglePop('tags', $event)">
         <JrIcon :path="mdiTagOutline" :size="20" />
       </button>
-      <button v-if="familyJoined" class="tb" :class="{ 'jr-open': meta.visibility === 'family' }" title="共享家人" @click="togglePop('family', $event)">
+      <button v-if="familyJoined && !family" class="tb" :class="{ 'jr-open': meta.visibility === 'family' }" title="共享家人" @click="togglePop('family', $event)">
         <JrIcon :path="mdiAccountMultipleOutline" :size="20" />
       </button>
       <div class="sep" />
@@ -1359,3 +1399,12 @@ async function save() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.editor-save { order: 2; margin-left: auto; display: grid; justify-items: end; gap: 4px; flex: none; }
+.editor-audience { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--jr-on-surface-variant); white-space: nowrap; }
+.editor-save .done { margin: 0; white-space: nowrap; }
+@media (max-width: 600px) {
+  .editor-save .done { padding-inline: 12px; }
+}
+</style>

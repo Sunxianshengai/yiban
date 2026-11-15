@@ -9,6 +9,16 @@ export default defineEventHandler(async (event) => {
   await ensureSchema()
   const body = pushSchema.parse(await readBody(event))
 
+  if (body.family) {
+    const { groupId, userId } = body.family
+    if (user.id !== userId) throw createError({ statusCode: 403, statusMessage: '账号已切换，请重新打开小家。' })
+    if (body.entries.length !== 1 || body.entries[0]?.fields.visibility !== 'family' || body.entries[0].deleted) {
+      throw createError({ statusCode: 400, statusMessage: '每次只能发布一篇家庭日记。' })
+    }
+    const membership = await sql()`select 1 from yiban_family_members where user_id = ${user.id} and group_id = ${groupId}`
+    if (!membership.length) throw createError({ statusCode: 403, statusMessage: '你已离开这个小家。' })
+  }
+
   for (const entry of body.entries) {
     await sql()`
       insert into yiban_entries
@@ -32,7 +42,10 @@ export default defineEventHandler(async (event) => {
     `
   }
 
-  const rows = await sql()`
+  const rows = body.family ? await sql()`
+    select client_id, text, preview_text, timezone, date_of_journal, date_modified, fields, tags, deleted_at, updated_at
+    from yiban_entries where user_id = ${user.id} and client_id = ${body.entries[0]!.clientId}
+  ` : await sql()`
     select client_id, text, preview_text, timezone, date_of_journal, date_modified, fields, tags, deleted_at, updated_at
     from yiban_entries
     where user_id = ${user.id}
