@@ -963,44 +963,70 @@ export function buildFamilyHouse(
   const terraceLounge = warm(3, 'Terrace lounge light', -3.35, 1.85, 1.15, 14)
   warm(3, 'Terrace garden light', 2.05, 1.85, -2.55, 12)
 
-  // 家里的小伙伴：优先使用开源 CC0 3D 宠物 GLB，缺失时回退到自建小柴
+  // 家里的小伙伴：圆润软萌的 Q 版小柴犬（带高光大眼、腮红、金铃铛项圈、卷尾巴与四肢奔跑动画）
   function createPet(): HousePetRig {
     const root = new Group()
     root.name = 'Family Shiba pet'
-    contactShadow(root, 0, 0, .58, .76, .008)
-    const glbDog = placeExtra(root, 'pet-dog', 0, 0, { scale: .82 })
-    if (glbDog) {
-      return { root, legs: [], tail: null, head: null }
-    }
-    const tan = '#d69553'
-    const creamFur = '#f6ebda'
-    box(root, 'Pet torso', [0, .25, 0], [.22, .20, .38], tan, 'matte')
-    box(root, 'Pet belly', [0, .185, .02], [.18, .08, .32], creamFur, 'matte')
-    box(root, 'Pet collar', [0, .30, .17], [.20, .045, .06], '#5b8266', 'fabric')
+    contactShadow(root, 0, 0, .54, .68, .008)
+    const tan = '#e39a54'
+    const creamFur = '#fff6e8'
+    const darkEye = '#231f1d'
+    const blush = '#f5a3a9'
+
+    // 圆润身体 + 蓬松白胸毛
+    const torso = mesh(root, 'Pet torso', sphGeo(.145, 16, 12), [0, .23, -.01], tan, 'matte')
+    torso.scale.set(.92, .86, 1.32)
+    const chest = mesh(root, 'Pet chest bib', sphGeo(.115, 14, 10), [0, .21, .11], creamFur, 'matte')
+    chest.scale.set(.94, .88, .82)
+    // 小绿项圈 + 金铃铛
+    const collar = mesh(root, 'Pet collar', cylGeo(.095, .105, .042, 16), [0, .29, .12], '#4b8f6e', 'fabric')
+    collar.rotation.x = .38
+    mesh(root, 'Pet bell', sphGeo(.024, 10, 8), [0, .245, .205], '#efc252', 'metal')
+
+    // 圆滚滚的大脑袋 + 麻薯脸颊 + 粉内耳 + 亮晶晶带高光的大眼睛
     const head = new Group()
-    head.position.set(0, .37, .22)
+    head.position.set(0, .36, .19)
     root.add(head)
-    box(head, 'Pet head', [0, .03, .02], [.20, .18, .19], tan, 'matte')
-    box(head, 'Pet cheeks', [0, -.01, .06], [.21, .09, .12], creamFur, 'matte')
-    box(head, 'Pet snout', [0, -.02, .13], [.09, .07, .09], creamFur, 'matte')
-    box(head, 'Pet nose', [0, .005, .18], [.035, .025, .02], '#2c2926', 'matte')
+    const skull = mesh(head, 'Pet head', sphGeo(.132, 18, 14), [0, .03, 0], tan, 'matte')
+    skull.scale.set(1.06, .96, .98)
+    const cheeks = mesh(head, 'Pet cheeks', sphGeo(.118, 16, 12), [0, -.018, .04], creamFur, 'matte')
+    cheeks.scale.set(1.08, .72, .85)
+    const snout = mesh(head, 'Pet snout', sphGeo(.055, 12, 10), [0, -.025, .115], creamFur, 'matte')
+    snout.scale.set(1.02, .78, .92)
+    mesh(head, 'Pet nose', sphGeo(.020, 10, 8), [0, -.005, .162], darkEye, 'ceramic')
     for (const side of [-1, 1]) {
-      box(head, 'Pet eye', [side * .055, .05, .118], [.024, .026, .016], '#24211e', 'matte')
-      const ear = box(head, 'Pet ear', [side * .068, .145, -.01], [.055, .08, .035], tan, 'matte')
-      ear.rotation.z = -side * .18
+      // 圆眼睛 + 白色小高光 + 豆豆眉 + 粉腮红
+      mesh(head, 'Pet eye', sphGeo(.022, 10, 8), [side * .056, .035, .112], darkEye, 'ceramic')
+      mesh(head, 'Pet eye glint', sphGeo(.0075, 8, 6), [side * .052, .044, .130], '#ffffff', 'matte')
+      mesh(head, 'Pet eyebrow', sphGeo(.014, 8, 6), [side * .052, .072, .110], creamFur, 'matte')
+      const cheekBlush = mesh(head, 'Pet blush', sphGeo(.022, 10, 8), [side * .082, -.006, .095], blush, 'matte')
+      cheekBlush.scale.set(1.1, .65, .6)
+      // 尖尖小三角耳 + 粉色耳廓
+      const ear = mesh(head, 'Pet ear', cylGeo(.006, .042, .095, 10), [side * .078, .135, -.01], tan, 'matte')
+      ear.rotation.z = -side * .26
+      ear.rotation.x = .12
+      const innerEar = mesh(head, 'Pet inner ear', cylGeo(.003, .024, .062, 8), [side * .078, .128, .012], blush, 'matte')
+      innerEar.rotation.z = -side * .26
+      innerEar.rotation.x = .12
     }
+
+    // 卷卷的柴犬尾巴
     const tail = new Group()
-    tail.position.set(0, .32, -.19)
+    tail.position.set(0, .28, -.18)
     root.add(tail)
-    const tailMesh = box(tail, 'Pet tail', [0, .08, -.05], [.055, .16, .055], tan, 'matte')
-    tailMesh.rotation.x = -.62
-    const legOffsets: [number, number][] = [[-.07, .12], [.07, .12], [-.07, -.12], [.07, -.12]]
+    const tailCurl = mesh(tail, 'Pet curly tail', cylGeo(.030, .038, .15, 10), [0, .06, -.035], tan, 'matte')
+    tailCurl.rotation.x = -.78
+    mesh(tail, 'Pet tail tip', sphGeo(.034, 10, 8), [0, .115, -.085], creamFur, 'matte')
+
+    // 四条小短腿 + 白袜子小爪垫
+    const legOffsets: [number, number][] = [[-.068, .10], [.068, .10], [-.068, -.11], [.068, -.11]]
     const legs = legOffsets.map(([lx, lz]) => {
       const leg = new Group()
-      leg.position.set(lx, .16, lz)
+      leg.position.set(lx, .15, lz)
       root.add(leg)
-      box(leg, 'Pet leg', [0, -.075, 0], [.055, .15, .055], tan, 'matte')
-      box(leg, 'Pet paw', [0, -.145, .012], [.06, .03, .07], creamFur, 'matte')
+      mesh(leg, 'Pet leg', cylGeo(.030, .026, .12, 10), [0, -.06, 0], tan, 'matte')
+      const paw = mesh(leg, 'Pet paw', sphGeo(.032, 10, 8), [0, -.128, .012], creamFur, 'matte')
+      paw.scale.set(1.0, .68, 1.22)
       return leg
     })
     return { root, legs, tail, head }
