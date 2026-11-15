@@ -12,8 +12,8 @@ export interface HouseDoor {
 export interface HousePetRig {
   root: Group
   legs: Group[]
-  tail: Group
-  head: Group
+  tail: Group | null
+  head: Group | null
 }
 
 function makeCanvasTexture(size: number, repeatX: number, repeatY: number, draw: (ctx: CanvasRenderingContext2D, s: number) => void) {
@@ -41,7 +41,7 @@ function makeContactShadowTexture() {
   return new CanvasTexture(canvas)
 }
 
-export function buildFamilyHouse(source: Object3D) {
+export function buildFamilyHouse(source: Object3D, extras: Record<string, Object3D | null> = {}) {
   const house = new Group()
   house.name = 'Three-storey family home'
   const ground = new Group()
@@ -197,13 +197,38 @@ export function buildFamilyHouse(source: Object3D) {
     }
     return object
   }
-  function plant(parent: Group, x: number, z: number, scale = 1) {
-    const pot = mesh(parent, 'Terracotta pot', new CylinderGeometry(.18, .13, .28, 12), [x, .14 * scale, z], clay)
+  function placeExtra(parent: Group, key: string, x: number, z: number,
+    options: { y?: number; angle?: number; scale?: number; floorForSolid?: number } = {}) {
+    const template = extras[key]
+    if (!template) return null
+    const object = template.clone(true)
+    const scale = options.scale ?? 1
+    object.scale.multiplyScalar(scale)
+    object.rotation.y += options.angle ?? 0
+    // Place bottom of bounding box cleanly at options.y ?? 0
+    object.updateMatrixWorld(true)
+    const box3 = new Box3().setFromObject(object)
+    const offsetY = (options.y ?? 0) - box3.min.y
+    const centerX = (box3.min.x + box3.max.x) / 2
+    const centerZ = (box3.min.z + box3.max.z) / 2
+    object.position.set(x - centerX, offsetY, z - centerZ)
+    parent.add(object)
+    if (options.floorForSolid !== undefined) {
+      object.updateMatrixWorld(true)
+      const { min, max } = new Box3().setFromObject(object)
+      floors[options.floorForSolid]!.solids.push({ left: min.x, right: max.x, back: min.z, front: max.z })
+    }
+    return object
+  }
+  function plant(parent: Group, x: number, z: number, scale = 1, y = 0) {
+    const key = scale >= 1.05 ? 'tall-plant' : 'small-plant'
+    if (placeExtra(parent, key, x, z, { y, scale: scale >= 1.05 ? scale * 0.85 : scale * 0.95 })) return
+    const pot = mesh(parent, 'Terracotta pot', cylGeo(.18, .13, .28, 12), [x, y + .14 * scale, z], clay)
     pot.scale.setScalar(scale)
     for (let i = 0; i < 6; i++) {
       const angle = i * Math.PI / 3
-      const leaf = mesh(parent, 'Plant leaf', new SphereGeometry(1, 9, 5),
-        [x + Math.cos(angle) * .14 * scale, (.36 + .047 * i) * scale, z + Math.sin(angle) * .14 * scale],
+      const leaf = mesh(parent, 'Plant leaf', sphGeo(1, 9, 5),
+        [x + Math.cos(angle) * .14 * scale, y + (.36 + .047 * i) * scale, z + Math.sin(angle) * .14 * scale],
         i % 2 ? '#718d67' : '#88a47b')
       leaf.scale.set(.085 * scale, .22 * scale, .046 * scale)
       leaf.rotation.set(.55, angle, .22)
@@ -400,6 +425,7 @@ export function buildFamilyHouse(source: Object3D) {
   box(living, 'Spice jar', [1.35, .99, -2.95], [.06, .10, .06], green, 'ceramic')
   contactShadow(living, -2.95, -.64, 1.55, .95)
   contactShadow(living, .89, .73, 1.85, 1.35)
+  placeExtra(living, 'pet-bed', -1.85, .55, { scale: .92 })
   plant(living, -4.76, 2.42, 1.26)
   plant(living, -1.10, -2.85, .86)
   box(living, 'Kitchen counter', [1.05, .91, -2.8], [3.36, .075, .69], '#f0ebe0', 'ceramic')
@@ -550,48 +576,45 @@ export function buildFamilyHouse(source: Object3D) {
   furniture(2, 26, -3.05, 1.14, { solid: true })
   furniture(2, 33, -1.3, 2.25, { scale: .94 })
   furniture(2, 18, -4.73, 2.32, { scale: .87 })
-  // 复刻视频 0:19 工作角：L型木纹书桌 + 白色吊柜 + 双屏显示器 + 人体工学椅 + 彩色书列 + 左侧通顶衣柜
-  box(top, 'Study desk top', [-3.45, .74, -2.76], [1.45, .045, .62], oak, 'oak')
-  box(top, 'Study desk return', [-2.82, .74, -2.18], [.56, .045, 1.25], oak, 'oak')
-  box(top, 'Study desk drawer base', [-4.02, .37, -2.76], [.32, .72, .56], '#f3f1ec', 'plaster')
-  box(top, 'Study desk leg', [-2.78, .37, -2.76], [.06, .74, .52], frame, 'metal')
-  footprint(2, -3.45, -2.76, 1.45, .62)
+  // 复刻视频 0:19 工作角：开源 CC0 GLB 书桌 + 双屏显示器 + 键鼠 + 台灯 + 人体工学椅，搭配定制吊柜与通顶衣柜
+  const glbDesk = placeExtra(top, 'desk', -3.45, -2.76, { floorForSolid: 2 })
+  if (!glbDesk) {
+    box(top, 'Study desk top', [-3.45, .74, -2.76], [1.45, .045, .62], oak, 'oak')
+    box(top, 'Study desk drawer base', [-4.02, .37, -2.76], [.32, .72, .56], '#f3f1ec', 'plaster')
+    box(top, 'Study desk leg', [-2.78, .37, -2.76], [.06, .74, .52], frame, 'metal')
+    footprint(2, -3.45, -2.76, 1.45, .62)
+  }
+  box(top, 'Study desk return', [-2.68, .73, -2.18], [.54, .04, 1.18], oak, 'oak')
   // 顶部白色吊柜（4格分缝 + 黑色拉手）
   for (let i = 0; i < 4; i++) {
     const cx = -4.05 + i * .56
     box(top, 'Study overhead cabinet', [cx, 2.26, -2.96], [.54, .68, .36], '#f3f1ec', 'plaster')
     box(top, 'Study cabinet handle', [cx + .18, 2.08, -2.77], [.018, .11, .018], '#2b2d30', 'metal')
   }
-  // 左侧通顶衣柜（4门 + 黑色长拉手）
+  // 左侧通顶衣柜（3门 + 黑色长拉手）
   for (let i = 0; i < 3; i++) {
     const wz = -2.35 + i * .58
     box(top, 'Tall wardrobe door', [-5.04, 1.28, wz], [.42, 2.52, .56], '#f3f1ec', 'plaster')
     box(top, 'Wardrobe bar handle', [-4.82, 1.22, wz + .18], [.018, .42, .018], '#2b2d30', 'metal')
   }
   footprint(2, -5.04, -1.77, .44, 1.76)
-  // 双屏显示器（左横屏 + 右竖屏，亮白微发光屏幕）
-  box(top, 'Main monitor stand', [-3.68, .82, -2.90], [.05, .14, .05], '#2a2d30', 'metal')
-  box(top, 'Main monitor frame', [-3.68, 1.02, -2.88], [.58, .35, .025], '#2a2d30', 'metal')
-  box(top, 'Main monitor screen', [-3.68, 1.02, -2.865], [.54, .31, .008], '#eef3f5', 'screen')
-  box(top, 'Vertical monitor stand', [-3.18, .82, -2.88], [.05, .14, .05], '#2a2d30', 'metal')
-  box(top, 'Vertical monitor frame', [-3.18, 1.06, -2.86], [.28, .46, .025], '#2a2d30', 'metal')
-  box(top, 'Vertical monitor screen', [-3.18, 1.06, -2.845], [.25, .42, .008], '#eef3f5', 'screen')
-  box(top, 'Keyboard', [-3.62, .768, -2.65], [.32, .014, .11], '#2e3136', 'metal')
-  box(top, 'Mouse', [-3.34, .768, -2.65], [.055, .016, .09], '#2e3136', 'metal')
+  // 开源 CC0 双屏显示器 + 键鼠 + 桌面灯
+  if (!placeExtra(top, 'dual-monitors', -3.45, -2.90, { y: .74, scale: 1.08 })) {
+    box(top, 'Main monitor frame', [-3.68, 1.02, -2.88], [.58, .35, .025], '#2a2d30', 'metal')
+    box(top, 'Main monitor screen', [-3.68, 1.02, -2.865], [.54, .31, .008], '#eef3f5', 'screen')
+  }
+  if (!placeExtra(top, 'keyboard-mouse', -3.45, -2.64, { y: .74, scale: .92 })) {
+    box(top, 'Keyboard', [-3.52, .768, -2.65], [.32, .014, .11], '#2e3136', 'metal')
+  }
+  placeExtra(top, 'desk-lamp', -3.96, -2.82, { y: .74, angle: .35 })
   mesh(top, 'Desk teal mug', cylGeo(.04, .036, .09, 12), [-2.96, .81, -2.66], '#65a6ad', 'ceramic')
-  // 桌角彩色竖放书本
   for (const [i, col] of ['#c8534b', '#5280a8', '#68996e', '#eae6dc'].entries()) {
-    box(top, 'Desk book', [-2.82, .88, -1.96 + i * .055], [.18, .24, .042], col, 'matte')
+    box(top, 'Desk book', [-2.68, .86, -1.96 + i * .055], [.18, .24, .042], col, 'matte')
   }
-  // 灰色人体工学椅（座垫 + 高靠背 + 头枕 + 扶手 + 底座）
-  box(top, 'Ergo chair seat', [-3.55, .46, -2.18], [.46, .08, .44], '#787d82', 'fabric')
-  box(top, 'Ergo chair back', [-3.55, .82, -1.96], [.42, .56, .08], '#787d82', 'fabric')
-  box(top, 'Ergo chair headrest', [-3.55, 1.18, -1.95], [.26, .13, .06], '#787d82', 'fabric')
-  for (const side of [-1, 1]) {
-    box(top, 'Ergo armrest', [-3.55 + side * .25, .64, -2.14], [.05, .04, .26], '#3a3d42', 'metal')
+  if (!placeExtra(top, 'ergo-chair', -3.45, -2.14, { angle: Math.PI, floorForSolid: 2 })) {
+    box(top, 'Ergo chair seat', [-3.45, .46, -2.18], [.46, .08, .44], '#787d82', 'fabric')
+    box(top, 'Ergo chair back', [-3.45, .82, -1.96], [.42, .56, .08], '#787d82', 'fabric')
   }
-  mesh(top, 'Ergo chair stem', cylGeo(.03, .03, .38, 10), [-3.55, .24, -2.18], '#3a3d42', 'metal')
-  mesh(top, 'Ergo chair base', cylGeo(.26, .26, .035, 10), [-3.55, .04, -2.18], '#3a3d42', 'metal')
   box(top, 'Loft rug', [-3.05, .008, 1.75], [2.55, .012, 1.85], '#e3dacb', 'fabric')
   box(top, 'Loft pillow', [-3.55, .56, 2.66], [.32, .28, .14], green, 'fabric').rotateZ(-.12)
   box(top, 'Loft pillow', [-2.45, .56, 2.66], [.32, .28, .14], clay, 'fabric').rotateZ(.15)
@@ -617,16 +640,18 @@ export function buildFamilyHouse(source: Object3D) {
   box(terrace, 'Terrace pillow', [-3.05, .56, 1.68], [.34, .28, .14], clay, 'fabric').rotateZ(.15)
   box(terrace, 'Terrace pillow', [-2.05, .56, 1.68], [.34, .28, .14], blue, 'fabric').rotateZ(-.14)
   footprint(3, -2.55, 1.55, 1.80, .92)
-  mesh(terrace, 'Terrace round table', cylGeo(.44, .44, .04, 18), [-2.50, .44, .20], oak, 'oak')
-  mesh(terrace, 'Terrace table leg', cylGeo(.06, .16, .42, 12), [-2.50, .21, .20], frame, 'metal')
-  footprint(3, -2.50, .20, .92, .92)
-  cups(terrace, -2.58, .46, .22)
+  if (!placeExtra(terrace, 'patio-table', -2.45, .15, { y: .02, scale: .88, floorForSolid: 3 })) {
+    mesh(terrace, 'Terrace round table', cylGeo(.44, .44, .04, 18), [-2.50, .44, .20], oak, 'oak')
+    mesh(terrace, 'Terrace table leg', cylGeo(.06, .16, .42, 12), [-2.50, .21, .20], frame, 'metal')
+    footprint(3, -2.50, .20, .92, .92)
+    cups(terrace, -2.58, .46, .22)
+  }
   contactShadow(terrace, -2.55, 1.55, 1.9, 1.0)
-  contactShadow(terrace, -2.50, .20, 1.0, 1.0)
+  contactShadow(terrace, -2.45, .15, 1.2, 1.2)
   // 空中花房花箱 + 绿植 + 观星望远镜
   box(terrace, 'Garden planter box', [1.50, .26, -2.52], [2.25, .52, .68], '#b98f66', 'oak')
   footprint(3, 1.50, -2.52, 2.28, .72)
-  for (const x of [.75, 1.50, 2.25]) plant(terrace, x, -2.52, 1.15)
+  for (const x of [.75, 1.50, 2.25]) plant(terrace, x, -2.52, .95, .52)
   plant(terrace, -4.55, -2.45, 1.35)
   plant(terrace, -4.55, 2.45, 1.18)
   const scopeTube = mesh(terrace, 'Telescope tube', cylGeo(.045, .065, .72, 12), [-4.25, 1.18, -.95], '#e9e5dc', 'metal')
@@ -641,13 +666,17 @@ export function buildFamilyHouse(source: Object3D) {
   warm(3, 'Terrace lounge light', -2.55, 1.85, .95, 14)
   warm(3, 'Terrace garden light', 1.45, 1.85, -2.05, 11)
 
-  // 家里的小伙伴：3D 小柴犬模型
+  // 家里的小伙伴：优先使用开源 CC0 3D 宠物 GLB，缺失时回退到自建小柴
   function createPet(): HousePetRig {
     const root = new Group()
     root.name = 'Family Shiba pet'
+    contactShadow(root, 0, 0, .58, .76, .008)
+    const glbDog = placeExtra(root, 'pet-dog', 0, 0, { scale: .82 })
+    if (glbDog) {
+      return { root, legs: [], tail: null, head: null }
+    }
     const tan = '#d69553'
     const creamFur = '#f6ebda'
-    contactShadow(root, 0, 0, .54, .66, .008)
     box(root, 'Pet torso', [0, .25, 0], [.22, .20, .38], tan, 'matte')
     box(root, 'Pet belly', [0, .185, .02], [.18, .08, .32], creamFur, 'matte')
     box(root, 'Pet collar', [0, .30, .17], [.20, .045, .06], '#5b8266', 'fabric')

@@ -7,7 +7,30 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import deskLampUrl from '~/assets/family-house/models/desk-lamp.glb?url'
+import deskUrl from '~/assets/family-house/models/desk.glb?url'
+import dualMonitorsUrl from '~/assets/family-house/models/dual-monitors.glb?url'
+import ergoChairUrl from '~/assets/family-house/models/ergo-chair.glb?url'
+import keyboardMouseUrl from '~/assets/family-house/models/keyboard-mouse.glb?url'
+import patioTableUrl from '~/assets/family-house/models/patio-table.glb?url'
+import petBedUrl from '~/assets/family-house/models/pet-bed.glb?url'
+import petDogUrl from '~/assets/family-house/models/pet-dog.glb?url'
+import smallPlantUrl from '~/assets/family-house/models/small-plant.glb?url'
+import tallPlantUrl from '~/assets/family-house/models/tall-plant.glb?url'
 import { buildFamilyHouse, sceneBackdrop } from './familyHouseModel'
+
+const extraModelUrls: Record<string, string> = {
+  'ergo-chair': ergoChairUrl,
+  'desk': deskUrl,
+  'dual-monitors': dualMonitorsUrl,
+  'keyboard-mouse': keyboardMouseUrl,
+  'desk-lamp': deskLampUrl,
+  'tall-plant': tallPlantUrl,
+  'small-plant': smallPlantUrl,
+  'pet-dog': petDogUrl,
+  'pet-bed': petBedUrl,
+  'patio-table': patioTableUrl,
+}
 import { blocksWalk, floorRise, hasStairFootprint, houseStops, porch, stairHeight, stairLane, stairs, stairStops, type HouseStop } from './familyHouseLayout'
 
 export type HouseView = 'overview' | 'walk'
@@ -95,15 +118,29 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   onLock: (locked: boolean) => void
   onPet?: (pet: HousePetState) => void
 }) {
+  const loader = new GLTFLoader()
   const response = await fetch(url, { signal: options.signal })
   if (!response.ok) throw new Error(`Furniture download failed (${response.status})`)
-  const source = (await new GLTFLoader().parseAsync(await response.arrayBuffer(), url)).scene
+  const source = (await loader.parseAsync(await response.arrayBuffer(), url)).scene
+  const extras: Record<string, Group | null> = {}
+  const extraRoots: Group[] = []
+  await Promise.all(Object.entries(extraModelUrls).map(async ([key, assetUrl]) => {
+    try {
+      const res = await fetch(assetUrl, { signal: options.signal })
+      if (!res.ok) { extras[key] = null; return }
+      const loaded = (await loader.parseAsync(await res.arrayBuffer(), assetUrl)).scene
+      extras[key] = loaded
+      extraRoots.push(loaded)
+    } catch {
+      extras[key] = null
+    }
+  }))
   let renderer: WebGLRenderer
   try {
     options.signal.throwIfAborted()
     renderer = new WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' })
   } catch (error) {
-    disposeTrees(source)
+    disposeTrees(source, ...extraRoots)
     throw error
   }
 
@@ -113,8 +150,8 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   renderer.toneMapping = ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.08
   let model: ReturnType<typeof buildFamilyHouse>
-  try { model = buildFamilyHouse(source) }
-  catch (error) { renderer.dispose(); disposeTrees(source); throw error }
+  try { model = buildFamilyHouse(source, extras) }
+  catch (error) { renderer.dispose(); disposeTrees(source, ...extraRoots); throw error }
   scene.add(model.house)
   const dynamic = new Set<Object3D>(model.doors.map(door => door.hinge))
   for (const floor of model.floors) dynamic.add(floor.front)
@@ -494,11 +531,14 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
       petState.yaw += diff * Math.min(1, delta * 9)
       petState.phase += delta * (petState.called ? 14 : 8)
       const swing = reducedMotion.matches ? 0 : Math.sin(petState.phase) * .48
-      model.pet.legs[0]!.rotation.x = swing
-      model.pet.legs[1]!.rotation.x = -swing
-      model.pet.legs[2]!.rotation.x = -swing
-      model.pet.legs[3]!.rotation.x = swing
-      model.pet.tail.rotation.y = Math.sin(petState.phase * 1.3) * .35
+      if (model.pet.legs.length >= 4) {
+        model.pet.legs[0]!.rotation.x = swing
+        model.pet.legs[1]!.rotation.x = -swing
+        model.pet.legs[2]!.rotation.x = -swing
+        model.pet.legs[3]!.rotation.x = swing
+      }
+      if (model.pet.tail) model.pet.tail.rotation.y = Math.sin(petState.phase * 1.3) * .35
+      model.pet.root.position.y = baseY + (model.pet.legs.length || reducedMotion.matches ? 0 : Math.abs(Math.sin(petState.phase)) * .035)
       if (!petState.moving) { petState.moving = true; emitPetState() }
       dirty = true
     } else {
@@ -511,12 +551,12 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
       }
       if (time < petState.happyUntil && !reducedMotion.matches) {
         model.pet.root.position.y = baseY + Math.abs(Math.sin(time * .015)) * .16
-        model.pet.tail.rotation.y = Math.sin(time * .025) * .65
+        if (model.pet.tail) model.pet.tail.rotation.y = Math.sin(time * .025) * .65
         dirty = true
       } else {
         model.pet.root.position.y = baseY
-        model.pet.tail.rotation.y = reducedMotion.matches ? 0 : Math.sin(time * .005) * .25
-        if (!reducedMotion.matches) dirty = true
+        if (model.pet.tail) model.pet.tail.rotation.y = reducedMotion.matches ? 0 : Math.sin(time * .005) * .25
+        if (!reducedMotion.matches && model.pet.tail) dirty = true
       }
       petState.wait -= delta
       if (petState.wait <= 0) {
@@ -526,7 +566,6 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
       }
     }
     model.pet.root.position.x = petState.x
-    if (time >= petState.happyUntil) model.pet.root.position.y = baseY
     model.pet.root.position.z = petState.z
     model.pet.root.rotation.y = petState.yaw
   }
@@ -682,7 +721,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
       document.removeEventListener('pointerlockchange', onLockChange)
       document.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('blur', clearKeys)
-      disposeTrees(source, model.house)
+      disposeTrees(source, model.house, ...extraRoots)
       environmentMap.dispose()
       renderer.dispose()
     },
