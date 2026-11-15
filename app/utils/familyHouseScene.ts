@@ -177,7 +177,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   onPet?: (pet: HousePetState) => void
   onAction?: (message: string) => void
   onPropsChange?: (activeLabels: string[]) => void
-  onOpenJournal?: (context: { propId: string; title: string }) => void
+  onOpenJournal?: (context: { propId: string; title: string; mode: 'shelf' | 'editor' }) => void
 }) {
   const loader = new GLTFLoader()
   const response = await fetch(url, { signal: options.signal })
@@ -763,7 +763,17 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
       if (prop.kind === 'journal') {
         releaseLook()
         audio.playChime()
-        options.onOpenJournal?.({ propId: prop.id, title: prop.label })
+        options.onOpenJournal?.({ propId: prop.id, title: prop.label, mode: 'shelf' })
+        dirty = true
+        return
+      }
+      if (prop.kind === 'pc') {
+        activeProps.add(prop.id)
+        prop.update(true, performance.now())
+        emitActiveProps()
+        releaseLook()
+        audio.playChime()
+        options.onOpenJournal?.({ propId: prop.id, title: '工作间电脑 · 日记编辑器', mode: 'editor' })
         dirty = true
         return
       }

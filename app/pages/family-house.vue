@@ -5,6 +5,7 @@ import {
   mdiMoonWaningCrescent, mdiMouse, mdiPaw, mdiPlus, mdiRestore, mdiSofa, mdiStar, mdiStarOutline, mdiTune, mdiVolumeHigh, mdiVolumeOff, mdiWalk,
 } from '@mdi/js'
 import furnitureUrl from '~/assets/family-house/furniture.glb?url'
+import type { EntryV2 } from '~/utils/db'
 import { houseLevels, houseStops, porch, stairStops, type HouseStop } from '~/utils/familyHouseLayout'
 import type { createFamilyHouseScene, HouseFloor, HouseHint, HousePetState, HousePosition, HouseView } from '~/utils/familyHouseScene'
 
@@ -26,6 +27,8 @@ const activePropsLabels = shallowRef<string[]>([])
 const mapOpen = ref(true)
 const toolsOpen = ref(false)
 const journalOpen = ref(false)
+const editorOpen = ref(false)
+const editingEntry = shallowRef<EntryV2 | null>(null)
 const journalTitle = ref('日记书架')
 const journalQuery = ref('')
 const journalFilter = ref<'all' | 'starred'>('all')
@@ -47,6 +50,18 @@ function openJournalDrawer(title = '日记书架') {
   journalOpen.value = true
   toolsOpen.value = false
   void refreshEntries()
+}
+function openJournalEditor(entry?: EntryV2) {
+  editingEntry.value = entry ?? null
+  editorOpen.value = true
+  toolsOpen.value = false
+}
+async function onEditorDone(savedId?: number) {
+  editorOpen.value = false
+  editingEntry.value = null
+  await refreshEntries()
+  if (savedId != null) showActionToast('日记已保存并更新到书架！')
+  focusScene()
 }
 function escapeHtml(raw: string) {
   return raw.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
@@ -150,7 +165,10 @@ async function initialize() {
       onPet: value => { petState.value = value },
       onAction: showActionToast,
       onPropsChange: labels => { activePropsLabels.value = labels },
-      onOpenJournal: ctx => { openJournalDrawer(ctx.title) },
+      onOpenJournal: ctx => {
+        if (ctx.mode === 'editor') openJournalEditor()
+        else openJournalDrawer(ctx.title)
+      },
     })
     if (attempt.signal.aborted) { result.dispose(); return }
     game = result
@@ -449,10 +467,13 @@ async function download() {
               <JrIcon :path="draftStarred ? mdiStar : mdiStarOutline" :size="16" />
               <span>{{ draftStarred ? '已星标' : '加星标' }}</span>
             </button>
-            <button type="submit" class="journal-save-btn" :disabled="savingDraft || !draftText.trim()">
-              <JrIcon :path="mdiPlus" :size="16" />
-              <span>{{ savingDraft ? '保存中…' : '存入书架' }}</span>
-            </button>
+            <div class="journal-compose-actions">
+              <button type="button" class="journal-star-btn" @click="openJournalEditor()">完整编辑器</button>
+              <button type="submit" class="journal-save-btn" :disabled="savingDraft || !draftText.trim()">
+                <JrIcon :path="mdiPlus" :size="16" />
+                <span>{{ savingDraft ? '保存中…' : '存入书架' }}</span>
+              </button>
+            </div>
           </div>
         </form>
 
@@ -464,7 +485,7 @@ async function download() {
 
         <ul class="journal-list">
           <li v-if="!filteredEntries.length" class="journal-empty">书架这一层还没有匹配的日记，写一篇吧。</li>
-          <li v-for="item in filteredEntries" :key="item.id ?? item.cloudId" class="journal-item">
+          <li v-for="item in filteredEntries" :key="item.id ?? item.cloudId" class="journal-item" role="button" tabindex="0" @click="openJournalEditor(item)" @keydown.enter.prevent="openJournalEditor(item)">
             <div class="journal-item-meta">
               <span>{{ formatJournalDate(item.dateOfJournal) }}</span>
               <JrIcon v-if="item.favourite" :path="mdiStar" :size="14" class="journal-item-star" />
@@ -511,6 +532,15 @@ async function download() {
       <div class="house-sensitivity-scale" aria-hidden="true"><span>慢</span><span>快</span></div>
       <form @submit.prevent="finishSensitivity"><button type="submit">继续漫游</button></form>
     </dialog>
+
+    <EntryEditor
+      v-if="editorOpen"
+      :entry-id="editingEntry?.id"
+      :initial-text="editingEntry?.text"
+      :initial-date="editingEntry?.dateOfJournal"
+      :initial-meta="editingEntry ?? undefined"
+      @done="onEditorDone"
+    />
   </main>
 </template>
 
@@ -585,6 +615,9 @@ async function download() {
 .journal-compose { display: grid; gap: 8px; padding: 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.72); border: 1px solid rgba(43, 81, 62, 0.12); }
 .journal-compose textarea { width: 100%; resize: none; border: 0; background: transparent; font: inherit; font-size: .82rem; color: var(--house-text); outline: none; }
 .journal-compose-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.journal-compose-actions { display: flex; align-items: center; gap: 6px; }
+.journal-item[role="button"] { cursor: pointer; }
+.journal-item[role="button"]:hover { border-color: rgba(43, 81, 62, 0.34); background: rgba(255, 255, 255, 0.94); }
 .journal-star-btn, .journal-save-btn { display: inline-flex; align-items: center; gap: 4px; border: 0; border-radius: 8px; padding: 5px 10px; font-size: .76rem; font-weight: 600; }
 .journal-star-btn { background: #edf2ee; color: #475a4e; }
 .journal-star-btn[aria-pressed="true"] { background: #fdf0d2; color: #996615; }

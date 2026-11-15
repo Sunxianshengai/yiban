@@ -1194,7 +1194,7 @@ export function buildFamilyHouse(
       },
     },
     {
-      id: 'study-pc', label: '唤醒工作间双屏', offLabel: '休眠工作间双屏', shortLabel: '💻 双屏电脑',
+      id: 'study-pc', label: '打开电脑 · 日记编辑', offLabel: '打开电脑 · 日记编辑', shortLabel: '💻 双屏电脑',
       floor: 0, x: -4.45, z: -3.65, kind: 'pc',
       update(active) {
         pcScreen.visible = active
