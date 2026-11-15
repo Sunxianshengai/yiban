@@ -951,7 +951,7 @@ export function buildFamilyHouse(
   for (const x of [1.30, 2.10, 2.90]) plant(terrace, x, -3.35, .98, .52)
   plant(terrace, -5.85, -3.25, 1.35)
   plant(terrace, -5.85, 3.25, 1.18)
-  const scopeTube = mesh(terrace, 'Telescope tube', cylGeo(.045, .065, .72, 12), [-5.55, 1.18, -1.25], '#e9e5dc', 'metal')
+  const scopeTube = mesh(propsGroup, 'Telescope tube', cylGeo(.045, .065, .72, 12), [-5.55, 3 * floorRise + 1.18, -1.25], '#e9e5dc', 'metal')
   scopeTube.rotation.set(Math.PI / 3, .45, 0)
   mesh(terrace, 'Telescope tripod', cylGeo(.03, .26, .95, 6), [-5.55, .48, -1.25], frame, 'metal')
   footprint(3, -5.55, -1.25, .60, .60)
@@ -1072,20 +1072,39 @@ export function buildFamilyHouse(
   waterStream.position.set(.25, 1.06, -3.76)
   waterStream.visible = false
   propsGroup.add(waterStream)
+  const sinkRipple = new Mesh(cylGeo(.14, .14, .006, 16), waterMat)
+  sinkRipple.position.set(.25, .958, -3.74)
+  sinkRipple.visible = false
+  propsGroup.add(sinkRipple)
+  const tapLever = new Mesh(boxGeo(.02, .06, .02), material('#8a9492', 'metal'))
+  tapLever.position.set(.25, 1.19, -3.86)
+  propsGroup.add(tapLever)
 
-  const pcTex = makeCanvasTexture(256, 1, 1, (ctx, s) => {
-    ctx.fillStyle = '#1b222c'
-    ctx.fillRect(0, 0, s, s)
-    ctx.fillStyle = '#25303f'
-    ctx.fillRect(8, 12, s * .42, s - 24)
-    ctx.fillRect(s * .52, 12, s * .42, s - 24)
+  const pcCanvas = document.createElement('canvas')
+  pcCanvas.width = pcCanvas.height = 256
+  const pcCtx = pcCanvas.getContext('2d')!
+  const pcTex = new CanvasTexture(pcCanvas)
+  pcTex.colorSpace = SRGBColorSpace
+  let lastPcDraw = -1000
+  function drawPcScreen(t: number) {
+    const s = 256
+    pcCtx.fillStyle = '#1b222c'
+    pcCtx.fillRect(0, 0, s, s)
+    pcCtx.fillStyle = '#25303f'
+    pcCtx.fillRect(8, 12, s * .42, s - 24)
+    pcCtx.fillRect(s * .52, 12, s * .42, s - 24)
     const cols = ['#7dd3fc', '#a7f3d0', '#fca5a5', '#fde68a']
+    const shift = Math.floor(t * 2) % 12
     for (let i = 0; i < 12; i++) {
-      ctx.fillStyle = cols[i % cols.length]!
-      ctx.fillRect(18, 28 + i * 16, 40 + (i * 23) % 52, 6)
-      ctx.fillRect(s * .55, 28 + i * 16, 36 + (i * 19) % 56, 6)
+      pcCtx.fillStyle = cols[(i + shift) % cols.length]!
+      const w1 = 36 + ((i * 23 + shift * 11) % 56)
+      const w2 = 34 + ((i * 19 + shift * 7) % 56)
+      pcCtx.fillRect(18, 28 + i * 16, w1, 6)
+      pcCtx.fillRect(s * .55, 28 + i * 16, w2, 6)
     }
-  })
+    pcTex.needsUpdate = true
+  }
+  drawPcScreen(0)
   const pcGlowMat = new MeshStandardMaterial({
     map: pcTex, emissiveMap: pcTex, emissive: '#d8f0ff', emissiveIntensity: 0, roughness: .22,
   })
@@ -1105,6 +1124,13 @@ export function buildFamilyHouse(
   fridgeStrip.position.set(3.85, .95, -3.35)
   fridgeStrip.visible = false
   propsGroup.add(fridgeStrip)
+  const fridgeMistMat = new MeshBasicMaterial({ color: '#dff4ff', transparent: true, opacity: .36, depthWrite: false })
+  const fridgeMists = [0, 1, 2].map(() => {
+    const puff = new Mesh(sphGeo(.05, 8, 6), fridgeMistMat)
+    puff.visible = false
+    propsGroup.add(puff)
+    return puff
+  })
 
   const microLight = new PointLight('#ffba66', 0, 2.0, 2)
   microLight.position.set(2.65, 1.15, -3.50)
@@ -1114,6 +1140,14 @@ export function buildFamilyHouse(
   microWindow.position.set(2.65, 1.09, -3.56)
   microWindow.visible = false
   propsGroup.add(microWindow)
+  const microTurntable = new Group()
+  microTurntable.position.set(2.65, 1.03, -3.62)
+  microTurntable.visible = false
+  propsGroup.add(microTurntable)
+  microTurntable.add(new Mesh(cylGeo(.08, .08, .012, 12), material('#e6eef2', 'ceramic')))
+  const microBowl = new Mesh(cylGeo(.045, .035, .035, 10), material('#f5ebe0', 'ceramic'))
+  microBowl.position.set(.02, .022, 0)
+  microTurntable.add(microBowl)
 
   const bathWaterMat = new MeshStandardMaterial({
     color: '#a3d8e6', roughness: .08, metalness: .05, transparent: true, opacity: .74,
@@ -1128,12 +1162,27 @@ export function buildFamilyHouse(
     propsGroup.add(puff)
     return puff
   })
+  const bathBubbles = [0, 1, 2, 3].map(() => {
+    const bubble = new Mesh(sphGeo(.024, 8, 6), fridgeMistMat)
+    bubble.visible = false
+    propsGroup.add(bubble)
+    return bubble
+  })
+
+  // 书架互动高亮书本
+  const shelfHighlightMat = new MeshStandardMaterial({
+    color: '#e0b44f', emissive: '#e0b44f', emissiveIntensity: .35, roughness: .35,
+  })
+  const shelfHighlightBook = new Mesh(boxGeo(.16, .24, .05), shelfHighlightMat)
+  shelfHighlightBook.position.set(-1.60, 1.02, 2.78)
+  propsGroup.add(shelfHighlightBook)
 
   const kibbleMound = new Mesh(sphGeo(.08, 10, 6), material('#7a5338', 'matte'))
   kibbleMound.scale.set(1.2, .45, 1.2)
   kibbleMound.position.set(-1.45, .06, 1.35)
   kibbleMound.visible = false
   propsGroup.add(kibbleMound)
+  let kibblePopAt = 0
 
   const props: HouseProp[] = [
     {
@@ -1187,27 +1236,43 @@ export function buildFamilyHouse(
       floor: 0, x: .25, z: -3.70, kind: 'tap',
       update(active, time) {
         waterStream.visible = active
+        sinkRipple.visible = active
+        tapLever.rotation.z = active ? -.45 : 0
         if (active) {
           const shimmer = 1 + Math.sin(time * .028) * .14
           waterStream.scale.set(shimmer, 1, shimmer)
+          const rPhase = (time * .0024) % 1
+          const rScale = .35 + rPhase * .95
+          sinkRipple.scale.set(rScale, 1, rScale)
         }
       },
     },
     {
       id: 'study-pc', label: '打开电脑 · 日记编辑', offLabel: '打开电脑 · 日记编辑', shortLabel: '💻 双屏电脑',
       floor: 0, x: -4.45, z: -3.65, kind: 'pc',
-      update(active) {
+      update(active, time) {
         pcScreen.visible = active
-        pcGlowMat.emissiveIntensity = active ? 1.05 : 0
-        deskLampGlow.intensity = active ? 4.5 : 0
+        if (active && time - lastPcDraw > 180) {
+          lastPcDraw = time
+          drawPcScreen(time * .001)
+        }
+        pcGlowMat.emissiveIntensity = active ? (.95 + Math.sin(time * .004) * .12) : 0
+        deskLampGlow.intensity = active ? (4.2 + Math.sin(time * .003) * .45) : 0
       },
     },
     {
       id: 'kitchen-fridge', label: '打开冰箱冷灯', offLabel: '关上冰箱', shortLabel: '🧊 冰箱',
       floor: 0, x: 3.85, z: -3.68, kind: 'fridge',
-      update(active) {
+      update(active, time) {
         fridgeStrip.visible = active
-        fridgeLight.intensity = active ? 3.8 : 0
+        fridgeLight.intensity = active ? (3.6 + Math.sin(time * .005) * .35) : 0
+        fridgeMists.forEach((puff, idx) => {
+          puff.visible = active
+          if (!active) return
+          const cycle = ((time * .0006) + idx * .33) % 1
+          puff.position.set(3.85 + Math.sin(cycle * 5 + idx) * .08, 1.25 - cycle * .75, -3.28 + cycle * .16)
+          puff.scale.setScalar(.65 + cycle * .85)
+        })
       },
     },
     {
@@ -1215,14 +1280,22 @@ export function buildFamilyHouse(
       floor: 0, x: 2.65, z: -3.72, kind: 'microwave',
       update(active, time) {
         microWindow.visible = active
+        microTurntable.visible = active
+        if (active) microTurntable.rotation.y = time * .0022
         microLight.intensity = active ? (3.2 + Math.sin(time * .018) * .5) : 0
       },
     },
     {
       id: 'pet-feed', label: '给小柴加狗粮', offLabel: '清理空食盆', shortLabel: '🦴 已加粮',
       floor: 0, x: -1.45, z: 1.35, kind: 'pet-feed',
-      update(active) {
+      update(active, time) {
+        if (active && !kibbleMound.visible) kibblePopAt = time
         kibbleMound.visible = active
+        if (active) {
+          const dt = Math.min(1, (time - kibblePopAt) / 360)
+          const bounce = 1 + Math.sin(dt * Math.PI) * .24
+          kibbleMound.scale.set(1.2 * bounce, .45 * dt, 1.2 * bounce)
+        }
       },
     },
     {
@@ -1230,7 +1303,7 @@ export function buildFamilyHouse(
       floor: 1, x: 2.62, z: -2.95, kind: 'bathtub',
       update(active, time) {
         bathWater.visible = active
-        if (active) bathWater.position.y = floorRise + .28 + Math.sin(time * .003) * .01
+        if (active) bathWater.position.y = floorRise + .28 + Math.sin(time * .003) * .012
         bathSteams.forEach((puff, idx) => {
           puff.visible = active
           if (!active) return
@@ -1238,22 +1311,38 @@ export function buildFamilyHouse(
           puff.position.set(2.55 + Math.sin(cycle * 5 + idx) * .09, floorRise + .42 + cycle * .55, -2.95 + (idx - 1) * .25)
           puff.scale.setScalar(.8 + cycle * 1.1)
         })
+        bathBubbles.forEach((bubble, idx) => {
+          bubble.visible = active
+          if (!active) return
+          const cycle = ((time * .0009) + idx * .25) % 1
+          bubble.position.set(2.52 + Math.cos(idx * 2 + time * .002) * .12, floorRise + .30 + cycle * .38, -2.95 + (idx - 1.5) * .22)
+          bubble.scale.setScalar(.55 + Math.sin(cycle * Math.PI) * .75)
+        })
       },
     },
     {
       id: 'terrace-scope', label: '用望远镜观星', offLabel: '退出观星视角', shortLabel: '🔭 观星中',
       floor: 3, x: -5.55, z: -1.25, kind: 'telescope',
-      update() {},
+      update(active, time) {
+        scopeTube.rotation.y = active ? .45 + Math.sin(time * .0011) * .35 : .45 + Math.sin(time * .0004) * .08
+        scopeTube.rotation.x = active ? Math.PI / 3 + Math.sin(time * .0008) * .07 : Math.PI / 3
+      },
     },
     {
       id: 'study-journal-shelf', label: '翻阅工作间日记书架', offLabel: '翻阅工作间日记书架', shortLabel: '📖 日记书架',
       floor: 0, x: -6.38, z: -2.10, kind: 'journal',
-      update() {},
+      update(active, time) {
+        shelfHighlightBook.position.x = -1.60 + (active ? .07 : Math.sin(time * .0025) * .015)
+        shelfHighlightMat.emissiveIntensity = active ? .75 : (.25 + Math.sin(time * .003) * .12)
+      },
     },
     {
       id: 'living-journal-shelf', label: '浏览客厅日记展示架', offLabel: '浏览客厅日记展示架', shortLabel: '📖 日记展示架',
       floor: 0, x: -1.60, z: 2.85, kind: 'journal',
-      update() {},
+      update(active, time) {
+        shelfHighlightBook.position.x = -1.60 + (active ? .07 : Math.sin(time * .0025) * .015)
+        shelfHighlightMat.emissiveIntensity = active ? .75 : (.25 + Math.sin(time * .003) * .12)
+      },
     },
   ]
 

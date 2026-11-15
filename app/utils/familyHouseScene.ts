@@ -333,6 +333,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   const audio = createHouseAudio()
   let activeSeatId: string | null = null
   let standUpPos: [number, number] | null = null
+  let seatTargetPos: [number, number] | null = null
   let stargazing = false
   let bobPhase = 0
   function emitActiveProps() {
@@ -486,8 +487,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
     if (!activeSeatId) return
     activeSeatId = null
     if (standUpPos) {
-      player.position.x = standUpPos[0]
-      player.position.z = standUpPos[1]
+      seatTargetPos = [standUpPos[0], standUpPos[1]]
       standUpPos = null
     }
     eyeHeight = 1.62 + currentFloor * floorRise
@@ -498,6 +498,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   function enter(stop: HouseStop) {
     activeSeatId = null
     standUpPos = null
+    seatTargetPos = null
     stargazing = false
     activeProps.delete('terrace-scope')
     currentFloor = stop.floor
@@ -566,6 +567,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   function move(delta: number) {
     if (!held.size && !walkVelocity.lengthSq()) return false
     if (held.size && activeSeatId) standUp(false)
+    if (held.size && seatTargetPos) seatTargetPos = null
     if (held.size && stargazing) { stargazing = false; activeProps.delete('terrace-scope'); updateHint() }
     const directions = new Set(held.values())
     const horizontal = Number(directions.has('right')) - Number(directions.has('left'))
@@ -745,12 +747,10 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
       if (!seat) return
       standUpPos = [player.position.x, player.position.z]
       activeSeatId = seat.id
-      player.position.x = seat.seatX
-      player.position.z = seat.seatZ
+      seatTargetPos = [seat.seatX, seat.seatZ]
       eyeHeight = seat.eyeY + seat.floor * floorRise
-      targetYaw = yaw = Math.atan2(seat.seatX - seat.look[0], seat.seatZ - seat.look[1])
-      targetPitch = pitch = -.06
-      player.rotation.set(pitch, yaw, 0, 'YXZ')
+      targetYaw = Math.atan2(seat.seatX - seat.look[0], seat.seatZ - seat.look[1])
+      targetPitch = -.06
       audio.playChime()
       options.onAction?.(seat.id === 'master-bed' ? `已躺到${seat.label}上休息（按 E 或移动起身）` : `已坐到${seat.label}上（按 E 或移动起身）`)
       updateHint()
@@ -961,11 +961,21 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
         player.position.y = MathUtils.damp(player.position.y, targetY, 16, delta)
         dirty = true
       }
+      if (seatTargetPos) {
+        player.position.x = reducedMotion.matches ? seatTargetPos[0] : MathUtils.damp(player.position.x, seatTargetPos[0], 12, delta)
+        player.position.z = reducedMotion.matches ? seatTargetPos[1] : MathUtils.damp(player.position.z, seatTargetPos[1], 12, delta)
+        if (Math.hypot(player.position.x - seatTargetPos[0], player.position.z - seatTargetPos[1]) < .004) {
+          player.position.x = seatTargetPos[0]
+          player.position.z = seatTargetPos[1]
+          seatTargetPos = null
+        }
+        dirty = true
+      }
     }
     for (const prop of model.props) {
       const active = activeProps.has(prop.id)
       prop.update(active, time)
-      if (active && (prop.kind === 'tv' || prop.kind === 'coffee' || prop.kind === 'tap' || prop.kind === 'microwave' || prop.kind === 'bathtub')) dirty = true
+      if (active) dirty = true
     }
     updatePet(delta, time)
     for (const door of model.doors) {
