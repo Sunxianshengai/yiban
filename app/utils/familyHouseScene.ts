@@ -78,7 +78,7 @@ type HouseDirection = 'forward' | 'back' | 'left' | 'right'
 export type HouseFloor = number | 'all'
 export interface HousePosition { x: number; z: number; yaw: number; floor: number; onStairs: boolean }
 interface WalkSurface { floor: number; height: number; stairBase: number | null }
-export interface HouseHint { id: string; label: string; kind: 'door' | 'light' | 'pet' }
+export interface HouseHint { id: string; label: string; kind: 'door' | 'light' | 'pet' | 'seat' | 'prop' }
 export interface HousePetState { floor: number; moving: boolean; called: boolean; roomLabel: string }
 
 const moveKeys = new Map<string, HouseDirection>([
@@ -157,6 +157,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   onHint: (hint: HouseHint | null) => void
   onLock: (locked: boolean) => void
   onPet?: (pet: HousePetState) => void
+  onAction?: (message: string) => void
 }) {
   const loader = new GLTFLoader()
   const response = await fetch(url, { signal: options.signal })
@@ -272,6 +273,10 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   const heading = new Euler(0, 0, 0, 'YXZ')
   const openDoors = new Set<string>()
   const switchedOff = new Set<string>()
+  const activeProps = new Set<string>(['study-pc'])
+  let activeSeatId: string | null = null
+  let standUpPos: [number, number] | null = null
+  let stargazing = false
   const switchId = new Map(model.localLamps.map(lamp => [lamp.light, lamp.id]))
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 
@@ -347,32 +352,53 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   }
   function updateHint() {
     let next: HouseHint | null = null
-    let closest = 1.72
+    let closest = 1.80
     if (mode === 'walk' && stairBase === null) {
-      for (const door of model.doors) {
-        if (door.floor !== currentFloor) continue
-        const distance = Math.hypot(player.position.x - door.x, player.position.z - door.z)
-        const ahead = (door.x - player.position.x) * -Math.sin(yaw) + (door.z - player.position.z) * -Math.cos(yaw)
-        if (distance >= closest || (distance > .72 && ahead < distance * -.25)) continue
-        closest = distance
-        const opening = openDoors.has(door.id) && Math.abs(Math.PI / 2 - door.hinge.rotation.y) > .08
-        next = {
-          id: door.id,
-          kind: 'door',
-          label: opening ? `${door.label} · 正在打开` : `${openDoors.has(door.id) ? '关上' : '打开'}${door.label}`,
+      if (activeSeatId) {
+        next = { id: activeSeatId, kind: 'seat', label: '起身站立' }
+      } else if (stargazing) {
+        next = { id: 'terrace-scope', kind: 'prop', label: '退出观星视角' }
+      } else {
+        for (const door of model.doors) {
+          if (door.floor !== currentFloor) continue
+          const distance = Math.hypot(player.position.x - door.x, player.position.z - door.z)
+          const ahead = (door.x - player.position.x) * -Math.sin(yaw) + (door.z - player.position.z) * -Math.cos(yaw)
+          if (distance >= closest || (distance > .72 && ahead < distance * -.25)) continue
+          closest = distance
+          const opening = openDoors.has(door.id) && Math.abs(Math.PI / 2 - door.hinge.rotation.y) > .08
+          next = {
+            id: door.id,
+            kind: 'door',
+            label: opening ? `${door.label} · 正在打开` : `${openDoors.has(door.id) ? '关上' : '打开'}${door.label}`,
+          }
         }
-      }
-      for (const lamp of model.localLamps) {
-        if (!lampsOn || lamp.floor !== currentFloor) continue
-        const distance = Math.hypot(player.position.x - lamp.x, player.position.z - lamp.z)
-        if (distance >= closest) continue
-        closest = distance
-        next = { id: lamp.id, kind: 'light', label: `${switchedOff.has(lamp.id) ? '打开' : '关掉'}${lamp.label}` }
-      }
-      if (petState.floor === currentFloor) {
-        const petDist = Math.hypot(player.position.x - petState.x, player.position.z - petState.z)
-        if (petDist < Math.min(closest, 1.45)) {
-          next = { id: 'pet', kind: 'pet', label: '摸摸小柴' }
+        for (const prop of model.props) {
+          if (prop.floor !== currentFloor) continue
+          const distance = Math.hypot(player.position.x - prop.x, player.position.z - prop.z)
+          if (distance >= closest) continue
+          closest = distance
+          const active = activeProps.has(prop.id)
+          next = { id: prop.id, kind: 'prop', label: active ? prop.offLabel : prop.label }
+        }
+        for (const lamp of model.localLamps) {
+          if (!lampsOn || lamp.floor !== currentFloor) continue
+          const distance = Math.hypot(player.position.x - lamp.x, player.position.z - lamp.z)
+          if (distance >= closest) continue
+          closest = distance
+          next = { id: lamp.id, kind: 'light', label: `${switchedOff.has(lamp.id) ? '打开' : '关掉'}${lamp.label}` }
+        }
+        for (const seat of model.seats) {
+          if (seat.floor !== currentFloor) continue
+          const distance = Math.hypot(player.position.x - seat.x, player.position.z - seat.z)
+          if (distance >= Math.min(closest, 1.55)) continue
+          closest = distance
+          next = { id: seat.id, kind: 'seat', label: seat.id === 'master-bed' ? `躺到${seat.label}上` : `坐到${seat.label}上` }
+        }
+        if (petState.floor === currentFloor) {
+          const petDist = Math.hypot(player.position.x - petState.x, player.position.z - petState.z)
+          if (petDist < Math.min(closest, 1.45)) {
+            next = { id: 'pet', kind: 'pet', label: '摸摸小柴' }
+          }
         }
       }
     }
@@ -394,7 +420,24 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
     player.rotation.set(pitch, yaw, 0, 'YXZ')
     return true
   }
+  function standUp(notify = false) {
+    if (!activeSeatId) return
+    activeSeatId = null
+    if (standUpPos) {
+      player.position.x = standUpPos[0]
+      player.position.z = standUpPos[1]
+      standUpPos = null
+    }
+    eyeHeight = 1.62 + currentFloor * floorRise
+    if (notify) options.onAction?.('已起身')
+    updateHint()
+    dirty = true
+  }
   function enter(stop: HouseStop) {
+    activeSeatId = null
+    standUpPos = null
+    stargazing = false
+    activeProps.delete('terrace-scope')
     currentFloor = stop.floor
     shownFloor = stop.floor
     stairBase = null
@@ -460,6 +503,8 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   }
   function move(delta: number) {
     if (!held.size && !walkVelocity.lengthSq()) return false
+    if (held.size && activeSeatId) standUp(false)
+    if (held.size && stargazing) { stargazing = false; activeProps.delete('terrace-scope'); updateHint() }
     const directions = new Set(held.values())
     const horizontal = Number(directions.has('right')) - Number(directions.has('left'))
     const forward = Number(directions.has('back')) - Number(directions.has('forward'))
@@ -623,6 +668,54 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
     if (!hint || mode !== 'walk') return
     if (hint.kind === 'pet') {
       petState.happyUntil = performance.now() + 1400
+      options.onAction?.('摸了摸小柴，它开心地摇起了尾巴！')
+      dirty = true
+      return
+    }
+    if (hint.kind === 'seat') {
+      if (activeSeatId) {
+        standUp(true)
+        return
+      }
+      const seat = model.seats.find(item => item.id === hint?.id)
+      if (!seat) return
+      standUpPos = [player.position.x, player.position.z]
+      activeSeatId = seat.id
+      player.position.x = seat.seatX
+      player.position.z = seat.seatZ
+      eyeHeight = seat.eyeY + seat.floor * floorRise
+      targetYaw = yaw = Math.atan2(seat.seatX - seat.look[0], seat.seatZ - seat.look[1])
+      targetPitch = pitch = -.06
+      player.rotation.set(pitch, yaw, 0, 'YXZ')
+      options.onAction?.(seat.id === 'master-bed' ? `已躺到${seat.label}上休息（按 E 或移动起身）` : `已坐到${seat.label}上（按 E 或移动起身）`)
+      updateHint()
+      dirty = true
+      return
+    }
+    if (hint.kind === 'prop') {
+      const prop = model.props.find(item => item.id === hint?.id)
+      if (!prop) return
+      const active = activeProps.has(prop.id)
+      if (active) activeProps.delete(prop.id)
+      else activeProps.add(prop.id)
+      const nowActive = !active
+      if (prop.kind === 'telescope') {
+        stargazing = nowActive
+        if (stargazing) {
+          targetYaw = yaw = 0
+          targetPitch = pitch = .32
+          player.rotation.set(pitch, yaw, 0, 'YXZ')
+        }
+      }
+      const actionMessages: Record<typeof prop.kind, [string, string]> = {
+        tv: ['已打开客厅电视', '已关闭客厅电视'],
+        coffee: ['咖啡机正在萃取热美式…', '已关闭咖啡机'],
+        tap: ['已打开厨房水龙头', '已关掉厨房水龙头'],
+        pc: ['已唤醒工作间双屏显示器', '工作间双屏已休眠'],
+        telescope: ['已开启露台望远镜观星视角（按 E 退出）', '已退出观星视角'],
+      }
+      options.onAction?.(actionMessages[prop.kind][nowActive ? 0 : 1])
+      updateHint()
       dirty = true
       return
     }
@@ -633,8 +726,14 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
       if (blocksWalk(player.position.x, player.position.z, open ? door.closed : door.open)) return
       if (open) openDoors.delete(door.id)
       else openDoors.add(door.id)
-    } else if (switchedOff.has(hint.id)) switchedOff.delete(hint.id)
-    else switchedOff.add(hint.id)
+      options.onAction?.(`${open ? '已关上' : '已打开'}${door.label}`)
+    } else if (switchedOff.has(hint.id)) {
+      switchedOff.delete(hint.id)
+      options.onAction?.(`已打开${hint.label.replace(/^打开/, '')}`)
+    } else {
+      switchedOff.add(hint.id)
+      options.onAction?.(`已关掉${hint.label.replace(/^关掉/, '')}`)
+    }
     updateHint()
     refreshScene()
   }
@@ -717,7 +816,25 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   renderer.setAnimationLoop((time) => {
     const delta = Math.min(last ? (time - last) / 1000 : 0, .16)
     last = time
-    if (mode === 'walk') animateWalk(delta, time)
+    if (mode === 'walk') {
+      animateWalk(delta, time)
+      const baseFov = player.aspect < 1 ? 78 : 64
+      const targetFov = stargazing ? 28 : baseFov
+      if (Math.abs(player.fov - targetFov) > .08) {
+        player.fov = MathUtils.damp(player.fov, targetFov, 12, delta)
+        player.updateProjectionMatrix()
+        dirty = true
+      }
+      if (Math.abs(player.position.y - eyeHeight) > .003) {
+        player.position.y = MathUtils.damp(player.position.y, eyeHeight, 14, delta)
+        dirty = true
+      }
+    }
+    for (const prop of model.props) {
+      const active = activeProps.has(prop.id)
+      prop.update(active, time)
+      if (active && (prop.kind === 'tv' || prop.kind === 'coffee' || prop.kind === 'tap')) dirty = true
+    }
     updatePet(delta, time)
     for (const door of model.doors) {
       const targetAngle = openDoors.has(door.id) ? Math.PI / 2 : 0

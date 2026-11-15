@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import {
   mdiArrowLeft, mdiCubeOutline, mdiDoorOpen, mdiDownload, mdiFullscreen, mdiFullscreenExit,
-  mdiHelpCircleOutline, mdiHomeOutline, mdiLightbulbOutline, mdiMapOutline, mdiMoonWaningCrescent,
-  mdiMouse, mdiPaw, mdiRestore, mdiTune, mdiWalk,
+  mdiGestureTap, mdiHelpCircleOutline, mdiHomeOutline, mdiLightbulbOutline, mdiMapOutline,
+  mdiMoonWaningCrescent, mdiMouse, mdiPaw, mdiRestore, mdiSofa, mdiTune, mdiWalk,
 } from '@mdi/js'
 import furnitureUrl from '~/assets/family-house/furniture.glb?url'
 import { houseLevels, houseStops, porch, stairStops, type HouseStop } from '~/utils/familyHouseLayout'
@@ -41,6 +41,13 @@ const petStatusText = computed(() => {
 const livingStop = houseStops.find(item => item.id === 'living')!
 const exporting = ref(false)
 const alertText = ref('')
+const actionToast = ref('')
+let actionTimer: ReturnType<typeof setTimeout> | undefined
+function showActionToast(message: string) {
+  actionToast.value = message
+  if (actionTimer) clearTimeout(actionTimer)
+  actionTimer = setTimeout(() => { actionToast.value = '' }, 2400)
+}
 const allStops = [porch, ...houseStops, ...stairStops]
 const actualRoom = computed(() => room.value === 'stairs' ? '楼梯间' : allStops.find(stop => stop.id === room.value)?.label || '玄关')
 const mapFloor = computed(() => view.value === 'walk' ? position.value.floor : overviewFloor.value)
@@ -87,6 +94,7 @@ async function initialize() {
       onHint: value => { hint.value = value },
       onLock: value => { mouseLocked.value = value },
       onPet: value => { petState.value = value },
+      onAction: showActionToast,
     })
     if (attempt.signal.aborted) { result.dispose(); return }
     game = result
@@ -315,8 +323,9 @@ async function download() {
       <div v-if="view === 'walk'" class="house-reticle" aria-hidden="true" />
       <FamilyHouseMap v-if="mapOpen" class="house-map-wrap house-hud" :floor="mapFloor" :room="room" :position="position" :view="view"
         @floor="selectFloor" @visit="visit" @hide="mapOpen = false; focusScene()" />
+      <p v-if="view === 'walk' && actionToast" class="house-action-toast house-hud" role="status">{{ actionToast }}</p>
       <button v-if="view === 'walk' && hint" type="button" class="house-interaction house-hud" :aria-label="hint.label" aria-keyshortcuts="E" @click="game?.interact(); focusScene()">
-        <kbd>E</kbd><JrIcon :path="hint.kind === 'door' ? mdiDoorOpen : hint.kind === 'pet' ? mdiPaw : mdiLightbulbOutline" :size="18" />{{ hint.label }}
+        <kbd>E</kbd><JrIcon :path="hint.kind === 'door' ? mdiDoorOpen : hint.kind === 'pet' ? mdiPaw : hint.kind === 'seat' ? mdiSofa : hint.kind === 'prop' ? mdiGestureTap : mdiLightbulbOutline" :size="18" />{{ hint.label }}
       </button>
       <aside class="house-pet house-hud" aria-label="家里的小伙伴">
         <div class="house-pet-info">
@@ -360,7 +369,7 @@ async function download() {
       <dl>
         <dt>移动</dt><dd><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> 或方向键</dd>
         <dt>看四周</dt><dd>窗口内拖动鼠标，第一人称全屏后直接移动鼠标。<kbd>Esc</kbd> 释放鼠标。</dd>
-        <dt>互动</dt><dd>靠近门或台灯后，按 <kbd>E</kbd> 或点击提示。</dd>
+        <dt>互动</dt><dd>靠近门、灯具、沙发/床铺、电视、咖啡机、水龙头、工作台或望远镜后，按 <kbd>E</kbd> 或点击提示即可互动；靠近小柴还能摸摸它。</dd>
         <dt>上下楼</dt><dd>走进楼梯的对应一侧，到半层平台后折返。也能在小地图切楼层。</dd>
         <dt>视角与地图</dt><dd><kbd>V</kbd> 切视角，<kbd>M</kbd> 显示或收起小地图。</dd>
       </dl>
@@ -435,6 +444,7 @@ async function download() {
 .house-divider { height: 17px; width: 1px; margin: 0 6px; background: #89968760; }
 .house-stage kbd { display: inline-grid; min-width: 20px; min-height: 20px; place-items: center; padding: 0 3px; border-radius: 4px; border: 1px solid #b7c1b2; background: #fcfbf4; font: 700 .72rem var(--jr-font); color: #334f3e; }
 .house-stage .house-interaction { position: absolute; bottom: 14%; left: 50%; transform: translateX(-50%); min-height: 45px; display: flex; align-items: center; gap: 8px; border-radius: 10px; padding: 6px 11px; color: var(--house-text); font-size: .87rem; white-space: nowrap; }
+.house-action-toast { position: absolute; bottom: calc(14% + 56px); left: 50%; transform: translateX(-50%); margin: 0; border-radius: 999px; padding: 6px 14px; font-size: .82rem; font-weight: 550; color: var(--house-text); pointer-events: none; white-space: nowrap; }
 .house-interaction:hover { background: #fffcf4; }
 .house-interaction kbd { color: #fffdf7; background: var(--house-accent); border: 0; }
 .house-cover { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 18px; }

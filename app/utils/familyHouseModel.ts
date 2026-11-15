@@ -10,6 +10,29 @@ export interface HouseDoor {
   closed: Bounds2D; open: Bounds2D
 }
 
+export interface HouseSeat {
+  id: string
+  label: string
+  floor: number
+  x: number
+  z: number
+  seatX: number
+  seatZ: number
+  eyeY: number
+  look: [number, number]
+}
+
+export interface HouseProp {
+  id: string
+  label: string
+  offLabel: string
+  floor: number
+  x: number
+  z: number
+  kind: 'tv' | 'coffee' | 'tap' | 'pc' | 'telescope'
+  update: (active: boolean, time: number) => void
+}
+
 export interface HousePetRig {
   root: Group
   legs: Group[]
@@ -51,6 +74,9 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   const ground = new Group()
   const roof = new Group()
   const doors: HouseDoor[] = []
+  const propsGroup = new Group()
+  propsGroup.name = 'Interactive props'
+  house.add(propsGroup)
   const floors = houseLevels.map((_, index) => {
     const root = new Group()
     root.name = `Storey ${index + 1}`
@@ -542,7 +568,7 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
     box(living, 'Study1F overhead cabinet', [cx, 2.26, -3.86], [.54, .68, .36], '#f3f1ec', 'plaster')
     box(living, 'Study1F cabinet handle', [cx + .18, 2.08, -3.67], [.018, .11, .018], '#2b2d30', 'metal')
   }
-  warm(0, 'Study1F warm light', -4.30, 2.40, -2.20, 12)
+  const studyCeiling = warm(0, 'Study1F warm light', -4.30, 2.40, -2.20, 12)
 
   // 一层客厅：开阔布局，使用现代 CC0 3D 沙发、茶几、单人椅、餐桌椅与冰箱
   if (!placeExtra(living, 'sofa-3seat', -3.95, .72, { floorForSolid: 0 })) furniture(0, 24, -3.95, .72, { solid: true })
@@ -621,8 +647,8 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   // 一楼自发光灯具（餐桌吊灯罩 + 客厅吸顶灯）
   mesh(living, 'Dining pendant shade', cylGeo(.22, .30, .16, 16), [1.25, 2.02, .45], '#fff2d8', 'lamp')
   mesh(living, 'Living ceiling fixture', cylGeo(.22, .22, .05, 16), [-3.95, 2.55, 1.65], '#fff2d8', 'lamp')
-  warm(0, 'Dining pendant glow', 1.25, 1.97, .45, 12)
-  warm(0, 'Sofa corner warm light', -3.95, 2.42, 1.65, 14)
+  const diningPendant = warm(0, 'Dining pendant glow', 1.25, 1.97, .45, 12)
+  const livingCeiling = warm(0, 'Sofa corner warm light', -3.95, 2.42, 1.65, 14)
   warm(0, 'Kitchen warm light', 1.15, 2.39, -2.65, 12)
 
   const sleeping = floors[1]!.root
@@ -724,7 +750,7 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   footprint(1, 2.55, -1.78, .48, .58)
   footprint(1, 2.62, -2.95, .68, 1.40)
   footprint(1, 3.75, -3.72, .62, .53)
-  warm(1, 'Play room light', .85, 2.41, .60, 13)
+  const playCeiling = warm(1, 'Play room light', .85, 2.41, .60, 13)
   warm(1, 'Bath mirror light', 3.45, 2.43, -2.55, 12)
 
   const top = floors[2]!.root
@@ -837,7 +863,7 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
     mesh(terrace, 'String light bulb', sphGeo(.048, 10, 8), [-5.6 + i * 1.10, 1.24, -4.04], '#ffe8b8', 'lamp')
     mesh(terrace, 'String light bulb', sphGeo(.048, 10, 8), [-5.6 + i * 1.10, 1.24, 4.04], '#ffe8b8', 'lamp')
   }
-  warm(3, 'Terrace lounge light', -3.35, 1.85, 1.15, 14)
+  const terraceLounge = warm(3, 'Terrace lounge light', -3.35, 1.85, 1.15, 14)
   warm(3, 'Terrace garden light', 2.05, 1.85, -2.55, 12)
 
   // 家里的小伙伴：优先使用开源 CC0 3D 宠物 GLB，缺失时回退到自建小柴
@@ -886,11 +912,124 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   pet.root.position.set(-1.75, 0, .55)
   house.add(pet.root)
 
-  const localLamps = [
-    { id: 'bedside', label: '床头灯', floor: 1, x: -1.95, z: -2.23, light: bedside },
-    { id: 'reading', label: '阅读灯', floor: 2, x: -2.60, z: -2.71, light: reading },
+  // 交互式家具与生活道具（按 E 触发实时 3D 动效）
+  const tvScreenMat = new MeshStandardMaterial({
+    color: '#222831', emissive: '#6db7e8', emissiveIntensity: 0, roughness: .18,
+  })
+  const tvScreen = new Mesh(boxGeo(1.02, .56, .016), tvScreenMat)
+  tvScreen.position.set(-3.95, 1.06, 3.55)
+  tvScreen.visible = false
+  propsGroup.add(tvScreen)
+  const tvGlow = new PointLight('#8bc8f5', 0, 4.8, 2)
+  tvGlow.position.set(-3.95, 1.08, 3.20)
+  floors[0]!.root.add(tvGlow)
+
+  const coffeeLedMat = new MeshStandardMaterial({
+    color: '#3a2e28', emissive: '#ff9a44', emissiveIntensity: 0, roughness: .35,
+  })
+  const coffeeLed = new Mesh(sphGeo(.026, 8, 6), coffeeLedMat)
+  coffeeLed.position.set(-.45, 1.24, -3.58)
+  coffeeLed.visible = false
+  propsGroup.add(coffeeLed)
+  const steamMat = new MeshBasicMaterial({ color: '#f9f6f0', transparent: true, opacity: .45, depthWrite: false })
+  const coffeeSteams = [0, 1, 2].map(() => {
+    const puff = new Mesh(sphGeo(.032, 8, 6), steamMat)
+    puff.visible = false
+    propsGroup.add(puff)
+    return puff
+  })
+
+  const waterMat = new MeshStandardMaterial({
+    color: '#a8d8ea', emissive: '#9bd2e8', emissiveIntensity: .25, roughness: .12, transparent: true, opacity: .76,
+  })
+  const waterStream = new Mesh(cylGeo(.012, .016, .22, 10), waterMat)
+  waterStream.position.set(.25, 1.06, -3.76)
+  waterStream.visible = false
+  propsGroup.add(waterStream)
+
+  const pcGlowMat = new MeshStandardMaterial({
+    color: '#1e242b', emissive: '#a6d8ef', emissiveIntensity: 0, roughness: .22,
+  })
+  const pcScreen = new Mesh(boxGeo(.82, .30, .014), pcGlowMat)
+  pcScreen.position.set(-4.45, 1.06, -3.72)
+  pcScreen.visible = false
+  propsGroup.add(pcScreen)
+  const deskLampGlow = new PointLight('#ffd8a8', 0, 3.4, 2)
+  deskLampGlow.position.set(-4.85, 1.18, -3.65)
+  floors[0]!.root.add(deskLampGlow)
+
+  const props: HouseProp[] = [
+    {
+      id: 'living-tv', label: '打开客厅电视', offLabel: '关掉客厅电视', floor: 0, x: -3.95, z: 3.72, kind: 'tv',
+      update(active, time) {
+        tvScreen.visible = active
+        if (active) {
+          const pulse = .85 + Math.sin(time * .004) * .18
+          tvScreenMat.emissiveIntensity = pulse
+          tvGlow.intensity = 3.6 + Math.sin(time * .005) * .6
+        } else {
+          tvScreenMat.emissiveIntensity = 0
+          tvGlow.intensity = 0
+        }
+      },
+    },
+    {
+      id: 'kitchen-coffee', label: '冲泡热美式咖啡', offLabel: '停止咖啡机', floor: 0, x: -.45, z: -3.72, kind: 'coffee',
+      update(active, time) {
+        coffeeLed.visible = active
+        coffeeLedMat.emissiveIntensity = active ? 1.4 : 0
+        coffeeSteams.forEach((puff, idx) => {
+          puff.visible = active
+          if (!active) return
+          const cycle = ((time * .00075) + idx * .33) % 1
+          puff.position.set(-.45 + Math.sin(cycle * 6 + idx) * .03, 1.32 + cycle * .34, -3.70)
+          puff.scale.setScalar(.7 + cycle * .9)
+        })
+      },
+    },
+    {
+      id: 'kitchen-tap', label: '打开厨房水龙头', offLabel: '关掉厨房水龙头', floor: 0, x: .25, z: -3.70, kind: 'tap',
+      update(active, time) {
+        waterStream.visible = active
+        if (active) {
+          const shimmer = 1 + Math.sin(time * .028) * .14
+          waterStream.scale.set(shimmer, 1, shimmer)
+        }
+      },
+    },
+    {
+      id: 'study-pc', label: '唤醒工作间双屏', offLabel: '休眠工作间双屏', floor: 0, x: -4.45, z: -3.65, kind: 'pc',
+      update(active) {
+        pcScreen.visible = active
+        pcGlowMat.emissiveIntensity = active ? .95 : 0
+        deskLampGlow.intensity = active ? 4.5 : 0
+      },
+    },
+    {
+      id: 'terrace-scope', label: '用望远镜观星', offLabel: '退出观星视角', floor: 3, x: -5.55, z: -1.25, kind: 'telescope',
+      update() {},
+    },
   ]
-  return { house, ground, roof, floors, doors, localLamps, emissiveMaterials, pet }
+
+  const seats: HouseSeat[] = [
+    { id: 'living-sofa', label: '客厅沙发', floor: 0, x: -3.95, z: .72, seatX: -3.95, seatZ: .92, eyeY: 1.12, look: [-3.95, 3.72] },
+    { id: 'study-chair', label: '工作椅', floor: 0, x: -4.45, z: -2.85, seatX: -4.45, seatZ: -2.92, eyeY: 1.14, look: [-4.45, -3.79] },
+    { id: 'dining-chair', label: '餐椅', floor: 0, x: 1.25, z: 1.15, seatX: 1.25, seatZ: 1.12, eyeY: 1.12, look: [1.25, .45] },
+    { id: 'master-bed', label: '主卧大床', floor: 1, x: -4.05, z: -1.65, seatX: -4.05, seatZ: -1.55, eyeY: .94, look: [-4.05, -4.05] },
+    { id: 'loft-sofa', label: '阁楼沙发', floor: 2, x: -3.65, z: 3.55, seatX: -3.65, seatZ: 3.35, eyeY: 1.12, look: [-3.65, 1.85] },
+    { id: 'terrace-sofa', label: '露台沙发', floor: 3, x: -3.45, z: 2.05, seatX: -3.45, seatZ: 1.92, eyeY: 1.12, look: [-3.45, -2.5] },
+  ]
+
+  const localLamps = [
+    { id: 'living-ceiling', label: '客厅主灯', floor: 0, x: -3.95, z: 1.65, light: livingCeiling },
+    { id: 'dining-pendant', label: '餐厅吊灯', floor: 0, x: 1.25, z: .45, light: diningPendant },
+    { id: 'study-ceiling', label: '工作间顶灯', floor: 0, x: -4.30, z: -2.20, light: studyCeiling },
+    { id: 'bedside', label: '床头灯', floor: 1, x: -2.55, z: -2.65, light: bedside },
+    { id: 'play-ceiling', label: '儿童房灯', floor: 1, x: .85, z: .60, light: playCeiling },
+    { id: 'reading', label: '阅读灯', floor: 2, x: -1.55, z: -1.65, light: reading },
+    { id: 'terrace-lounge', label: '露台氛围灯', floor: 3, x: -3.35, z: 1.15, light: terraceLounge },
+  ]
+  return { house, ground, roof, propsGroup, floors, doors, localLamps, seats, props, emissiveMaterials, pet }
 }
 
 export const sceneBackdrop = new Color('#e9e4da')
