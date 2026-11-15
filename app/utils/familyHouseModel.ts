@@ -642,29 +642,23 @@ export function buildFamilyHouse(
   box(living, 'Study east partition', [-2.15, 1.35, -2.90], [.14, 2.70, 2.30], plaster, 'plaster')
   box(living, 'Study east header', [-2.15, 2.40, -1.05], [.14, .60, 1.40], plaster, 'plaster')
   footprint(0, -2.15, -2.90, .14, 2.30)
-  // 一层工作间内配置：开源 GLB 书桌 + 双屏 + 键鼠 + 人体工学椅 + 书架 + 白色吊柜
+  // 一层工作间内配置：开源 GLB 书桌 + 双屏 + 键鼠 + 人体工学椅 + 钢木书架
   placeExtra(living, 'desk', -4.45, -3.65, { floorForSolid: 0 })
   placeExtra(living, 'dual-monitors', -4.45, -3.79, { y: .74, scale: 1.05 })
   placeExtra(living, 'keyboard-mouse', -4.45, -3.53, { y: .74, scale: .92 })
   placeExtra(living, 'desk-lamp', -4.98, -3.70, { y: .74, angle: .35 })
   placeExtra(living, 'ergo-chair', -4.45, -2.85, { angle: Math.PI, floorForSolid: 0 })
-  if (!placeExtra(living, 'steel-shelf', -6.22, -2.10, { angle: Math.PI / 2, floorForSolid: 0 })) {
-    placeExtra(living, 'bookshelf', -6.22, -2.10, { angle: Math.PI / 2, floorForSolid: 0 })
+  if (!placeExtra(living, 'steel-shelf', -6.38, -2.10, { scale: .09, angle: Math.PI / 2, floorForSolid: 0 })) {
+    placeExtra(living, 'bookshelf', -6.38, -2.10, { angle: Math.PI / 2, floorForSolid: 0 })
   }
-  placeExtra(living, 'display-shelf', -1.55, 2.85, { angle: Math.PI / 2, floorForSolid: 0 })
+  placeExtra(living, 'display-shelf', -1.60, 2.85, { floorForSolid: 0 })
   plant(living, -2.70, -3.65, .92)
-  for (let i = 0; i < 4; i++) {
-    const cx = -5.10 + i * .56
-    box(living, 'Study1F overhead cabinet', [cx, 2.26, -3.86], [.54, .68, .36], '#f3f1ec', 'plaster')
-    box(living, 'Study1F cabinet handle', [cx + .18, 2.08, -3.67], [.018, .11, .018], '#2b2d30', 'metal')
-  }
   const studyCeiling = warm(0, 'Study1F warm light', -4.30, 2.40, -2.20, 12)
 
   // 一层客厅：开阔布局，使用现代 CC0 3D 沙发、茶几、单人椅、餐桌椅与冰箱
   if (!placeExtra(living, 'sofa-3seat', -3.95, .72, { floorForSolid: 0 })) furniture(0, 24, -3.95, .72, { solid: true })
-  furniture(0, 25, -3.95, 1.85, { scale: 1.28 })
   if (!placeExtra(living, 'coffee-table', -3.95, 1.95, { floorForSolid: 0 })) furniture(0, 26, -3.95, 1.95, { solid: true })
-  if (!placeExtra(living, 'armchair', -5.65, 1.95, { angle: 1.15, floorForSolid: 0 })) furniture(0, 27, -5.65, 1.95, { scale: .84, angle: 1.15, solid: true })
+  if (!placeExtra(living, 'armchair', -5.75, 2.05, { angle: 1.15, floorForSolid: 0 })) furniture(0, 27, -5.75, 2.05, { scale: .84, angle: 1.15, solid: true })
   if (!placeExtra(living, 'dining-table', 1.25, .45, { floorForSolid: 0 })) {
     furniture(0, 34, 1.25, .45, { solid: true })
     box(living, 'Linen table runner', [1.25, .831, .45], [1.46, .004, .29], '#e7dbc6', 'fabric')
@@ -676,14 +670,12 @@ export function buildFamilyHouse(
   placeExtra(living, 'dining-chair', 2.05, 1.15, { angle: Math.PI, floorForSolid: 0 })
   furniture(0, 39, 1.25, .45, { y: 1.43 })
   furniture(0, 32, 1.20, 3.72, { angle: Math.PI / 2, scale: .76, solid: true })
-  // 一楼细节：薄荷绿拼色几何地毯、抱枕、时钟、玄关托盘、接触阴影、厨房小家电
-  box(living, 'Living woven rug', [-3.95, .008, 1.85], [3.50, .012, 2.55], '#eef2ee', 'fabric')
+  // 一楼细节：薄荷绿拼色几何地毯、时钟、玄关托盘、接触阴影、厨房小家电
+  box(living, 'Living woven rug', [-3.95, .008, 1.85], [3.40, .012, 2.45], '#eef2ee', 'fabric')
   box(living, 'Living rug mint block A', [-4.68, .015, 1.25], [1.22, .004, 1.15], '#6ab399', 'fabric')
   box(living, 'Living rug mint block B', [-3.12, .015, 2.40], [1.32, .004, 1.18], '#cfe3d8', 'fabric')
   box(living, 'Living rug accent strip', [-3.95, .015, 2.42], [.72, .004, .98], '#6ab399', 'fabric')
-  box(living, 'Sofa pillow', [-4.45, .56, .78], [.34, .30, .14], '#68b096', 'fabric').rotateZ(.14)
-  box(living, 'Sofa pillow', [-3.35, .56, .78], [.34, .30, .14], '#f5f6f2', 'fabric').rotateZ(-.12)
-  const clockHands = wallClock(living, 1.10, 1.95, -4.065)
+  const clockHands = wallClock(living, -.58, 1.95, -4.065)
   box(living, 'Entrance tray', [1.20, .81, 3.71], [.28, .022, .18], oak, 'oak')
   // 餐桌花瓶与果盘 + 玄关伞桶与门铃
   mesh(living, 'Dining vase', cylGeo(.045, .062, .16, 12), [1.25, .86, .45], '#e9e2d4', 'ceramic')
@@ -699,19 +691,21 @@ export function buildFamilyHouse(
   box(living, 'Spice jar', [1.55, .99, -3.82], [.06, .10, .06], green, 'ceramic')
   contactShadow(living, -3.95, 1.95, 1.55, .95)
   contactShadow(living, 1.25, .45, 1.95, 1.45)
-  placeExtra(living, 'pet-bed', -2.15, .65, { scale: .92 })
-  placeExtra(living, 'pet-bowls', -1.45, .65, { scale: .85 })
+  placeExtra(living, 'pet-bed', -2.15, 1.35, { scale: .92 })
+  placeExtra(living, 'pet-bowls', -1.45, 1.35, { scale: .85 })
   placeExtra(living, 'tv-unit', -3.95, 3.72, { angle: Math.PI, floorForSolid: 0 })
-  placeExtra(living, 'floor-lamp', -6.10, .65, { floorForSolid: 0 })
+  placeExtra(living, 'floor-lamp', -6.15, .72, { floorForSolid: 0 })
   placeExtra(living, 'sideboard', 3.85, .45, { angle: -Math.PI / 2, floorForSolid: 0 })
-  placeExtra(living, 'cat-tree', -6.15, 3.35, { floorForSolid: 0 })
+  placeExtra(living, 'cat-tree', -6.20, 3.40, { floorForSolid: 0 })
   placeExtra(living, 'shoe-rack', 2.05, 3.78, { angle: Math.PI, floorForSolid: 0 })
   placeExtra(living, 'coffee-maker', -.45, -3.72, { y: .95 })
   placeExtra(living, 'microwave', 2.65, -3.72, { y: .95 })
   plant(living, -5.25, 3.65, 1.28)
   plant(living, -1.65, -3.70, .90)
   box(living, 'Kitchen counter', [1.10, .91, -3.68], [4.20, .075, .69], '#f0ebe0', 'ceramic')
-  box(living, 'Kitchen tile backsplash', [1.10, 1.48, -4.06], [4.20, 1.06, .025], '#eef2f0', 'tile')
+  box(living, 'Kitchen tile backsplash sill', [1.10, 1.03, -4.06], [4.20, .16, .025], '#eef2f0', 'tile')
+  box(living, 'Kitchen tile backsplash left', [-.58, 1.48, -4.06], [.84, 1.06, .025], '#eef2f0', 'tile')
+  box(living, 'Kitchen tile backsplash right', [2.92, 1.48, -4.06], [.55, 1.06, .025], '#eef2f0', 'tile')
   for (let i = 0; i < 6; i++) {
     const x = -.62 + .685 * i
     box(living, 'Sage kitchen cabinet', [x, .45, -3.69], [.66, .88, .60], green, 'matte')
@@ -728,24 +722,24 @@ export function buildFamilyHouse(
     box(living, 'Fridge handle', [3.63, 1.05, -3.341], [.028, .29, .054], frame)
     footprint(0, 3.85, -3.68, .62, .66)
   }
-  box(living, 'Book on coffee table', [-4.09, .486, 1.95], [.24, .035, .19], clay, 'matte').rotateY(.14)
-  picture(living, -1.50, 1.71, -4.064, clay, .43)
-  picture(living, -.82, 1.84, -4.064, blue, .51)
-  // 复刻视频 0:02 客厅细节：墙面原木长隔板 + 绿植 + 矮柜彩色竖放书列 + 窗边粉色小椅
-  box(living, 'Wall oak shelf', [-1.20, 1.98, -3.94], [1.18, .035, .24], oak, 'oak')
-  box(living, 'Shelf book row', [-1.50, 2.11, -3.94], [.05, .22, .16], '#2e3136', 'matte')
-  box(living, 'Shelf book row', [-1.44, 2.10, -3.94], [.045, .20, .16], '#c8534b', 'matte')
-  box(living, 'Shelf book row', [-1.38, 2.12, -3.94], [.048, .23, .16], '#ebe6da', 'matte')
-  box(living, 'Shelf book row', [-1.32, 2.09, -3.94], [.045, .19, .16], '#5ea0a7', 'matte')
-  mesh(living, 'Shelf pot', cylGeo(.065, .05, .11, 12), [-.88, 2.05, -3.94], '#eae5da', 'ceramic')
-  mesh(living, 'Shelf plant', sphGeo(.09, 10, 8), [-.88, 2.15, -3.94], '#6f9162', 'matte')
-  // 窗边粉色小椅子（靠南窗右侧，不遮挡电视视线）
-  box(living, 'Pink chair seat', [-2.05, .44, 3.30], [.44, .06, .42], '#e8b3b8', 'fabric')
-  box(living, 'Pink chair back', [-2.05, .69, 3.48], [.42, .44, .06], '#e8b3b8', 'fabric')
-  for (const lx of [-2.22, -1.88]) for (const lz of [3.13, 3.46]) {
+  box(living, 'Book on coffee table', [-4.05, .418, 1.95], [.24, .035, .19], clay, 'matte').rotateY(.14)
+  picture(living, -1.55, 1.71, -4.064, clay, .43)
+  picture(living, -.62, 1.48, -4.064, blue, .46)
+  // 墙面原木长隔板 + 绿植 + 彩色竖放书列 + 窗边粉色小椅（避开 display-shelf 与电视视线）
+  box(living, 'Wall oak shelf', [-1.25, 2.02, -3.94], [1.05, .035, .24], oak, 'oak')
+  box(living, 'Shelf book row', [-1.55, 2.15, -3.94], [.05, .22, .16], '#2e3136', 'matte')
+  box(living, 'Shelf book row', [-1.49, 2.14, -3.94], [.045, .20, .16], '#c8534b', 'matte')
+  box(living, 'Shelf book row', [-1.43, 2.16, -3.94], [.048, .23, .16], '#ebe6da', 'matte')
+  box(living, 'Shelf book row', [-1.37, 2.13, -3.94], [.045, .19, .16], '#5ea0a7', 'matte')
+  mesh(living, 'Shelf pot', cylGeo(.065, .05, .11, 12), [-.94, 2.09, -3.94], '#eae5da', 'ceramic')
+  mesh(living, 'Shelf plant', sphGeo(.09, 10, 8), [-.94, 2.19, -3.94], '#6f9162', 'matte')
+  // 窗边粉色小椅子（靠南窗，避开客厅展示架）
+  box(living, 'Pink chair seat', [-2.55, .44, 3.35], [.44, .06, .42], '#e8b3b8', 'fabric')
+  box(living, 'Pink chair back', [-2.55, .69, 3.53], [.42, .44, .06], '#e8b3b8', 'fabric')
+  for (const lx of [-2.72, -2.38]) for (const lz of [3.18, 3.51]) {
     box(living, 'Pink chair leg', [lx, .21, lz], [.035, .42, .035], oak, 'oak')
   }
-  footprint(0, -2.05, 3.30, .48, .46)
+  footprint(0, -2.55, 3.35, .48, .46)
   // 一楼自发光灯具（餐桌吊灯罩 + 客厅吸顶灯）
   mesh(living, 'Dining pendant shade', cylGeo(.22, .30, .16, 16), [1.25, 2.02, .45], '#fff2d8', 'lamp')
   mesh(living, 'Living ceiling fixture', cylGeo(.22, .22, .05, 16), [-3.95, 2.55, 1.65], '#fff2d8', 'lamp')
@@ -795,19 +789,13 @@ export function buildFamilyHouse(
   if (!placeExtra(sleeping, 'armchair', -5.95, .65, { angle: .85, floorForSolid: 1 })) {
     furniture(1, 17, -5.95, .65, { scale: .96, solid: true })
   }
-  furniture(1, 19, -4.05, -4.02)
   if (!placeExtra(sleeping, 'wardrobe', -2.25, 3.58, { angle: Math.PI, floorForSolid: 1 })) {
     furniture(1, 21, -2.25, 3.58, { angle: Math.PI, solid: true })
   }
   contactShadow(sleeping, -4.05, -1.65, 2.1, 2.2)
-  for (let i = 0; i < 4; i++) {
-    const cx = -4.80 + i * .54
-    box(sleeping, 'Overhead cabinet', [cx, 2.28, -3.86], [.525, .64, .36], '#f3f1ec', 'plaster')
-    box(sleeping, 'Cabinet handle', [cx + .18, 2.12, -3.67], [.018, .12, .018], '#2b2d30', 'metal')
-  }
   box(sleeping, 'Bedroom rug', [-4.05, .008, .75], [2.60, .012, 1.80], '#dde3dc', 'fabric')
   placeExtra(sleeping, 'floor-lamp', -5.95, -3.25, { floorForSolid: 1 })
-  placeExtra(sleeping, 'bookshelf', -6.20, 2.75, { angle: Math.PI / 2, floorForSolid: 1 })
+  placeExtra(sleeping, 'bookshelf', -6.38, 2.75, { angle: Math.PI / 2, floorForSolid: 1 })
   box(sleeping, 'Playroom rug', [.55, .008, 1.35], [2.05, .012, 1.85], '#ede3d1', 'fabric')
   mesh(sleeping, 'Bedside lamp shade', cylGeo(.11, .14, .16, 14), [-2.55, .88, -2.65], '#fff2d8', 'lamp')
   // 床头小闹钟与睡前读物
@@ -1141,7 +1129,7 @@ export function buildFamilyHouse(
 
   const kibbleMound = new Mesh(sphGeo(.08, 10, 6), material('#7a5338', 'matte'))
   kibbleMound.scale.set(1.2, .45, 1.2)
-  kibbleMound.position.set(-1.45, .06, .65)
+  kibbleMound.position.set(-1.45, .06, 1.35)
   kibbleMound.visible = false
   propsGroup.add(kibbleMound)
 
@@ -1230,7 +1218,7 @@ export function buildFamilyHouse(
     },
     {
       id: 'pet-feed', label: '给小柴加狗粮', offLabel: '清理空食盆', shortLabel: '🦴 已加粮',
-      floor: 0, x: -1.45, z: .65, kind: 'pet-feed',
+      floor: 0, x: -1.45, z: 1.35, kind: 'pet-feed',
       update(active) {
         kibbleMound.visible = active
       },
@@ -1257,12 +1245,12 @@ export function buildFamilyHouse(
     },
     {
       id: 'study-journal-shelf', label: '翻阅工作间日记书架', offLabel: '翻阅工作间日记书架', shortLabel: '📖 日记书架',
-      floor: 0, x: -6.22, z: -2.10, kind: 'journal',
+      floor: 0, x: -6.38, z: -2.10, kind: 'journal',
       update() {},
     },
     {
       id: 'living-journal-shelf', label: '浏览客厅日记展示架', offLabel: '浏览客厅日记展示架', shortLabel: '📖 日记展示架',
-      floor: 0, x: -1.55, z: 2.85, kind: 'journal',
+      floor: 0, x: -1.60, z: 2.85, kind: 'journal',
       update() {},
     },
   ]
@@ -1279,15 +1267,15 @@ export function buildFamilyHouse(
     for (let i = 0; i < visibleBooks; i++) {
       const shelfRow = Math.floor(i / 6)
       const col = i % 6
-      const y = .46 + shelfRow * .44
-      const z = 2.48 + col * .12
+      const y = .46 + shelfRow * .36
+      const z = 2.52 + col * .12
       const isGold = i < goldCount
-      const h = .22 + (i % 3) * .03
+      const h = .20 + (i % 3) * .025
       const spine = new Mesh(
         boxGeo(.16, h, .045),
         material(isGold ? '#e0b44f' : bookPalette[i % bookPalette.length]!, isGold ? 'metal' : 'matte'),
       )
-      spine.position.set(-1.55, y + h / 2, z)
+      spine.position.set(-1.60, y + h / 2, z)
       diaryBooksGroup.add(spine)
     }
   }
