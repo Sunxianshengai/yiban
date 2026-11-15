@@ -28,9 +28,6 @@ import petBowlsUrl from '~/assets/family-house/models/pet-bowls.glb?url'
 import catTreeUrl from '~/assets/family-house/models/cat-tree.glb?url'
 import tvUnitUrl from '~/assets/family-house/models/tv-unit.glb?url'
 import shoeRackUrl from '~/assets/family-house/models/shoe-rack.glb?url'
-import houseCozyUrl from '~/assets/family-house/models/house-cozy.glb?url'
-import houseCottageUrl from '~/assets/family-house/models/house-cottage.glb?url'
-import houseCoastalUrl from '~/assets/family-house/models/house-coastal.glb?url'
 import { buildFamilyHouse, sceneBackdrop } from './familyHouseModel'
 
 const extraModelUrls: Record<string, string> = {
@@ -55,9 +52,6 @@ const extraModelUrls: Record<string, string> = {
   'cat-tree': catTreeUrl,
   'tv-unit': tvUnitUrl,
   'shoe-rack': shoeRackUrl,
-  'house-cozy': houseCozyUrl,
-  'house-cottage': houseCottageUrl,
-  'house-coastal': houseCoastalUrl,
 }
 import { blocksWalk, floorRise, hasStairFootprint, houseStops, porch, stairHeight, stairLane, stairs, stairStops, type HouseStop } from './familyHouseLayout'
 
@@ -221,7 +215,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   player.rotation.order = 'YXZ'
   const orbit = new OrbitControls(overview, canvas)
   orbit.enablePan = false
-  orbit.minZoom = .38
+  orbit.minZoom = .62
   orbit.maxZoom = 2.70
   orbit.maxPolarAngle = Math.PI / 2 - .045
 

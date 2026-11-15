@@ -25,8 +25,5 @@
 - `models/cat-tree.glb`：Scratching Post (28168)
 - `models/tv-unit.glb`：TV Unit With TV (29824)
 - `models/shoe-rack.glb`：Shoe Rack With Shoes (29869)
-- `models/house-cozy.glb`：Two-Storey Cutaway Home (17237)
-- `models/house-cottage.glb`：Roofed Lock Keepers Cottage (31614)
-- `models/house-coastal.glb`：Keeper's Cottage (36594)
 
 四层建筑、楼梯、厨房、卫浴和各活动角落在 `familyHouseModel.ts` 中组装，平面坐标使用米。

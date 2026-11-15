@@ -391,17 +391,8 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   for (let i = 0; i < 5; i++) {
     box(roof, 'Pergola beam', [-3.2, 10.92, -2.5 + i * .68], [3.2, .08, .09], oak, 'oak')
   }
-  box(ground, 'Garden base', [0, -.27, .43], [38, .21, 28], '#cbd0b8')
-  box(ground, 'Garden path', [2.47, -.154, 4.45], [1.59, .028, 2.3], '#c8bfb0')
-  // 通往一层周边邻居家小屋的社区石板步道
-  box(ground, 'Neighborhood walkway', [0, -.158, 5.75], [26.5, .024, 1.35], '#c9c0b1')
-  box(ground, 'West cottage path', [-10.5, -.158, 2.6], [1.3, .024, 6.2], '#c9c0b1')
-  box(ground, 'East cottage path', [10.8, -.158, 2.6], [1.3, .024, 6.2], '#c9c0b1')
-  // 一层周边多个开源完整 3D 小屋模型（庭院聚落）
-  placeExtra(ground, 'house-cozy', -11.5, -1.6, { y: -.16, angle: Math.PI / 2, scale: .88 })
-  placeExtra(ground, 'house-coastal', 11.4, -1.5, { y: -.16, angle: -Math.PI / 2, scale: .92 })
-  placeExtra(ground, 'house-cottage', -9.8, 10.2, { y: -.16, angle: .28, scale: 1.05 })
-  placeExtra(ground, 'house-coastal', 10.2, 10.4, { y: -.16, angle: -.36, scale: .88 })
+  box(ground, 'Garden base', [0, -.27, .43], [12.8, .21, 8.58], '#cbd0b8')
+  box(ground, 'Garden path', [2.47, -.154, 4.01], [1.59, .028, 1.39], '#c8bfb0')
   box(ground, 'Doorstep', [2.47, -.068, 3.54], [1.63, .156, .55], '#bcb2a1')
   box(ground, 'Coconut coir doormat', [2.47, .015, 3.55], [.78, .022, .36], '#83694b', 'fabric')
   for (let stripe = 0; stripe < 5; stripe++)
@@ -411,11 +402,32 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   for (const x of [-4.25, -2.78, 1.02]) plant(ground, x, 3.84, 1.10)
 
   const living = floors[0]!.root
-  furniture(0, 24, -2.90, -2.31, { solid: true })
-  furniture(0, 25, -2.95, -.85, { scale: 1.21 })
-  furniture(0, 26, -2.95, -.64, { solid: true })
-  furniture(0, 27, -4.26, -.8, { scale: .80, angle: 1.12, solid: true })
-  furniture(0, 30, -4.64, -2.47, { scale: .87 })
+  // 一层连通楼房户型：西北角隔出工作间（与客厅、厨房门洞连通）
+  box(living, 'Study south partition', [-3.85, 1.35, -.25], [2.80, 2.70, .14], plaster, 'plaster')
+  box(living, 'Study south header', [-1.95, 2.40, -.25], [1.00, .60, .14], plaster, 'plaster')
+  footprint(0, -3.85, -.25, 2.80, .14)
+  box(living, 'Study east partition', [-1.45, 1.35, -2.20], [.14, 2.70, 1.90], plaster, 'plaster')
+  box(living, 'Study east header', [-1.45, 2.40, -.75], [.14, .60, 1.00], plaster, 'plaster')
+  footprint(0, -1.45, -2.20, .14, 1.90)
+  // 一层工作间内配置：开源 GLB 书桌 + 双屏 + 键鼠 + 人体工学椅 + 书架 + 白色吊柜
+  placeExtra(living, 'desk', -3.45, -2.76, { floorForSolid: 0 })
+  placeExtra(living, 'dual-monitors', -3.45, -2.90, { y: .74, scale: 1.05 })
+  placeExtra(living, 'keyboard-mouse', -3.45, -2.64, { y: .74, scale: .92 })
+  placeExtra(living, 'desk-lamp', -3.95, -2.82, { y: .74, angle: .35 })
+  placeExtra(living, 'ergo-chair', -3.45, -2.10, { angle: Math.PI, floorForSolid: 0 })
+  placeExtra(living, 'bookshelf', -4.85, -1.65, { angle: Math.PI / 2, floorForSolid: 0 })
+  for (let i = 0; i < 4; i++) {
+    const cx = -4.05 + i * .56
+    box(living, 'Study1F overhead cabinet', [cx, 2.26, -2.96], [.54, .68, .36], '#f3f1ec', 'plaster')
+    box(living, 'Study1F cabinet handle', [cx + .18, 2.08, -2.77], [.018, .11, .018], '#2b2d30', 'metal')
+  }
+  warm(0, 'Study1F warm light', -3.35, 2.40, -1.75, 11)
+
+  // 一层客厅：沙发朝向电视柜，中间配茶几、编织地毯、落地灯、猫爬架与宠物窝
+  furniture(0, 24, -2.95, .62, { solid: true })
+  furniture(0, 25, -2.95, 1.55, { scale: 1.21 })
+  furniture(0, 26, -2.95, 1.65, { solid: true })
+  furniture(0, 27, -4.35, 1.55, { scale: .80, angle: 1.12, solid: true })
   furniture(0, 34, .89, .73, { solid: true })
   furniture(0, 35, .24, -.03, { solid: true })
   furniture(0, 36, 1.49, -.03, { solid: true })
@@ -423,27 +435,27 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   furniture(0, 39, .93, .73, { y: 1.43 })
   furniture(0, 32, 1.32, 2.87, { angle: Math.PI / 2, scale: .72, solid: true })
   // 一楼细节：地毯、抱枕、时钟、玄关托盘、接触阴影、厨房小家电
-  box(living, 'Living woven rug', [-2.95, .008, -.78], [2.7, .012, 2.15], '#dfd6c5', 'fabric')
-  box(living, 'Sofa pillow', [-3.45, .56, -2.26], [.34, .30, .14], clay, 'fabric').rotateZ(.14)
-  box(living, 'Sofa pillow', [-2.35, .56, -2.26], [.34, .30, .14], blue, 'fabric').rotateZ(-.12)
+  box(living, 'Living woven rug', [-2.95, .008, 1.48], [2.7, .012, 2.05], '#dfd6c5', 'fabric')
+  box(living, 'Sofa pillow', [-3.45, .56, .68], [.34, .30, .14], clay, 'fabric').rotateZ(.14)
+  box(living, 'Sofa pillow', [-2.35, .56, .68], [.34, .30, .14], blue, 'fabric').rotateZ(-.12)
   wallClock(living, .89, 1.95, -3.165)
   box(living, 'Entrance tray', [1.32, .81, 2.86], [.28, .022, .18], oak, 'oak')
   box(living, 'Cutting board', [.96, .96, -2.76], [.34, .018, .24], oak, 'oak')
   box(living, 'Kettle', [2.25, 1.04, -2.84], [.16, .18, .16], '#e6e2d8', 'ceramic')
   box(living, 'Spice jar', [1.26, .99, -2.95], [.06, .10, .06], clay, 'ceramic')
   box(living, 'Spice jar', [1.35, .99, -2.95], [.06, .10, .06], green, 'ceramic')
-  contactShadow(living, -2.95, -.64, 1.55, .95)
+  contactShadow(living, -2.95, 1.65, 1.55, .95)
   contactShadow(living, .89, .73, 1.85, 1.35)
   placeExtra(living, 'pet-bed', -1.85, .55, { scale: .92 })
   placeExtra(living, 'pet-bowls', -1.25, .62, { scale: .85 })
   placeExtra(living, 'tv-unit', -2.95, 2.86, { angle: Math.PI, floorForSolid: 0 })
-  placeExtra(living, 'floor-lamp', -4.72, -2.55, { floorForSolid: 0 })
+  placeExtra(living, 'floor-lamp', -4.72, .52, { floorForSolid: 0 })
   placeExtra(living, 'sideboard', 2.48, .75, { angle: -Math.PI / 2, floorForSolid: 0 })
-  placeExtra(living, 'cat-tree', -4.65, 1.55, { floorForSolid: 0 })
+  placeExtra(living, 'cat-tree', -4.65, 2.15, { floorForSolid: 0 })
   placeExtra(living, 'shoe-rack', 1.92, 2.95, { angle: Math.PI, floorForSolid: 0 })
   placeExtra(living, 'coffee-maker', .02, -2.84, { y: .95 })
   placeExtra(living, 'microwave', 2.28, -2.84, { y: .95 })
-  plant(living, -4.76, 2.42, 1.26)
+  plant(living, -4.76, 2.68, 1.26)
   plant(living, -1.10, -2.85, .86)
   box(living, 'Kitchen counter', [1.05, .91, -2.8], [3.36, .075, .69], '#f0ebe0', 'ceramic')
   for (let i = 0; i < 5; i++) {

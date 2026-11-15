@@ -15,10 +15,11 @@ export interface HouseStop {
 export const porch: HouseStop = { id: 'porch', label: '入户门外', floor: 0, position: [2.47, 4.10], look: [2.47, 2] }
 
 export const houseStops: HouseStop[] = [
-  { id: 'entrance', label: '玄关', floor: 0, position: [2.70, 2.68], look: [.9, -.85] },
-  { id: 'living', label: '客厅', floor: 0, position: [-3.32, 1.95], look: [-2.95, -2] },
-  { id: 'dining', label: '餐厅', floor: 0, position: [-.47, 2.18], look: [.9, .36] },
-  { id: 'kitchen', label: '厨房', floor: 0, position: [1.62, -1.20], look: [1.08, -2.79] },
+  { id: 'entrance', label: '玄关', floor: 0, position: [2.55, 2.68], look: [.9, .65] },
+  { id: 'living', label: '客厅', floor: 0, position: [-3.10, 1.25], look: [-3.10, 2.80] },
+  { id: 'study', label: '工作间', floor: 0, position: [-3.35, -1.35], look: [-3.45, -2.75] },
+  { id: 'dining', label: '餐厅', floor: 0, position: [-.47, 1.85], look: [.9, .55] },
+  { id: 'kitchen', label: '厨房', floor: 0, position: [1.55, -1.20], look: [1.08, -2.79] },
   { id: 'bedroom', label: '主卧', floor: 1, position: [-3.35, 1.93], look: [-3.07, -1.71] },
   { id: 'landing', label: '卧室门口', floor: 1, position: [.30, .02], look: [-.67, 0] },
   { id: 'play', label: '儿童小窝', floor: 1, position: [2.37, 1.16], look: [.64, 2.11] },
@@ -41,8 +42,9 @@ export interface HouseMapRoom extends Bounds2D { stop: string; short: string; co
 
 export const mapRooms: HouseMapRoom[][] = [
   [
-    { stop: 'living', short: '客厅', left: -5.25, right: -.85, back: -3.16, front: 3.16, color: 'oak' },
-    { stop: 'kitchen', short: '厨房', left: -.85, right: 3.08, back: -3.16, front: -1.02, color: 'sage' },
+    { stop: 'study', short: '工作间', left: -5.25, right: -1.45, back: -3.16, front: -.25, color: 'blue' },
+    { stop: 'living', short: '客厅', left: -5.25, right: -.85, back: -.25, front: 3.16, color: 'oak' },
+    { stop: 'kitchen', short: '厨房', left: -1.45, right: 3.08, back: -3.16, front: -1.02, color: 'sage' },
     { stop: 'dining', short: '餐厅', left: -.85, right: 3.08, back: -1.02, front: 1.88, color: 'oak' },
     { stop: 'entrance', short: '玄关', left: -.85, right: 3.08, back: 1.88, front: 3.16, color: 'sage' },
   ], [
@@ -81,11 +83,15 @@ export interface HousePlanShape extends Bounds2D {
 }
 
 export const mapPlanShapes: HousePlanShape[][] = [
-  // 一楼：客厅、餐厅、厨房、玄关
+  // 一楼：工作间、客厅、餐厅、厨房、玄关（连通楼房户型）
   [
-    { kind: 'rug', left: -4.25, right: -1.65, back: -1.85, front: .45 },
-    { kind: 'furniture', left: -4.65, right: -1.85, back: -2.90, front: -1.95 }, // 沙发
-    { kind: 'furniture', left: -3.65, right: -2.25, back: -1.05, front: -.25 }, // 茶几
+    { kind: 'wall', left: -5.25, right: -2.45, back: -.32, front: -.18 }, // 工作间南墙（留门洞）
+    { kind: 'wall', left: -1.52, right: -1.38, back: -3.16, front: -1.25 }, // 工作间东墙（留门洞）
+    { kind: 'furniture', left: -4.25, right: -2.65, back: -3.05, front: -2.35 }, // 工作间书桌
+    { kind: 'rug', left: -4.25, right: -1.65, back: .25, front: 2.35 },
+    { kind: 'furniture', left: -4.15, right: -1.85, back: .20, front: 1.05 }, // 客厅沙发
+    { kind: 'furniture', left: -3.65, right: -2.25, back: 1.45, front: 2.15 }, // 茶几
+    { kind: 'furniture', left: -3.85, right: -2.15, back: 2.65, front: 3.12 }, // 电视柜
     { kind: 'furniture', left: .15, right: 1.65, back: .18, front: 1.28 }, // 餐桌
     { kind: 'counter', left: -.65, right: 2.75, back: -3.14, front: -2.42 }, // 厨房台面
     { kind: 'fixture', left: 2.62, right: 3.22, back: -3.14, front: -2.50 }, // 冰箱
