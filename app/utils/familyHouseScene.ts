@@ -16,7 +16,7 @@ export type HouseFloor = number | 'all'
 export interface HousePosition { x: number; z: number; yaw: number; floor: number; onStairs: boolean }
 interface WalkSurface { floor: number; height: number; stairBase: number | null }
 export interface HouseHint { id: string; label: string; kind: 'door' | 'light' | 'pet' }
-export interface HousePetState { floor: number; moving: boolean; called: boolean }
+export interface HousePetState { floor: number; moving: boolean; called: boolean; roomLabel: string }
 
 const moveKeys = new Map<string, HouseDirection>([
   ['KeyW', 'forward'], ['ArrowUp', 'forward'], ['KeyS', 'back'], ['ArrowDown', 'back'],
@@ -269,7 +269,12 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
         const ahead = (door.x - player.position.x) * -Math.sin(yaw) + (door.z - player.position.z) * -Math.cos(yaw)
         if (distance >= closest || (distance > .72 && ahead < distance * -.25)) continue
         closest = distance
-        next = { id: door.id, kind: 'door', label: `${openDoors.has(door.id) ? '关上' : '打开'}${door.label}` }
+        const opening = openDoors.has(door.id) && Math.abs(Math.PI / 2 - door.hinge.rotation.y) > .08
+        next = {
+          id: door.id,
+          kind: 'door',
+          label: opening ? `${door.label} · 正在打开` : `${openDoors.has(door.id) ? '关上' : '打开'}${door.label}`,
+        }
       }
       for (const lamp of model.localLamps) {
         if (!lampsOn || lamp.floor !== currentFloor) continue
@@ -420,8 +425,18 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
     const pick = candidates[Math.floor(Math.random() * candidates.length)]
     return pick ? pick.position : [0, 1.5] as [number, number]
   }
+  function nearestPetRoom() {
+    let best = houseStops.find(s => s.floor === petState.floor)
+    let bestDist = Infinity
+    for (const s of houseStops) {
+      if (s.floor !== petState.floor) continue
+      const d = Math.hypot(petState.x - s.position[0], petState.z - s.position[1])
+      if (d < bestDist) { best = s; bestDist = d }
+    }
+    return best?.label ?? '家里'
+  }
   function emitPetState() {
-    options.onPet?.({ floor: petState.floor, moving: petState.moving, called: petState.called })
+    options.onPet?.({ floor: petState.floor, moving: petState.moving, called: petState.called, roomLabel: nearestPetRoom() })
   }
   function callPet() {
     const targetFloor = mode === 'walk' ? shownFloor : (displayedFloor === 'all' ? 0 : displayedFloor)
@@ -620,6 +635,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
       const targetAngle = openDoors.has(door.id) ? Math.PI / 2 : 0
       if (Math.abs(targetAngle - door.hinge.rotation.y) > .001) {
         door.hinge.rotation.y = reducedMotion.matches ? targetAngle : MathUtils.damp(door.hinge.rotation.y, targetAngle, 16, delta)
+        if (Math.abs(targetAngle - door.hinge.rotation.y) < .08) updateHint()
         if (Math.abs(targetAngle - door.hinge.rotation.y) < .02) renderer.shadowMap.needsUpdate = true
         dirty = true
       }

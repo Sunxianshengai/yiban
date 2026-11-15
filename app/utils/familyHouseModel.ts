@@ -422,6 +422,21 @@ export function buildFamilyHouse(source: Object3D) {
   box(living, 'Book on coffee table', [-3.09, .486, -.62], [.24, .035, .19], clay, 'matte').rotateY(.14)
   picture(living, -1.66, 1.71, -3.164, clay, .43)
   picture(living, -.99, 1.84, -3.164, blue, .51)
+  // 复刻视频 0:02 客厅细节：墙面原木长隔板 + 绿植 + 矮柜彩色竖放书列 + 窗边粉色小椅
+  box(living, 'Wall oak shelf', [-1.35, 1.98, -3.04], [1.18, .035, .24], oak, 'oak')
+  box(living, 'Shelf book row', [-1.65, 2.11, -3.04], [.05, .22, .16], '#2e3136', 'matte')
+  box(living, 'Shelf book row', [-1.59, 2.10, -3.04], [.045, .20, .16], '#c8534b', 'matte')
+  box(living, 'Shelf book row', [-1.53, 2.12, -3.04], [.048, .23, .16], '#ebe6da', 'matte')
+  box(living, 'Shelf book row', [-1.47, 2.09, -3.04], [.045, .19, .16], '#5ea0a7', 'matte')
+  mesh(living, 'Shelf pot', cylGeo(.065, .05, .11, 12), [-1.02, 2.05, -3.04], '#eae5da', 'ceramic')
+  mesh(living, 'Shelf plant', sphGeo(.09, 10, 8), [-1.02, 2.15, -3.04], '#6f9162', 'matte')
+  // 窗边粉色小椅子
+  box(living, 'Pink chair seat', [-3.18, .44, 2.42], [.44, .06, .42], '#e8b3b8', 'fabric')
+  box(living, 'Pink chair back', [-3.18, .69, 2.60], [.42, .44, .06], '#e8b3b8', 'fabric')
+  for (const lx of [-3.35, -3.01]) for (const lz of [2.25, 2.58]) {
+    box(living, 'Pink chair leg', [lx, .21, lz], [.035, .42, .035], oak, 'oak')
+  }
+  footprint(0, -3.18, 2.42, .48, .46)
   // 一楼自发光灯具（餐桌吊灯罩 + 客厅吸顶灯）
   mesh(living, 'Dining pendant shade', cylGeo(.22, .30, .16, 16), [.93, 2.02, .73], '#fff2d8', 'lamp')
   mesh(living, 'Living ceiling fixture', cylGeo(.22, .22, .05, 16), [-3.24, 2.55, -1.51], '#fff2d8', 'lamp')
@@ -467,6 +482,15 @@ export function buildFamilyHouse(source: Object3D) {
   furniture(1, 19, -3.29, -3.12)
   furniture(1, 21, -1.67, 2.72, { angle: Math.PI, solid: true })
   contactShadow(sleeping, -3.22, -1.22, 2.1, 2.2)
+  // 复刻视频 0:19 主卧细节：清浅青蓝床垫铺面 + 通顶白色衣柜黑拉手 + 顶部吊柜
+  box(sleeping, 'Teal bed mattress layer', [-3.22, .38, -1.08], [1.72, .05, 1.78], '#8cc4ca', 'fabric')
+  box(sleeping, 'White bed pillow', [-3.55, .45, -1.78], [.52, .10, .34], '#f7f5f0', 'fabric')
+  box(sleeping, 'White bed pillow', [-2.89, .45, -1.78], [.52, .10, .34], '#f7f5f0', 'fabric')
+  for (let i = 0; i < 4; i++) {
+    const cx = -3.95 + i * .54
+    box(sleeping, 'Overhead cabinet', [cx, 2.28, -2.96], [.525, .64, .36], '#f3f1ec', 'plaster')
+    box(sleeping, 'Cabinet handle', [cx + .18, 2.12, -2.77], [.018, .12, .018], '#2b2d30', 'metal')
+  }
   box(sleeping, 'Bedroom rug', [-3.2, .008, .55], [2.1, .012, 1.5], '#dde3dc', 'fabric')
   box(sleeping, 'Playroom rug', [.88, .008, 1.85], [1.75, .012, 1.65], '#ede3d1', 'fabric')
   mesh(sleeping, 'Bedside lamp shade', cylGeo(.11, .14, .16, 14), [-1.95, .88, -2.23], '#fff2d8', 'lamp')
@@ -526,19 +550,48 @@ export function buildFamilyHouse(source: Object3D) {
   furniture(2, 26, -3.05, 1.14, { solid: true })
   furniture(2, 33, -1.3, 2.25, { scale: .94 })
   furniture(2, 18, -4.73, 2.32, { scale: .87 })
-  // 三楼双屏书桌细节 + 阁楼地毯抱枕
-  box(top, 'Study desk top', [-3.45, .74, -2.76], [1.28, .04, .60], oak, 'oak')
-  box(top, 'Study desk leg', [-4.02, .37, -2.76], [.06, .74, .52], frame, 'metal')
-  box(top, 'Study desk leg', [-2.88, .37, -2.76], [.06, .74, .52], frame, 'metal')
-  footprint(2, -3.45, -2.76, 1.28, .60)
-  box(top, 'Main monitor stand', [-3.58, .82, -2.90], [.05, .14, .05], frame, 'metal')
-  box(top, 'Main monitor frame', [-3.58, 1.02, -2.88], [.56, .34, .025], frame, 'metal')
-  box(top, 'Main monitor screen', [-3.58, 1.02, -2.865], [.52, .30, .008], '#cde2ec', 'screen')
-  box(top, 'Vertical monitor stand', [-3.12, .82, -2.88], [.05, .14, .05], frame, 'metal')
-  box(top, 'Vertical monitor frame', [-3.12, 1.05, -2.86], [.27, .44, .025], frame, 'metal')
-  box(top, 'Vertical monitor screen', [-3.12, 1.05, -2.845], [.24, .40, .008], '#d8e7d8', 'screen')
-  box(top, 'Keyboard', [-3.52, .768, -2.65], [.32, .014, .11], '#444b48', 'metal')
-  box(top, 'Mouse', [-3.24, .768, -2.65], [.055, .016, .09], '#444b48', 'metal')
+  // 复刻视频 0:19 工作角：L型木纹书桌 + 白色吊柜 + 双屏显示器 + 人体工学椅 + 彩色书列 + 左侧通顶衣柜
+  box(top, 'Study desk top', [-3.45, .74, -2.76], [1.45, .045, .62], oak, 'oak')
+  box(top, 'Study desk return', [-2.82, .74, -2.18], [.56, .045, 1.25], oak, 'oak')
+  box(top, 'Study desk drawer base', [-4.02, .37, -2.76], [.32, .72, .56], '#f3f1ec', 'plaster')
+  box(top, 'Study desk leg', [-2.78, .37, -2.76], [.06, .74, .52], frame, 'metal')
+  footprint(2, -3.45, -2.76, 1.45, .62)
+  // 顶部白色吊柜（4格分缝 + 黑色拉手）
+  for (let i = 0; i < 4; i++) {
+    const cx = -4.05 + i * .56
+    box(top, 'Study overhead cabinet', [cx, 2.26, -2.96], [.54, .68, .36], '#f3f1ec', 'plaster')
+    box(top, 'Study cabinet handle', [cx + .18, 2.08, -2.77], [.018, .11, .018], '#2b2d30', 'metal')
+  }
+  // 左侧通顶衣柜（4门 + 黑色长拉手）
+  for (let i = 0; i < 3; i++) {
+    const wz = -2.35 + i * .58
+    box(top, 'Tall wardrobe door', [-5.04, 1.28, wz], [.42, 2.52, .56], '#f3f1ec', 'plaster')
+    box(top, 'Wardrobe bar handle', [-4.82, 1.22, wz + .18], [.018, .42, .018], '#2b2d30', 'metal')
+  }
+  footprint(2, -5.04, -1.77, .44, 1.76)
+  // 双屏显示器（左横屏 + 右竖屏，亮白微发光屏幕）
+  box(top, 'Main monitor stand', [-3.68, .82, -2.90], [.05, .14, .05], '#2a2d30', 'metal')
+  box(top, 'Main monitor frame', [-3.68, 1.02, -2.88], [.58, .35, .025], '#2a2d30', 'metal')
+  box(top, 'Main monitor screen', [-3.68, 1.02, -2.865], [.54, .31, .008], '#eef3f5', 'screen')
+  box(top, 'Vertical monitor stand', [-3.18, .82, -2.88], [.05, .14, .05], '#2a2d30', 'metal')
+  box(top, 'Vertical monitor frame', [-3.18, 1.06, -2.86], [.28, .46, .025], '#2a2d30', 'metal')
+  box(top, 'Vertical monitor screen', [-3.18, 1.06, -2.845], [.25, .42, .008], '#eef3f5', 'screen')
+  box(top, 'Keyboard', [-3.62, .768, -2.65], [.32, .014, .11], '#2e3136', 'metal')
+  box(top, 'Mouse', [-3.34, .768, -2.65], [.055, .016, .09], '#2e3136', 'metal')
+  mesh(top, 'Desk teal mug', cylGeo(.04, .036, .09, 12), [-2.96, .81, -2.66], '#65a6ad', 'ceramic')
+  // 桌角彩色竖放书本
+  for (const [i, col] of ['#c8534b', '#5280a8', '#68996e', '#eae6dc'].entries()) {
+    box(top, 'Desk book', [-2.82, .88, -1.96 + i * .055], [.18, .24, .042], col, 'matte')
+  }
+  // 灰色人体工学椅（座垫 + 高靠背 + 头枕 + 扶手 + 底座）
+  box(top, 'Ergo chair seat', [-3.55, .46, -2.18], [.46, .08, .44], '#787d82', 'fabric')
+  box(top, 'Ergo chair back', [-3.55, .82, -1.96], [.42, .56, .08], '#787d82', 'fabric')
+  box(top, 'Ergo chair headrest', [-3.55, 1.18, -1.95], [.26, .13, .06], '#787d82', 'fabric')
+  for (const side of [-1, 1]) {
+    box(top, 'Ergo armrest', [-3.55 + side * .25, .64, -2.14], [.05, .04, .26], '#3a3d42', 'metal')
+  }
+  mesh(top, 'Ergo chair stem', cylGeo(.03, .03, .38, 10), [-3.55, .24, -2.18], '#3a3d42', 'metal')
+  mesh(top, 'Ergo chair base', cylGeo(.26, .26, .035, 10), [-3.55, .04, -2.18], '#3a3d42', 'metal')
   box(top, 'Loft rug', [-3.05, .008, 1.75], [2.55, .012, 1.85], '#e3dacb', 'fabric')
   box(top, 'Loft pillow', [-3.55, .56, 2.66], [.32, .28, .14], green, 'fabric').rotateZ(-.12)
   box(top, 'Loft pillow', [-2.45, .56, 2.66], [.32, .28, .14], clay, 'fabric').rotateZ(.15)

@@ -33,12 +33,12 @@ const sensitivity = ref(readSensitivity())
 const room = ref('porch')
 const position = shallowRef<HousePosition>({ x: porch.position[0], z: porch.position[1], yaw: 0, floor: 0, onStairs: false })
 const hint = shallowRef<HouseHint | null>(null)
-const petState = shallowRef<HousePetState>({ floor: 0, moving: true, called: false })
+const petState = shallowRef<HousePetState>({ floor: 0, moving: true, called: false, roomLabel: '客厅' })
 const petStatusText = computed(() => {
-  const floorName = houseLevels[petState.value.floor] ?? '一楼'
-  if (petState.value.called) return `小柴正跑向${floorName}`
-  return petState.value.moving ? `小柴在${floorName}散步` : `小柴在${floorName}发呆`
+  if (petState.value.called) return `小狗正在跑向${petState.value.roomLabel}`
+  return petState.value.moving ? `柴犬散步中 · 小狗在${petState.value.roomLabel}里` : `柴犬休息中 · 小狗在${petState.value.roomLabel}里`
 })
+const livingStop = houseStops.find(item => item.id === 'living')!
 const exporting = ref(false)
 const alertText = ref('')
 const allStops = [porch, ...houseStops, ...stairStops]
@@ -229,6 +229,8 @@ function shortcuts(event: KeyboardEvent) {
       return
     }
   }
+  if (event.code === 'Digit1') { changeView('walk'); return }
+  if (event.code === 'Digit2') { changeView('overview'); return }
   if (event.code === 'KeyV') changeView(view.value === 'walk' ? 'overview' : 'walk')
   if (event.code === 'KeyM') mapOpen.value = !mapOpen.value
 }
@@ -274,16 +276,16 @@ async function download() {
     <header class="house-top">
       <NuxtLink to="/family" class="house-brand house-hud" aria-label="返回家庭日记" title="返回家庭日记">
         <span class="house-brand-icon"><JrIcon :path="mdiHomeOutline" :size="22" /></span>
-        <span><strong>回家</strong><small>我们的小家</small></span>
+        <span><strong>回家 <em class="house-brand-tag">3D 漫游</em></strong><small>{{ view === 'walk' ? `${houseLevels[position.floor]} · ${actualRoom}` : '我们的小家' }}</small></span>
         <JrIcon class="house-back-icon" :path="mdiArrowLeft" :size="16" />
       </NuxtLink>
 
       <div v-if="status === 'ready'" class="house-mode house-hud" role="group" aria-label="浏览视角">
         <button type="button" :aria-pressed="view === 'walk'" @click="changeView('walk')">
-          <JrIcon :path="mdiWalk" :size="17" /> 第一人称
+          <JrIcon :path="mdiWalk" :size="17" /> 第一人称 <kbd class="mode-key">1</kbd>
         </button>
         <button type="button" :aria-pressed="view === 'overview'" @click="changeView('overview')">
-          <JrIcon :path="mdiCubeOutline" :size="17" /> 全屋视角
+          <JrIcon :path="mdiCubeOutline" :size="17" /> 全屋视角 <kbd class="mode-key">2</kbd>
         </button>
       </div>
 
@@ -339,6 +341,9 @@ async function download() {
           <template v-else>拖动旋转 <span class="house-divider" /> 滚轮缩放</template>
         </p>
         <div class="house-footer-actions">
+          <button v-if="view === 'walk'" type="button" @click="visit(livingStop)">
+            回到客厅
+          </button>
           <button v-if="fullscreen && view === 'walk'" type="button" aria-haspopup="dialog" @click="openSensitivity">
             <JrIcon :path="mdiTune" :size="18" /> 鼠标灵敏度 {{ sensitivity }}%
           </button>
@@ -398,7 +403,8 @@ async function download() {
 .house-top > * { pointer-events: auto; }
 .house-brand { display: flex; align-items: center; gap: 9px; width: max-content; padding: 7px 10px 7px 7px; border-radius: 12px; }
 .house-brand-icon { width: 38px; height: 38px; border-radius: 8px; display: grid; place-items: center; color: #fffff3; background: var(--house-accent); }
-.house-brand strong { display: block; font-size: 1.04rem; line-height: 1.15; }
+.house-brand strong { display: flex; align-items: center; gap: 6px; font-size: 1.04rem; line-height: 1.15; }
+.house-brand-tag { font-style: normal; font-size: .68rem; font-weight: 500; color: #4e6354; }
 .house-brand small { display: block; margin-top: 4px; color: #536055; font-size: .69rem; }
 .house-back-icon { margin-left: 5px; }
 .house-brand:hover { background: #fffcf4; }
@@ -409,6 +415,8 @@ async function download() {
 .house-toolbar button { width: 41px; padding: 0; }
 .house-mode button:hover, .house-toolbar button:hover, .house-footer button:hover { background: #e4ebe0; }
 .house-mode button[aria-pressed="true"] { background: var(--house-accent); color: #fffdf6; }
+.house-mode .mode-key { min-width: 17px; min-height: 17px; font-size: .66rem; margin-left: 2px; opacity: .82; }
+.house-mode button[aria-pressed="true"] .mode-key { background: #ffffff2e; border-color: #ffffff44; color: #fffdf6; }
 .house-toolbar button[aria-pressed="true"] { background: #dce9dc; color: #294533; }
 .house-location { position: absolute; top: 89px; left: 50%; transform: translateX(-50%); padding: 7px 13px; background: #2c4839f0; color: #fffdf4; border-radius: 8px; font-size: .8rem; white-space: nowrap; pointer-events: none; }
 .house-reticle { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; transform: translate(-50%, -50%); border-radius: 50%; background: #fffef0; box-shadow: 0 0 0 1px #36503b88, 0 0 4px #29352e5e; pointer-events: none; }

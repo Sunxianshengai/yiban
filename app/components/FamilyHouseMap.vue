@@ -46,7 +46,10 @@ function visit(id: string) {
       <button v-if="view === 'overview'" type="button" :aria-pressed="floor === 'all'" @click="emit('floor', 'all')">整栋</button>
       <button v-for="(name, index) in houseLevels" :key="name" type="button" :aria-pressed="floor === index" @click="emit('floor', index)">{{ name }}</button>
     </div>
-    <div v-if="view === 'walk'" class="map-status"><span aria-hidden="true" />{{ position.onStairs ? '楼梯间' : '你的位置' }}</div>
+    <div v-if="view === 'walk'" class="map-status">
+      <span class="map-status-now"><i aria-hidden="true" />{{ position.onStairs ? '楼梯间' : '你的位置' }}</span>
+      <span class="map-status-tip">点击房间前往</span>
+    </div>
   </aside>
 </template>
 
@@ -79,7 +82,9 @@ function visit(id: string) {
 .map-floors button { flex: 1; min-height: 36px; border: 0; border-radius: 6px; background: transparent; }
 .map-floors button:hover { background: #edf3e9; }
 .map-floors button[aria-pressed="true"] { color: #fffdf7; background: #47634f; }
-.map-status { display: flex; align-items: center; gap: 6px; margin: 8px 3px 0; color: #555d51; font-size: .72rem; }
-.map-status span { width: 6px; height: 6px; border-radius: 50%; background: #355841; }
+.map-status { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 8px 3px 0; color: #555d51; font-size: .72rem; }
+.map-status-now { display: inline-flex; align-items: center; gap: 6px; }
+.map-status-now i { width: 6px; height: 6px; border-radius: 50%; background: #355841; }
+.map-status-tip { color: #757e70; font-size: .68rem; }
 @media (max-height: 680px) { .home-map { width: 212px; padding: 9px; } }
 </style>
