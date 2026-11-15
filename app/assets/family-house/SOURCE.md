@@ -25,5 +25,14 @@
 - `models/cat-tree.glb`：Scratching Post (28168)
 - `models/tv-unit.glb`：TV Unit With TV (29824)
 - `models/shoe-rack.glb`：Shoe Rack With Shoes (29869)
+- `models/sofa-3seat.glb`：Visitor sofa, three seat (26141)
+- `models/sofa-2seat.glb`：Two-seat soft sofa (16990)
+- `models/coffee-table.glb`：Lobby coffee table (25870)
+- `models/armchair.glb`：Soft lounge armchair (16988)
+- `models/dining-table.glb`：Dining Table, Laid for Four (35734)
+- `models/dining-chair.glb`：Upholstered dining chair (16500)
+- `models/double-bed.glb`：Double Bed Upholstered (38770)
+- `models/wardrobe.glb`：Wardrobe with named doors (25759)
+- `models/fridge.glb`：Kitchen Fridge (35213)
 
 四层建筑、楼梯、厨房、卫浴和各活动角落在 `familyHouseModel.ts` 中组装，平面坐标使用米。

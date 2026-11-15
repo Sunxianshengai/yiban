@@ -429,15 +429,20 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   }
   warm(0, 'Study1F warm light', -4.30, 2.40, -2.20, 12)
 
-  // 一层客厅：开阔布局，沙发朝向电视柜，中间配茶几、编织地毯、落地灯、猫爬架与宠物窝
-  furniture(0, 24, -3.95, .72, { solid: true })
+  // 一层客厅：开阔布局，使用现代 CC0 3D 沙发、茶几、单人椅、餐桌椅与冰箱
+  if (!placeExtra(living, 'sofa-3seat', -3.95, .72, { floorForSolid: 0 })) furniture(0, 24, -3.95, .72, { solid: true })
   furniture(0, 25, -3.95, 1.85, { scale: 1.28 })
-  furniture(0, 26, -3.95, 1.95, { solid: true })
-  furniture(0, 27, -5.65, 1.95, { scale: .84, angle: 1.15, solid: true })
-  furniture(0, 34, 1.25, .45, { solid: true })
-  furniture(0, 35, .45, -.35, { solid: true })
-  furniture(0, 36, 2.05, -.35, { solid: true })
-  furniture(0, 38, 1.25, 1.28, { solid: true })
+  if (!placeExtra(living, 'coffee-table', -3.95, 1.95, { floorForSolid: 0 })) furniture(0, 26, -3.95, 1.95, { solid: true })
+  if (!placeExtra(living, 'armchair', -5.65, 1.95, { angle: 1.15, floorForSolid: 0 })) furniture(0, 27, -5.65, 1.95, { scale: .84, angle: 1.15, solid: true })
+  if (!placeExtra(living, 'dining-table', 1.25, .45, { floorForSolid: 0 })) {
+    furniture(0, 34, 1.25, .45, { solid: true })
+    box(living, 'Linen table runner', [1.25, .831, .45], [1.46, .004, .29], '#e7dbc6', 'fabric')
+    cups(living, .72, .837, .53)
+  }
+  if (!placeExtra(living, 'dining-chair', .45, -.25, { floorForSolid: 0 })) furniture(0, 35, .45, -.35, { solid: true })
+  if (!placeExtra(living, 'dining-chair', 2.05, -.25, { floorForSolid: 0 })) furniture(0, 36, 2.05, -.35, { solid: true })
+  if (!placeExtra(living, 'dining-chair', .45, 1.15, { angle: Math.PI, floorForSolid: 0 })) furniture(0, 38, 1.25, 1.28, { solid: true })
+  placeExtra(living, 'dining-chair', 2.05, 1.15, { angle: Math.PI, floorForSolid: 0 })
   furniture(0, 39, 1.25, .45, { y: 1.43 })
   furniture(0, 32, 1.20, 3.72, { angle: Math.PI / 2, scale: .76, solid: true })
   // 一楼细节：地毯、抱枕、时钟、玄关托盘、接触阴影、厨房小家电
@@ -475,11 +480,11 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   box(living, 'Cooktop', [1.95, .954, -3.70], [.58, .014, .42], '#555a56', 'metal')
   for (const x of [1.80, 2.10]) for (const z of [-3.80, -3.58])
     mesh(living, 'Hob ring', new CylinderGeometry(.077, .077, .012, 16), [x, .967, z], '#929290')
-  box(living, 'Cream fridge', [3.85, .91, -3.68], [.60, 1.82, .62], cream)
-  box(living, 'Fridge handle', [3.63, 1.05, -3.341], [.028, .29, .054], frame)
-  footprint(0, 3.85, -3.68, .62, .66)
-  box(living, 'Linen table runner', [1.25, .831, .45], [1.46, .004, .29], '#e7dbc6', 'fabric')
-  cups(living, .72, .837, .53)
+  if (!placeExtra(living, 'fridge', 3.85, -3.68, { floorForSolid: 0 })) {
+    box(living, 'Cream fridge', [3.85, .91, -3.68], [.60, 1.82, .62], cream)
+    box(living, 'Fridge handle', [3.63, 1.05, -3.341], [.028, .29, .054], frame)
+    footprint(0, 3.85, -3.68, .62, .66)
+  }
   box(living, 'Book on coffee table', [-4.09, .486, 1.95], [.24, .035, .19], clay, 'matte').rotateY(.14)
   picture(living, -1.50, 1.71, -4.064, clay, .43)
   picture(living, -.82, 1.84, -4.064, blue, .51)
@@ -534,19 +539,24 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
     open: { left: 3.06, right: 3.14, back: -2.05, front: -1.13 },
   })
 
-  furniture(1, 9, -4.05, -1.65, { solid: true })
-  furniture(1, 10, -3.98, -.87)
+  if (!placeExtra(sleeping, 'double-bed', -4.05, -1.65, { floorForSolid: 1 })) {
+    furniture(1, 9, -4.05, -1.65, { solid: true })
+    furniture(1, 10, -3.98, -.87)
+    furniture(1, 14, -4.00, -1.32, { y: .71 })
+    box(sleeping, 'Teal bed mattress layer', [-4.05, .38, -1.51], [1.72, .05, 1.78], '#8cc4ca', 'fabric')
+    box(sleeping, 'White bed pillow', [-4.38, .45, -2.21], [.52, .10, .34], '#f7f5f0', 'fabric')
+    box(sleeping, 'White bed pillow', [-3.72, .45, -2.21], [.52, .10, .34], '#f7f5f0', 'fabric')
+  }
   furniture(1, 11, -2.55, -2.65, { solid: true })
   furniture(1, 12, -2.55, -2.65, { y: .54 })
-  furniture(1, 14, -4.00, -1.32, { y: .71 })
-  furniture(1, 17, -5.95, .65, { scale: .96, solid: true })
+  if (!placeExtra(sleeping, 'armchair', -5.95, .65, { angle: .85, floorForSolid: 1 })) {
+    furniture(1, 17, -5.95, .65, { scale: .96, solid: true })
+  }
   furniture(1, 19, -4.05, -4.02)
-  furniture(1, 21, -2.25, 3.58, { angle: Math.PI, solid: true })
+  if (!placeExtra(sleeping, 'wardrobe', -2.25, 3.58, { angle: Math.PI, floorForSolid: 1 })) {
+    furniture(1, 21, -2.25, 3.58, { angle: Math.PI, solid: true })
+  }
   contactShadow(sleeping, -4.05, -1.65, 2.1, 2.2)
-  // 复刻视频 0:19 主卧细节：清浅青蓝床垫铺面 + 通顶白色衣柜黑拉手 + 顶部吊柜
-  box(sleeping, 'Teal bed mattress layer', [-4.05, .38, -1.51], [1.72, .05, 1.78], '#8cc4ca', 'fabric')
-  box(sleeping, 'White bed pillow', [-4.38, .45, -2.21], [.52, .10, .34], '#f7f5f0', 'fabric')
-  box(sleeping, 'White bed pillow', [-3.72, .45, -2.21], [.52, .10, .34], '#f7f5f0', 'fabric')
   for (let i = 0; i < 4; i++) {
     const cx = -4.80 + i * .54
     box(sleeping, 'Overhead cabinet', [cx, 2.28, -3.86], [.525, .64, .36], '#f3f1ec', 'plaster')
@@ -604,7 +614,9 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
 
   const top = floors[2]!.root
   // 三楼阅读与工作区：书桌区与休闲单椅阅读角分区摆放，互不重叠
-  furniture(2, 27, -2.35, -1.45, { scale: .92, angle: -.46, solid: true })
+  if (!placeExtra(top, 'armchair', -2.35, -1.45, { angle: -.46, floorForSolid: 2 })) {
+    furniture(2, 27, -2.35, -1.45, { scale: .92, angle: -.46, solid: true })
+  }
   furniture(2, 28, -1.55, -1.65, { solid: true })
   furniture(2, 29, -1.55, -1.65, { y: .59 })
   furniture(2, 25, -2.25, -1.35)
@@ -612,9 +624,13 @@ export function buildFamilyHouse(source: Object3D, extras: Record<string, Object
   furniture(2, 41, 2.45, -2.70, { solid: true })
   furniture(2, 11, 3.75, -3.55, { solid: true })
   furniture(2, 31, .25, -3.78, { angle: Math.PI / 2, scale: .80, solid: true })
-  furniture(2, 24, -3.65, 3.55, { angle: Math.PI, solid: true })
+  if (!placeExtra(top, 'sofa-2seat', -3.65, 3.55, { angle: Math.PI, floorForSolid: 2 })) {
+    furniture(2, 24, -3.65, 3.55, { angle: Math.PI, solid: true })
+  }
   furniture(2, 25, -3.65, 2.35, { scale: 1.18 })
-  furniture(2, 26, -3.65, 1.85, { solid: true })
+  if (!placeExtra(top, 'coffee-table', -3.65, 1.85, { floorForSolid: 2 })) {
+    furniture(2, 26, -3.65, 1.85, { solid: true })
+  }
   furniture(2, 33, -1.65, 2.85, { scale: .94 })
   furniture(2, 18, -5.95, 3.25, { scale: .92 })
   // 复刻视频 0:19 工作角：开源 CC0 GLB 书桌 + 双屏显示器 + 键鼠 + 台灯 + 人体工学椅，搭配定制吊柜与通顶衣柜

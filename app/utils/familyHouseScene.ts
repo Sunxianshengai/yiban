@@ -28,6 +28,15 @@ import petBowlsUrl from '~/assets/family-house/models/pet-bowls.glb?url'
 import catTreeUrl from '~/assets/family-house/models/cat-tree.glb?url'
 import tvUnitUrl from '~/assets/family-house/models/tv-unit.glb?url'
 import shoeRackUrl from '~/assets/family-house/models/shoe-rack.glb?url'
+import sofa3SeatUrl from '~/assets/family-house/models/sofa-3seat.glb?url'
+import sofa2SeatUrl from '~/assets/family-house/models/sofa-2seat.glb?url'
+import coffeeTableUrl from '~/assets/family-house/models/coffee-table.glb?url'
+import armchairUrl from '~/assets/family-house/models/armchair.glb?url'
+import diningTableUrl from '~/assets/family-house/models/dining-table.glb?url'
+import diningChairUrl from '~/assets/family-house/models/dining-chair.glb?url'
+import doubleBedUrl from '~/assets/family-house/models/double-bed.glb?url'
+import wardrobeUrl from '~/assets/family-house/models/wardrobe.glb?url'
+import fridgeUrl from '~/assets/family-house/models/fridge.glb?url'
 import { buildFamilyHouse, sceneBackdrop } from './familyHouseModel'
 
 const extraModelUrls: Record<string, string> = {
@@ -52,6 +61,15 @@ const extraModelUrls: Record<string, string> = {
   'cat-tree': catTreeUrl,
   'tv-unit': tvUnitUrl,
   'shoe-rack': shoeRackUrl,
+  'sofa-3seat': sofa3SeatUrl,
+  'sofa-2seat': sofa2SeatUrl,
+  'coffee-table': coffeeTableUrl,
+  'armchair': armchairUrl,
+  'dining-table': diningTableUrl,
+  'dining-chair': diningChairUrl,
+  'double-bed': doubleBedUrl,
+  'wardrobe': wardrobeUrl,
+  'fridge': fridgeUrl,
 }
 import { blocksWalk, floorRise, halfDepth, halfWidth, hasStairFootprint, houseStops, porch, stairHeight, stairLane, stairs, stairStops, type HouseStop } from './familyHouseLayout'
 
