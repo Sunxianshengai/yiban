@@ -5,7 +5,7 @@ import type { MediaFileV2 } from '~/utils/db'
 const { allMedia, deleteMedia } = useEntries()
 const { prefetch: prefetchMedia, urlForSync: mediaUrl } = useMediaResolver()
 const items = ref<(MediaFileV2 & { url?: string })[]>([])
-const filter = ref<'all' | 'image' | 'video' | 'audio'>('all')
+const filter = ref<'all' | 'image' | 'video' | 'audio' | 'pdf'>('all')
 const selectedId = ref<number | null>(null)
 const editorOpen = ref(false)
 const error = ref('')
@@ -34,13 +34,24 @@ async function remove(id: number) {
   catch { error.value = '无法移除附件。' }
 }
 
-const shown = computed(() => items.value.filter((i) => filter.value === 'all' || i.mimeType.startsWith(filter.value)))
+function isPdfMedia(m: MediaFileV2) {
+  return m.mimeType === 'application/pdf'
+    || m.ext?.toLowerCase() === 'pdf'
+    || m.fileName?.toLowerCase().endsWith('.pdf')
+}
+
+const shown = computed(() => items.value.filter((i) => {
+  if (filter.value === 'all') return true
+  if (filter.value === 'pdf') return isPdfMedia(i)
+  return i.mimeType.startsWith(filter.value)
+}))
 const selected = computed(() => shown.value.find((i) => i.id === selectedId.value) ?? null)
 const filters = [
   { key: 'all', label: '全部' },
   { key: 'image', label: '图片' },
   { key: 'video', label: '视频' },
   { key: 'audio', label: '音频' },
+  { key: 'pdf', label: 'PDF' },
 ] as const
 function fmt(d?: Date) {
   return d ? new Intl.DateTimeFormat('zh-CN', { month: 'short', day: 'numeric', year: 'numeric' }).format(d) : ''
@@ -80,10 +91,12 @@ function fmt(d?: Date) {
           <img v-if="selected.mimeType.startsWith('image/')" :src="selected.url" class="jr-media-preview" :alt="selected.fileName" />
           <video v-else-if="selected.mimeType.startsWith('video/')" :src="selected.url" class="jr-media-preview" controls />
           <audio v-else-if="selected.mimeType.startsWith('audio/')" :src="selected.url" controls style="width:100%" />
+          <iframe v-else-if="isPdfMedia(selected) && selected.url" :src="selected.url" class="jr-media-preview jr-media-pdf" :title="selected.fileName" />
           <div class="jr-media-preview-fallback jr-center" v-else>{{ (selected.ext || '').toUpperCase() }}</div>
           <h2>{{ selected.fileName }}</h2>
           <p class="jr-muted">{{ fmt(selected.createdAt) }} · {{ selected.mimeType }}</p>
           <div class="jr-pop-row" style="justify-content:center">
+            <a v-if="isPdfMedia(selected) && selected.url" class="jr-btn" :href="selected.url" :download="selected.fileName">下载 PDF</a>
             <button class="jr-btn jr-btn-primary" @click="editorOpen = true">编辑</button>
             <NuxtLink class="jr-btn" :to="{ path: '/', query: { entry: selected.jId } }">打开所属条目</NuxtLink>
             <button class="jr-link-danger" @click="remove(selected.id!)">删除</button>
@@ -108,6 +121,7 @@ function fmt(d?: Date) {
 .jr-media-detail.has-media { color: var(--jr-on-surface); justify-content: flex-start; }
 .jr-media-detail h2 { margin: 8px 0 0; font-size: 15px; color: var(--jr-on-surface); overflow-wrap: anywhere; }
 .jr-media-preview { max-width: 100%; max-height: 50vh; border-radius: 10px; }
+.jr-media-pdf { width: 100%; height: 48vh; border: 1px solid var(--jr-outline-variant); background: #fff; }
 .jr-media-preview-fallback { width: 200px; height: 130px; background: #eef2f4; border-radius: 10px; }
 .jr-media-card.on { border-color: var(--jr-primary); }
 @media (max-width: 900px) {

@@ -7,7 +7,9 @@ import { getAmapJsKey, getAmapSecurity, getAmapWebKey, resetAmapLoader, setAmapC
 import { getPalConfig, setPalConfig } from '~/utils/palClient'
 import { cloudApi } from '~/utils/cloudApi'
 import { familyAvatarColor, familyAvatarChar } from '~/utils/familyUi'
-import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiShieldKeyOutline, mdiDatabaseOutline, mdiHelpCircleOutline, mdiPalette, mdiRuler, mdiMapMarkerOutline, mdiTranslate, mdiSpellcheck, mdiLockOutline, mdiChevronRight, mdiRobotOutline, mdiAccountMultipleOutline } from '@mdi/js'
+import { mdiClose, mdiDownload, mdiUpload, mdiDeleteRestore, mdiCogOutline, mdiShieldKeyOutline, mdiDatabaseOutline, mdiHelpCircleOutline, mdiPalette, mdiRuler, mdiMapMarkerOutline, mdiTranslate, mdiSpellcheck, mdiLockOutline, mdiChevronRight, mdiRobotOutline, mdiAccountMultipleOutline, mdiBellOutline, mdiKeyVariant } from '@mdi/js'
+import { getColorThemeSwatches } from '~/composables/useAppearance'
+import { disableE2ee, enableE2ee, loadE2eeMetadata, verifyE2eePassphrase, verifyRecoveryKey, type E2eeMetadata } from '~/utils/e2ee'
 
 const tab = ref<'general' | 'security' | 'data' | 'help'>('general')
 const isMobile = useIsMobile()
@@ -22,7 +24,7 @@ const mSections = [
 function toggleSection(key: typeof mSections[number]['key']) {
   openSection.value = openSection.value === key ? null : key
 }
-const gen = useState<'appearance' | 'unit' | 'location' | 'pal' | 'family' | 'locale' | 'spellcheck'>('jr.settingsGen', () => 'appearance')
+const gen = useState<'appearance' | 'unit' | 'location' | 'pal' | 'family' | 'locale' | 'reminder' | 'spellcheck'>('jr.settingsGen', () => 'appearance')
 const mobileFamily = ref<HTMLElement[]>()
 if (props.openFamily) {
   gen.value = 'family'
@@ -32,24 +34,47 @@ if (props.openFamily) {
 const { weekStart } = useWeekStart()
 // bug06 修复：计量单位绑定并持久化（原 select 未绑 v-model，选择即丢）
 const { unit } = useUnits()
-const tabs = [
-  { key: 'general', label: '通用', icon: mdiCogOutline },
-  { key: 'security', label: '安全', icon: mdiShieldKeyOutline },
-  { key: 'data', label: '数据', icon: mdiDatabaseOutline },
-  { key: 'help', label: '帮助', icon: mdiHelpCircleOutline },
-] as const
-const genItems = [
-  { key: 'appearance', label: '外观', icon: mdiPalette },
+const { locale, t } = useLocale()
+const { config: reminder, permission: reminderPerm, requestPermission: requestReminderPerm, testReminder } = useReminder()
+const reminderMsg = ref('')
+async function onToggleReminder(enabled: boolean) {
+  reminder.value.enabled = enabled
+  if (enabled && reminderPerm.value === 'default') {
+    const res = await requestReminderPerm()
+    reminderMsg.value = res === 'granted' ? '已开启每日写作提醒。' : '未授予浏览器通知权限，请点击测试或检查站点权限。'
+  } else {
+    reminderMsg.value = enabled ? `已开启，将在每天 ${reminder.value.time} 提醒。` : '已关闭每日提醒。'
+  }
+}
+async function onTestReminder() {
+  const sent = await testReminder()
+  reminderMsg.value = sent ? '测试通知已发送，请查看系统通知栏。' : '当前浏览器未授予通知权限，无法弹出系统通知。'
+}
+
+const tabs = computed(() => [
+  { key: 'general', label: t('general'), icon: mdiCogOutline },
+  { key: 'security', label: t('security'), icon: mdiShieldKeyOutline },
+  { key: 'data', label: t('data'), icon: mdiDatabaseOutline },
+  { key: 'help', label: t('help'), icon: mdiHelpCircleOutline },
+] as const)
+const genItems = computed(() => [
+  { key: 'appearance', label: t('appearance'), icon: mdiPalette },
   { key: 'unit', label: '计量单位', icon: mdiRuler },
   { key: 'location', label: '地点', icon: mdiMapMarkerOutline },
   { key: 'pal', label: '日记伙伴', icon: mdiRobotOutline },
-  { key: 'family', label: '家庭组', icon: mdiAccountMultipleOutline },
-  { key: 'locale', label: '语言与地区', icon: mdiTranslate },
-  { key: 'spellcheck', label: '拼写检查', icon: mdiSpellcheck },
-] as const
+  { key: 'family', label: t('family'), icon: mdiAccountMultipleOutline },
+  { key: 'locale', label: t('locale'), icon: mdiTranslate },
+  { key: 'reminder', label: t('reminder'), icon: mdiBellOutline },
+  { key: 'spellcheck', label: t('spellcheck'), icon: mdiSpellcheck },
+] as const)
 
-// Appearance — Day One / Moleskine 双主题风格支持与深浅模式
-const { theme, fontSize, themeStyle } = useAppearance()
+// Appearance — Day One / Moleskine 双主题风格 + 13 套主题配色 + 深浅模式
+const { theme, fontSize, colorTheme, themeStyle } = useAppearance()
+const isDarkTheme = computed(() =>
+  theme.value === 'Dark'
+  || (theme.value === 'System' && import.meta.client && window.matchMedia('(prefers-color-scheme: dark)').matches),
+)
+const colorSwatches = computed(() => getColorThemeSwatches(isDarkTheme.value))
 const spellcheck = ref(localStorage.getItem('jr.spellcheck') !== '0')
 // 高德 Key：服务平台按 Key 单选绑定，所以「Web服务」和「Web端(JS API)」要分开填两个 Key
 // （本仓库没有后端，密钥存在本机 localStorage；换密钥后强制重新加载 JS API）
@@ -162,6 +187,50 @@ async function removePin() {
   pinMsg.value = '密码已移除。'
 }
 
+// Security — E2EE 密钥管理（Web Crypto PBKDF2 + AES-GCM 256）
+const e2eeMeta = ref<E2eeMetadata | null>(loadE2eeMetadata())
+const e2eePassphrase = ref('')
+const e2eeRecovery = ref('')
+const e2eeVerifyInput = ref('')
+const e2eeMsg = ref('')
+async function onEnableE2ee() {
+  if (e2eePassphrase.value.trim().length < 6) {
+    e2eeMsg.value = '加密口令至少需要 6 位字符。'
+    return
+  }
+  try {
+    const { meta, recoveryKey } = await enableE2ee(e2eePassphrase.value.trim())
+    e2eeMeta.value = meta
+    e2eeRecovery.value = recoveryKey
+    e2eePassphrase.value = ''
+    e2eeMsg.value = `已生成 256 位 E2EE 密钥（指纹 ${meta.fingerprint}），请妥善保存下方恢复密钥。`
+  } catch {
+    e2eeMsg.value = '密钥生成失败，请重试。'
+  }
+}
+async function onVerifyE2ee() {
+  const input = e2eeVerifyInput.value.trim()
+  if (!input) return
+  const ok = (await verifyE2eePassphrase(input)) || (await verifyRecoveryKey(input))
+  e2eeMsg.value = ok ? '验证通过：密钥有效，AES-GCM 加解密自检正常。' : '口令或恢复密钥不匹配。'
+}
+async function copyRecoveryKey() {
+  if (!e2eeRecovery.value) return
+  try {
+    await navigator.clipboard.writeText(e2eeRecovery.value)
+    e2eeMsg.value = '恢复密钥已复制到剪贴板。'
+  } catch {
+    e2eeMsg.value = e2eeRecovery.value
+  }
+}
+function onDisableE2ee() {
+  if (!window.confirm('确定清除本机 E2EE 密钥配置吗？')) return
+  disableE2ee()
+  e2eeMeta.value = null
+  e2eeRecovery.value = ''
+  e2eeMsg.value = '已清除 E2EE 密钥配置。'
+}
+
 // Data — export / import / trash
 const { listTrash, restoreFromTrash } = useEntries()
 const trash = ref<import('~/utils/db').TrashRow[]>([])
@@ -269,6 +338,27 @@ async function wipeAll() {
           </select>
         </div>
         <div class="mset-row"><span>显示模式</span><select v-model="theme" class="mselect"><option value="System">跟随系统</option><option value="Light">浅色</option><option value="Dark">深色</option></select></div>
+        <div class="mset-row col">
+          <span>主题配色（默认 + 13 套）</span>
+          <div class="jr-swatch-grid">
+            <button
+              v-for="sw in colorSwatches"
+              :key="sw.index"
+              type="button"
+              class="jr-swatch-btn"
+              :class="{ on: colorTheme === sw.index }"
+              :title="sw.name"
+              @click="colorTheme = sw.index"
+            >
+              <span class="jr-swatch-dot" :style="{ background: sw.primary, boxShadow: `inset 0 0 0 3px ${sw.container}` }" />
+              <span class="jr-swatch-name">{{ sw.name }}</span>
+            </button>
+          </div>
+        </div>
+        <div class="mset-row"><span>语言</span><select v-model="locale" class="mselect" aria-label="语言"><option value="zh-CN">简体中文</option><option value="zh-TW">繁體中文</option><option value="en">English</option></select></div>
+        <div class="mset-row"><span>每日写作提醒</span><input type="checkbox" :checked="reminder.enabled" @change="onToggleReminder(($event.target as HTMLInputElement).checked)" /></div>
+        <div v-if="reminder.enabled" class="mset-row"><span>提醒时间</span><input v-model="reminder.time" type="time" class="mselect" /></div>
+        <p v-if="reminderMsg" class="mnote" role="status">{{ reminderMsg }}</p>
         <div class="mset-row"><span>字号</span><select v-model="fontSize" class="mselect"><option value="Small">小</option><option value="Medium">中</option><option value="Large">大</option></select></div>
         <div class="mset-row"><span>计量单位</span><select v-model="unit" class="mselect" aria-label="计量单位"><option value="metric">公制</option><option value="imperial">英制</option></select></div>
         <div class="mset-row"><span>每周起始日</span><select v-model="weekStart" class="mselect"><option value="default">默认</option><option value="monday">星期一</option><option value="sunday">星期日</option></select></div>
@@ -342,6 +432,21 @@ async function wipeAll() {
         </div>
         <p v-if="pinMsg" class="mnote" role="status">{{ pinMsg }}</p>
         <div class="mset-row"><span>超时</span><span class="mv">30s</span></div>
+        <div class="mset-row" style="margin-top:8px"><span>端到端加密 (E2EE)</span><span class="mv">{{ e2eeMeta?.enabled ? `已启用 (${e2eeMeta.fingerprint})` : '未启用' }}</span></div>
+        <template v-if="!e2eeMeta?.enabled">
+          <label class="mset-row col"><span>设置加密口令（至少 6 位）</span><input v-model="e2eePassphrase" type="password" class="minput" placeholder="用于派生 AES-256 密钥" /></label>
+          <div class="mbtns"><button class="mbtn" @click="onEnableE2ee">生成 E2EE 密钥</button></div>
+        </template>
+        <template v-else>
+          <div v-if="e2eeRecovery" class="jr-e2ee-recovery">{{ e2eeRecovery }}</div>
+          <label class="mset-row col"><span>验证口令或恢复密钥</span><input v-model="e2eeVerifyInput" class="minput" placeholder="输入口令或恢复密钥验证" /></label>
+          <div class="mbtns">
+            <button class="mbtn" @click="onVerifyE2ee">验证密钥</button>
+            <button v-if="e2eeRecovery" class="mbtn" @click="copyRecoveryKey">复制恢复密钥</button>
+            <button class="mbtn" style="background:var(--jr-error,#e05a4e)" @click="onDisableE2ee">清除密钥</button>
+          </div>
+        </template>
+        <p v-if="e2eeMsg" class="mnote" role="status">{{ e2eeMsg }}</p>
       </div>
 
       <div v-if="s.key === 'help' && openSection === 'help'" class="mexpand">
@@ -426,7 +531,22 @@ async function wipeAll() {
                 <option value="Dark">深色 / 暗黑模式</option>
               </select>
             </div>
-            <div class="jr-set-row">
+            <div class="jr-set-section-title" style="margin-top:14px">主题配色（默认 + 13 套经典主题）</div>
+            <div class="jr-swatch-grid">
+              <button
+                v-for="sw in colorSwatches"
+                :key="sw.index"
+                type="button"
+                class="jr-swatch-btn"
+                :class="{ on: colorTheme === sw.index }"
+                :title="sw.name"
+                @click="colorTheme = sw.index"
+              >
+                <span class="jr-swatch-dot" :style="{ background: sw.primary, boxShadow: `inset 0 0 0 3px ${sw.container}` }" />
+                <span class="jr-swatch-name">{{ sw.name }}</span>
+              </button>
+            </div>
+            <div class="jr-set-row" style="margin-top:12px">
               <span class="jr-set-cap">正文字号</span>
               <select v-model="fontSize" class="jr-set-select">
                 <option value="Small">小</option>
@@ -558,7 +678,11 @@ async function wipeAll() {
 
           <template v-else-if="gen === 'locale'">
             <div class="jr-set-row"><span class="jr-set-cap">语言与地区</span>
-              <select class="jr-set-select"><option>简体中文</option></select>
+              <select v-model="locale" class="jr-set-select" aria-label="语言">
+                <option value="zh-CN">简体中文</option>
+                <option value="zh-TW">繁體中文</option>
+                <option value="en">English</option>
+              </select>
             </div>
             <label class="jr-set-row">
               <span class="jr-set-cap">每周起始日</span>
@@ -568,7 +692,24 @@ async function wipeAll() {
                 <option value="sunday">星期日</option>
               </select>
             </label>
-            <p class="jr-muted" style="font-size:12px">日期和时间按简体中文格式显示。</p>
+            <p class="jr-muted" style="font-size:12px">切换语言后，导航栏与设置界面即时生效并保存至本机。</p>
+          </template>
+
+          <template v-else-if="gen === 'reminder'">
+            <label class="jr-set-check">
+              <input :checked="reminder.enabled" type="checkbox" @change="onToggleReminder(($event.target as HTMLInputElement).checked)" />
+              开启每日写日记本地定时提醒
+            </label>
+            <div class="jr-set-row" style="margin-top:10px">
+              <span class="jr-set-cap">提醒时间</span>
+              <input v-model="reminder.time" type="time" class="jr-set-select" aria-label="提醒时间" />
+            </div>
+            <div class="jr-set-row" style="gap:10px">
+              <button type="button" class="jr-btn" style="width:auto" @click="onTestReminder">发送测试通知</button>
+              <span class="jr-muted" style="font-size:12px">通知权限：{{ reminderPerm === 'granted' ? '已允许' : reminderPerm === 'denied' ? '已拒绝' : reminderPerm === 'unsupported' ? '浏览器不支持' : '未请求' }}</span>
+            </div>
+            <p v-if="reminderMsg" class="jr-import-msg" role="status">{{ reminderMsg }}</p>
+            <p class="jr-muted" style="font-size:12px;margin-top:8px">保持页面打开或后台挂起时，会在每天设定的时间弹出系统写作提醒。</p>
           </template>
 
           <template v-else-if="gen === 'spellcheck'">
@@ -601,6 +742,35 @@ async function wipeAll() {
         </div>
         <p v-if="pinMsg" class="jr-import-msg">{{ pinMsg }}</p>
         <p class="jr-muted" style="font-size:12.5px;margin-top:10px">下次打开新会话时，需要输入密码解锁日记。</p>
+
+        <hr style="border:0;border-top:1px solid var(--jr-outline-variant);margin:18px 0" />
+        <p><JrIcon :path="mdiKeyVariant" :size="18" /> <b>端到端加密 (E2EE) 密钥管理</b></p>
+        <p class="jr-muted" style="font-size:12.5px;margin-bottom:10px">
+          状态：<b>{{ e2eeMeta?.enabled ? `已启用（指纹 ${e2eeMeta.fingerprint}）` : '未启用' }}</b> · 算法：PBKDF2-SHA256 + AES-GCM-256
+        </p>
+        <template v-if="!e2eeMeta?.enabled">
+          <div class="jr-pop-row" style="max-width:340px">
+            <input v-model="e2eePassphrase" type="password" placeholder="输入主加密口令（至少 6 位）" class="jr-pop-input" />
+          </div>
+          <div class="jr-data-row" style="margin-top:8px">
+            <button type="button" class="jr-btn" @click="onEnableE2ee">生成密钥与恢复码</button>
+          </div>
+        </template>
+        <template v-else>
+          <div v-if="e2eeRecovery" class="jr-e2ee-recovery">
+            <span>恢复密钥（请离线保存）：</span>
+            <code>{{ e2eeRecovery }}</code>
+          </div>
+          <div class="jr-pop-row" style="max-width:360px;margin-top:8px">
+            <input v-model="e2eeVerifyInput" placeholder="输入加密口令或恢复密钥以自检" class="jr-pop-input" />
+          </div>
+          <div class="jr-data-row" style="margin-top:8px">
+            <button type="button" class="jr-btn" @click="onVerifyE2ee">自检加解密</button>
+            <button v-if="e2eeRecovery" type="button" class="jr-btn" @click="copyRecoveryKey">复制恢复密钥</button>
+            <button type="button" class="jr-btn jr-danger" @click="onDisableE2ee">清除密钥</button>
+          </div>
+        </template>
+        <p v-if="e2eeMsg" class="jr-import-msg" role="status">{{ e2eeMsg }}</p>
       </div>
 
       <div v-else-if="tab === 'data'" class="jr-modal-body">
@@ -786,5 +956,53 @@ async function wipeAll() {
 }
 [data-theme="dark"] .jr-theme-preview.moleskine .line {
   background: #38302A;
+}
+.jr-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.jr-swatch-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  border-radius: 9px;
+  border: 1.5px solid var(--jr-outline-variant);
+  background: var(--jr-surface);
+  color: var(--jr-on-bg);
+  font-size: 11.5px;
+  cursor: pointer;
+  text-align: left;
+}
+.jr-swatch-btn.on {
+  border-color: var(--jr-primary);
+  background: color-mix(in srgb, var(--jr-primary-container) 35%, var(--jr-surface));
+  font-weight: 600;
+}
+.jr-swatch-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.jr-swatch-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jr-e2ee-recovery {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--jr-surface-variant);
+  font-size: 12.5px;
+  word-break: break-all;
+}
+.jr-e2ee-recovery code {
+  display: block;
+  margin-top: 4px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 </style>

@@ -27,6 +27,9 @@ const activePropsLabels = shallowRef<string[]>([])
 const mapOpen = ref(true)
 const toolsOpen = ref(false)
 const journalOpen = ref(false)
+const tvOpen = ref(false)
+const galleryOpen = ref(false)
+const galleryPhotos = ref<Array<{ id?: number; jId: number; url?: string; fileName: string; dateLabel: string }>>([])
 const editorOpen = ref(false)
 const editingEntry = shallowRef<EntryV2 | null>(null)
 const journalTitle = ref('日记书架')
@@ -35,7 +38,35 @@ const journalFilter = ref<'all' | 'starred'>('all')
 const draftText = ref('')
 const draftStarred = ref(false)
 const savingDraft = ref(false)
-const { entries, refresh: refreshEntries, saveEntry } = useEntries()
+const { entries, refresh: refreshEntries, saveEntry, allMedia } = useEntries()
+const { prefetch: prefetchMedia, urlForSync: mediaUrl } = useMediaResolver()
+const { state: familyState, feed: familyFeed } = useFamilySync()
+
+async function openGalleryDrawer() {
+  journalOpen.value = false
+  tvOpen.value = false
+  galleryOpen.value = true
+  const rows = (await allMedia()).filter((m) => m.mimeType.startsWith('image/')).slice(0, 12)
+  await prefetchMedia(rows)
+  galleryPhotos.value = rows.map((m) => ({
+    id: m.id,
+    jId: m.jId,
+    url: mediaUrl(m),
+    fileName: m.fileName,
+    dateLabel: m.createdAt ? formatJournalDate(m.createdAt) : '',
+  }))
+}
+
+const onThisDayEntries = computed(() => {
+  const now = new Date()
+  const month = now.getMonth()
+  const day = now.getDate()
+  const sameDay = entries.value.filter((e) => {
+    const d = new Date(e.dateOfJournal)
+    return d.getMonth() === month && d.getDate() === day
+  })
+  return (sameDay.length ? sameDay : entries.value).slice(0, 5)
+})
 const filteredEntries = computed(() => {
   const q = journalQuery.value.trim().toLowerCase()
   return entries.value.filter(entry => {
@@ -167,7 +198,17 @@ async function initialize() {
       onPropsChange: labels => { activePropsLabels.value = labels },
       onOpenJournal: ctx => {
         if (ctx.mode === 'editor') openJournalEditor()
-        else openJournalDrawer(ctx.title)
+        else if (ctx.mode === 'tv') {
+          journalOpen.value = false
+          galleryOpen.value = false
+          tvOpen.value = true
+        } else if (ctx.mode === 'gallery') {
+          void openGalleryDrawer()
+        } else {
+          tvOpen.value = false
+          galleryOpen.value = false
+          openJournalDrawer(ctx.title)
+        }
       },
     })
     if (attempt.signal.aborted) { result.dispose(); return }
@@ -504,6 +545,78 @@ async function download() {
           <NuxtLink to="/media">相册</NuxtLink>
         </nav>
       </aside>
+
+      <aside v-if="tvOpen" class="house-journal-drawer house-hud" aria-label="客厅电视 · 家庭动态与回忆">
+        <div class="journal-drawer-head">
+          <div>
+            <strong>📺 客厅电视 · 家庭与回忆频道</strong>
+            <small>{{ familyState.group ? `家庭组：${familyState.group.name}` : '未加入家庭组 · 展示本机回顾' }}</small>
+          </div>
+          <button type="button" class="journal-close" aria-label="关闭电视面板" @click="tvOpen = false; focusScene()">
+            <JrIcon :path="mdiClose" :size="18" />
+          </button>
+        </div>
+
+        <div class="journal-filter-row" style="justify-content:space-between">
+          <strong style="font-size:12.5px">👨‍👩‍👧‍👦 家庭最新动态</strong>
+          <NuxtLink to="/family" style="font-size:12px;color:var(--jr-primary);text-decoration:none">去我们的小家 →</NuxtLink>
+        </div>
+        <ul class="journal-list" style="max-height:170px">
+          <li v-if="!familyFeed.entries.length" class="journal-empty">暂无家庭共享动态，去「我们的小家」发布第一条动态吧。</li>
+          <li v-for="fe in familyFeed.entries.slice(0, 4)" :key="fe.cloudId || fe.id" class="journal-item">
+            <div class="journal-item-meta">
+              <span>{{ fe.ownerNickname }}</span>
+              <span>{{ formatJournalDate(fe.dateOfJournal) }}</span>
+            </div>
+            <p>{{ (fe.previewText || fe.text || '').replace(/<[^>]*>/g, '').slice(0, 72) || '分享了一篇日记' }}</p>
+          </li>
+        </ul>
+
+        <div class="journal-filter-row" style="margin-top:6px">
+          <strong style="font-size:12.5px">🕰️ 那年今日 / 近期回忆</strong>
+        </div>
+        <ul class="journal-list">
+          <li v-if="!onThisDayEntries.length" class="journal-empty">暂无本机日记记录。</li>
+          <li v-for="item in onThisDayEntries" :key="item.id ?? item.cloudId" class="journal-item" role="button" tabindex="0" @click="tvOpen = false; openJournalEditor(item)">
+            <div class="journal-item-meta">
+              <span>{{ formatJournalDate(item.dateOfJournal) }}</span>
+              <JrIcon v-if="item.favourite" :path="mdiStar" :size="14" class="journal-item-star" />
+            </div>
+            <p>{{ item.previewText || '（空白日记）' }}</p>
+          </li>
+        </ul>
+      </aside>
+
+      <aside v-if="galleryOpen" class="house-journal-drawer house-hud" aria-label="客厅照片墙 · 真实相册">
+        <div class="journal-drawer-head">
+          <div>
+            <strong>🖼️ 客厅照片墙</strong>
+            <small>来自你的真实日记相册（点击直达所属日记）</small>
+          </div>
+          <button type="button" class="journal-close" aria-label="关闭照片墙" @click="galleryOpen = false; focusScene()">
+            <JrIcon :path="mdiClose" :size="18" />
+          </button>
+        </div>
+        <div v-if="!galleryPhotos.length" class="journal-empty" style="padding:20px 8px">
+          还没有日记照片，写日记时插入图片就会自动挂上照片墙。
+        </div>
+        <div v-else class="house-photo-grid">
+          <button
+            v-for="photo in galleryPhotos"
+            :key="photo.id"
+            type="button"
+            class="house-photo-card"
+            @click="galleryOpen = false; openJournalEditor(entries.find(e => e.id === photo.jId))"
+          >
+            <img v-if="photo.url" :src="photo.url" :alt="photo.fileName" />
+            <span>{{ photo.dateLabel || photo.fileName }}</span>
+          </button>
+        </div>
+        <nav class="journal-quick-links" aria-label="相册入口">
+          <NuxtLink to="/media">打开完整相册</NuxtLink>
+          <NuxtLink to="/atlas">足迹地图</NuxtLink>
+        </nav>
+      </aside>
       <p id="house-controls" class="sr-only">
         W A S D 移动，拖动或移动鼠标看四周，E 交互，1 2 切换视角，M 开关小地图，P 拍明信片
       </p>
@@ -637,6 +750,11 @@ async function download() {
 .journal-quick-links { display: flex; justify-content: space-between; gap: 6px; padding-top: 4px; border-top: 1px solid rgba(43, 81, 62, 0.10); }
 .journal-quick-links a { flex: 1; text-align: center; padding: 6px 4px; border-radius: 8px; font-size: .74rem; font-weight: 550; background: #edf3ee; color: #2b513e; }
 .journal-quick-links a:hover { background: #dceae0; }
+.house-photo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; overflow-y: auto; padding: 4px 2px; max-height: 360px; }
+.house-photo-card { display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: 10px; border: 1px solid rgba(25, 40, 35, .1); background: #fff; text-align: left; cursor: pointer; }
+.house-photo-card:hover { border-color: #3f8a80; }
+.house-photo-card img { width: 100%; height: 92px; object-fit: cover; border-radius: 6px; }
+.house-photo-card span { font-size: 11px; color: #53645e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .house-cover { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 18px; }
 .house-cover button, .house-help form button { border: 0; border-radius: 8px; padding: 9px 14px; background: var(--house-accent); color: #fffdf5; justify-self: center; }
 .house-alert { position: absolute; top: 83px; right: 22px; border-radius: 8px; padding: 10px; }

@@ -177,7 +177,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   onPet?: (pet: HousePetState) => void
   onAction?: (message: string) => void
   onPropsChange?: (activeLabels: string[]) => void
-  onOpenJournal?: (context: { propId: string; title: string; mode: 'shelf' | 'editor' }) => void
+  onOpenJournal?: (context: { propId: string; title: string; mode: 'shelf' | 'editor' | 'tv' | 'gallery' }) => void
 }) {
   const loader = new GLTFLoader()
   const response = await fetch(url, { signal: options.signal })
@@ -767,6 +767,11 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
         dirty = true
         return
       }
+      if (prop.kind === 'gallery') {
+        if (document.pointerLockElement) document.exitPointerLock()
+        options.onOpenJournal?.({ propId: prop.id, title: '客厅照片墙 · 真实相册', mode: 'gallery' })
+        return
+      }
       if (prop.kind === 'pc') {
         activeProps.add(prop.id)
         prop.update(true, performance.now())
@@ -812,6 +817,10 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
       } else {
         audio.playSwitch(nowActive)
       }
+      if (prop.kind === 'tv' && nowActive) {
+        if (document.pointerLockElement) document.exitPointerLock()
+        options.onOpenJournal?.({ propId: prop.id, title: '客厅电视 · 家庭动态与回忆', mode: 'tv' })
+      }
       const actionMessages: Record<typeof prop.kind, [string, string]> = {
         tv: ['已打开客厅电视', '已关闭客厅电视'],
         coffee: ['咖啡机正在萃取热美式…', '已关闭咖啡机'],
@@ -822,6 +831,8 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
         microwave: ['微波炉开始加热…', '微波炉加热完成！'],
         bathtub: ['浴缸正在注满温暖热水…', '已排空浴缸热水'],
         'pet-feed': ['已给小柴倒好狗粮，它跑过来啦！', '已清理空食盆'],
+        journal: ['已打开日记书架', '已收起日记书架'],
+        gallery: ['已打开照片墙', '已收起照片墙'],
       }
       emitActiveProps()
       options.onAction?.(actionMessages[prop.kind][nowActive ? 0 : 1])

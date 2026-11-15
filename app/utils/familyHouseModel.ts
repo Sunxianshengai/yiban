@@ -30,7 +30,7 @@ export interface HouseProp {
   floor: number
   x: number
   z: number
-  kind: 'tv' | 'coffee' | 'tap' | 'pc' | 'telescope' | 'fridge' | 'microwave' | 'bathtub' | 'pet-feed' | 'journal'
+  kind: 'tv' | 'coffee' | 'tap' | 'pc' | 'telescope' | 'fridge' | 'microwave' | 'bathtub' | 'pet-feed' | 'journal' | 'gallery'
   update: (active: boolean, time: number) => void
 }
 
@@ -1368,6 +1368,13 @@ export function buildFamilyHouse(
       update(active, time) {
         shelfHighlightBook.position.x = -1.60 + (active ? .07 : Math.sin(time * .0025) * .015)
         shelfHighlightMat.emissiveIntensity = active ? .75 : (.25 + Math.sin(time * .003) * .12)
+      },
+    },
+    {
+      id: 'living-gallery', label: '查看墙面照片回忆', offLabel: '查看墙面照片回忆', shortLabel: '🖼️ 照片墙',
+      floor: 0, x: -1.10, z: -3.55, kind: 'gallery',
+      update() {
+        // 照片墙互动入口，由页面弹窗联动真实相册数据
       },
     },
   ]

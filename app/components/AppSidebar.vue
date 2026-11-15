@@ -22,6 +22,7 @@ import { familyAvatarColor, familyAvatarChar } from '~/utils/familyUi'
 
 const emit = defineEmits<{ (e: 'navigate'): void }>()
 const { visible: petVisible, toggle: togglePet } = usePetWidget()
+const { t } = useLocale()
 const route = useRoute()
 const search = ref('')
 const tagsOpen = ref(false)
@@ -62,14 +63,23 @@ const streakCount = computed(() => {
   return n
 })
 
-onMounted(async () => {
+async function refreshSidebarStats() {
   tags.value = await listTags()
   photoCount.value = await db.mediaFilesV2.count()
   await refreshTrashCount()
+}
+
+onMounted(async () => {
+  await refreshSidebarStats()
   if (!entries.value.length) {
     await refreshEntries()
   }
 })
+
+watch(
+  () => entries.value.map((e) => `${e.id}:${e.updatedAt?.valueOf?.() ?? ''}`).join('|'),
+  () => { refreshSidebarStats() },
+)
 const settingsOpen = useState('jr.settingsOpen', () => false)
 </script>
 
@@ -79,13 +89,13 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
     <div class="jr-side-top-bar">
       <div class="jr-brand">
         <span class="jr-logo-badge">J</span>
-        <span class="jr-brand-name">旅程日记</span>
+        <span class="jr-brand-name">{{ t('brand') }}</span>
       </div>
       <div class="jr-side-actions">
-        <NuxtLink to="/cloud" class="jr-side-icon-btn" title="云服务" aria-label="云服务">
+        <NuxtLink to="/cloud" class="jr-side-icon-btn" :title="t('cloud')" :aria-label="t('cloud')">
           <JrIcon :path="mdiCloudOutline" :size="19" />
         </NuxtLink>
-        <button type="button" class="jr-side-icon-btn" aria-label="打开设置" :aria-expanded="settingsOpen" @click="settingsOpen = true">
+        <button type="button" class="jr-side-icon-btn" :aria-label="t('settings')" :aria-expanded="settingsOpen" @click="settingsOpen = true">
           <JrIcon :path="mdiCogOutline" :size="19" />
         </button>
       </div>
@@ -94,33 +104,33 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
     <!-- 搜索框 -->
     <form class="jr-search" @submit.prevent="navigateTo(`/search?q=${encodeURIComponent(search)}`)">
       <JrIcon :path="mdiMagnify" :size="17" />
-      <input v-model="search" type="text" placeholder="搜索日记、回忆、标签..." />
+      <input v-model="search" type="text" :placeholder="t('searchPlaceholder')" />
     </form>
 
     <!-- 导航：核心视图入口（时间线/相册/日历此前只能从时间线中列的胶囊切换进，现在左侧直达） -->
     <NuxtLink to="/" class="jr-nav-item" :class="{ active: route.path === '/' }">
       <JrIcon :path="mdiCalendarBlankOutline" :size="20" />
-      <span class="jr-nav-text">时间线</span>
+      <span class="jr-nav-text">{{ t('timeline') }}</span>
       <span class="jr-badge">{{ totalCount }}</span>
     </NuxtLink>
 
     <NuxtLink to="/media" class="jr-nav-item" :class="{ active: route.path.startsWith('/media') }">
       <JrIcon :path="mdiImageMultipleOutline" :size="20" />
-      <span class="jr-nav-text">相册</span>
+      <span class="jr-nav-text">{{ t('media') }}</span>
     </NuxtLink>
 
     <NuxtLink to="/calendar" class="jr-nav-item" :class="{ active: route.path.startsWith('/calendar') }">
       <JrIcon :path="mdiCalendarMonth" :size="20" />
-      <span class="jr-nav-text">日历</span>
+      <span class="jr-nav-text">{{ t('calendar') }}</span>
     </NuxtLink>
 
     <NuxtLink to="/pal" class="jr-nav-item" :class="{ active: route.path.startsWith('/pal') }">
       <JrIcon :path="mdiFeather" :size="20" />
-      <span class="jr-nav-text">写作伙伴 (Pal)</span>
+      <span class="jr-nav-text">{{ t('pal') }}</span>
       <span class="jr-sublabel">灵感</span>
     </NuxtLink>
 
-    <div class="jr-side-section">快捷筛选</div>
+    <div class="jr-side-section">{{ t('quickFilters') }}</div>
     <NuxtLink to="/search/results?q=%E6%97%85%E8%A1%8C" class="jr-nav-item jr-journal-item" :class="{ active: route.path.startsWith('/search') && travelSearch }">
       <JrIcon :path="mdiCompassOutline" :size="18" style="color:#10B981" />
       <span class="jr-nav-text">搜索「旅行」</span>
@@ -128,13 +138,13 @@ const settingsOpen = useState('jr.settingsOpen', () => false)
 
     <NuxtLink to="/search/results?starred=1&favourite=true" class="jr-nav-item jr-journal-item" :class="{ active: route.path.startsWith('/search') && ('favourite' in route.query || route.query.starred === '1') }">
       <JrIcon :path="mdiStarOutline" :size="18" style="color:#A855F7" />
-      <span class="jr-nav-text">收藏</span>
+      <span class="jr-nav-text">{{ t('starred') }}</span>
       <span class="jr-badge-sub">{{ starredCount }}</span>
     </NuxtLink>
 
     <NuxtLink to="/atlas" class="jr-nav-item" :class="{ active: route.path.startsWith('/atlas') }">
       <JrIcon :path="mdiMapMarkerOutline" :size="19" />
-      <span class="jr-nav-text">位置历史记录</span>
+      <span class="jr-nav-text">{{ t('atlas') }}</span>
     </NuxtLink>
 
     <NuxtLink to="/trash" class="jr-nav-item" :class="{ active: route.path.startsWith('/trash') }">

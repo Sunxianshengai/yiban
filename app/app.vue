@@ -18,6 +18,8 @@ const sidebarOpen = ref(false)
 const membershipOpen = useMembershipDialog()
 const isMobile = useIsMobile()
 const { theme, fontSize, colorTheme, themeStyle } = useAppearance()
+const { locale } = useLocale()
+const { startReminderTicker } = useReminder()
 // 主界面右下角的桌宠与 /pet 独立页共用同一个 PetWidget，显隐由侧栏/顶栏/设置控制。
 const { visible: petVisible } = usePetWidget()
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)')
@@ -41,6 +43,7 @@ watchEffect(() => {
 onMounted(async () => {
   onboarded.value = localStorage.getItem('jr.onboarded') === '1'
   locked.value = !!localStorage.getItem('jr.pinHash') && sessionStorage.getItem('jr.unlocked') !== '1'
+  startReminderTicker()
   await nextTick()
   desktopBridge()?.emit('appReady')
 })

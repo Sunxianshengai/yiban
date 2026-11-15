@@ -1,3 +1,5 @@
+import { JR_THEMES } from '~/utils/themesRegistry'
+
 export type Theme = 'System' | 'Light' | 'Dark'
 export type FontSize = 'Small' | 'Medium' | 'Large'
 export type ThemeStyle = 'dayone' | 'moleskine'
@@ -24,11 +26,53 @@ const ROLE_MAP: Array<[cssVar: string, role: string]> = [
   ['--jr-outline-variant', 'outlineVariant'],
 ]
 
-/** Day One 换皮（M-2xx）：13 套彩色主题退役（Day One 实测仅浅/深/系统三态，见 journey-replica/docs/dayone-ui-ledger.md O12）。
- *  保留函数签名兼容旧调用点；任何历史 colorTheme 值一律清空回默认 token。 */
-export function applyColorTheme(_idx: number, _dark: boolean) {
+export const COLOR_THEME_NAMES = [
+  '默认天青',
+  '玫瑰绯红',
+  '樱花粉黛',
+  '晨曦珊瑚',
+  '琥珀暖阳',
+  '麦穗金秋',
+  '苔原青柠',
+  '森系翡翠',
+  '薄荷海盐',
+  '晴空湛蓝',
+  '深海靛青',
+  '薰衣草紫',
+  '暮色梅子',
+  '极简石墨',
+] as const
+
+export function getColorThemeSwatches(dark: boolean) {
+  return COLOR_THEME_NAMES.map((name, index) => {
+    const key = `${dark ? 'dark' : 'light'}${index}`
+    const colors = JR_THEMES[key]?.colors
+    return {
+      index,
+      name,
+      primary: colors?.primary ?? '#00687B',
+      container: colors?.primaryContainer ?? '#AFECFF',
+      surface: colors?.surface ?? '#F5FAFC',
+    }
+  })
+}
+
+export function applyColorTheme(idx: number, dark: boolean) {
   const el = document.documentElement
-  for (const [cssVar] of ROLE_MAP) el.style.removeProperty(cssVar)
+  if (!Number.isInteger(idx) || idx <= 0 || idx > 13) {
+    for (const [cssVar] of ROLE_MAP) el.style.removeProperty(cssVar)
+    return
+  }
+  const palette = JR_THEMES[`${dark ? 'dark' : 'light'}${idx}`]?.colors
+  if (!palette) {
+    for (const [cssVar] of ROLE_MAP) el.style.removeProperty(cssVar)
+    return
+  }
+  for (const [cssVar, role] of ROLE_MAP) {
+    const value = palette[role]
+    if (value) el.style.setProperty(cssVar, value)
+    else el.style.removeProperty(cssVar)
+  }
 }
 
 export function useAppearance() {

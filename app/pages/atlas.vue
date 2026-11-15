@@ -144,6 +144,41 @@ function buildCluster() {
     lnglat: [p.lng, p.lat] as [number, number],
     extData: { entryId: p.entry.id, lng: p.lng, lat: p.lat },
   }))
+  let lastClusterClick = 0
+  const handleClusterActivate = (members: any[]) => {
+    const now = Date.now()
+    if (now - lastClusterClick < 120) return
+    lastClusterClick = now
+    if (!Array.isArray(members) || !members.length) return
+    const coords: Array<[number, number]> = []
+    const clusterEntries: LocatedEntry[] = []
+    for (const m of members) {
+      const ext = m?.extData || {}
+      const ll = m?.lnglat
+      const lng = Array.isArray(ll) ? Number(ll[0]) : Number(ll?.lng ?? ext.lng)
+      const lat = Array.isArray(ll) ? Number(ll[1]) : Number(ll?.lat ?? ext.lat)
+      if (Number.isFinite(lng) && Number.isFinite(lat)) coords.push([lng, lat])
+      const hit = located.value.find((e) => e.id === ext.entryId)
+      if (hit) clusterEntries.push(hit)
+    }
+    if (!coords.length) return
+    const lngs = coords.map((c) => c[0])
+    const lats = coords.map((c) => c[1])
+    const span = Math.max(Math.max(...lngs) - Math.min(...lngs), Math.max(...lats) - Math.min(...lats))
+    const zoom = Number(map.getZoom() || 5)
+    // 同地点多篇日记或已到最大缩放层级时直接弹出列表，否则逐级放大下钻
+    if (members.length === 1 || span < 0.0004 || zoom >= 16) {
+      if (clusterEntries.length) openPlace(clusterEntries)
+      return
+    }
+    const center: [number, number] = [
+      (Math.min(...lngs) + Math.max(...lngs)) / 2,
+      (Math.min(...lats) + Math.max(...lats)) / 2,
+    ]
+    const step = span > 5 ? 2 : span > 0.5 ? 2 : 3
+    map.setZoomAndCenter(Math.min(zoom + step, 17), center)
+  }
+
   cluster = new Ctor(map, data, {
     gridSize: 60,
     maxZoom: 16,
@@ -151,9 +186,16 @@ function buildCluster() {
     renderClusterMarker: (context: any) => {
       const count = Number(context?.count ?? 0)
       const div = pointDom(count)
+      div.style.cursor = 'pointer'
+      const members = Array.isArray(context?.clusterData) ? context.clusterData : []
+      div.addEventListener('click', (ev) => {
+        ev.stopPropagation()
+        handleClusterActivate(members)
+      })
       context.marker.setContent(div)
       context.marker.setOffset(new AMapNS.Pixel(-div.offsetWidth / 2, -div.offsetHeight / 2))
-      context.marker.setTitle(`${count} 篇日记`)
+      context.marker.setTitle(`${count} 篇日记（点击下钻）`)
+      context.marker.on('click', () => handleClusterActivate(members))
     },
     renderMarker: (context: any) => {
       const ext = context?.data?.[0]?.extData || {}
@@ -169,20 +211,10 @@ function buildCluster() {
       })
     },
   })
-  // 2.0 的聚合点没有内置「点开散开」，需要自己算中心放大
+  // 2.0 聚合点点击事件兜底
   cluster.on('click', (payload: any) => {
-    const members = payload?.clusterData
-    if (!Array.isArray(members) || members.length <= 1) return
-    let sumLng = 0
-    let sumLat = 0
-    for (const m of members) {
-      const ll = m?.lnglat
-      const lng = Array.isArray(ll) ? Number(ll[0]) : Number(ll?.lng)
-      const lat = Array.isArray(ll) ? Number(ll[1]) : Number(ll?.lat)
-      if (Number.isFinite(lng) && Number.isFinite(lat)) { sumLng += lng; sumLat += lat }
-    }
-    const zoom = map.getZoom()
-    map.setZoomAndCenter(Math.min(zoom + 2, 17), [sumLng / members.length, sumLat / members.length])
+    const members = payload?.clusterData || payload?.data
+    if (Array.isArray(members)) handleClusterActivate(members)
   })
 }
 
