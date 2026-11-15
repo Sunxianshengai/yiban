@@ -21,17 +21,28 @@ import {
   mdiHistory,
   mdiArrowRight,
   mdiWeatherSunny,
+  mdiStar,
+  mdiMapMarker,
+  mdiCheck,
 } from '@mdi/js'
 
 useHead({ title: '旅程日记 — 你值得信赖的日记伙伴' })
 
-/** 落地页固定浅色板（对照 journey.cloud 首页视觉，不随应用主题变化） */
+/** 落地页固定浅色板（对照 journey.cloud 首页视觉，不随应用主题变化）。
+ *  演示区全部渲染真实数据（自己的日记/照片/家人动态/心情曲线），新访客用精写示例日记本兜底。 */
+
+// 顶层解构：模板对顶层 ref 才会自动解包（对象属性里的 ref 不会）
+const {
+  heroEntries, heroPhoto, hasRealEntries,
+  moodCells, family, totalEntries, photoCount, streakCount,
+  throwback, mediaThumbs, mapPins, calendarDays,
+} = useLandingData()
 
 const demoTab = ref<'media' | 'atlas' | 'calendar'>('media')
 const demoTabs = [
-  { key: 'media', label: '媒体', icon: mdiImageMultipleOutline, d: '单张图片里可以储存丰富的记忆。轻松地将照片、视频、GIF 和音乐上传到你的日记条目中，回顾最珍贵的时刻。' },
-  { key: 'atlas', label: '地图册', icon: mdiMapMarkerOutline, d: '在条目中标记位置，自动整理成一本旅行日志。在地图册上查看你去过的地方，和在那里留下的照片与文字。' },
-  { key: 'calendar', label: '日历', icon: mdiCalendarMonth, d: '用日历规划一周或一个月，一眼看到哪些天写下了日记，安排你的自我照顾时间。' },
+  { key: 'media', label: '媒体', icon: mdiImageMultipleOutline },
+  { key: 'atlas', label: '地图册', icon: mdiMapMarkerOutline },
+  { key: 'calendar', label: '日历', icon: mdiCalendarMonth },
 ] as const
 
 const toolBubbles = [
@@ -44,13 +55,7 @@ const toolBubbles = [
   { icon: mdiMusicNoteOutline, label: '音乐', x: 92, y: 64, c: '#00BCD4' },
 ] as const
 
-const moodCells = [
-  2, 3, 1, 2, 0, 1, 3,
-  1, 2, 2, 3, 1, 0, 2,
-  3, 1, 2, 2, 3, 1, 2,
-  2, 0, 1, 3, 2, 1, 2,
-] as const
-const moodColors = ['#cfd8dc', '#aed581', '#fff59d', '#ffab91']
+const moodColors = ['#e3e9ec', '#aed581', '#fff59d', '#ffab91']
 const moodFaces = [
   { icon: mdiEmoticonSadOutline, c: '#5C6BC0' },
   { icon: mdiEmoticonAngryOutline, c: '#EF5350' },
@@ -95,7 +100,8 @@ function scrollTo(id: string) {
       <p class="lp-hero-sub">旅程日记，你值得信赖的日记伙伴</p>
 
       <div class="lp-stage">
-        <!-- 桌面窗口 mockup：自家时间线 -->
+        
+        <!-- 桌面窗口 mockup：真实最近日记（新访客为示例日记本） -->
         <div class="lp-desktop">
           <div class="lp-dots"><i /><i /><i /></div>
           <div class="lp-desktop-body">
@@ -104,46 +110,63 @@ function scrollTo(id: string) {
               <span class="lp-d-nav">相册</span>
               <span class="lp-d-nav">日历</span>
               <span class="lp-d-nav">写作伙伴</span>
+              <span class="lp-d-nav">家庭组</span>
             </div>
             <div class="lp-d-list">
-              <div class="lp-d-row">
-                <span class="lp-d-date"><i>周六</i><b>14</b></span>
-                <span class="lp-d-main"><b>天台上的晚风</b><span>晚霞把整座城市染成橘子汽水的颜色……</span></span>
-              </div>
-              <div class="lp-d-row">
-                <span class="lp-d-date"><i>周五</i><b>13</b></span>
-                <span class="lp-d-main"><b>第一次做提拉米苏</b><span>手指饼干泡咖啡的时候碎掉了半根……</span></span>
-              </div>
-              <div class="lp-d-row">
-                <span class="lp-d-date"><i>周四</i><b>12</b></span>
-                <span class="lp-d-main"><b>雨中跑步五公里</b><span>雨点打在帽檐上，节奏刚刚好。</span></span>
+              <div v-for="(e, ei) in heroEntries" :key="`he-${ei}`" class="lp-d-row">
+                <span class="lp-d-date"><i>{{ e.weekday }}</i><b>{{ e.day }}</b></span>
+                <span class="lp-d-main">
+                  <span class="lp-d-title-row">
+                    <b>{{ e.title }}</b>
+                    <i v-if="e.fav" class="lp-d-fav"><JrIcon :path="mdiStar" :size="11" /></i>
+                  </span>
+                  <span>{{ e.snippet }}</span>
+                  <span class="lp-d-meta">
+                    <i v-if="e.mood">{{ e.mood }}</i>
+                    <i v-if="e.weatherEmoji">{{ e.weatherEmoji }} {{ e.temp }}°</i>
+                    <i v-if="e.place"><JrIcon :path="mdiMapMarker" :size="10" /> {{ e.place }}</i>
+                  </span>
+                </span>
               </div>
             </div>
             <div class="lp-d-entry">
-              <span class="lp-d-entry-date">11 月 14 日 · 星期六</span>
-              <b class="lp-d-entry-title">天台上的晚风</b>
+              <span class="lp-d-entry-date">{{ heroEntries[0]?.monthDay }} · 星期{{ (heroEntries[0]?.weekday || '').slice(-1) }}</span>
+              <b class="lp-d-entry-title">{{ heroEntries[0]?.title }}</b>
               <span class="lp-d-entry-line" />
               <span class="lp-d-entry-line short" />
-              <span class="lp-d-entry-photo" />
+              <span v-if="heroPhoto" class="lp-d-entry-photo real">
+                <img :src="heroPhoto" alt="" />
+              </span>
+              <span v-else class="lp-d-entry-photo" />
+              <span class="lp-d-entry-tags">
+                <i v-if="heroEntries[0]?.weatherEmoji">{{ heroEntries[0].weatherEmoji }} {{ heroEntries[0].temp }}°</i>
+                <i v-if="heroEntries[0]?.place"><JrIcon :path="mdiMapMarker" :size="10" /> {{ heroEntries[0].place }}</i>
+                <i v-if="heroEntries[0]?.mood">{{ heroEntries[0].mood }}</i>
+              </span>
             </div>
           </div>
         </div>
-        <!-- 手机 mockup：共享日记 -->
+        <!-- 手机 mockup：真实家庭组 -->
         <div class="lp-phone lp-phone-a">
-          <span class="lp-p-head">家庭 · 云端之家</span>
-          <span class="lp-p-row"><i class="lp-p-ava a">小</i><span>小满：明天早上记得一起吃早餐！</span></span>
-          <span class="lp-p-row"><i class="lp-p-ava b">小</i><span>小程：好嘞，我带水果！</span></span>
+          <span class="lp-p-head">
+            家庭 · {{ family.name }}
+            <i v-if="family.unread" class="lp-family-dot" />
+          </span>
+          <span v-for="(m, i) in family.lines.slice(0, 2)" :key="i" class="lp-p-row">
+            <i class="lp-p-ava" :style="{ background: m.color }">{{ m.who.slice(0, 1) }}</i>
+            <span><b>{{ m.who }}</b> {{ m.kind }}：{{ m.text }}</span>
+          </span>
           <span class="lp-p-chip">家人追加的段落 · 2</span>
         </div>
-        <!-- 手机 mockup：心情 -->
+        <!-- 手机 mockup：真实心情 -->
         <div class="lp-phone lp-phone-b">
-          <span class="lp-p-head">心情 · 11 月</span>
+          <span class="lp-p-head">心情 · 近 4 周</span>
           <span class="lp-p-moods">
             <i v-for="(m, i) in moodCells.slice(0, 21)" :key="i" :style="{ background: moodColors[m] }" />
           </span>
-          <span class="lp-p-row"><i class="lp-p-ava a">😊</i><span>今天心情不错</span></span>
+          <span class="lp-p-row"><i class="lp-p-ava smile"><JrIcon :path="mdiEmoticonHappyOutline" :size="14" /></i><span>今天心情不错</span></span>
         </div>
-        <!-- 小羊 + 心情气泡 -->
+        <!-- 小羊 + 气泡 -->
         <img src="/pet/lamb-poster.webp" alt="瞌睡小羊" class="lp-lamb" />
         <span class="lp-bubble b1"><JrIcon :path="mdiEmoticonHappyOutline" :size="26" /></span>
         <span class="lp-bubble b2"><JrIcon :path="mdiWeatherSunny" :size="22" /></span>
@@ -153,6 +176,9 @@ function scrollTo(id: string) {
         开始写日记
         <JrIcon :path="mdiArrowRight" :size="17" />
       </NuxtLink>
+      <p class="lp-hero-note" role="status">
+        {{ hasRealEntries ? '↑ 上面展示的就是你的日记本 — 打开应用，接着写。' : '↑ 示例日记本 — 打开应用写下你的第一篇。' }}
+      </p>
     </section>
 
     <!-- 功能一览 -->
@@ -170,11 +196,35 @@ function scrollTo(id: string) {
             </button>
           </div>
           <div class="lp-demo-body">
-            <b>{{ demoTabs.find(t => t.key === demoTab)!.label }}</b>
-            <p>{{ demoTabs.find(t => t.key === demoTab)!.d }}</p>
-            <div v-if="demoTab === 'media'" class="lp-demo-grid"><i /><i /><i /><i /></div>
-            <div v-else-if="demoTab === 'atlas'" class="lp-demo-map"><i /><i /><i /></div>
-            <div v-else class="lp-demo-cal"><i v-for="n in 28" :key="n" :class="{ on: n % 5 === 2 }" /></div>
+            <!-- 媒体：真实照片 -->
+            <template v-if="demoTab === 'media'">
+              <b>媒体</b>
+              <p>单张图片里可以储存丰富的记忆。轻松地将照片、视频、GIF 和音乐上传到你的日记条目中。</p>
+              <div class="lp-demo-grid">
+                <template v-if="mediaThumbs.length">
+                  <img v-for="(u, i) in mediaThumbs" :key="i" :src="u" alt="你的照片" />
+                </template>
+                <template v-else>
+                  <i /><i /><i /><i />
+                </template>
+              </div>
+            </template>
+            <!-- 地图册：真实定位条目 -->
+            <template v-else-if="demoTab === 'atlas'">
+              <b>地图册</b>
+              <p>在条目中标记位置，自动整理成一本旅行日志。在地图册上查看你去过的地方，和在那里留下的照片与文字。</p>
+              <div class="lp-demo-map">
+                <i v-for="(p, i) in mapPins" :key="i" :style="{ left: `${p.x}%`, top: `${p.y}%` }" />
+              </div>
+            </template>
+            <!-- 日历：真实当月 -->
+            <template v-else>
+              <b>日历</b>
+              <p>用日历规划一周或一个月，一眼看到哪些天写下了日记，安排你的自我照顾时间。</p>
+              <div class="lp-demo-cal">
+                <i v-for="n in 28" :key="n" :class="{ on: calendarDays.has(n) }" />
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -191,6 +241,7 @@ function scrollTo(id: string) {
           <span class="lp-ed-line w70 hl" />
           <span class="lp-ed-line w40" />
           <span class="lp-ed-check"><JrIcon :path="mdiCheckboxMarkedOutline" :size="15" /> 买一束尤加利</span>
+          <span class="lp-ed-quote">「重要的不是写下什么，而是明天还想回来写。」</span>
         </div>
         <span
           v-for="b in toolBubbles" :key="b.label"
@@ -224,11 +275,20 @@ function scrollTo(id: string) {
         <div class="lp-family-card">
           <div class="lp-fam-row">
             <JrIcon :path="mdiAccountGroupOutline" :size="18" style="color:#44C0FF" />
-            <b>云端之家</b>
-            <span class="lp-fam-dot" />
+            <b>{{ family.name }}</b>
+            <span v-if="family.unread" class="lp-fam-dot" />
           </div>
-          <div class="lp-fam-msg"><i class="lp-p-ava a">小</i><span><b>小满</b> 评论：山里看着真舒服！下次带上我～</span></div>
-          <div class="lp-fam-msg"><i class="lp-p-ava b">小</i><span><b>小程</b> 追加了一段：回来路上买的板栗很甜。</span></div>
+          <div v-for="(m, i) in family.lines" :key="i" class="lp-fam-msg">
+            <i class="lp-p-ava" :style="{ background: m.color }">{{ m.who.slice(0, 1) }}</i>
+            <span><b>{{ m.who }}</b> {{ m.kind }}：{{ m.text }}</span>
+          </div>
+          <div class="lp-fam-avatars-row">
+            <span
+              v-for="(m, i) in family.members" :key="i"
+              class="lp-p-ava" :style="{ background: m.color }"
+            >{{ m.label }}</span>
+            <span class="lp-fam-count">{{ family.members.length }} 位成员</span>
+          </div>
         </div>
         <div class="lp-family-note">
           <JrIcon :path="mdiLockOutline" :size="16" />
@@ -244,8 +304,8 @@ function scrollTo(id: string) {
       <div class="lp-throw-stage">
         <div class="lp-throw-card">
           <JrIcon :path="mdiHistory" :size="20" />
-          <span>怀旧 · 1 年前</span>
-          <b>也是这样的秋天，我们在操场拍毕业照</b>
+          <span>怀旧 · {{ throwback.years }}</span>
+          <b>{{ throwback.text }}</b>
         </div>
       </div>
     </section>
@@ -273,9 +333,15 @@ function scrollTo(id: string) {
       </div>
     </section>
 
-    <!-- 为不同时刻而写 -->
+    <!-- 为不同时刻而写 + 真实统计条 -->
     <section class="lp-section">
       <h2>为每一个值得记下的时刻</h2>
+      <div class="lp-stat-strip" role="status">
+        <span class="st"><b>{{ totalEntries }}</b>篇日记</span>
+        <span class="st"><b>{{ photoCount }}</b>张照片</span>
+        <span class="st"><b>{{ streakCount }}</b>天连续记录</span>
+        <span class="st note">{{ hasRealEntries ? '这是你现在的日记本' : '示例日记本的规模' }}</span>
+      </div>
       <div class="lp-moments">
         <div v-for="m in moments" :key="m.t" class="lp-moment">
           <span class="lp-moment-emoji">{{ m.emoji }}</span>
@@ -366,6 +432,7 @@ function scrollTo(id: string) {
 .lp-hero h1 { font-size: clamp(30px, 4.6vw, 46px); font-weight: 800; margin: 0 0 10px; color: var(--lp-brand); letter-spacing: -0.5px; }
 .lp-hero-sub { font-size: clamp(15px, 2vw, 19px); color: var(--lp-ink-2); margin: 0 0 30px; }
 .lp-stage { position: relative; max-width: 980px; margin: 0 auto 30px; min-height: 430px; }
+.lp-hero-note { font-size: 12.5px; color: #7e97a1; margin: 6px 0 0; }
 
 /* 桌面 mockup */
 .lp-desktop {
@@ -378,46 +445,54 @@ function scrollTo(id: string) {
 .lp-dots i { width: 10px; height: 10px; border-radius: 50%; background: #ff5f57; }
 .lp-dots i:nth-child(2) { background: #febc2e; }
 .lp-dots i:nth-child(3) { background: #28c840; }
-.lp-desktop-body { display: grid; grid-template-columns: 130px 1.1fr 1.3fr; min-height: 240px; }
+.lp-desktop-body { display: grid; grid-template-columns: 130px 1.1fr 1.3fr; min-height: 250px; }
 .lp-d-side { background: #f2f7f9; padding: 12px 10px; display: flex; flex-direction: column; gap: 8px; }
 .lp-d-nav { font-size: 11.5px; color: #52707c; padding: 6px 9px; border-radius: 8px; }
 .lp-d-nav.on { background: #dff1fa; color: #0d5a70; font-weight: 700; }
 .lp-d-list { padding: 12px; display: flex; flex-direction: column; gap: 8px; border-right: 1px solid #e6eef2; }
 .lp-d-row { display: flex; gap: 9px; background: #fff; border: 1px solid #e6eef2; border-radius: 10px; padding: 8px 10px; }
-.lp-d-date { display: flex; flex-direction: column; align-items: center; color: #2196d9; }
+.lp-d-date { display: flex; flex-direction: column; align-items: center; color: #2196d9; flex-shrink: 0; }
 .lp-d-date i { font-style: normal; font-size: 9.5px; }
 .lp-d-date b { font-size: 16px; }
 .lp-d-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.lp-d-main b { font-size: 11.5px; color: #1f3a44; }
-.lp-d-main span { font-size: 10px; color: #7e97a1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.lp-d-title-row { display: flex; align-items: center; gap: 5px; }
+.lp-d-title-row b { font-size: 11.5px; color: #1f3a44; }
+.lp-d-fav { color: #f59e0b; display: inline-flex; }
+.lp-d-main > span:not(.lp-d-title-row):not(.lp-d-meta) { font-size: 10px; color: #7e97a1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.lp-d-meta { display: flex; gap: 7px; align-items: center; font-size: 9.5px; color: #6a8794; font-style: normal; }
+.lp-d-meta i { font-style: normal; display: inline-flex; align-items: center; gap: 2px; }
 .lp-d-entry { padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; background: linear-gradient(180deg, #f6fbfd, #eef6fa); }
 .lp-d-entry-date { font-size: 10px; color: #7e97a1; }
 .lp-d-entry-title { font-size: 15px; color: #1f3a44; }
 .lp-d-entry-line { height: 7px; border-radius: 4px; background: #e2edf2; width: 88%; }
 .lp-d-entry-line.short { width: 62%; }
-.lp-d-entry-photo { height: 64px; border-radius: 8px; background: linear-gradient(135deg, #ffe0b2, #ffab91 55%, #ff8a65); }
+.lp-d-entry-photo { height: 64px; border-radius: 8px; overflow: hidden; background: linear-gradient(135deg, #ffe0b2, #ffab91 55%, #ff8a65); }
+.lp-d-entry-photo.real img { width: 100%; height: 100%; object-fit: cover; }
+.lp-d-entry-tags { display: flex; gap: 7px; font-size: 9.5px; color: #6a8794; }
+.lp-d-entry-tags i { font-style: normal; display: inline-flex; align-items: center; gap: 2px; background: #fff; border: 1px solid #e6eef2; border-radius: 999px; padding: 2px 8px; }
 
 /* 手机 mockup */
 .lp-phone {
-  position: absolute; width: 168px; border-radius: 18px; padding: 12px;
+  position: absolute; width: 172px; border-radius: 18px; padding: 12px;
   background: #fff; box-shadow: 0 18px 40px rgba(31, 58, 68, 0.25);
   display: flex; flex-direction: column; gap: 8px; text-align: left;
   border: 5px solid #17262c;
 }
 .lp-phone-a { right: 2%; top: 148px; transform: rotate(3deg); }
 .lp-phone-b { left: 1%; top: 190px; transform: rotate(-3deg); }
-.lp-p-head { font-size: 11px; font-weight: 800; color: #0d5a70; }
+.lp-p-head { font-size: 11px; font-weight: 800; color: #0d5a70; display: flex; align-items: center; gap: 5px; }
 .lp-p-row { display: flex; align-items: center; gap: 7px; font-size: 10.5px; color: #33454d; background: #f2f7f9; border-radius: 9px; padding: 7px 8px; }
+.lp-p-row b { color: #1f3a44; }
 .lp-p-ava {
   width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
   color: #fff; font-size: 10px; font-weight: 700; font-style: normal;
 }
-.lp-p-ava.a { background: #4CAF50; }
-.lp-p-ava.b { background: #3F51B5; }
+.lp-p-ava.smile { background: #ffb300; color: #fff; }
 .lp-p-chip { align-self: flex-start; font-size: 9.5px; font-weight: 700; color: #2196d9; background: #dff1fa; padding: 4px 9px; border-radius: 999px; }
 .lp-p-moods { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
 .lp-p-moods i { height: 14px; border-radius: 4px; }
+.lp-family-dot { width: 8px; height: 8px; border-radius: 50%; background: #44c0ff; }
 
 /* 小羊 + 气泡 */
 .lp-lamb {
@@ -465,11 +540,9 @@ function scrollTo(id: string) {
 .lp-demo-grid i:nth-child(2) { background: linear-gradient(135deg, #ffe0b2, #ffcc80); }
 .lp-demo-grid i:nth-child(3) { background: linear-gradient(135deg, #c8e6c9, #a5d6a7); }
 .lp-demo-grid i:nth-child(4) { background: linear-gradient(135deg, #e1bee7, #ce93d8); }
+.lp-demo-grid img { width: 100%; height: 58px; object-fit: cover; border-radius: 8px; }
 .lp-demo-map { position: relative; height: 96px; border-radius: 10px; background: linear-gradient(135deg, #d7e9f7, #c3ddf0); overflow: hidden; }
 .lp-demo-map i { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #2196d9; border: 2.5px solid #fff; box-shadow: 0 2px 6px rgba(33, 150, 217, 0.5); }
-.lp-demo-map i:nth-child(1) { left: 18%; top: 30%; }
-.lp-demo-map i:nth-child(2) { left: 46%; top: 55%; }
-.lp-demo-map i:nth-child(3) { left: 72%; top: 24%; }
 .lp-demo-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
 .lp-demo-cal i { height: 22px; border-radius: 6px; background: #e6eef2; }
 .lp-demo-cal i.on { background: var(--lp-accent); }
@@ -488,6 +561,7 @@ function scrollTo(id: string) {
 .lp-ed-line.hl { background: linear-gradient(0deg, #fff176 40%, transparent 40%); }
 .lp-ed-line.w40 { width: 40%; }
 .lp-ed-check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: #33454d; font-weight: 600; }
+.lp-ed-quote { font-size: 12.5px; color: #52707c; border-left: 3px solid var(--lp-accent); padding-left: 10px; }
 .lp-tool-bubble {
   position: absolute; width: 44px; height: 44px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
@@ -512,6 +586,10 @@ function scrollTo(id: string) {
 .lp-fam-dot { width: 9px; height: 9px; border-radius: 50%; background: #44c0ff; margin-left: auto; }
 .lp-fam-msg { display: flex; align-items: center; gap: 9px; font-size: 13px; color: #33454d; background: #f2f7f9; border-radius: 12px; padding: 10px 12px; }
 .lp-fam-msg b { color: #1f3a44; }
+.lp-fam-avatars-row { display: flex; align-items: center; gap: 6px; padding-top: 2px; }
+.lp-fam-avatars-row .lp-p-ava { width: 24px; height: 24px; font-size: 11px; margin-left: -7px; }
+.lp-fam-avatars-row .lp-p-ava:first-child { margin-left: 0; }
+.lp-fam-count { font-size: 11.5px; color: #7e97a1; margin-left: 6px; }
 .lp-family-note {
   display: inline-flex; align-items: center; gap: 8px;
   font-size: 12.5px; color: #52707c; background: rgba(255, 255, 255, 0.7);
@@ -540,6 +618,18 @@ function scrollTo(id: string) {
 .lp-sync-card b { font-size: 14.5px; color: #1f3a44; }
 .lp-sync-card p { font-size: 12.5px; line-height: 1.65; color: #52707c; margin: 0; }
 
+/* 真实统计条 */
+.lp-stat-strip {
+  display: flex; align-items: center; justify-content: center; gap: 26px;
+  width: max-content; max-width: 100%; margin: 0 auto 34px;
+  background: var(--lp-card); border-radius: 999px; padding: 13px 30px;
+  box-shadow: 0 14px 34px rgba(31, 58, 68, 0.12);
+  flex-wrap: wrap;
+}
+.lp-stat-strip .st { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #7e97a1; }
+.lp-stat-strip .st b { font-size: 19px; font-weight: 800; color: #1f3a44; line-height: 1.15; }
+.lp-stat-strip .st.note { font-size: 11.5px; color: #2196d9; font-weight: 700; }
+
 /* 时刻 */
 .lp-moments { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 860px; margin: 0 auto; text-align: left; }
 .lp-moment { background: var(--lp-card); border-radius: 16px; padding: 20px; box-shadow: 0 14px 34px rgba(31, 58, 68, 0.12); }
@@ -566,5 +656,6 @@ function scrollTo(id: string) {
   .lp-bubble.b1 { left: 6%; }
   .lp-menu { display: none; }
   .lp-sync-cards, .lp-moments { grid-template-columns: 1fr; }
+  .lp-stat-strip { gap: 16px; padding: 12px 18px; }
 }
 </style>
