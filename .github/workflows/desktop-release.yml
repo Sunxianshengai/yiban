@@ -1,0 +1,35 @@
+name: Desktop Installers (Windows & macOS)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'desktop-v*'
+
+jobs:
+  build-desktop:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            cmd: npm run desktop:build:mac
+            name: macos-installer
+          - os: windows-latest
+            cmd: npm run desktop:build:win
+            name: windows-installer
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: ${{ matrix.cmd }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            dist-desktop/*.exe
+            dist-desktop/*.dmg
+            dist-desktop/*.zip

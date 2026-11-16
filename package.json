@@ -1,14 +1,70 @@
 {
   "name": "journey-replica-web",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "desktop": "node electron/launch.cjs",
-    "desktop:dev": "node electron/launch.cjs --dev --no-main"
+    "desktop:dev": "node electron/launch.cjs --dev --no-main",
+    "desktop:build:win": "electron-builder --win",
+    "desktop:build:mac": "electron-builder --mac"
+  },
+  "build": {
+    "appId": "cc.eu.memory.yiban",
+    "productName": "JourneyDiary",
+    "asar": false,
+    "directories": {
+      "output": "dist-desktop"
+    },
+    "files": [
+      "electron/**/*",
+      "package.json",
+      "!node_modules/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "electron/app-icon.png",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "旅程日记",
+      "artifactName": "旅程日记-Windows-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "icon": "electron/app-icon.png",
+      "category": "public.app-category.lifestyle",
+      "artifactName": "旅程日记-macOS-${arch}-${version}.${ext}"
+    }
   },
   "dependencies": {
     "@breezystack/lamejs": "1.2.7",
@@ -29,6 +85,7 @@
   },
   "devDependencies": {
     "@types/three": "0.180.0",
-    "electron": "^38.8.6"
+    "electron": "^38.8.6",
+    "electron-builder": "^26.18.0"
   }
 }
