@@ -48,23 +48,35 @@ export default defineEventHandler(async (event) => {
   const msgSig = String(query.msg_signature || '')
   const timestamp = String(query.timestamp || '')
   const nonce = String(query.nonce || '')
-  const encrypted = event.method === 'GET'
+  const isUrlVerification = event.method === 'GET'
+  const encrypted = isUrlVerification
     ? String(query.echostr || '')
     : xmlTag(await readRawBody(event, 'utf8') || '', 'Encrypt')
 
   if (!verifyWecomSignature(cfg.token, timestamp, nonce, encrypted, msgSig)) {
+    if (isUrlVerification && (msgSig || encrypted)) {
+      const reason = msgSig && timestamp && nonce && encrypted ? 'signature-mismatch' : 'missing-parameters'
+      console.warn('[wecom] URL verification rejected:', reason)
+    }
     throw createError({ statusCode: 403, statusMessage: '企业微信签名校验失败' })
   }
 
   let msgXml: string
   try {
     msgXml = decryptWecomPayload(cfg.encodingAesKey, encrypted, cfg.corpId)
-  } catch {
+  } catch (error) {
+    if (isUrlVerification) {
+      const reason = error instanceof Error && error.message === 'WECOM_CORP_ID mismatch'
+        ? 'recipient-mismatch'
+        : 'decryption-failed'
+      console.warn('[wecom] URL verification rejected:', reason)
+    }
     throw createError({ statusCode: 403, statusMessage: '企业微信回调解密失败' })
   }
 
   // 企业微信后台的 URL 验证要求直接返回解密后的原文。
-  if (event.method === 'GET') {
+  if (isUrlVerification) {
+    console.info('[wecom] URL verification accepted')
     setResponseHeader(event, 'content-type', 'text/plain; charset=utf-8')
     return msgXml
   }
