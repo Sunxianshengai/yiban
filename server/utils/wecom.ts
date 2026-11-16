@@ -41,7 +41,7 @@ function pkcs7Pad(buf: Buffer): Buffer {
   return Buffer.concat([buf, Buffer.alloc(amount, amount)])
 }
 
-export function decryptWecomPayload(encodingAesKey: string, encryptedB64: string, expectedCorpId = ''): string {
+export function decryptWecomPayload(encodingAesKey: string, encryptedB64: string, expectedCorpId: string): string {
   const aesKey = Buffer.from(`${encodingAesKey}=`, 'base64')
   const iv = aesKey.subarray(0, 16)
   const decipher = createDecipheriv('aes-256-cbc', aesKey, iv)
@@ -51,7 +51,7 @@ export function decryptWecomPayload(encodingAesKey: string, encryptedB64: string
   const msgLen = decrypted.readUInt32BE(16)
   const content = decrypted.subarray(20, 20 + msgLen).toString('utf8')
   const receiveId = decrypted.subarray(20 + msgLen).toString('utf8')
-  if (expectedCorpId && receiveId && receiveId !== expectedCorpId) {
+  if (receiveId !== expectedCorpId) {
     throw new Error('WECOM_CORP_ID mismatch')
   }
   return content

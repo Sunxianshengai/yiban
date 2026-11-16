@@ -35,48 +35,44 @@ function extractHashTags(text: string): { cleanText: string; tags: string[] } {
 }
 
 export default defineEventHandler(async (event) => {
-  const cfg = wecomConfig()
-  const query = getQuery(event)
-  const msgSig = String(query.msg_signature || '')
-  const timestamp = String(query.timestamp || Math.floor(Date.now() / 1000))
-  const nonce = String(query.nonce || '')
-
-  // 1. 企业微信后台「接收消息服务器」URL 验证
-  if (event.method === 'GET') {
-    const echostr = String(query.echostr || '')
-    if (!cfg.token || !cfg.encodingAesKey) {
-      throw createError({ statusCode: 503, statusMessage: '服务端未配置 WECOM_TOKEN / WECOM_ENCODING_AES_KEY' })
-    }
-    if (!verifyWecomSignature(cfg.token, timestamp, nonce, echostr, msgSig)) {
-      throw createError({ statusCode: 403, statusMessage: '企业微信签名校验失败' })
-    }
-    const plain = decryptWecomPayload(cfg.encodingAesKey, echostr, cfg.corpId)
-    setResponseHeader(event, 'content-type', 'text/plain; charset=utf-8')
-    return plain
+  if (event.method !== 'GET' && event.method !== 'POST') {
+    throw createError({ statusCode: 405, statusMessage: 'Method Not Allowed' })
   }
 
-  if (event.method !== 'POST') {
-    throw createError({ statusCode: 405, statusMessage: 'Method Not Allowed' })
+  const cfg = wecomConfig()
+  if (!cfg.token || !cfg.encodingAesKey || !cfg.corpId) {
+    throw createError({ statusCode: 503, statusMessage: '服务端未配置企业微信回调密钥或企业 ID' })
+  }
+
+  const query = getQuery(event)
+  const msgSig = String(query.msg_signature || '')
+  const timestamp = String(query.timestamp || '')
+  const nonce = String(query.nonce || '')
+  const encrypted = event.method === 'GET'
+    ? String(query.echostr || '')
+    : xmlTag(await readRawBody(event, 'utf8') || '', 'Encrypt')
+
+  if (!verifyWecomSignature(cfg.token, timestamp, nonce, encrypted, msgSig)) {
+    throw createError({ statusCode: 403, statusMessage: '企业微信签名校验失败' })
+  }
+
+  let msgXml: string
+  try {
+    msgXml = decryptWecomPayload(cfg.encodingAesKey, encrypted, cfg.corpId)
+  } catch {
+    throw createError({ statusCode: 403, statusMessage: '企业微信回调解密失败' })
+  }
+
+  // 企业微信后台的 URL 验证要求直接返回解密后的原文。
+  if (event.method === 'GET') {
+    setResponseHeader(event, 'content-type', 'text/plain; charset=utf-8')
+    return msgXml
   }
 
   if (!hasDatabase()) {
     throw createError({ statusCode: 503, statusMessage: '数据库未配置' })
   }
   await ensureSchema()
-
-  const rawBody = await readRawBody(event, 'utf8') || ''
-  const encrypted = xmlTag(rawBody, 'Encrypt')
-  let msgXml = rawBody
-
-  if (encrypted) {
-    if (!cfg.token || !cfg.encodingAesKey) {
-      throw createError({ statusCode: 503, statusMessage: '服务端未配置 WECOM_TOKEN / WECOM_ENCODING_AES_KEY' })
-    }
-    if (!verifyWecomSignature(cfg.token, timestamp, nonce, encrypted, msgSig)) {
-      throw createError({ statusCode: 403, statusMessage: '企业微信消息签名无效' })
-    }
-    msgXml = decryptWecomPayload(cfg.encodingAesKey, encrypted, cfg.corpId)
-  }
 
   const fromUser = xmlTag(msgXml, 'FromUserName')
   const toUser = xmlTag(msgXml, 'ToUserName')
@@ -92,10 +88,7 @@ export default defineEventHandler(async (event) => {
   const reply = (text: string) => {
     const plainReply = buildWecomTextReplyXml(fromUser, toUser || cfg.corpId, text)
     setResponseHeader(event, 'content-type', 'application/xml; charset=utf-8')
-    if (encrypted && cfg.token && cfg.encodingAesKey) {
-      return encryptWecomReply(cfg.encodingAesKey, cfg.token, cfg.corpId, plainReply, timestamp, nonce)
-    }
-    return plainReply
+    return encryptWecomReply(cfg.encodingAesKey, cfg.token, cfg.corpId, plainReply, timestamp, nonce)
   }
 
   if (!fromUser) return reply('未识别到发送者身份。')
