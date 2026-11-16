@@ -1,9 +1,10 @@
 import {
-  ACESFilmicToneMapping, Color, DirectionalLight, Euler, Float32BufferAttribute, Group, HemisphereLight, MathUtils,
-  Mesh, NoColorSpace, OrthographicCamera, PCFShadowMap, PerspectiveCamera, PMREMGenerator, RepeatWrapping, Scene,
-  SRGBColorSpace, Texture, TextureLoader, Vector3, WebGLRenderer,
+  ACESFilmicToneMapping, Box3, BoxHelper, Color, DirectionalLight, Euler, Float32BufferAttribute, Group, HemisphereLight, MathUtils,
+  Mesh, MeshBasicMaterial, NoColorSpace, OrthographicCamera, PCFShadowMap, PerspectiveCamera, Plane, PMREMGenerator, Raycaster, RepeatWrapping, Scene,
+  SRGBColorSpace, Texture, TextureLoader, Vector2, Vector3, WebGLRenderer,
   type BufferAttribute, type BufferGeometry, type Material, type Object3D,
 } from 'three'
+import { DIY_FURNITURE_CATALOG, type DiyPlacedItem, type FloorStyleId, type WallStyleId } from './familyHouseDiy'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
@@ -91,7 +92,13 @@ const extraModelUrls: Record<string, string> = {
 }
 import { blocksWalk, floorRise, halfDepth, halfWidth, hasStairFootprint, houseStops, porch, stairHeight, stairLane, stairs, stairStops, type HouseStop } from './familyHouseLayout'
 
-export type HouseView = 'overview' | 'walk'
+export type HouseView = 'overview' | 'walk' | 'decorate'
+export interface HouseDiySceneState {
+  placingKey: string | null
+  placingValid: boolean
+  selectedId: string | null
+  items: DiyPlacedItem[]
+}
 type HouseDirection = 'forward' | 'back' | 'left' | 'right'
 export type HouseFloor = number | 'all'
 export interface HousePosition { x: number; z: number; yaw: number; floor: number; onStairs: boolean }
@@ -178,6 +185,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   onAction?: (message: string) => void
   onPropsChange?: (activeLabels: string[]) => void
   onOpenJournal?: (context: { propId: string; title: string; mode: 'shelf' | 'editor' | 'tv' | 'gallery' }) => void
+  onDiyChange?: (state: HouseDiySceneState) => void
 }) {
   const loader = new GLTFLoader()
   const response = await fetch(url, { signal: options.signal })
@@ -250,6 +258,10 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
     throw error
   }
   scene.add(model.house)
+  const baseSolidsByFloor = model.floors.map(floor => floor.solids.map(bounds => ({ ...bounds })))
+  const diyGroup = new Group()
+  diyGroup.name = 'DIY furniture'
+  scene.add(diyGroup)
   const dynamic = new Set<Object3D>(model.doors.map(door => door.hinge))
   for (const floor of model.floors) dynamic.add(floor.front)
   for (const floor of model.floors) {
@@ -384,6 +396,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
     ambient.color.set(evening ? '#cddeff' : '#fff7ee')
     ambient.intensity = evening ? (walking ? .52 : .68) : walking ? 1.24 : 1.24
     renderer.shadowMap.needsUpdate = true
+    syncDiyVisibility()
     dirty = true
   }
   function resetOrbit() {
@@ -519,11 +532,15 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   function setView(view: HouseView, floor: HouseFloor, showExterior = false) {
     const needsReset = mode !== view || floor !== displayedFloor || showExterior !== exterior
     mode = view
-    displayedFloor = floor
+    displayedFloor = view === 'decorate' && floor === 'all' ? currentFloor : floor
     exterior = showExterior
-    orbit.enabled = mode === 'overview'
-    if (mode === 'overview') { clearKeys(); releaseLook() }
-    if (needsReset && mode === 'overview') resetOrbit()
+    orbit.enabled = mode === 'overview' || mode === 'decorate'
+    if (mode !== 'walk') { clearKeys(); releaseLook() }
+    if (mode !== 'decorate') {
+      cancelPlaceDiy()
+      selectDiyItem(null)
+    }
+    if (needsReset && (mode === 'overview' || mode === 'decorate')) resetOrbit()
     updateHint()
     refreshScene()
   }
@@ -862,7 +879,18 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
     refreshScene()
   }
   function onKeyDown(event: KeyboardEvent) {
-    if (mode !== 'walk' || event.altKey || event.ctrlKey || event.metaKey) return
+    if (event.altKey || event.ctrlKey || event.metaKey) return
+    if (mode === 'decorate') {
+      if (event.code === 'KeyR' && !event.repeat) { event.preventDefault(); rotateSelectedDiy(45) }
+      else if (event.code === 'Escape') { event.preventDefault(); cancelPlaceDiy(); selectDiyItem(null) }
+      else if ((event.code === 'Delete' || event.code === 'Backspace') && !event.repeat) { event.preventDefault(); deleteSelectedDiy() }
+      else if (event.code === 'ArrowUp') { event.preventDefault(); nudgeSelectedDiy(0, -.25) }
+      else if (event.code === 'ArrowDown') { event.preventDefault(); nudgeSelectedDiy(0, .25) }
+      else if (event.code === 'ArrowLeft') { event.preventDefault(); nudgeSelectedDiy(-.25, 0) }
+      else if (event.code === 'ArrowRight') { event.preventDefault(); nudgeSelectedDiy(.25, 0) }
+      return
+    }
+    if (mode !== 'walk') return
     const direction = moveKeys.get(event.code)
     if (direction) {
       event.preventDefault()
@@ -907,26 +935,380 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   function onMouseMove(event: MouseEvent) {
     if (pointerLocked && mode === 'walk') rotate(event.movementX, event.movementY)
   }
+  // ---- DIY 装修模式（放置、网格吸附、碰撞检测、旋转、微调、删除、持久化）----
+  const diyItems: DiyPlacedItem[] = []
+  const diyMeshes = new Map<string, Group>()
+  const raycaster = new Raycaster()
+  const pointerNdc = new Vector2()
+  let placingKey: string | null = null
+  let placingRotation = 0
+  let placingValid = true
+  let selectedDiyId: string | null = null
+  let ghostRoot: Group | null = null
+  let ghostBoxHelper: BoxHelper | null = null
+  let selectedBoxHelper: BoxHelper | null = null
+  let pointerDownClient: { x: number; y: number } | null = null
+
+  function emitDiy() {
+    options.onDiyChange?.({
+      placingKey,
+      placingValid,
+      selectedId: selectedDiyId,
+      items: diyItems.map(item => ({ ...item })),
+    })
+  }
+
+  function instantiateDiyModel(modelKey: string, isGhost = false): Group | null {
+    const template = extras[modelKey]
+    if (!template) return null
+    const catalogItem = DIY_FURNITURE_CATALOG.find(c => c.modelKey === modelKey)
+    const scale = catalogItem?.scale ?? 1
+    const clone = template.clone(true)
+    clone.scale.multiplyScalar(scale)
+    clone.updateMatrixWorld(true)
+    const box3 = new Box3().setFromObject(clone)
+    const cx = (box3.min.x + box3.max.x) / 2
+    const cz = (box3.min.z + box3.max.z) / 2
+    const root = new Group()
+    clone.position.set(-cx, -box3.min.y, -cz)
+    if (isGhost) {
+      clone.traverse(obj => {
+        if (obj instanceof Mesh) {
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
+          const ghostMats = mats.map(m => {
+            const copy = m.clone()
+            copy.transparent = true
+            copy.opacity = .72
+            copy.depthWrite = false
+            return copy
+          })
+          obj.material = Array.isArray(obj.material) ? ghostMats : ghostMats[0]
+        }
+      })
+    }
+    root.add(clone)
+    return root
+  }
+
+  function activeDiyFloor(): number {
+    return typeof displayedFloor === 'number' ? displayedFloor : currentFloor
+  }
+
+  function checkBoxValid(box3: Box3, floor: number, ignoreId?: string | null): boolean {
+    const margin = .20
+    if (box3.min.x < -halfWidth + margin || box3.max.x > halfWidth - margin) return false
+    if (box3.min.z < -halfDepth + margin || box3.max.z > halfDepth - margin) return false
+    // 不允许挡住楼梯通道
+    if (box3.max.x > stairs.left && box3.min.x < stairs.right && box3.max.z > stairs.back && box3.min.z < stairs.front) return false
+    const shrink = .04
+    const minX = box3.min.x + shrink
+    const maxX = box3.max.x - shrink
+    const minZ = box3.min.z + shrink
+    const maxZ = box3.max.z - shrink
+    const solids = baseSolidsByFloor[floor] ?? []
+    for (const s of solids) {
+      if (maxX > s.left && minX < s.right && maxZ > s.back && minZ < s.front) return false
+    }
+    for (const other of diyItems) {
+      if (other.floor !== floor || other.id === ignoreId) continue
+      const mesh = diyMeshes.get(other.id)
+      if (!mesh) continue
+      mesh.updateMatrixWorld(true)
+      const ob = new Box3().setFromObject(mesh)
+      if (maxX > ob.min.x + shrink && minX < ob.max.x - shrink && maxZ > ob.min.z + shrink && minZ < ob.max.z - shrink) return false
+    }
+    return true
+  }
+
+  function rebuildDiySolids() {
+    for (let f = 0; f < model.floors.length; f++) {
+      const nextSolids = baseSolidsByFloor[f]!.map(s => ({ ...s }))
+      for (const item of diyItems) {
+        if (item.floor !== f) continue
+        const mesh = diyMeshes.get(item.id)
+        if (!mesh) continue
+        mesh.updateMatrixWorld(true)
+        const b = new Box3().setFromObject(mesh)
+        nextSolids.push({ left: b.min.x, right: b.max.x, back: b.min.z, front: b.max.z })
+      }
+      model.floors[f]!.solids = nextSolids
+    }
+  }
+
+  function updateSelectedHelper() {
+    if (selectedBoxHelper) {
+      selectedBoxHelper.removeFromParent()
+      selectedBoxHelper.dispose()
+      selectedBoxHelper = null
+    }
+    if (!selectedDiyId || mode !== 'decorate') { dirty = true; return }
+    const mesh = diyMeshes.get(selectedDiyId)
+    if (!mesh) return
+    mesh.updateMatrixWorld(true)
+    selectedBoxHelper = new BoxHelper(mesh, 0x22c55e)
+    scene.add(selectedBoxHelper)
+    dirty = true
+  }
+
+  function syncDiyVisibility() {
+    for (const item of diyItems) {
+      const mesh = diyMeshes.get(item.id)
+      if (!mesh) continue
+      if (mode === 'walk') mesh.visible = true
+      else mesh.visible = displayedFloor === 'all' || item.floor <= displayedFloor
+    }
+  }
+
+  function loadDiyItems(items: DiyPlacedItem[]) {
+    for (const m of diyMeshes.values()) m.removeFromParent()
+    diyMeshes.clear()
+    diyItems.length = 0
+    for (const item of items) {
+      const mesh = instantiateDiyModel(item.modelKey)
+      if (!mesh) continue
+      mesh.position.set(item.x, item.floor * floorRise, item.z)
+      mesh.rotation.y = item.rotation
+      mesh.userData.diyId = item.id
+      mesh.traverse(c => { c.userData.diyId = item.id })
+      diyGroup.add(mesh)
+      diyMeshes.set(item.id, mesh)
+      diyItems.push({ ...item })
+    }
+    rebuildDiySolids()
+    syncDiyVisibility()
+    updateSelectedHelper()
+    emitDiy()
+    dirty = true
+  }
+
+  function cancelPlaceDiy() {
+    placingKey = null
+    placingValid = true
+    if (ghostRoot) { ghostRoot.removeFromParent(); ghostRoot = null }
+    if (ghostBoxHelper) { ghostBoxHelper.removeFromParent(); ghostBoxHelper.dispose(); ghostBoxHelper = null }
+    emitDiy()
+    dirty = true
+  }
+
+  function startPlaceDiy(modelKey: string) {
+    cancelPlaceDiy()
+    selectedDiyId = null
+    updateSelectedHelper()
+    const ghost = instantiateDiyModel(modelKey, true)
+    if (!ghost) {
+      options.onAction?.('该家具模型暂未就绪')
+      return
+    }
+    placingKey = modelKey
+    placingRotation = 0
+    ghostRoot = ghost
+    const f = activeDiyFloor()
+    ghostRoot.position.set(0, f * floorRise, 0)
+    ghostRoot.rotation.y = placingRotation
+    scene.add(ghostRoot)
+    ghostBoxHelper = new BoxHelper(ghostRoot, 0x22c55e)
+    scene.add(ghostBoxHelper)
+    updateGhostValidity()
+    emitDiy()
+    dirty = true
+  }
+
+  function updateGhostValidity() {
+    if (!ghostRoot || !ghostBoxHelper) return
+    ghostRoot.updateMatrixWorld(true)
+    const box3 = new Box3().setFromObject(ghostRoot)
+    placingValid = checkBoxValid(box3, activeDiyFloor(), null)
+    ghostBoxHelper.update()
+    const mat = ghostBoxHelper.material as MeshBasicMaterial
+    mat.color.setHex(placingValid ? 0x22c55e : 0xef4444)
+    dirty = true
+  }
+
+  function selectDiyItem(id: string | null) {
+    selectedDiyId = id
+    updateSelectedHelper()
+    emitDiy()
+  }
+
+  function rotateSelectedDiy(deg = 45) {
+    const rad = MathUtils.degToRad(deg)
+    if (ghostRoot && placingKey) {
+      placingRotation = (placingRotation + rad) % (Math.PI * 2)
+      ghostRoot.rotation.y = placingRotation
+      updateGhostValidity()
+      emitDiy()
+      return
+    }
+    if (!selectedDiyId) return
+    const item = diyItems.find(i => i.id === selectedDiyId)
+    const mesh = diyMeshes.get(selectedDiyId)
+    if (!item || !mesh) return
+    const prev = item.rotation
+    item.rotation = (item.rotation + rad) % (Math.PI * 2)
+    mesh.rotation.y = item.rotation
+    mesh.updateMatrixWorld(true)
+    if (!checkBoxValid(new Box3().setFromObject(mesh), item.floor, item.id)) {
+      item.rotation = prev
+      mesh.rotation.y = prev
+      options.onAction?.('旋转后将与墙体或其他家具重叠')
+      return
+    }
+    rebuildDiySolids()
+    updateSelectedHelper()
+    emitDiy()
+  }
+
+  function nudgeSelectedDiy(dx: number, dz: number) {
+    if (!selectedDiyId) return
+    const item = diyItems.find(i => i.id === selectedDiyId)
+    const mesh = diyMeshes.get(selectedDiyId)
+    if (!item || !mesh) return
+    const px = item.x
+    const pz = item.z
+    item.x = Math.round((item.x + dx) * 4) / 4
+    item.z = Math.round((item.z + dz) * 4) / 4
+    mesh.position.set(item.x, item.floor * floorRise, item.z)
+    mesh.updateMatrixWorld(true)
+    if (!checkBoxValid(new Box3().setFromObject(mesh), item.floor, item.id)) {
+      item.x = px
+      item.z = pz
+      mesh.position.set(px, item.floor * floorRise, pz)
+      options.onAction?.('已到达可摆放边界或与其他家具重叠')
+      return
+    }
+    rebuildDiySolids()
+    updateSelectedHelper()
+    emitDiy()
+  }
+
+  function startMoveSelectedDiy() {
+    if (!selectedDiyId) return
+    const item = diyItems.find(i => i.id === selectedDiyId)
+    if (!item) return
+    const key = item.modelKey
+    const rot = item.rotation
+    deleteSelectedDiy()
+    startPlaceDiy(key)
+    if (ghostRoot) {
+      placingRotation = rot
+      ghostRoot.rotation.y = rot
+      updateGhostValidity()
+    }
+  }
+
+  function deleteSelectedDiy() {
+    if (!selectedDiyId) return
+    const idx = diyItems.findIndex(i => i.id === selectedDiyId)
+    if (idx === -1) return
+    const [removed] = diyItems.splice(idx, 1)
+    const mesh = diyMeshes.get(removed!.id)
+    if (mesh) { mesh.removeFromParent(); diyMeshes.delete(removed!.id) }
+    selectedDiyId = null
+    rebuildDiySolids()
+    updateSelectedHelper()
+    emitDiy()
+    audio.playSwitch(false)
+  }
+
+  function clearAllDiy() {
+    loadDiyItems([])
+    cancelPlaceDiy()
+    options.onAction?.('已清空所有自定义摆放家具')
+  }
+
   function onPointerDown(event: PointerEvent) {
+    if (mode === 'decorate' && event.isPrimary && event.button === 0) {
+      pointerDownClient = { x: event.clientX, y: event.clientY }
+      return
+    }
     if (mode !== 'walk' || pointerLocked || !event.isPrimary || event.button !== 0) return
     canvas.focus({ preventScroll: true })
     canvas.setPointerCapture(event.pointerId)
     pointer = { id: event.pointerId, x: event.clientX, y: event.clientY }
   }
   function onPointerMove(event: PointerEvent) {
+    if (mode === 'decorate' && ghostRoot && placingKey) {
+      const rect = canvas.getBoundingClientRect()
+      pointerNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+      pointerNdc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+      raycaster.setFromCamera(pointerNdc, overview)
+      const f = activeDiyFloor()
+      const plane = new Plane(new Vector3(0, 1, 0), -(f * floorRise))
+      const hit = new Vector3()
+      if (raycaster.ray.intersectPlane(plane, hit)) {
+        const snap = event.shiftKey ? 20 : 4
+        const nx = Math.round(hit.x * snap) / snap
+        const nz = Math.round(hit.z * snap) / snap
+        ghostRoot.position.set(nx, f * floorRise, nz)
+        updateGhostValidity()
+      }
+      return
+    }
     if (!pointer || pointer.id !== event.pointerId || mode !== 'walk') return
     rotate(event.clientX - pointer.x, event.clientY - pointer.y)
     pointer.x = event.clientX
     pointer.y = event.clientY
   }
+  function onPointerUpDecorate(event: PointerEvent) {
+    if (mode !== 'decorate' || event.button !== 0 || !pointerDownClient) return
+    const moved = Math.hypot(event.clientX - pointerDownClient.x, event.clientY - pointerDownClient.y)
+    pointerDownClient = null
+    if (moved > 6) return
+    const rect = canvas.getBoundingClientRect()
+    pointerNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+    pointerNdc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+    raycaster.setFromCamera(pointerNdc, overview)
+    if (ghostRoot && placingKey) {
+      updateGhostValidity()
+      if (!placingValid) {
+        options.onAction?.('该位置与墙体、楼梯或其他家具重叠，无法放置')
+        return
+      }
+      const id = `diy-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+      const f = activeDiyFloor()
+      const placed: DiyPlacedItem = {
+        id,
+        modelKey: placingKey,
+        floor: f,
+        x: ghostRoot.position.x,
+        z: ghostRoot.position.z,
+        rotation: placingRotation,
+      }
+      const mesh = instantiateDiyModel(placed.modelKey)
+      if (mesh) {
+        mesh.position.set(placed.x, f * floorRise, placed.z)
+        mesh.rotation.y = placed.rotation
+        mesh.userData.diyId = id
+        mesh.traverse(c => { c.userData.diyId = id })
+        diyGroup.add(mesh)
+        diyMeshes.set(id, mesh)
+        diyItems.push(placed)
+        rebuildDiySolids()
+        syncDiyVisibility()
+        audio.playSwitch(true)
+        if (!event.shiftKey) {
+          cancelPlaceDiy()
+          selectDiyItem(id)
+        } else {
+          emitDiy()
+        }
+      }
+      return
+    }
+    const hits = raycaster.intersectObjects(diyGroup.children, true)
+    const hitId = hits[0]?.object?.userData?.diyId as string | undefined
+    selectDiyItem(hitId ?? null)
+  }
   function onPointerEnd(event: PointerEvent) {
     if (event.pointerId === pointer?.id) pointer = undefined
+    onPointerUpDecorate(event)
   }
 
   canvas.addEventListener('keydown', onKeyDown)
   canvas.addEventListener('keyup', onKeyUp)
   canvas.addEventListener('pointerdown', onPointerDown)
   canvas.addEventListener('pointermove', onPointerMove)
+  canvas.addEventListener('pointerup', onPointerUpDecorate)
   canvas.addEventListener('lostpointercapture', onPointerEnd)
   canvas.addEventListener('blur', clearKeys)
   document.addEventListener('pointerlockchange', onLockChange)
@@ -1008,6 +1390,11 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
   emitActiveProps()
   return {
     enter, setView, interact, resetOrbit, lockLook, releaseLook, callPet,
+    setWallStyle(id: WallStyleId) { model.setWallStyle(id); dirty = true },
+    setFloorStyle(id: FloorStyleId) { model.setFloorStyle(id); dirty = true },
+    syncPictureWall(urls: string[]) { model.syncPictureWall(urls); dirty = true },
+    loadDiyItems, startPlaceDiy, cancelPlaceDiy, selectDiyItem, rotateSelectedDiy,
+    nudgeSelectedDiy, startMoveSelectedDiy, deleteSelectedDiy, clearAllDiy,
     syncJournalBooks(totalEntries: number, starredEntries: number) {
       model.syncJournalBooks(totalEntries, starredEntries)
       dirty = true
@@ -1050,6 +1437,7 @@ export async function createFamilyHouseScene(canvas: HTMLCanvasElement, url: str
       canvas.removeEventListener('keyup', onKeyUp)
       canvas.removeEventListener('pointerdown', onPointerDown)
       canvas.removeEventListener('pointermove', onPointerMove)
+      canvas.removeEventListener('pointerup', onPointerUpDecorate)
       canvas.removeEventListener('lostpointercapture', onPointerEnd)
       canvas.removeEventListener('blur', clearKeys)
       document.removeEventListener('pointerlockchange', onLockChange)

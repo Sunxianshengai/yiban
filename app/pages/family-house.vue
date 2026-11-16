@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import {
-  mdiArrowLeft, mdiBookOpenOutline, mdiCameraOutline, mdiClose, mdiCubeOutline, mdiDoorOpen, mdiDownload, mdiFullscreen, mdiFullscreenExit,
-  mdiGestureTap, mdiHelpCircleOutline, mdiHomeOutline, mdiLightbulbOutline, mdiMapOutline,
-  mdiMoonWaningCrescent, mdiMouse, mdiPaw, mdiPlus, mdiRestore, mdiSofa, mdiStar, mdiStarOutline, mdiTune, mdiVolumeHigh, mdiVolumeOff, mdiWalk,
+  mdiArrowLeft, mdiBookOpenOutline, mdiCameraOutline, mdiClose, mdiCubeOutline, mdiDeleteOutline, mdiDoorOpen, mdiDownload,
+  mdiFloorPlan, mdiFullscreen, mdiFullscreenExit, mdiGestureTap, mdiHelpCircleOutline, mdiHomeOutline, mdiLightbulbOutline,
+  mdiMapOutline, mdiMoonWaningCrescent, mdiMouse, mdiPaletteOutline, mdiPaw, mdiPlus, mdiRestore, mdiRotateRight,
+  mdiSofa, mdiStar, mdiStarOutline, mdiTune, mdiUndo, mdiVolumeHigh, mdiVolumeOff, mdiWalk,
 } from '@mdi/js'
 import furnitureUrl from '~/assets/family-house/furniture.glb?url'
 import type { EntryV2 } from '~/utils/db'
+import {
+  DIY_FURNITURE_CATALOG, FLOOR_STYLES, WALL_STYLES, defaultDiyState, loadDiyState, saveDiyState,
+  type FamilyHouseDiyState, type FloorStyleId, type WallStyleId,
+} from '~/utils/familyHouseDiy'
 import { houseLevels, houseStops, porch, stairStops, type HouseStop } from '~/utils/familyHouseLayout'
-import type { createFamilyHouseScene, HouseFloor, HouseHint, HousePetState, HousePosition, HouseView } from '~/utils/familyHouseScene'
+import type { createFamilyHouseScene, HouseDiySceneState, HouseFloor, HouseHint, HousePetState, HousePosition, HouseView } from '~/utils/familyHouseScene'
 
 useHead({ title: '回家 · 我们的小家' })
 
@@ -30,6 +35,62 @@ const journalOpen = ref(false)
 const tvOpen = ref(false)
 const galleryOpen = ref(false)
 const galleryPhotos = ref<Array<{ id?: number; jId: number; url?: string; fileName: string; dateLabel: string }>>([])
+
+// DIY 装修模式状态与撤销栈
+const diyState = ref<FamilyHouseDiyState>(loadDiyState())
+const diyUndoStack = ref<FamilyHouseDiyState[]>([])
+const diyTab = ref<'furniture' | 'materials' | 'placed'>('furniture')
+const diyCat = ref<'all' | 'seating' | 'storage' | 'table' | 'decor'>('all')
+const diySceneState = shallowRef<HouseDiySceneState>({ placingKey: null, placingValid: true, selectedId: null, items: [] })
+const filteredCatalog = computed(() =>
+  diyCat.value === 'all' ? DIY_FURNITURE_CATALOG : DIY_FURNITURE_CATALOG.filter(item => item.category === diyCat.value),
+)
+const decorateFloor = computed(() => typeof overviewFloor.value === 'number' ? overviewFloor.value : position.value.floor)
+function snapshotDiyForUndo() {
+  diyUndoStack.value.push(JSON.parse(JSON.stringify(diyState.value)))
+  if (diyUndoStack.value.length > 20) diyUndoStack.value.shift()
+}
+function undoDiy() {
+  const prev = diyUndoStack.value.pop()
+  if (!prev) return
+  diyState.value = prev
+  saveDiyState(prev)
+  game?.setWallStyle(prev.wallStyle)
+  game?.setFloorStyle(prev.floorStyle)
+  game?.loadDiyItems(prev.items)
+  showActionToast('已撤销上一步装修操作')
+}
+function chooseWallStyle(id: WallStyleId) {
+  snapshotDiyForUndo()
+  diyState.value.wallStyle = id
+  saveDiyState(diyState.value)
+  game?.setWallStyle(id)
+}
+function chooseFloorStyle(id: FloorStyleId) {
+  snapshotDiyForUndo()
+  diyState.value.floorStyle = id
+  saveDiyState(diyState.value)
+  game?.setFloorStyle(id)
+}
+function resetAllDiy() {
+  snapshotDiyForUndo()
+  const next = defaultDiyState()
+  diyState.value = next
+  saveDiyState(next)
+  game?.setWallStyle(next.wallStyle)
+  game?.setFloorStyle(next.floorStyle)
+  game?.loadDiyItems([])
+  showActionToast('已恢复默认小屋装修')
+}
+async function syncWallPhotosTo3D() {
+  if (!game) return
+  try {
+    const rows = (await allMedia()).filter(m => m.mimeType.startsWith('image/')).slice(0, 4)
+    await prefetchMedia(rows)
+    const urls = rows.map(m => mediaUrl(m)).filter((u): u is string => Boolean(u))
+    game.syncPictureWall(urls)
+  } catch { /* ignore */ }
+}
 const editorOpen = ref(false)
 const editingEntry = shallowRef<EntryV2 | null>(null)
 const journalTitle = ref('日记书架')
@@ -196,6 +257,16 @@ async function initialize() {
       onPet: value => { petState.value = value },
       onAction: showActionToast,
       onPropsChange: labels => { activePropsLabels.value = labels },
+      onDiyChange: next => {
+        const prevCount = diyState.value.items.length
+        const nextCount = next.items.length
+        if (prevCount !== nextCount || JSON.stringify(diyState.value.items) !== JSON.stringify(next.items)) {
+          snapshotDiyForUndo()
+          diyState.value.items = next.items
+          saveDiyState(diyState.value)
+        }
+        diySceneState.value = next
+      },
       onOpenJournal: ctx => {
         if (ctx.mode === 'editor') openJournalEditor()
         else if (ctx.mode === 'tv') {
@@ -214,6 +285,10 @@ async function initialize() {
     if (attempt.signal.aborted) { result.dispose(); return }
     game = result
     game.syncJournalBooks(entries.value.length, entries.value.filter(item => item.favourite).length)
+    game.setWallStyle(diyState.value.wallStyle)
+    game.setFloorStyle(diyState.value.floorStyle)
+    game.loadDiyItems(diyState.value.items)
+    void syncWallPhotosTo3D()
     applySensitivity()
     view.value = 'walk'
     overviewFloor.value = 'all'
@@ -261,7 +336,9 @@ function visit(stop: HouseStop) {
 function changeView(mode: HouseView) {
   if (mode === view.value) return
   view.value = mode
-  game?.setView(mode, mode === 'overview' ? overviewFloor.value : position.value.floor, outside.value)
+  if (mode === 'decorate' && overviewFloor.value === 'all') overviewFloor.value = position.value.floor
+  const targetFloor = mode === 'overview' ? overviewFloor.value : mode === 'decorate' ? decorateFloor.value : position.value.floor
+  game?.setView(mode, targetFloor, mode === 'decorate' ? false : outside.value)
   if (mode === 'walk') {
     focusScene()
     if (fullscreen.value) void game?.lockLook()
@@ -274,7 +351,7 @@ function selectFloor(value: HouseFloor) {
   }
   overviewFloor.value = value
   if (value !== 'all') outside.value = false
-  game?.setView('overview', value, outside.value)
+  game?.setView(view.value === 'decorate' ? 'decorate' : 'overview', value, view.value === 'decorate' ? false : outside.value)
 }
 function toggleOutside() {
   outside.value = !outside.value
@@ -356,6 +433,7 @@ function shortcuts(event: KeyboardEvent) {
   }
   if (event.code === 'Digit1') { changeView('walk'); return }
   if (event.code === 'Digit2') { changeView('overview'); return }
+  if (event.code === 'Digit3') { changeView('decorate'); return }
   if (event.code === 'KeyV') changeView(view.value === 'walk' ? 'overview' : 'walk')
   if (event.code === 'KeyM') mapOpen.value = !mapOpen.value
   if (event.code === 'KeyP') game?.takePostcard()
@@ -418,6 +496,9 @@ async function download() {
         <button type="button" :aria-pressed="view === 'overview'" @click="changeView('overview')">
           <JrIcon :path="mdiCubeOutline" :size="17" /> 全屋视角 <kbd class="mode-key">2</kbd>
         </button>
+        <button type="button" :aria-pressed="view === 'decorate'" @click="changeView('decorate')">
+          <JrIcon :path="mdiFloorPlan" :size="17" /> 装修 <kbd class="mode-key">3</kbd>
+        </button>
       </div>
 
       <div v-if="status === 'ready'" class="house-toolbar-wrap">
@@ -479,6 +560,128 @@ async function download() {
       <button v-if="view === 'walk' && hint" type="button" class="house-interaction house-hud" :aria-label="hint.label" aria-keyshortcuts="E" @click="game?.interact(); focusScene()">
         <kbd>E</kbd><JrIcon :path="hint.kind === 'door' ? mdiDoorOpen : hint.kind === 'pet' ? mdiPaw : hint.kind === 'seat' ? mdiSofa : hint.kind === 'prop' ? mdiGestureTap : mdiLightbulbOutline" :size="18" />{{ hint.label }}
       </button>
+      <aside v-if="view === 'decorate'" class="house-diy-dock house-hud" aria-label="小屋装修工作台">
+        <div v-if="diySceneState.placingKey" class="diy-float-bar" :class="{ invalid: !diySceneState.placingValid }">
+          <span>
+            {{ diySceneState.placingValid ? '点击地面放置 · R 旋转 45° · Shift 连续放置' : '位置重叠或靠近墙体/楼梯，请移动位置' }}
+          </span>
+          <div class="diy-float-actions">
+            <button type="button" @click="game?.rotateSelectedDiy(45)"><JrIcon :path="mdiRotateRight" :size="15" /> 旋转</button>
+            <button type="button" @click="game?.cancelPlaceDiy()"><JrIcon :path="mdiClose" :size="15" /> 取消 (Esc)</button>
+          </div>
+        </div>
+        <div v-else-if="diySceneState.selectedId" class="diy-float-bar">
+          <span>已选中家具 · 可直接用方向键微调或 R 旋转</span>
+          <div class="diy-float-actions">
+            <button type="button" @click="game?.startMoveSelectedDiy()">移动</button>
+            <button type="button" @click="game?.rotateSelectedDiy(45)"><JrIcon :path="mdiRotateRight" :size="15" /> 旋转 45°</button>
+            <button type="button" class="danger" @click="game?.deleteSelectedDiy()"><JrIcon :path="mdiDeleteOutline" :size="15" /> 删除</button>
+            <button type="button" @click="game?.selectDiyItem(null)">完成</button>
+          </div>
+        </div>
+
+        <div class="diy-dock-head">
+          <div class="diy-tabs">
+            <button type="button" :aria-pressed="diyTab === 'furniture'" @click="diyTab = 'furniture'"><JrIcon :path="mdiSofa" :size="15" /> 摆家具</button>
+            <button type="button" :aria-pressed="diyTab === 'materials'" @click="diyTab = 'materials'"><JrIcon :path="mdiPaletteOutline" :size="15" /> 墙面与地板</button>
+            <button type="button" :aria-pressed="diyTab === 'placed'" @click="diyTab = 'placed'">已放 ({{ diyState.items.length }})</button>
+          </div>
+          <div class="diy-floor-pills">
+            <button
+              v-for="(label, idx) in houseLevels"
+              :key="idx"
+              type="button"
+              :aria-pressed="decorateFloor === idx"
+              @click="selectFloor(idx)"
+            >{{ label }}</button>
+          </div>
+          <div class="diy-head-tools">
+            <button type="button" :disabled="!diyUndoStack.length" title="撤销" @click="undoDiy">
+              <JrIcon :path="mdiUndo" :size="15" /> 撤销
+            </button>
+            <button type="button" title="重置默认装修" @click="resetAllDiy">重置</button>
+          </div>
+        </div>
+
+        <div v-if="diyTab === 'furniture'" class="diy-panel">
+          <div class="diy-cat-row">
+            <button type="button" :aria-pressed="diyCat === 'all'" @click="diyCat = 'all'">全部</button>
+            <button type="button" :aria-pressed="diyCat === 'seating'" @click="diyCat = 'seating'">座椅沙发</button>
+            <button type="button" :aria-pressed="diyCat === 'storage'" @click="diyCat = 'storage'">书架收纳</button>
+            <button type="button" :aria-pressed="diyCat === 'table'" @click="diyCat = 'table'">桌几</button>
+            <button type="button" :aria-pressed="diyCat === 'decor'" @click="diyCat = 'decor'">绿植灯饰</button>
+          </div>
+          <div class="diy-catalog-scroll">
+            <button
+              v-for="item in filteredCatalog"
+              :key="item.modelKey"
+              type="button"
+              class="diy-item-card"
+              :class="{ active: diySceneState.placingKey === item.modelKey }"
+              @click="game?.startPlaceDiy(item.modelKey); focusScene()"
+            >
+              <span class="diy-item-emoji">{{ item.emoji }}</span>
+              <strong>{{ item.label }}</strong>
+              <small>{{ item.hintSize }}</small>
+            </button>
+          </div>
+        </div>
+
+        <div v-else-if="diyTab === 'materials'" class="diy-materials-grid">
+          <div>
+            <div class="diy-mat-title">墙面材质</div>
+            <div class="diy-mat-row">
+              <button
+                v-for="w in WALL_STYLES"
+                :key="w.id"
+                type="button"
+                class="diy-mat-chip"
+                :class="{ active: diyState.wallStyle === w.id }"
+                :title="w.desc"
+                @click="chooseWallStyle(w.id)"
+              >
+                <span class="diy-mat-swatch" :style="{ background: w.color }" />
+                <span>{{ w.label }}</span>
+              </button>
+            </div>
+          </div>
+          <div>
+            <div class="diy-mat-title">地板材质</div>
+            <div class="diy-mat-row">
+              <button
+                v-for="f in FLOOR_STYLES"
+                :key="f.id"
+                type="button"
+                class="diy-mat-chip"
+                :class="{ active: diyState.floorStyle === f.id }"
+                :title="f.desc"
+                @click="chooseFloorStyle(f.id)"
+              >
+                <span class="diy-mat-swatch" :style="{ background: f.color }" />
+                <span>{{ f.label }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="diy-placed-list">
+          <p v-if="!diyState.items.length" class="diy-empty">还没有自定义摆放家具，切到「摆家具」点选一件放到房间里吧。</p>
+          <div v-else class="diy-placed-chips">
+            <button
+              v-for="it in diyState.items"
+              :key="it.id"
+              type="button"
+              class="diy-mat-chip"
+              :class="{ active: diySceneState.selectedId === it.id }"
+              @click="selectFloor(it.floor); game?.selectDiyItem(it.id); focusScene()"
+            >
+              <span>{{ houseLevels[it.floor] }} · {{ DIY_FURNITURE_CATALOG.find(c => c.modelKey === it.modelKey)?.label || it.modelKey }}</span>
+            </button>
+            <button type="button" class="diy-mat-chip danger" @click="snapshotDiyForUndo(); game?.clearAllDiy()">清空全部</button>
+          </div>
+        </div>
+      </aside>
+
       <aside class="house-pet house-hud" aria-label="家里的小伙伴">
         <div class="house-pet-info">
           <JrIcon :path="mdiPaw" :size="18" class="house-pet-icon" />
@@ -755,6 +958,32 @@ async function download() {
 .house-photo-card:hover { border-color: #3f8a80; }
 .house-photo-card img { width: 100%; height: 92px; object-fit: cover; border-radius: 6px; }
 .house-photo-card span { font-size: 11px; color: #53645e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.house-diy-dock { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(860px, calc(100% - 36px)); z-index: 16; padding: 12px 14px; border-radius: 18px; display: flex; flex-direction: column; gap: 10px; }
+.diy-float-bar { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 999px; background: rgba(24, 34, 30, .90); color: #fff; font-size: 12.5px; white-space: nowrap; box-shadow: 0 8px 24px rgba(0, 0, 0, .18); }
+.diy-float-bar.invalid { background: rgba(185, 28, 28, .92); }
+.diy-float-actions { display: flex; gap: 6px; }
+.diy-float-actions button { display: inline-flex; align-items: center; gap: 4px; border: 0; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600; background: rgba(255, 255, 255, .18); color: #fff; cursor: pointer; }
+.diy-float-actions button.danger { background: rgba(239, 68, 68, .85); }
+.diy-dock-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.diy-tabs, .diy-floor-pills, .diy-head-tools, .diy-cat-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.diy-tabs button, .diy-floor-pills button, .diy-head-tools button, .diy-cat-row button { display: inline-flex; align-items: center; gap: 4px; border: 0; border-radius: 9px; padding: 5px 10px; font-size: 12px; font-weight: 600; background: rgba(43, 81, 62, .08); color: #2b4437; cursor: pointer; }
+.diy-tabs button[aria-pressed="true"], .diy-floor-pills button[aria-pressed="true"], .diy-cat-row button[aria-pressed="true"] { background: var(--house-accent); color: #fff; }
+.diy-head-tools button:disabled { opacity: .45; cursor: default; }
+.diy-panel { display: flex; flex-direction: column; gap: 8px; }
+.diy-catalog-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.diy-item-card { flex: 0 0 92px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 6px; border-radius: 12px; border: 1.5px solid rgba(43, 81, 62, .12); background: rgba(255, 255, 255, .82); color: #24332a; cursor: pointer; }
+.diy-item-card:hover, .diy-item-card.active { border-color: var(--house-accent); background: #eef6f1; }
+.diy-item-emoji { font-size: 20px; line-height: 1.2; }
+.diy-item-card strong { font-size: 11.5px; text-align: center; }
+.diy-item-card small { font-size: 10.5px; color: #647469; }
+.diy-materials-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.diy-mat-title { font-size: 11.5px; font-weight: 700; color: #516258; margin-bottom: 6px; }
+.diy-mat-row, .diy-placed-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.diy-mat-chip { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid rgba(43, 81, 62, .14); border-radius: 999px; padding: 5px 10px; font-size: 12px; background: rgba(255, 255, 255, .82); color: #24332a; cursor: pointer; }
+.diy-mat-chip.active { border-color: var(--house-accent); background: #e8f3ec; font-weight: 600; }
+.diy-mat-chip.danger { color: #b91c1c; border-color: rgba(185, 28, 28, .28); }
+.diy-mat-swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, .18); }
+.diy-empty { margin: 4px 0; font-size: 12.5px; color: #647469; }
 .house-cover { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 18px; }
 .house-cover button, .house-help form button { border: 0; border-radius: 8px; padding: 9px 14px; background: var(--house-accent); color: #fffdf5; justify-self: center; }
 .house-alert { position: absolute; top: 83px; right: 22px; border-radius: 8px; padding: 10px; }

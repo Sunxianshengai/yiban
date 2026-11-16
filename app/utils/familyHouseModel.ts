@@ -1,8 +1,9 @@
 import {
   Box3, BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, Color, CylinderGeometry, Group, Mesh,
   MeshBasicMaterial, MeshStandardMaterial, NoColorSpace, PlaneGeometry, PointLight, Points, PointsMaterial,
-  RepeatWrapping, SphereGeometry, SRGBColorSpace, Vector2, type Material, type Object3D, type Texture,
+  RepeatWrapping, SphereGeometry, SRGBColorSpace, TextureLoader, Vector2, type Material, type Object3D, type Texture,
 } from 'three'
+import { FLOOR_STYLES, WALL_STYLES, type FloorStyleId, type WallStyleId } from './familyHouseDiy'
 import { floorRise, halfDepth, halfWidth, houseDepth, houseLevels, houseWidth, porch, stairs, type Bounds2D } from './familyHouseLayout'
 
 export interface HouseDoor {
@@ -290,6 +291,22 @@ export function buildFamilyHouse(
   })
   const emissiveMaterials: MeshStandardMaterial[] = []
   const materials = new Map<string, MeshStandardMaterial>()
+  const woodFloorMats: MeshStandardMaterial[] = []
+  const createWoodFloorMat = () => {
+    const wood = pbrTextures.wood
+    const mat = wood
+      ? new MeshStandardMaterial({
+        color: '#ebd4b4', map: wood.diff, normalMap: wood.nor, normalScale: new Vector2(.55, .55),
+        roughnessMap: wood.rough, roughness: .68, envMapIntensity: .88,
+      })
+      : new MeshStandardMaterial({
+        color: '#e8d6be', map: oakTex, bumpMap: oakBumpTex, bumpScale: .015, roughnessMap: oakRoughTex,
+        roughness: .54, envMapIntensity: .90,
+      })
+    woodFloorMats.push(mat)
+    return mat
+  }
+  const floorSlabMat = createWoodFloorMat()
   const material = (color: string, kind: MaterialKind = 'matte') => {
     const key = `${kind}:${color}`
     let found = materials.get(key)
@@ -539,6 +556,8 @@ export function buildFamilyHouse(
     floors[floor]!.root.add(lamp)
     return lamp
   }
+  const pictureFrames: Array<{ mat: MeshStandardMaterial; defaultMap: Texture | null }> = []
+  const photoLoader = new TextureLoader()
   function picture(parent: Group, x: number, y: number, z: number, accent: string, width = .47) {
     box(parent, 'Oak picture frame', [x, y, z], [width, .49, .033], oak, 'oak')
     const artTex = makeCanvasTexture(128, 1, 1, (ctx, s) => {
@@ -566,6 +585,7 @@ export function buildFamilyHouse(
       ctx.stroke()
     })
     const artMat = new MeshStandardMaterial({ map: artTex, roughness: .75 })
+    pictureFrames.push({ mat: artMat, defaultMap: artTex })
     const artMesh = new Mesh(boxGeo(width - .05, .435, .012), artMat)
     artMesh.position.set(x, y, z + .020)
     parent.add(artMesh)
@@ -627,7 +647,8 @@ export function buildFamilyHouse(
     box(parent, name, [(cursor + right) / 2, 1.35, z], [right - cursor, 2.7, .17], plaster, 'plaster')
   }
   function plankFloor(parent: Group, x: number, z: number, w: number, d: number, withCeiling = false) {
-    box(parent, 'Oak floor slab', [x, -.078, z], [w, .156, d], '#e8d6be', 'oak')
+    const slab = box(parent, 'Oak floor slab', [x, -.078, z], [w, .156, d], '#e8d6be', 'oak')
+    slab.material = floorSlabMat
     if (withCeiling) box(parent, 'White ceiling soffit', [x, -.162, z], [w, .012, d], '#f6f7f4', 'plaster')
     if (pbrTextures.wood) return
     const rows = Math.ceil(d / .34)
@@ -1533,7 +1554,82 @@ export function buildFamilyHouse(
     { id: 'reading', label: '阅读灯', floor: 2, x: -1.55, z: -1.65, light: reading },
     { id: 'terrace-lounge', label: '露台氛围灯', floor: 3, x: -3.35, z: 1.15, light: terraceLounge },
   ]
-  return { house, ground, roof, propsGroup, skyGroup, clockHands, floors, doors, localLamps, seats, props, emissiveMaterials, pet, syncJournalBooks }
+  function setWallStyle(id: WallStyleId) {
+    const style = WALL_STYLES.find((w) => w.id === id) ?? WALL_STYLES[0]!
+    const wallMat = materials.get(`stone-brick:${plaster}`)
+    if (!wallMat) return
+    wallMat.color.set(style.color)
+    if (style.usesStoneMap) {
+      wallMat.map = stoneBrickTex
+      wallMat.bumpMap = stoneBrickBumpTex
+      wallMat.bumpScale = .024
+      wallMat.roughnessMap = stoneBrickRoughTex
+      wallMat.roughness = .84
+    } else {
+      wallMat.map = plasterTex
+      wallMat.bumpMap = plasterBumpTex
+      wallMat.bumpScale = .006
+      wallMat.roughnessMap = null
+      wallMat.roughness = .90
+    }
+    wallMat.needsUpdate = true
+  }
+
+  function setFloorStyle(id: FloorStyleId) {
+    const style = FLOOR_STYLES.find((f) => f.id === id) ?? FLOOR_STYLES[0]!
+    const wood = pbrTextures.wood
+    const tl = pbrTextures.tile
+    floorSlabMat.color.set(style.color)
+    if (style.useTile && tl) {
+      floorSlabMat.map = tl.diff
+      floorSlabMat.normalMap = tl.nor
+      floorSlabMat.normalScale.set(.68, .68)
+      floorSlabMat.roughnessMap = tl.rough
+      floorSlabMat.roughness = .48
+    } else if (wood) {
+      floorSlabMat.map = wood.diff
+      floorSlabMat.normalMap = wood.nor
+      floorSlabMat.normalScale.set(.55, .55)
+      floorSlabMat.roughnessMap = wood.rough
+      floorSlabMat.roughness = .68
+    } else {
+      floorSlabMat.map = oakTex
+      floorSlabMat.bumpMap = oakBumpTex
+      floorSlabMat.bumpScale = .015
+      floorSlabMat.roughnessMap = oakRoughTex
+      floorSlabMat.roughness = .54
+    }
+    floorSlabMat.needsUpdate = true
+  }
+
+  function syncPictureWall(urls: string[]) {
+    pictureFrames.forEach((frameInfo, idx) => {
+      const url = urls[idx]
+      if (!url) {
+        frameInfo.mat.map = frameInfo.defaultMap
+        frameInfo.mat.needsUpdate = true
+        return
+      }
+      photoLoader.load(
+        url,
+        (tex) => {
+          tex.colorSpace = SRGBColorSpace
+          frameInfo.mat.map = tex
+          frameInfo.mat.needsUpdate = true
+        },
+        undefined,
+        () => {
+          frameInfo.mat.map = frameInfo.defaultMap
+          frameInfo.mat.needsUpdate = true
+        },
+      )
+    })
+  }
+
+  return {
+    house, ground, roof, propsGroup, skyGroup, clockHands, floors, doors, localLamps, seats, props, emissiveMaterials, pet,
+    syncJournalBooks, setWallStyle, setFloorStyle, syncPictureWall,
+  }
 }
 
 export const sceneBackdrop = new Color('#dde5e3')
