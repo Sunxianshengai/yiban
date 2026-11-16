@@ -106,4 +106,15 @@ async function createTables() {
     )
   `
   await q`create index if not exists yiban_family_socials_entry on yiban_family_socials (group_id, entry_owner_user_id, entry_client_id)`
+  await q`
+    create table if not exists yiban_wecom_bindings (
+      user_id          uuid primary key references yiban_users(id) on delete cascade,
+      bind_code        text not null unique,
+      wecom_user_id    text unique,
+      merge_window_sec integer not null default 120,
+      auto_family      boolean not null default false,
+      bound_at         timestamptz,
+      created_at       timestamptz not null default now()
+    )
+  `
 }
