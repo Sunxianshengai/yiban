@@ -106,7 +106,7 @@ function parseDayOne(data: Data, archiveEntry?: string, lookup?: ResourceLookup)
 export function parseImport(data: unknown): ParseResult {
   const root = record(data)
   if (dayOneRows(root).length) return parseDayOne(root)
-  if (root.schemaVersion === 2 && root.encrypted) throw new Error('请先在原应用中解密旅程日记。')
+  if (root.schemaVersion === 2 && root.encrypted) throw new Error('请先在 Journey 中解密日记。')
   let rows: unknown[]
   let kind: string
   if (root.format === 'journey-replica-json' && Array.isArray(root.entries)) {

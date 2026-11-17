@@ -16,7 +16,7 @@
   },
   "build": {
     "appId": "cc.eu.memory.yiban",
-    "productName": "JourneyDiary",
+    "productName": "忆伴",
     "asar": false,
     "directories": {
       "output": "dist-desktop"
@@ -41,8 +41,8 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "旅程日记",
-      "artifactName": "旅程日记-Windows-Setup-${version}.${ext}"
+      "shortcutName": "${productName}",
+      "artifactName": "${productName}-Windows-Setup-${version}.${ext}"
     },
     "mac": {
       "target": [
@@ -63,7 +63,7 @@
       ],
       "icon": "electron/app-icon.png",
       "category": "public.app-category.lifestyle",
-      "artifactName": "旅程日记-macOS-${arch}-${version}.${ext}"
+      "artifactName": "${productName}-macOS-${arch}-${version}.${ext}"
     }
   },
   "dependencies": {

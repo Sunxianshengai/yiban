@@ -2,7 +2,7 @@ export type AppLocale = 'zh-CN' | 'zh-TW' | 'en'
 
 const MESSAGES: Record<AppLocale, Record<string, string>> = {
   'zh-CN': {
-    brand: '旅程日记',
+    brand: '忆伴',
     timeline: '时间线',
     media: '相册',
     calendar: '日历',
@@ -27,7 +27,7 @@ const MESSAGES: Record<AppLocale, Record<string, string>> = {
     cloud: '云服务',
   },
   'zh-TW': {
-    brand: '旅程日記',
+    brand: '忆伴',
     timeline: '時間線',
     media: '相簿',
     calendar: '日曆',
@@ -52,7 +52,7 @@ const MESSAGES: Record<AppLocale, Record<string, string>> = {
     cloud: '雲端服務',
   },
   en: {
-    brand: 'Journey Diary',
+    brand: '忆伴',
     timeline: 'Timeline',
     media: 'Media',
     calendar: 'Calendar',

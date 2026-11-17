@@ -70,7 +70,7 @@ onMounted(() => {
           <div class="jr-membership-feature-grid">
             <article class="jr-membership-feature jr-membership-sync">
               <h3><JrIcon :path="mdiCloud" :size="24" /> 跨平台同步</h3>
-              <div class="jr-membership-devices" role="img" aria-label="旅程日记的手机、电脑和平板界面">
+              <div class="jr-membership-devices" role="img" aria-label="Journey的手机、电脑和平板界面">
                 <div class="jr-membership-device jr-membership-laptop"><span>我的日记</span><b>时间线</b></div>
                 <div class="jr-membership-device jr-membership-tablet"><span>往日回忆</span><b>今天</b></div>
                 <div class="jr-membership-device jr-membership-phone"><span>日记</span><b>今天</b></div>
@@ -80,7 +80,7 @@ onMounted(() => {
             <article class="jr-membership-feature jr-membership-trust">
               <h3><JrIcon :path="mdiSeal" :size="24" /> 值得信赖的日记平台</h3>
               <div class="jr-membership-stat"><strong>超过 10 年</strong><span>数百万用户</span></div>
-              <p>十余年来，旅程日记帮助用户集中保存私人日记和珍贵回忆。</p>
+              <p>十余年来，Journey帮助用户集中保存私人日记和珍贵回忆。</p>
             </article>
             <article v-for="benefit in benefits" :key="benefit.name" class="jr-membership-feature jr-membership-benefit">
               <h3>{{ benefit.name }}</h3>
@@ -88,7 +88,7 @@ onMounted(() => {
               <NuxtLink v-if="benefit.to" :to="benefit.to" @click="close">打开日记问答</NuxtLink>
             </article>
           </div>
-          <h3 class="jr-membership-section">大家喜欢旅程日记</h3>
+          <h3 class="jr-membership-section">大家喜欢Journey</h3>
           <div class="jr-membership-awards">
             <div><JrIcon :path="mdiSeal" :size="32" /><strong>2023 年度精选</strong><span>谷歌应用商店</span></div>
             <div><JrIcon :path="mdiSeal" :size="32" /><strong>今日推荐</strong><span>苹果应用商店</span></div>

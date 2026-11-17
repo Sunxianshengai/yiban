@@ -160,7 +160,7 @@ export async function answerOdysseyQuestion(
           messages: [
             {
               role: 'system',
-              content: '你是「旅程日记」的个人日记问答助手。只根据提供的日记片段用简体中文简洁回答，不要编造未出现的事实，并在合适位置用 [1] [2] 标注引用。',
+              content: '你是「忆伴」的个人日记问答助手。只根据提供的日记片段用简体中文简洁回答，不要编造未出现的事实，并在合适位置用 [1] [2] 标注引用。',
             },
             {
               role: 'user',

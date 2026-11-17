@@ -72,7 +72,7 @@ export async function exportJournalZip(entryId?: number) {
     }))
   }
   const zipped = zipSync(files, { level: 0 })
-  const name = entryId == null ? `journey-multiple-${Date.now()}.zip` : `journey-single-${lastStem}.zip`
+  const name = entryId == null ? `yiban-multiple-${Date.now()}.zip` : `yiban-single-${lastStem}.zip`
   return downloadJournalFile(new Blob([new Uint8Array(zipped)], { type: 'application/zip' }), name)
 }
 
@@ -143,12 +143,12 @@ function readBackup(file: ArrayBuffer) {
   } else {
     for (const path of paths.filter(name => name.endsWith('.json') && !name.startsWith('__MACOSX/'))) {
       const raw = JSON.parse(strFromU8(files[path]!))
-      if (raw?.schemaVersion === 2 && raw.encrypted) throw new Error('请先在原应用中解密旅程日记备份。')
+      if (raw?.schemaVersion === 2 && raw.encrypted) throw new Error('请先在 Journey 中解密日记备份。')
       if (raw?.schemaVersion === 2) readEntry(raw, path, 'v2')
       else if (raw && typeof raw.id === 'string' && raw.date_journal != null && Array.isArray(raw.photos)) readEntry(raw, path, 'v1')
     }
   }
-  if (!out.length) throw new Error('ZIP 中没有找到支持的旅程日记。')
+  if (!out.length) throw new Error('ZIP 中没有找到支持的日记文件。')
   return out
 }
 

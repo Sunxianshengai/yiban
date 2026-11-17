@@ -156,7 +156,7 @@ async function onMobileEntryAction(action: 'duplicate' | 'template') {
     <div class="msearch">
       <div class="mbar">
         <button class="ico" aria-label="返回" @click="router.back()"><JrIcon :path="mdiArrowLeft" :size="22" /></button>
-        <input v-model="q" type="text" placeholder="搜索 Journey…" aria-label="搜索日记" @keyup.enter="search()" />
+        <input v-model="q" type="text" placeholder="搜索忆伴…" aria-label="搜索日记" @keyup.enter="search()" />
         <button class="ico" aria-label="清空搜索词" :disabled="!q" @click="q = ''; search()"><JrIcon :path="mdiClose" :size="22" /></button>
       </div>
 

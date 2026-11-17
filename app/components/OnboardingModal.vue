@@ -6,12 +6,12 @@ const emit = defineEmits<{ (e: 'finish'): void }>()
 const isMobile = useIsMobile()
 const step = ref(0)
 const cards = [
-  { index: 1, t: '欢迎使用旅程日记！', d: '随身日记，伴你记录生活。点击「下一步」开始。', icon: mdiBookOpenPageVariantOutline },
+  { index: 1, t: '欢迎使用忆伴！', d: '随身日记，伴你记录生活。点击「下一步」开始。', icon: mdiBookOpenPageVariantOutline },
   { index: 2, t: '你的生活伙伴', d: '在这里留住回忆，也可以私下写下自己的心事。', icon: mdiAirballoonOutline },
-  { index: 3, t: '安全与隐私', d: '旅程日记十余年来帮助数百万用户保管私人日记。', icon: mdiLockOutline },
+  { index: 3, t: '安全与隐私', d: '在设置中开启 PIN 密码锁，保护你的私人日记。', icon: mdiLockOutline },
   { index: 4, t: '认识巴里和雪莉', d: '日记伙伴会倾听并陪你回顾，让记录更有趣。', icon: mdiPawOutline },
   { index: 5, t: '把回忆留在身边', d: '你可以使用本机日记，将回忆保存在这台设备上。', icon: mdiCellphone },
-  { index: 8, t: '设置完成！', d: '现在可以开始写日记了。旅程日记提供桌面版和网页版。', icon: mdiCheckDecagramOutline },
+  { index: 8, t: '设置完成！', d: '现在可以开始写日记了。忆伴提供桌面版和网页版。', icon: mdiCheckDecagramOutline },
 ]
 const card = computed(() => cards[step.value]!)
 function next() {
@@ -26,9 +26,9 @@ function finish() {
 // 移动首启引导（证据 mobile/screens/01-06：3 屏 + 通知 + 完成页；通知接真实浏览器权限）
 const mStep = ref(0)
 const mSlides = [
-  { t: '欢迎来到Journey！', d: '你的日记，你的伙伴。点击下一步即可开始。', cta: '开始写日记', skip: false },
-  { t: '你的日记，你的伙伴。', d: 'Journey 帮助你记录日常点滴、回顾珍贵记忆，并打造一本多年后仍可随时翻阅的日记。', cta: '继续', skip: true },
-  { t: '你的生活伙伴。', d: 'Journey是一个可以保管你的记忆并私下倾诉的地方。', cta: '继续', skip: true },
+  { t: '欢迎来到忆伴！', d: '你的日记，你的伙伴。点击下一步即可开始。', cta: '开始写日记', skip: false },
+  { t: '你的日记，你的伙伴。', d: '忆伴帮助你记录日常点滴、回顾珍贵记忆，并打造一本多年后仍可随时翻阅的日记。', cta: '继续', skip: true },
+  { t: '你的生活伙伴。', d: '忆伴是一个可以保管你的记忆并私下倾诉的地方。', cta: '继续', skip: true },
 ]
 const mSlide = computed(() => mSlides[mStep.value]!)
 async function mNext() {
@@ -46,7 +46,7 @@ async function mEnableNotifications() {
 <template>
   <!-- 移动首启：3 屏 + 通知 + 完成页（对照原版 Android 走查） -->
   <div v-if="isMobile" class="jr-moboard" role="dialog" aria-modal="true" aria-label="引导">
-    <div class="brand">JOURNEY</div>
+    <div class="brand">忆伴</div>
     <div class="bar" role="progressbar" :aria-valuenow="mStep" aria-valuemin="0" aria-valuemax="4"><div class="fill" :style="{ width: `${(mStep + 1) / 4 * 100}%` }" /></div>
 
     <template v-if="mStep < 3">
@@ -70,7 +70,7 @@ async function mEnableNotifications() {
     <div v-else class="slide">
       <div class="hero" aria-hidden="true">🎉</div>
       <h2>恭喜！</h2>
-      <p>您可以开始使用Journey。Journey也可以在桌面应用程序和在线网站上使用。</p>
+      <p>现在可以开始使用忆伴了。忆伴提供桌面版和网页版。</p>
       <button class="cta" @click="finish">完成</button>
     </div>
   </div>
@@ -78,7 +78,7 @@ async function mEnableNotifications() {
   <div v-else class="jr-onboard" role="dialog" aria-modal="true" aria-labelledby="jr-onboard-heading">
     <div class="jr-onboard-brand">
       <img src="/favicon.svg" width="26" height="26" alt="" />
-      <span>旅程日记</span>
+      <span>忆伴</span>
     </div>
     <div class="jr-onboard-bar" role="progressbar" aria-label="设置进度" :aria-valuenow="card.index" aria-valuemin="0" aria-valuemax="8"><div class="jr-onboard-fill" :style="{ width: `${card.index / 8 * 100}%` }" /></div>
     <div class="jr-onboard-card">

@@ -28,7 +28,7 @@ async function entryData(id: number) {
   const heading = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'long', timeStyle: 'short' }).format(date)
   const tags = allTags.filter(tag => entry.tagWordIds?.includes(tag.id!)).map(tag => '#' + tag.title).join(' ')
   const lines = [entry.timezone, entry.address, tags].filter((value): value is string => Boolean(value))
-  return { entry, heading, lines, media: hydrated, fileName: 'journey-' + date.toISOString().slice(0, 10) + '-' + id }
+  return { entry, heading, lines, media: hydrated, fileName: 'yiban-' + date.toISOString().slice(0, 10) + '-' + id }
 }
 type EntryData = Awaited<ReturnType<typeof entryData>>
 

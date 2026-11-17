@@ -60,7 +60,7 @@ export function useReminder() {
 
   async function testReminder() {
     if (permission.value === 'default') await requestPermission()
-    const sent = fireNotification('旅程日记 · 写作提醒', '今天发生了什么值得记下的小事？花一分钟写一篇日记吧。')
+    const sent = fireNotification('忆伴 · 写作提醒', '今天发生了什么值得记下的小事？花一分钟写一篇日记吧。')
     return sent
   }
 
@@ -71,7 +71,7 @@ export function useReminder() {
     const today = now.toISOString().slice(0, 10)
     if (hhmm === config.value.time && config.value.lastFiredDate !== today) {
       config.value.lastFiredDate = today
-      fireNotification('旅程日记 · 每日写作提醒', `已经到 ${config.value.time} 了，记录一下今天的感受吧。`)
+      fireNotification('忆伴 · 每日写作提醒', `已经到 ${config.value.time} 了，记录一下今天的感受吧。`)
     }
   }
 

@@ -1,5 +1,5 @@
 /**
- * 旅程日记 · 桌宠壳
+ * 忆伴 · 桌宠壳
  *
  * 这是一个很薄的 Electron 外壳：它不复制任何业务代码，只是把线上（或本机 dev）
  * 的 /pet 页面装进一个透明置顶窗口，做成能贴在壁纸上的小羊。
@@ -65,7 +65,7 @@ function createMainWindow() {
     minHeight: 520,
     show: false,
     backgroundColor: '#f6f7f5',
-    title: '旅程日记',
+    title: '忆伴',
     autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
@@ -86,7 +86,7 @@ function createMainWindow() {
     // 网络没通时给一句人话，否则就是一片白
     const html = `<!doctype html><meta charset="utf-8"><title>连不上</title>
 <body style="font:14px/1.7 system-ui;padding:48px;color:#33404a;background:#f6f7f5">
-<h2 style="font-weight:600">没能打开旅程日记</h2>
+<h2 style="font-weight:600">没能打开忆伴</h2>
 <p>${desc || '网络请求失败'}（${code}）</p>
 <p style="color:#71808a">${url}</p>
 <p>如果是被墙了，把 desktop-config.json 里的 webUrl 换成 <code>https://yiban-memory.eu.cc/</code>，或改用 <code>--dev</code> 连本机服务。</p>
@@ -110,7 +110,7 @@ function ensureTray() {
       ? nativeImage.createFromBuffer(Buffer.alloc(16 * 16 * 4, 180), { width: 16, height: 16 })
       : image.resize({ width: 32, height: 32 }),
   )
-  tray.setToolTip('旅程日记 · 瞌睡小羊')
+  tray.setToolTip('忆伴 · 瞌睡小羊')
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: '打开日记', click: () => { if (!mainWindow) mainWindow = createMainWindow(); mainWindow.show(); mainWindow.focus() } },

@@ -246,7 +246,7 @@ async function exportJson() {
   const entries = await db.entriesV2.toArray()
   const payload = { format: 'journey-replica-json', version: 1, exportedAt: new Date().toISOString(), entries }
   await downloadJournalFile(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }),
-    'journey-backup-' + new Date().toISOString().slice(0, 10) + '.json')
+    'yiban-backup-' + new Date().toISOString().slice(0, 10) + '.json')
 }
 
 async function exportZip() {
@@ -450,7 +450,7 @@ async function wipeAll() {
       </div>
 
       <div v-if="s.key === 'help' && openSection === 'help'" class="mexpand">
-        <div class="mset-row"><span>版本</span><span class="mv">旅程复刻 Web（本地）</span></div>
+        <div class="mset-row"><span>版本</span><span class="mv">忆伴 Web（本地）</span></div>
         <p class="mnote">可在导航抽屉中打开云服务，登录并开启日记同步。</p>
       </div>
     </template>
