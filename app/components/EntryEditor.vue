@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { mdiCalendarBlankOutline, mdiMapMarkerOutline, mdiWeatherSunny, mdiEmoticonOutline, mdiRun, mdiTagOutline, mdiPlus, mdiFormatBold, mdiFormatItalic, mdiFormatStrikethrough, mdiFormatUnderline, mdiFormatAlignLeft, mdiFormatAlignCenter, mdiUndo, mdiRedo, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiClose, mdiCheck, mdiFormatListBulleted, mdiFormatListNumbered, mdiCheckboxMarkedOutline, mdiFormatPilcrow, mdiFormatHeader1, mdiFormatHeader2, mdiFormatHeader3, mdiFormatQuoteOpen, mdiFormatListChecks, mdiLink, mdiImage, mdiTable, mdiBorderHorizontal, mdiPalette, mdiMarker, mdiWaterOff, mdiImageMultipleOutline, mdiApps, mdiFormatAlignRight, mdiCodeTags, mdiFormatIndentIncrease, mdiFormatIndentDecrease, mdiAccountMultipleOutline, mdiLockOutline } from '@mdi/js'
+import { mdiCalendarBlankOutline, mdiMapMarkerOutline, mdiWeatherSunny, mdiEmoticonOutline, mdiRun, mdiTagOutline, mdiPlus, mdiFormatBold, mdiFormatItalic, mdiFormatStrikethrough, mdiFormatUnderline, mdiFormatAlignLeft, mdiFormatAlignCenter, mdiUndo, mdiRedo, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiClose, mdiCheck, mdiFormatListBulleted, mdiFormatListNumbered, mdiCheckboxMarkedOutline, mdiFormatPilcrow, mdiFormatHeader1, mdiFormatHeader2, mdiFormatHeader3, mdiFormatQuoteOpen, mdiFormatListChecks, mdiLink, mdiImage, mdiTable, mdiBorderHorizontal, mdiPalette, mdiMarker, mdiWaterOff, mdiImageMultipleOutline, mdiApps, mdiFormatAlignRight, mdiCodeTags, mdiFormatIndentIncrease, mdiFormatIndentDecrease, mdiAccountMultipleOutline, mdiLockOutline, mdiPencil } from '@mdi/js'
 import type { EntryV2, MediaFileV2, TagWordV2 } from '~/utils/db'
 import { db, miscDb } from '~/utils/db'
 import { journalFragment, journalHtml, renderJournal } from '~/utils/journalHtml'
+import { COACH_TEMPLATES, OFFLINE_TEMPLATES } from '~/utils/journalTemplates'
 import { WEATHER_EMOJI } from '~/utils/services'
 import { amapInfoHint, amapWeatherIcon, fetchAmapWeather, getAmapWebKey, reverseGeocodeAmap, searchAmapPlacesResult } from '~/utils/amap'
 import type { AmapPlaceHit } from '~/utils/amap'
@@ -20,7 +21,7 @@ const tableRows = ref(2)
 const tableCols = ref(2)
 const currentBlock = ref('p')
 const templateDialog = ref(false)
-const coachNote = ref('')
+const showAllCoach = ref(false)
 const popX = ref<number | null>(null)
 const popY = ref<number | null>(null)
 const tableCell = shallowRef<HTMLTableCellElement | null>(null)
@@ -127,30 +128,67 @@ async function loadTemplates() {
 }
 function openTemplates() {
   templateDialog.value = true
-  loadTemplates()
+  void loadTemplates()
 }
-// 原版 Pick a Template 三区结构（evidence/derived/editor-overlays.json → template_dialog）
-const coachTemplates = [
-  { name: '目标设定', desc: '设定人生目标并规划更小的里程碑，让自己始终在轨道上。' },
-  { name: '年度目标', desc: '通过设定年度目标，为长远生活做好准备。' },
-  { name: '每周回顾', desc: '在一个地方回顾与反思你的一周。' },
-  { name: '个人发展计划', desc: '构建一张路线图，保持在正轨上并达成目标。' },
-  { name: '原子习惯记分卡', desc: '用简单的练习发现你应当改变哪些习惯。' },
-  { name: '清晨五点俱乐部', desc: '加入 5AM 俱乐部，优化你的晨间日常。' },
-  { name: '每周反思', desc: '以结构化的提示回顾本周的起伏。' },
-  { name: '创建你自己的积极肯定', desc: '培养每天的积极心态。' },
-  { name: '年中反思', desc: '回望并反思这一年过半的旅程。' },
-  { name: '成长型思维模板', desc: '把固定型思维转变为成长型思维。' },
-]
+const visibleCoachTemplates = computed(() =>
+  showAllCoach.value ? COACH_TEMPLATES : COACH_TEMPLATES.slice(0, 4),
+)
+
+async function saveCurrentAsTemplate() {
+  const raw = area.value?.innerHTML || ''
+  if (!raw.replace(/<p><br><\/p>|<br>/g, '').trim()) return
+  const defaultName = `我的模板 ${new Date().toLocaleDateString('zh-CN')}`
+  const name = window.prompt('保存为自定义模板', defaultName)?.trim()
+  if (!name) return
+  const fragment = journalFragment(raw)
+  fragment.querySelectorAll('[data-media-id]').forEach(node => node.remove())
+  const { miscDb } = await import('~/utils/db')
+  await miscDb.templates.add({
+    name,
+    content: journalHtml(fragment),
+    contentType: 'html',
+    updatedAt: new Date(),
+  })
+  await loadTemplates()
+}
+
+function placeCaretAtEnd(el: HTMLElement) {
+  el.focus()
+  const sel = window.getSelection()
+  if (!sel) return
+  const range = document.createRange()
+  range.selectNodeContents(el)
+  range.collapse(false)
+  sel.removeAllRanges()
+  sel.addRange(range)
+}
+
 function insertTemplate(t: { content: string }) {
   const html = journalHtml(journalFragment(t.content?.trim() || ''))
-  if (area.value && !area.value.innerHTML.replace(/<p><br><\/p>|<br>/g, '').trim()) {
-    area.value.innerHTML = html
-  } else {
-    document.execCommand('insertHTML', false, html + '<p><br></p>')
-  }
-  recount()
+  templateDialog.value = false
   openPop.value = null
+  const el = area.value
+  if (!el) return
+  const isEmpty = !el.innerHTML.replace(/<p><br><\/p>|<br>/g, '').trim()
+  if (isEmpty) {
+    el.innerHTML = html
+    placeCaretAtEnd(el)
+  } else {
+    restoreSel()
+    const sel = window.getSelection()
+    if (!sel || !sel.rangeCount || !el.contains(sel.anchorNode)) {
+      placeCaretAtEnd(el)
+    }
+    if (!document.execCommand('insertHTML', false, html + '<p><br></p>')) {
+      el.appendChild(journalFragment(html))
+      placeCaretAtEnd(el)
+    }
+  }
+  touched.value = true
+  recount()
+  saveSel()
+  scheduleDraft()
+  noteUndo()
 }
 
 const dateLabel = computed(() =>
@@ -1154,6 +1192,7 @@ async function save() {
 
       <template v-else-if="openPop === 'insert'">
         <template v-if="!insertSub">
+          <button class="jr-pop-item" @click="openPop = null; openTemplates()"><JrIcon :path="mdiApps" :size="17" class="jr-pop-ico" /> 插入 模板</button>
           <button class="jr-pop-item" @click="insertSub = 'link'"><JrIcon :path="mdiLink" :size="17" class="jr-pop-ico" /> 插入 链接</button>
           <button class="jr-pop-item" @click="insertSub = 'image'"><JrIcon :path="mdiImage" :size="17" class="jr-pop-ico" /> 插入 从网址获取的图片</button>
           <button class="jr-pop-item" @click="insertSub = 'table'"><JrIcon :path="mdiTable" :size="17" class="jr-pop-ico" /> 插入 表格</button>
@@ -1370,30 +1409,41 @@ async function save() {
       </button>
     </div>
 
-    <!-- 选择模板对话框（原版 Pick a Template 三区结构；教练模板目录来自证据，内容依赖 Journey 云端，不伪造） -->
+    <!-- 选择模板对话框（对全部用户开放：教练模板 + 自定义模板 + 离线模板） -->
     <div v-if="templateDialog" class="jr-modal-mask" @click.self="templateDialog = false">
       <div class="jr-modal jr-tpl-modal" role="dialog" aria-label="选择模板">
         <button class="jr-modal-x" aria-label="关闭" @click="templateDialog = false"><JrIcon :path="mdiClose" :size="15" /></button>
         <h2 class="jr-tpl-title">选择模板</h2>
         <div class="jr-tpl-body">
-          <div class="jr-tpl-sec-head"><span>教练模板</span><span class="jr-tpl-viewall">查看全部 ›</span></div>
+          <div class="jr-tpl-sec-head">
+            <span>教练模板</span>
+            <button type="button" class="jr-tpl-viewall" @click="showAllCoach = !showAllCoach">{{ showAllCoach ? '收起' : `查看全部 (${COACH_TEMPLATES.length}) ›` }}</button>
+          </div>
           <div class="jr-tpl-cards">
-            <button v-for="c in coachTemplates" :key="c.name" class="jr-tpl-card" @click="coachNote = `「${c.name}」的模板内容来自 Journey 云端，登录原版账户后可用。`">
+            <button v-for="c in visibleCoachTemplates" :key="c.id" type="button" class="jr-tpl-card" @click="insertTemplate(c)">
               <div class="jr-tpl-cover" aria-hidden="true">{{ c.name.slice(0, 1) }}</div>
-              <div class="jr-tpl-name">{{ c.name }} <span class="jr-tpl-free">FREE</span></div>
+              <div class="jr-tpl-name">{{ c.name }}</div>
               <div class="jr-tpl-desc">{{ c.desc }}</div>
             </button>
           </div>
-          <p v-if="coachNote" role="status" class="jr-import-msg">{{ coachNote }}</p>
-          <div class="jr-tpl-sec-head"><span>自定义模板</span></div>
+          <div class="jr-tpl-sec-head">
+            <span>自定义模板</span>
+            <button v-if="hasContent" type="button" class="jr-tpl-viewall" @click="saveCurrentAsTemplate">+ 存当前内容为模板</button>
+          </div>
           <div v-if="!templates.length" class="jr-muted jr-tpl-empty">暂无内容</div>
           <div v-for="t in templates" :key="t.id" class="jr-share-acct">
-            <button class="jr-pop-item" style="flex:1" @click="insertTemplate(t); templateDialog = false">{{ t.name }}</button>
-            <button class="jr-icon-btn" title="重命名" aria-label="重命名模板" @click="renameTemplate(t)"><JrIcon :path="mdiPencil" :size="16" /></button>
-            <button class="jr-link-danger" @click="deleteTemplate(t)">删除</button>
+            <button type="button" class="jr-pop-item" style="flex:1" @click="insertTemplate(t)">{{ t.name }}</button>
+            <button type="button" class="jr-icon-btn" title="重命名" aria-label="重命名模板" @click="renameTemplate(t)"><JrIcon :path="mdiPencil" :size="16" /></button>
+            <button type="button" class="jr-link-danger" @click="deleteTemplate(t)">删除</button>
           </div>
           <div class="jr-tpl-sec-head"><span>离线模板</span></div>
-          <div class="jr-muted jr-tpl-empty">暂无内容</div>
+          <div class="jr-tpl-cards">
+            <button v-for="t in OFFLINE_TEMPLATES" :key="t.id" type="button" class="jr-tpl-card" @click="insertTemplate(t)">
+              <div class="jr-tpl-cover" aria-hidden="true">{{ t.name.slice(0, 1) }}</div>
+              <div class="jr-tpl-name">{{ t.name }}</div>
+              <div class="jr-tpl-desc">{{ t.desc }}</div>
+            </button>
+          </div>
         </div>
       </div>
     </div>
