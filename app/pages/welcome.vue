@@ -26,7 +26,7 @@ import {
   mdiCheck,
 } from '@mdi/js'
 
-useHead({ title: '忆伴 — 你值得信赖的日记伙伴' })
+useHead({ title: '拾叙 — 你值得信赖的日记伙伴' })
 
 /** 落地页固定浅色板（对照 journey.cloud 首页视觉，不随应用主题变化）。
  *  演示区全部渲染真实数据（自己的日记/照片/家人动态/心情曲线），新访客用精写示例日记本兜底。 */
@@ -79,7 +79,7 @@ function scrollTo(id: string) {
     <header class="lp-nav">
       <NuxtLink to="/" class="lp-brand">
         <span class="lp-logo">J</span>
-        <span class="lp-brand-name">忆伴</span>
+        <span class="lp-brand-name">拾叙</span>
       </NuxtLink>
       <nav class="lp-menu">
         <button type="button" @click="scrollTo('features')">功能</button>
@@ -97,7 +97,7 @@ function scrollTo(id: string) {
     <section class="lp-hero">
       <div class="lp-hero-icon" aria-hidden="true"><JrIcon :path="mdiBookOpenPageVariantOutline" :size="34" /></div>
       <h1>开启你的记录旅程</h1>
-      <p class="lp-hero-sub">忆伴，你值得信赖的日记伙伴</p>
+      <p class="lp-hero-sub">拾叙，你值得信赖的日记伙伴</p>
 
       <div class="lp-stage">
         
@@ -355,13 +355,13 @@ function scrollTo(id: string) {
     <section class="lp-final">
       <h2>现在，写下第一篇</h2>
       <NuxtLink to="/" class="lp-cta lp-cta-big">
-        打开忆伴
+        打开拾叙
         <JrIcon :path="mdiArrowRight" :size="17" />
       </NuxtLink>
     </section>
 
     <footer class="lp-footer">
-      <span>忆伴 · 独立复刻研究项目</span>
+      <span>拾叙 · 独立复刻研究项目</span>
       <span>灵感来自 Journey.Cloud 的产品理念，全部界面与代码均为独立实现</span>
     </footer>
   </div>

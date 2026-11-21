@@ -14,7 +14,7 @@ export default defineNuxtConfig({
   },
   app: {
     head: {
-      title: '忆伴',
+      title: '拾叙',
       htmlAttrs: { lang: 'zh-CN' },
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },

@@ -16,7 +16,7 @@
   },
   "build": {
     "appId": "cc.eu.memory.yiban",
-    "productName": "忆伴",
+    "productName": "拾叙",
     "asar": false,
     "directories": {
       "output": "dist-desktop"

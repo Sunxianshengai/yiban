@@ -113,7 +113,7 @@ export default defineEventHandler(async (event) => {
       select user_id from yiban_wecom_bindings where bind_code = ${code} limit 1
     `
     if (!found.length) {
-      return reply(`未找到绑定码 ${code}，请在忆伴网页「云服务 → 企业微信同步」中确认最新绑定码。`)
+      return reply(`未找到绑定码 ${code}，请在拾叙网页「云服务 → 企业微信同步」中确认最新绑定码。`)
     }
     const targetUserId = (found[0] as any).user_id as string
     // 确保一个企微账号同一时间只绑定一个日记账号
@@ -123,7 +123,7 @@ export default defineEventHandler(async (event) => {
       set wecom_user_id = ${fromUser}, bound_at = now()
       where user_id = ${targetUserId}
     `
-    return reply('🎉 绑定成功！现在起你在这里发送的文字、图片、定位或语音都会自动云同步到「忆伴」。\n• 加 #标签 可自动归类\n• 发送「撤回」可删除上一条')
+    return reply('🎉 绑定成功！现在起你在这里发送的文字、图片、定位或语音都会自动云同步到「拾叙」。\n• 加 #标签 可自动归类\n• 发送「撤回」可删除上一条')
   }
 
   const bindings = await q`
@@ -133,7 +133,7 @@ export default defineEventHandler(async (event) => {
     limit 1
   `
   if (!bindings.length) {
-    return reply('你还没有绑定忆伴账号。请打开网页「云服务 → 企业微信同步」获取 6 位绑定码，然后回复「绑定 WXxxxx」。')
+    return reply('你还没有绑定拾叙账号。请打开网页「云服务 → 企业微信同步」获取 6 位绑定码，然后回复「绑定 WXxxxx」。')
   }
 
   const binding = bindings[0] as { user_id: string; merge_window_sec: number; auto_family: boolean }
@@ -278,5 +278,5 @@ export default defineEventHandler(async (event) => {
   const tagNote = tags.length ? ` · 标签：${tags.map(t => `#${t}`).join(' ')}` : ''
   return reply(merged
     ? `✅ 已追加合并到刚刚的日记${photoStatus}${tagNote}`
-    : `✅ 已云同步记入忆伴${photoStatus}${tagNote}`)
+    : `✅ 已云同步记入拾叙${photoStatus}${tagNote}`)
 })

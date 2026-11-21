@@ -55,7 +55,7 @@ function createPetManager({ appUrl, getMainWindow }) {
         ? nativeImage.createFromBuffer(Buffer.alloc(16 * 16 * 4, 180), { width: 16, height: 16 })
         : image.resize({ width: 32, height: 32 }),
     )
-    tray.setToolTip('忆伴 · 瞌睡小羊')
+    tray.setToolTip('拾叙 · 瞌睡小羊')
     tray.setContextMenu(
       Menu.buildFromTemplate([
         { label: '打开日记', click: openMain },

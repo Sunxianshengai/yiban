@@ -72,7 +72,7 @@ export async function exportJournalZip(entryId?: number) {
     }))
   }
   const zipped = zipSync(files, { level: 0 })
-  const name = entryId == null ? `yiban-multiple-${Date.now()}.zip` : `yiban-single-${lastStem}.zip`
+  const name = entryId == null ? `shixu-multiple-${Date.now()}.zip` : `shixu-single-${lastStem}.zip`
   return downloadJournalFile(new Blob([new Uint8Array(zipped)], { type: 'application/zip' }), name)
 }
 

@@ -159,7 +159,7 @@ function timeLabel(timestamp: number) {
   <section class="jr-odyssey" aria-labelledby="odyssey-title">
     <header class="jr-odyssey-bar">
       <div class="jr-odyssey-head">
-        <h1 id="odyssey-title">忆伴日记问答</h1>
+        <h1 id="odyssey-title">拾叙日记问答</h1>
         <span class="jr-odyssey-quota">今日配额 {{ remainingQuota }} / {{ DAILY_QUOTA }}</span>
       </div>
       <div class="jr-odyssey-menu" @keydown.esc="menuOpen = false">
@@ -189,7 +189,7 @@ function timeLabel(timestamp: number) {
           <span>开启日记检索与问答授权</span>
         </div>
         <p>
-          开启后，忆伴日记问答会在本地检索你的日记文本、时间与地点标签以生成回答并附带原文引用；若你在「设置 → 日记伙伴」中配置了兼容 OpenAI 的接口，也会用该模型润色总结。你可以随时在右上角菜单撤回授权。
+          开启后，拾叙日记问答会在本地检索你的日记文本、时间与地点标签以生成回答并附带原文引用；若你在「设置 → 日记伙伴」中配置了兼容 OpenAI 的接口，也会用该模型润色总结。你可以随时在右上角菜单撤回授权。
         </p>
         <button type="button" class="jr-btn jr-btn-primary" @click="grantConsent">同意并开启日记问答</button>
       </article>
@@ -199,13 +199,13 @@ function timeLabel(timestamp: number) {
           <span v-for="(active, index) in avatar" :key="index" :class="{ active }" />
         </div>
         <div class="jr-odyssey-bubble">
-          <p>你好，我是忆伴日记问答助手（已接入你本机的 {{ entries.length }} 篇日记）。你可以直接点击或输入问题：</p>
+          <p>你好，我是拾叙日记问答助手（已接入你本机的 {{ entries.length }} 篇日记）。你可以直接点击或输入问题：</p>
           <div class="jr-odyssey-prompts">
             <button type="button" class="jr-chip" :disabled="!consented" @click="ask('我今年一共写了多少篇日记？')">今年写了多少篇日记？</button>
             <button type="button" class="jr-chip" :disabled="!consented" @click="ask('总结一下我最近两周写了什么')">最近两周写了什么？</button>
             <button type="button" class="jr-chip" :disabled="!consented" @click="ask('按月统计我今年写了多少篇日记')">按月统计日记数量</button>
           </div>
-          <small>忆伴日记问答 · 本地检索 &amp; AI 辅助</small>
+          <small>拾叙日记问答 · 本地检索 &amp; AI 辅助</small>
         </div>
       </article>
 
